@@ -26,6 +26,8 @@ type Config struct {
 	botName          string
 	announcer        string
 	announceChannel  string
+	pushoverToken    string
+	pushoverUser     string
 }
 
 func (c *Config) load(path string) (err error) {
@@ -48,6 +50,8 @@ func (c *Config) load(path string) (err error) {
 	c.botName = conf.GetString("tracker.bot_name")
 	c.announcer = conf.GetString("tracker.announcer")
 	c.announceChannel = conf.GetString("tracker.announce_channel")
+	c.pushoverToken = conf.GetString("pushover.token")
+	c.pushoverUser = conf.GetString("pushover.user")
 
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
