@@ -28,7 +28,7 @@ func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notificat
 		// if satisfies a filter, download
 		for _, filter := range config.filters {
 			if newTorrent.Satisfies(filter) {
-				fmt.Println("This is of interest because of filter " + filter.label + ", downloading.")
+				log.Println("Caught by filter " + filter.label + ", downloading.")
 				if _, err = newTorrent.Download(hc); err != nil {
 					return nil, err
 				}
@@ -52,16 +52,7 @@ func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notificat
 	return nil, errors.New("No hits!")
 }
 
-func ircHandler() {
-	conf := Config{}
-	conf.load("config.yaml")
-
-	tracker := GazelleTracker{rootURL: conf.url}
-	if err := tracker.Login(conf.user, conf.password); err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	fmt.Println("Logged in tracker.")
+func ircHandler(conf Config, tracker GazelleTracker) {
 
 	// Create a new pushover app with a token
 	notification := pushover.New(conf.pushoverToken)
@@ -77,9 +68,9 @@ func ircHandler() {
 	irccon.AddCallback("PRIVMSG", func(e *irc.Event) {
 		if e.Nick == conf.announcer {
 			announced := e.Message()
-			_, err := AnalyzeAnnounce(conf, announced, tracker.client, notification, recipient)
-			if err != nil {
-				fmt.Println("ERR: " + err.Error())
+			log.Println("Announced: " + announced)
+			if _, err := AnalyzeAnnounce(conf, announced, tracker.client, notification, recipient); err != nil {
+				log.Println("ERR: " + err.Error())
 				return
 			}
 		}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"syscall"
@@ -58,17 +59,28 @@ func main() {
 	}
 	defer cntxt.Release()
 
-	log.Println("- - - - - - - - - - - - - - -")
-	log.Println("daemon started")
+	log.Println("+ dronelistener started")
 
-	go worker()
-	go ircHandler()
+	conf := Config{}
+	conf.load("config.yaml")
+	log.Println(" - Configuration loaded.")
+
+	tracker := GazelleTracker{rootURL: conf.url}
+	if err := tracker.Login(conf.user, conf.password); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	log.Println(" - Logged in tracker.")
+
+	go checkSignals()
+	go ircHandler(conf, tracker)
+	go monitorStats(conf, tracker)
 
 	err = daemon.ServeSignals()
 	if err != nil {
 		log.Println("Error:", err)
 	}
-	log.Println("daemon terminated")
+	log.Println("+ dronelistener stopped")
 }
 
 var (
@@ -76,7 +88,7 @@ var (
 	done = make(chan struct{})
 )
 
-func worker() {
+func checkSignals() {
 	for {
 		time.Sleep(time.Second)
 		if _, ok := <-stop; ok {
