@@ -27,6 +27,7 @@ Torrent URL: %s
 Torrent ID: %s
 `
 const TorrentPath = `%s - %s (%d) [%s %s %s %s] - %s.torrent`
+const TorrentNotification = `%s - %s (%d) [%s/%s/%s/%s] [%s]`
 
 type Release struct {
 	artist      string
@@ -67,6 +68,10 @@ func NewTorrent(parts []string) (*Release, error) {
 
 func (r *Release) String() string {
 	return fmt.Sprintf(ReleaseString, r.artist, r.title, r.year, r.releaseType, r.format, r.quality, r.source, r.tags, r.url, r.torrentURL, r.torrentID)
+}
+
+func (r *Release) ShortString() string {
+	return fmt.Sprintf(TorrentNotification, r.artist, r.title, r.year, r.releaseType, r.format, r.quality, r.source, humanize.IBytes(r.size))
 }
 
 func (r *Release) Download(hc *http.Client) (string, error) {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	daemon "github.com/sevlyar/go-daemon"
+	"github.com/gregdel/pushover"
 )
 
 /*
@@ -65,6 +66,15 @@ func main() {
 	conf.load("config.yaml")
 	log.Println(" - Configuration loaded.")
 
+
+	// notifications with pushover
+	var notification *pushover.Pushover
+	var recipient *pushover.Recipient
+	if conf.pushoverUser != "" && conf.pushoverToken != "" {
+		notification = pushover.New(conf.pushoverToken)
+		recipient = pushover.NewRecipient(conf.pushoverUser)
+	}
+
 	tracker := GazelleTracker{rootURL: conf.url}
 	if err := tracker.Login(conf.user, conf.password); err != nil {
 		fmt.Println(err.Error())
@@ -73,8 +83,8 @@ func main() {
 	log.Println(" - Logged in tracker.")
 
 	go checkSignals()
-	go ircHandler(conf, tracker)
-	go monitorStats(conf, tracker)
+	go ircHandler(conf, tracker, notification, recipient)
+	go monitorStats(conf, tracker, notification, recipient)
 
 	err = daemon.ServeSignals()
 	if err != nil {

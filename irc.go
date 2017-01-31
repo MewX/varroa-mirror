@@ -14,6 +14,20 @@ import (
 
 const announcePattern = `([\w. ]*) - ([\w,\.:' ]*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3) / ([\w/ ()]*) / ([\w]*) - (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
 
+
+func sendTorrentNotification(notification *pushover.Pushover, recipient *pushover.Recipient, torrent *Release, filterLabel string) {
+	if notification == nil {
+		return
+	}
+	// send notification
+	message := pushover.NewMessageWithTitle(filterLabel+": Snatched "+torrent.ShortString(), "varroa musica")
+	_, err := notification.SendMessage(message, recipient)
+	if err != nil {
+		log.Println(err.Error())
+	}
+}
+
+
 func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notification *pushover.Pushover, recipient *pushover.Recipient) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
@@ -35,14 +49,8 @@ func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notificat
 				// TODO: compare with max-size from filter
 				newTorrent.GetSize()
 
-				// send notification
-				// TODO: better description (give size, etc)
-				message := pushover.NewMessageWithTitle("AutoDL: "+newTorrent.filename, "dronelister")
-				_, err := notification.SendMessage(message, recipient)
-				if err != nil {
-					log.Println(err.Error())
-				}
-
+				// TODO: move to relevant subfolder
+				sendTorrentNotification(notification, recipient, newTorrent, filter.label)
 				return newTorrent, nil
 			}
 		}
@@ -52,12 +60,7 @@ func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notificat
 	return nil, errors.New("No hits!")
 }
 
-func ircHandler(conf Config, tracker GazelleTracker) {
-
-	// Create a new pushover app with a token
-	notification := pushover.New(conf.pushoverToken)
-	recipient := pushover.NewRecipient(conf.pushoverUser)
-
+func ircHandler(conf Config, tracker GazelleTracker, notification *pushover.Pushover,  recipient *pushover.Recipient) {
 	irccon := irc.IRC(conf.botName, conf.user)
 	irccon.UseTLS = false
 	irccon.TLSConfig = &tls.Config{InsecureSkipVerify: true}
