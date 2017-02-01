@@ -47,7 +47,7 @@ func getStats(conf Config, tracker GazelleTracker, previousStats *Stats, notific
 
 		// if something is wrong, send notif and stop
 		if !stats.IsProgressAcceptable(previousStats, conf) {
-			log.Println("UNACCEPTABLE DROP in BUFFER!")
+			log.Println("Drop in buffer too important, stopping autodl.")
 			// sending notification
 			message := pushover.NewMessageWithTitle("Drop in buffer too important, stopping autodl.", "varroa musica")
 			_, err := notification.SendMessage(message, recipient)
@@ -55,7 +55,7 @@ func getStats(conf Config, tracker GazelleTracker, previousStats *Stats, notific
 				log.Println(err.Error())
 			}
 			// stopping things
-			stop <- struct{}{}
+			killDaemon()
 		}
 	}
 	return stats

@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	daemon "github.com/sevlyar/go-daemon"
 	"github.com/gregdel/pushover"
+	daemon "github.com/sevlyar/go-daemon"
 )
 
 /*
@@ -24,15 +24,8 @@ var (
 		quit — graceful shutdown
 		stop — fast shutdown
 		reload — reloading the configuration file`)
-)
 
-func main() {
-	flag.Parse()
-	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, termHandler)
-	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, termHandler)
-	daemon.AddCommand(daemon.StringFlag(signal, "reload"), syscall.SIGHUP, reloadHandler)
-
-	cntxt := &daemon.Context{
+	cntxt = &daemon.Context{
 		PidFileName: "pid",
 		PidFilePerm: 0644,
 		LogFileName: "log",
@@ -41,6 +34,13 @@ func main() {
 		Umask:       027,
 		Args:        []string{"[irc bot for PTH]"},
 	}
+)
+
+func main() {
+	flag.Parse()
+	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, termHandler)
+	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, termHandler)
+	daemon.AddCommand(daemon.StringFlag(signal, "reload"), syscall.SIGHUP, reloadHandler)
 
 	if len(daemon.ActiveFlags()) > 0 {
 		d, err := cntxt.Search()
@@ -66,7 +66,6 @@ func main() {
 	conf.load("config.yaml")
 	log.Println(" - Configuration loaded.")
 
-
 	// notifications with pushover
 	var notification *pushover.Pushover
 	var recipient *pushover.Recipient
@@ -86,8 +85,7 @@ func main() {
 	go ircHandler(conf, tracker, notification, recipient)
 	go monitorStats(conf, tracker, notification, recipient)
 
-	err = daemon.ServeSignals()
-	if err != nil {
+	if err := daemon.ServeSignals(); err != nil {
 		log.Println("Error:", err)
 	}
 	log.Println("+ dronelistener stopped")
@@ -120,4 +118,27 @@ func termHandler(sig os.Signal) error {
 func reloadHandler(sig os.Signal) error {
 	log.Println("configuration reloaded")
 	return nil
+}
+
+func killDaemon() {
+	d, err := cntxt.Search()
+	if err != nil {
+		log.Fatalln("Unable send signal to the daemon:", err)
+	}
+	if d != nil {
+		if err := d.Signal(syscall.SIGTERM); err != nil {
+			log.Fatalf("error killing running daemon: %s\n", err)
+		}
+
+		// Ascertain process has exited
+		for {
+			if err := d.Signal(syscall.Signal(0)); err != nil {
+				if err.Error() == "os: process already finished" {
+					break
+				}
+				log.Fatalf("error checking daemon exited: %s\n", err)
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 }
