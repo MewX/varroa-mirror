@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"golang.org/x/net/publicsuffix"
+	"math"
 )
 
 func login(siteUrl, username, password string) (hc *http.Client, returnData string, err error) {
@@ -95,6 +96,15 @@ func (b ByteSize) String() string {
 	return fmt.Sprintf("%.3fB", b)
 }
 
+func readableUint64(a uint64) string {
+	return ByteSize(float64(a)).String()
+}
+func readableint64(a int64) string {
+	if a >= 0 {
+		return "+"+ByteSize(math.Abs(float64(a))).String()
+	}
+	return "-"+ByteSize(math.Abs(float64(a))).String()
+}
 //--------------------
 
 type GazelleTracker struct {
@@ -111,14 +121,26 @@ func (t *GazelleTracker) Login(user, password string) error {
 	return nil
 }
 
-func (t *GazelleTracker) GetStats() (GazelleIndex, error) {
+func (t *GazelleTracker) GetStats() (*Stats, error) {
 	data, err := retrieveGetRequestData(t.client, t.rootURL+"/ajax.php?action=index")
 	if err != nil {
-		return GazelleIndex{}, err
+		return nil, err
 	}
-	var index GazelleIndex
-	json.Unmarshal(data, &index)
-	return index, nil
+	var i GazelleIndex
+	json.Unmarshal(data, &i)
+
+	// GazelleIndex to Stats
+	stats := &Stats{
+		Username:      i.Response.Username,
+		Class:         i.Response.Userstats.Class,
+		Up:            uint64(i.Response.Userstats.Uploaded),
+		Down:          uint64(i.Response.Userstats.Downloaded),
+		Buffer:        uint64(float64(i.Response.Userstats.Uploaded)/0.95) - uint64(i.Response.Userstats.Downloaded),
+		WarningBuffer: uint64(float64(i.Response.Userstats.Uploaded)/0.6) - uint64(i.Response.Userstats.Downloaded),
+		Ratio:         i.Response.Userstats.Ratio,
+	}
+
+	return stats, nil
 }
 
 func (t *GazelleTracker) GetTorrentInfo(id string) error {
@@ -133,6 +155,50 @@ func (t *GazelleTracker) GetTorrentInfo(id string) error {
 }
 
 //--------------------
+
+const userStats = "User: %s (%s) | "
+const progress = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.2f (%.2f)"
+const firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.2f"
+
+type Stats struct {
+	Username      string
+	Class         string
+	Up            uint64
+	Down          uint64
+	Buffer        uint64
+	WarningBuffer uint64
+	Ratio         float64
+}
+
+func (s *Stats) Diff(previous *Stats) (int64, int64, int64, int64, float64) {
+	return int64(s.Up - previous.Up), int64(s.Down - previous.Down), int64(s.Buffer - previous.Buffer), int64(s.WarningBuffer - previous.WarningBuffer), s.Ratio - previous.Ratio
+}
+
+func (s *Stats) Progress(previous *Stats) string {
+	if previous.Ratio == 0 {
+		return s.String()
+	}
+	dup, ddown, ddbuff, ddwbuff, dratio := s.Diff(previous)
+	return fmt.Sprintf(progress, readableUint64(s.Up), readableint64(dup), readableUint64(s.Down), readableint64(ddown), readableUint64(s.Buffer), readableint64(ddbuff), readableUint64(s.WarningBuffer), readableint64(ddwbuff), s.Ratio, dratio)
+}
+
+func (s *Stats) IsProgressAcceptable(previous *Stats, conf Config) bool {
+	if previous.Ratio == 0 {
+		// first pass
+		return true
+	}
+	_, _, bufferChange, _, _ := s.Diff(previous)
+	if bufferChange > - int64(conf.maxBufferDecreaseByPeriodMB) {
+	    return true
+	}
+	return false
+}
+
+func (s *Stats) String() string {
+	return fmt.Sprintf(userStats, s.Username, s.Class) + fmt.Sprintf(firstProgress, readableUint64(s.Up), readableUint64(s.Down), readableUint64(s.Buffer), readableUint64(s.WarningBuffer), s.Ratio)
+}
+
+//-----------
 
 type GazelleIndex struct {
 	Response struct {
@@ -156,25 +222,6 @@ type GazelleIndex struct {
 		} `json:"userstats"`
 	} `json:"response"`
 	Status string `json:"status"`
-}
-
-
-func (i *GazelleIndex) RawBuffer() uint64 {
-	return uint64(float64(i.Response.Userstats.Uploaded) / 0.95) - uint64(i.Response.Userstats.Downloaded)
-}
-
-func (i *GazelleIndex) Buffer() string {
-	return ByteSize(float64(i.RawBuffer())).String()
-}
-
-func (i *GazelleIndex) Stats() string {
-	return fmt.Sprintf("User: %s (%s) | Up: %s | Down: %s | Buffer: %s | Ratio: %.2f",
-		i.Response.Username,
-		i.Response.Userstats.Class,
-		ByteSize(float64(i.Response.Userstats.Uploaded)).String(),
-		ByteSize(float64(i.Response.Userstats.Downloaded)).String(),
-		i.Buffer(),
-		i.Response.Userstats.Ratio)
 }
 
 //----------------------
@@ -240,5 +287,3 @@ type GazelleTorrent struct {
 	} `json:"response"`
 	Status string `json:"status"`
 }
-
-

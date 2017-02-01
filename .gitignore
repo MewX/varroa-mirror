@@ -1,5 +1,8 @@
 .idea/
+img/
+*.csv
 *.yaml
+*.txt
 log
 pid
 TODO

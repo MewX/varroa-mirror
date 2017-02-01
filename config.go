@@ -16,18 +16,21 @@ type Filter struct {
 }
 
 type Config struct {
-	filters          []Filter
-	url              string
-	user             string
-	password         string
-	ircServer        string
-	ircKey           string
-	nickServPassword string
-	botName          string
-	announcer        string
-	announceChannel  string
-	pushoverToken    string
-	pushoverUser     string
+	filters                     []Filter
+	url                         string
+	user                        string
+	password                    string
+	ircServer                   string
+	ircKey                      string
+	nickServPassword            string
+	botName                     string
+	announcer                   string
+	announceChannel             string
+	pushoverToken               string
+	pushoverUser                string
+	statsFile                   string
+	statsUpdatePeriod           int
+	maxBufferDecreaseByPeriodMB int
 }
 
 func (c *Config) load(path string) (err error) {
@@ -41,6 +44,7 @@ func (c *Config) load(path string) (err error) {
 		return
 	}
 
+	// tracker configuration
 	c.url = conf.GetString("tracker.url")
 	c.user = conf.GetString("tracker.user")
 	c.password = conf.GetString("tracker.password")
@@ -50,9 +54,13 @@ func (c *Config) load(path string) (err error) {
 	c.botName = conf.GetString("tracker.bot_name")
 	c.announcer = conf.GetString("tracker.announcer")
 	c.announceChannel = conf.GetString("tracker.announce_channel")
+	c.statsFile = conf.GetString("tracker.stats_file")
+	c.statsUpdatePeriod = conf.GetInt("tracker.stats_update_period_min")
+	c.maxBufferDecreaseByPeriodMB = conf.GetInt("tracker.max_buffer_decrease_by_period_mb")
+	// pushover configuration
 	c.pushoverToken = conf.GetString("pushover.token")
 	c.pushoverUser = conf.GetString("pushover.user")
-
+	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
 		tinfo := info.(map[string]interface{})
