@@ -10,6 +10,10 @@ import (
 	"strconv"
 	"time"
 
+	"image"
+	"image/draw"
+	"image/png"
+
 	"github.com/gregdel/pushover"
 	"github.com/wcharczuk/go-chart"
 )
@@ -28,7 +32,10 @@ func generateGraph(conf Config, stats *Stats) error {
 	//  create []time.Time{} from timestamps
 	//  create []float64 from buffer
 	timestamps := []time.Time{}
+	ups := []float64{}
+	downs := []float64{}
 	buffers := []float64{}
+	warningBuffers := []float64{}
 	ratios := []float64{}
 	for _, stats := range records {
 		timestamp, err := strconv.ParseInt(stats[0], 10, 64)
@@ -37,11 +44,30 @@ func generateGraph(conf Config, stats *Stats) error {
 		}
 		timestamps = append(timestamps, time.Unix(timestamp, 0))
 
+		up, err := strconv.ParseUint(stats[1], 10, 64)
+		if err != nil {
+			continue // bad line
+		}
+		ups = append(ups, float64(up))
+
+		down, err := strconv.ParseUint(stats[2], 10, 64)
+		if err != nil {
+			continue // bad line
+		}
+		downs = append(downs, float64(down))
+
 		buffer, err := strconv.ParseUint(stats[4], 10, 64)
 		if err != nil {
 			continue // bad line
 		}
 		buffers = append(buffers, float64(buffer))
+
+		warningBuffer, err := strconv.ParseUint(stats[5], 10, 64)
+		if err != nil {
+			continue // bad line
+		}
+		warningBuffers = append(warningBuffers, float64(warningBuffer))
+
 		ratio, err := strconv.ParseFloat(stats[3], 64)
 		if err != nil {
 			continue // bad line
@@ -49,46 +75,69 @@ func generateGraph(conf Config, stats *Stats) error {
 		ratios = append(ratios, ratio)
 	}
 
+	upSeries := chart.TimeSeries{
+		Name:    "Upload",
+		XValues: timestamps,
+		YValues: ups,
+	}
+	downSeries := chart.TimeSeries{
+		Name:    "Download",
+		XValues: timestamps,
+		YValues: downs,
+	}
 	bufferSeries := chart.TimeSeries{
 		Name:    "Buffer",
 		XValues: timestamps,
 		YValues: buffers,
 	}
+	warningBufferSeries := chart.TimeSeries{
+		Name:    "Warning Buffer",
+		XValues: timestamps,
+		YValues: warningBuffers,
+	}
 	ratioSeries := chart.TimeSeries{
-		YAxis:   chart.YAxisSecondary,
+		Style: chart.Style{
+			Show:        true,
+			StrokeColor: chart.ColorBlue,
+			FillColor:   chart.ColorBlue.WithAlpha(50),
+		},
 		Name:    "Ratio",
 		XValues: timestamps,
 		YValues: ratios,
 	}
 
+	xAxis := chart.XAxis{
+		Style: chart.Style{
+			Show: true,
+		},
+		Name:           "Time",
+		NameStyle:      chart.StyleShow(),
+		ValueFormatter: chart.TimeValueFormatter,
+	}
+
 	// TODO: generate separate graphs or several curves on same graph?
 
-	graph := chart.Chart{
-		XAxis: chart.XAxis{
-			Style: chart.Style{
-				Show: true,
-			},
-			Name:           "Time",
-			NameStyle: chart.StyleShow(),
-			ValueFormatter: chart.TimeHourValueFormatter,
-		},
+	graph1 := chart.Chart{
+		XAxis: xAxis,
 		YAxis: chart.YAxis{
 			Style: chart.Style{
-				Show: true,
+				Show:        true,
+				StrokeColor: chart.ColorBlue,
+				FillColor:   chart.ColorBlue.WithAlpha(50),
 			},
-			Name: "Size (bytes)",
-			NameStyle: chart.StyleShow(),
-		},
-		YAxisSecondary: chart.YAxis{
-			Style: chart.Style{
-				Show: true, //enables / displays the secondary y-axis
-			},
-			Name: "Ratio",
+			Name:      "Size (bytes)",
 			NameStyle: chart.StyleShow(),
 		},
 		Series: []chart.Series{
+			upSeries,
+			//chart.LastValueAnnotation(upSeries),
+			downSeries,
+			//chart.LastValueAnnotation(downSeries),
 			bufferSeries,
-			ratioSeries,
+			//chart.LastValueAnnotation(bufferSeries),
+			warningBufferSeries,
+			//chart.LastValueAnnotation(warningBufferSeries),
+
 		},
 		Background: chart.Style{
 			Padding: chart.Box{
@@ -97,18 +146,96 @@ func generateGraph(conf Config, stats *Stats) error {
 			},
 		},
 	}
-
 	//legend
-	graph.Elements = []chart.Renderable{
-		chart.Legend(&graph),
+	graph1.Elements = []chart.Renderable{
+		chart.Legend(&graph1),
 	}
-
-	buffer := bytes.NewBuffer([]byte{})
-	if err := graph.Render(chart.PNG, buffer); err != nil {
+	buffer1 := bytes.NewBuffer([]byte{})
+	if err := graph1.Render(chart.PNG, buffer1); err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile("stats.png", buffer1.Bytes(), 0644); err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile("test.png", buffer.Bytes(), 0644)
+	graph2 := chart.Chart{
+		XAxis: xAxis,
+		YAxis: chart.YAxis{
+			Style: chart.Style{
+				Show:        true,
+				StrokeColor: chart.ColorBlue,
+				FillColor:   chart.ColorBlue.WithAlpha(50),
+			},
+			Name:      "Ratio",
+			NameStyle: chart.StyleShow(),
+		},
+		Series: []chart.Series{
+			ratioSeries,
+			//chart.LastValueAnnotation(ratioSeries),
+		},
+		Background: chart.Style{
+			Padding: chart.Box{
+				Top:  20,
+				Left: 20,
+			},
+		},
+	}
+	//legend
+	graph2.Elements = []chart.Renderable{
+		chart.Legend(&graph2),
+	}
+	buffer2 := bytes.NewBuffer([]byte{})
+	if err := graph2.Render(chart.PNG, buffer2); err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile("ratios.png", buffer2.Bytes(), 0644); err != nil {
+		return err
+	}
+
+	// open and decode images
+	imgFile1, err := os.Open("ratios.png")
+	if err != nil {
+		fmt.Println(err)
+	}
+	imgFile2, err := os.Open("stats.png")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	img1, _, err := image.Decode(imgFile1)
+	if err != nil {
+		fmt.Println(err)
+	}
+	img2, _, err := image.Decode(imgFile2)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// create the rectangle, assuming they all have the same size
+	// ------------
+	// |  1  | 2  |
+	// ------------
+
+	sp2 := image.Point{X: img1.Bounds().Dx(), Y: 0}
+	r2 := image.Rectangle{Min: sp2, Max: sp2.Add(img2.Bounds().Size())}
+
+	//rectangle for the big image
+	r := image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: r2.Max}
+
+	// new image
+	rgba := image.NewRGBA(r)
+	// draw original images in new rectangle
+	draw.Draw(rgba, img1.Bounds(), img1, image.Point{0, 0}, draw.Src)
+	draw.Draw(rgba, r2, img2, image.Point{0, 0}, draw.Src)
+
+	// save new image
+	out, err := os.Create("grid.png")
+	if err != nil {
+		fmt.Println(err)
+	}
+	png.Encode(out, rgba)
+
+	return nil
 }
 
 func addStatsToCSV(filename string, stats []string) error {

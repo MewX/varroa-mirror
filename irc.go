@@ -12,8 +12,7 @@ import (
 	"github.com/thoj/go-ircevent"
 )
 
-const announcePattern = `([\w. ]*) - ([\w,\.:' ]*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3) / ([\w/ ()]*) / ([\w]*) - (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
-
+const announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3) / ([\w/ ()]*) / ([\w]*) - (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
 
 func sendTorrentNotification(notification *pushover.Pushover, recipient *pushover.Recipient, torrent *Release, filterLabel string) {
 	if notification == nil {
