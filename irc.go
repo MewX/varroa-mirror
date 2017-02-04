@@ -48,7 +48,7 @@ func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notificat
 				}
 				// compare with max-size from filter
 				newTorrent.GetSize()
-				if filter.maxSize == 0 || filter.maxSize > (newTorrent.size / (1024 * 1024)) {
+				if filter.maxSize == 0 || filter.maxSize > (newTorrent.size/(1024*1024)) {
 					log.Println("OK for auto-download, moving to watch folder.")
 					// move to relevant subfolder
 					if err := CopyFile(newTorrent.filename, filepath.Join(filter.destinationFolder, newTorrent.filename)); err != nil {

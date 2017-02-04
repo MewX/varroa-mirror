@@ -2,19 +2,22 @@ package main
 
 import (
 	"errors"
+
 	"github.com/spf13/viper"
 )
 
 type Filter struct {
-	label       string
-	year        []int
-	source      []string
-	format      []string
-	releaseType []string
-	artist      []string
-	quality     []string
+	label             string
+	year              []int
+	source            []string
+	format            []string
+	releaseType       []string
+	artist            []string
+	quality           []string
+	includedTags      []string
+	excludedTags      []string
 	destinationFolder string
-	maxSize uint64
+	maxSize           uint64
 	// TODO
 }
 
@@ -122,12 +125,32 @@ func (c *Config) load(path string) (err error) {
 			t.destinationFolder = destination.(string)
 			if !DirectoryExists(t.destinationFolder) {
 				return errors.New(t.destinationFolder + " does not exist")
-		    	}
+			}
 		}
 		if maxSize, ok := tinfo["max_size_mb"]; ok {
 			t.maxSize = uint64(maxSize.(int))
 		}
-		// TODO : tags: include/exclude ; quality
+		if included, ok := tinfo["included_tags"]; ok {
+			switch included.(type) {
+			case string:
+				t.includedTags = append(t.includedTags, included.(string))
+			case []interface{}:
+				for _, el := range included.([]interface{}) {
+					t.includedTags = append(t.includedTags, el.(string))
+				}
+			}
+		}
+		if excluded, ok := tinfo["excluded_tags"]; ok {
+			switch excluded.(type) {
+			case string:
+				t.excludedTags = append(t.excludedTags, excluded.(string))
+			case []interface{}:
+				for _, el := range excluded.([]interface{}) {
+					t.excludedTags = append(t.excludedTags, el.(string))
+				}
+			}
+		}
+		// TODO : quality
 
 		c.filters = append(c.filters, t)
 	}

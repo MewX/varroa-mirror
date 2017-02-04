@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -37,12 +38,13 @@ type Release struct {
 	format      string
 	quality     string
 	source      string
-	tags        string
+	tags        []string
 	url         string
 	torrentURL  string
 	torrentID   string
 	filename    string
 	size        uint64
+	folder      string
 }
 
 func NewTorrent(parts []string) (*Release, error) {
@@ -60,7 +62,12 @@ func NewTorrent(parts []string) (*Release, error) {
 	if err != nil {
 		year = -1
 	}
-	r := &Release{artist: parts[1], title: parts[2], year: year, releaseType: parts[4], format: parts[5], quality: parts[6], source: parts[7], url: parts[8], torrentURL: parts[9], tags: parts[10], torrentID: torrentID}
+	tags := strings.Split(parts[10], ",")
+	for i, el := range tags {
+		tags[i] = strings.TrimSpace(el)
+	}
+
+	r := &Release{artist: parts[1], title: parts[2], year: year, releaseType: parts[4], format: parts[5], quality: parts[6], source: parts[7], url: parts[8], torrentURL: parts[9], tags: tags, torrentID: torrentID}
 	quality := strings.Replace(r.quality, "/", "-", -1)
 	r.filename = fmt.Sprintf(TorrentPath, r.artist, r.title, r.year, r.releaseType, r.format, quality, r.source, r.torrentID)
 	return r, nil
@@ -93,52 +100,32 @@ func (r *Release) Download(hc *http.Client) (string, error) {
 	}
 	defer file.Close()
 	_, err = io.Copy(file, response.Body)
-	fmt.Println("++ Downloaded " + r.filename)
+	log.Println("++ Downloaded " + r.filename)
 	return r.filename, err
 }
 
 func (r *Release) GetSize() {
 	mi, err := metainfo.LoadFromFile(r.filename)
 	if err != nil {
-		fmt.Println("ERR: " + err.Error())
+		log.Println("ERR: " + err.Error())
 		return
 	}
 	info, err := mi.UnmarshalInfo()
 	if err != nil {
-		fmt.Println("ERR: " + err.Error())
+		log.Println("ERR: " + err.Error())
 		return
 	}
-	fmt.Printf("Torrent folder: %s\n", info.Name)
+	r.folder = info.Name
+	log.Printf("Torrent folder: %s\n", info.Name)
 	totalSize := int64(0)
 	for _, f := range info.Files {
 		totalSize += f.Length
 	}
-	fmt.Printf("Total size: %s\n", humanize.IBytes(uint64(totalSize)))
+	log.Printf("Total size: %s\n", humanize.IBytes(uint64(totalSize)))
 	r.size = uint64(totalSize)
 }
 
-// StringInSlice checks if a string is in a []string, returns bool.
-func StringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
-// IntInSlice checks if an int is in a []int, returns bool.
-func IntInSlice(a int, list []int) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
 func (r *Release) Satisfies(filter Filter) bool {
-	// TODO!!!
 	if len(filter.year) != 0 && !IntInSlice(r.year, filter.year) {
 		return false
 	}
@@ -159,6 +146,24 @@ func (r *Release) Satisfies(filter Filter) bool {
 	}
 	if len(filter.releaseType) != 0 && !StringInSlice(r.releaseType, filter.releaseType) {
 		return false
+	}
+	for _, excluded := range filter.excludedTags {
+		if StringInSlice(excluded, r.tags) {
+			return false
+		}
+	}
+	if len(filter.includedTags) != 0 {
+		// if none of r.tags in conf.includedTags, return false
+		atLeastOneIncludedTag := false
+		for _, t := range r.tags {
+			if StringInSlice(t, filter.includedTags) {
+				atLeastOneIncludedTag = true
+				break
+			}
+		}
+		if !atLeastOneIncludedTag {
+			return false
+		}
 	}
 	return true
 }

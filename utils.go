@@ -8,6 +8,28 @@ import (
 	"path/filepath"
 )
 
+
+
+// StringInSlice checks if a string is in a []string, returns bool.
+func StringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// IntInSlice checks if an int is in a []int, returns bool.
+func IntInSlice(a int, list []int) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
 func checkErrors(errs ...error) error {
 	for _, err := range errs {
 		if err != nil {
