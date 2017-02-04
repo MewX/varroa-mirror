@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/gregdel/pushover"
@@ -26,7 +28,6 @@ func sendTorrentNotification(notification *pushover.Pushover, recipient *pushove
 	}
 }
 
-
 func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notification *pushover.Pushover, recipient *pushover.Recipient) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
@@ -45,11 +46,21 @@ func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notificat
 				if _, err = newTorrent.Download(hc); err != nil {
 					return nil, err
 				}
-				// TODO: compare with max-size from filter
+				// compare with max-size from filter
 				newTorrent.GetSize()
-
-				// TODO: move to relevant subfolder
-				sendTorrentNotification(notification, recipient, newTorrent, filter.label)
+				if filter.maxSize == 0 || filter.maxSize > (newTorrent.size / (1024 * 1024)) {
+					log.Println("OK for auto-download, moving to watch folder.")
+					// move to relevant subfolder
+					if err := CopyFile(newTorrent.filename, filepath.Join(filter.destinationFolder, newTorrent.filename)); err != nil {
+						log.Println("Err: could not move to destination folder!")
+					}
+					sendTorrentNotification(notification, recipient, newTorrent, filter.label)
+				} else {
+					log.Println("Release is too big")
+				}
+				if err := os.Remove(newTorrent.filename); err != nil {
+					log.Println("Err: could not remove temporary file!")
+				}
 				return newTorrent, nil
 			}
 		}
@@ -59,7 +70,7 @@ func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notificat
 	return nil, errors.New("No hits!")
 }
 
-func ircHandler(conf Config, tracker GazelleTracker, notification *pushover.Pushover,  recipient *pushover.Recipient) {
+func ircHandler(conf Config, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) {
 	irccon := irc.IRC(conf.botName, conf.user)
 	irccon.UseTLS = false
 	irccon.TLSConfig = &tls.Config{InsecureSkipVerify: true}

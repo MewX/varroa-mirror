@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/spf13/viper"
 )
 
@@ -12,6 +13,8 @@ type Filter struct {
 	releaseType []string
 	artist      []string
 	quality     []string
+	destinationFolder string
+	maxSize uint64
 	// TODO
 }
 
@@ -115,8 +118,16 @@ func (c *Config) load(path string) (err error) {
 				}
 			}
 		}
-
-		// TODO : tags: include/exclude ; maxsize ; destination folder for filters; quality
+		if destination, ok := tinfo["destination"]; ok {
+			t.destinationFolder = destination.(string)
+			if !DirectoryExists(t.destinationFolder) {
+				return errors.New(t.destinationFolder + " does not exist")
+		    	}
+		}
+		if maxSize, ok := tinfo["max_size_mb"]; ok {
+			t.maxSize = uint64(maxSize.(int))
+		}
+		// TODO : tags: include/exclude ; quality
 
 		c.filters = append(c.filters, t)
 	}
