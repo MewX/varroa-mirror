@@ -110,14 +110,14 @@ func generateGraph(conf Config) error {
 	bufferSeries := chart.TimeSeries{
 		Style: chart.Style{
 			Show:        true,
-			StrokeColor: chart.ColorGreen,
-			FillColor:   chart.ColorGreen.WithAlpha(25),
+			StrokeColor: chart.ColorBlue,
+			FillColor:   chart.ColorBlue.WithAlpha(25),
 		},
 		Name:    "Buffer",
 		XValues: timestamps,
 		YValues: sliceByteToGigabyte(buffers),
 	}
-	warningBufferSeries := chart.TimeSeries{
+	/*warningBufferSeries := chart.TimeSeries{
 		Style: chart.Style{
 			Show:        true,
 			StrokeColor: chart.ColorBlue,
@@ -126,7 +126,7 @@ func generateGraph(conf Config) error {
 		Name:    "Warning Buffer",
 		XValues: timestamps,
 		YValues: sliceByteToGigabyte(warningBuffers),
-	}
+	}*/
 	ratioSeries := chart.TimeSeries{
 		Style: chart.Style{
 			Show:        true,
@@ -196,8 +196,8 @@ func generateGraph(conf Config) error {
 		Series: []chart.Series{
 			bufferSeries,
 			chart.LastValueAnnotation(bufferSeries),
-			warningBufferSeries,
-			chart.LastValueAnnotation(warningBufferSeries),
+			//warningBufferSeries,
+			//chart.LastValueAnnotation(warningBufferSeries),
 		},
 	}
 	bufferBuffer := bytes.NewBuffer([]byte{})
