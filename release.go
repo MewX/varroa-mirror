@@ -15,18 +15,21 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-const ReleaseString = `Artist: %s
-Title: %s
-Year: %d
-Release Type: %s
-Format: %s
-Quality: %s
-Source: %s
-Tags: %s
-URL: %s
-Torrent URL: %s
-Torrent ID: %s
-`
+const ReleaseString = `Release info:
+	Artist: %s
+	Title: %s
+	Year: %d
+	Release Type: %s
+	Format: %s
+	Quality: %s
+	HasLog: %t
+	Has Cue: %t
+	Scene: %t
+	Source: %s
+	Tags: %s
+	URL: %s
+	Torrent URL: %s
+	Torrent ID: %s`
 const TorrentPath = `%s - %s (%d) [%s %s %s %s] - %s.torrent`
 const TorrentNotification = `%s - %s (%d) [%s/%s/%s/%s] [%s]`
 
@@ -37,6 +40,9 @@ type Release struct {
 	releaseType string
 	format      string
 	quality     string
+	hasLog      bool
+	hasCue      bool
+	isScene     bool
 	source      string
 	tags        []string
 	url         string
@@ -48,12 +54,12 @@ type Release struct {
 }
 
 func NewTorrent(parts []string) (*Release, error) {
-	if len(parts) != 11 {
+	if len(parts) != 17 {
 		return nil, errors.New("Incomplete announce information")
 	}
 	pattern := `http[s]?://[[:alnum:]\./:]*torrents\.php\?action=download&id=([\d]*)`
 	rg := regexp.MustCompile(pattern)
-	hits := rg.FindAllStringSubmatch(parts[9], -1)
+	hits := rg.FindAllStringSubmatch(parts[15], -1)
 	torrentID := ""
 	if len(hits) != 0 {
 		torrentID = hits[0][1]
@@ -62,19 +68,22 @@ func NewTorrent(parts []string) (*Release, error) {
 	if err != nil {
 		year = -1
 	}
-	tags := strings.Split(parts[10], ",")
+	tags := strings.Split(parts[16], ",")
 	for i, el := range tags {
 		tags[i] = strings.TrimSpace(el)
 	}
+	hasLog := parts[8] != ""
+	hasCue := parts[10] != ""
+	isScene := parts[13] != ""
 
-	r := &Release{artist: parts[1], title: parts[2], year: year, releaseType: parts[4], format: parts[5], quality: parts[6], source: parts[7], url: parts[8], torrentURL: parts[9], tags: tags, torrentID: torrentID}
-	quality := strings.Replace(r.quality, "/", "-", -1)
-	r.filename = fmt.Sprintf(TorrentPath, r.artist, r.title, r.year, r.releaseType, r.format, quality, r.source, r.torrentID)
+	r := &Release{artist: parts[1], title: parts[2], year: year, releaseType: parts[4], format: parts[5], quality: parts[6], source: parts[11], hasLog: hasLog, hasCue: hasCue, isScene: isScene, url: parts[14], torrentURL: parts[15], tags: tags, torrentID: torrentID}
+	r.filename = fmt.Sprintf(TorrentPath, r.artist, r.title, r.year, r.releaseType, r.format, r.quality, r.source, r.torrentID)
+	r.filename = strings.Replace(r.filename, "/", "-", -1)
 	return r, nil
 }
 
 func (r *Release) String() string {
-	return fmt.Sprintf(ReleaseString, r.artist, r.title, r.year, r.releaseType, r.format, r.quality, r.source, r.tags, r.url, r.torrentURL, r.torrentID)
+	return fmt.Sprintf(ReleaseString, r.artist, r.title, r.year, r.releaseType, r.format, r.quality, r.hasLog, r.hasCue, r.isScene, r.source, r.tags, r.url, r.torrentURL, r.torrentID)
 }
 
 func (r *Release) ShortString() string {
@@ -127,28 +136,44 @@ func (r *Release) Parse() {
 
 func (r *Release) Satisfies(filter Filter) bool {
 	if len(filter.year) != 0 && !IntInSlice(r.year, filter.year) {
+		log.Println(filter.label + ": Wrong year")
 		return false
 	}
 	if len(filter.format) != 0 && !StringInSlice(r.format, filter.format) {
+		log.Println(filter.label + ": Wrong format")
 		return false
 	}
 	if r.artist != "Various Artists" && len(filter.artist) != 0 && !StringInSlice(r.artist, filter.artist) {
+		log.Println(filter.label + ": Wrong artist")
 		return false
 	}
 	if len(filter.source) != 0 && !StringInSlice(r.source, filter.source) {
+		log.Println(filter.label + ": Wrong source")
 		return false
 	}
 	if len(filter.quality) != 0 && !StringInSlice(r.quality, filter.quality) {
+		log.Println(filter.label + ": Wrong quality")
+		return false
+	}
+	if r.source == "CD" && filter.hasLog && !r.hasLog {
+		log.Println(filter.label + ": Release has no log")
+		return false
+	}
+	if r.source == "CD" && filter.hasCue && !r.hasCue {
+		log.Println(filter.label + ": Release has no cue")
+		return false
+	}
+	if !filter.allowScene && r.isScene {
+		log.Println(filter.label + ": Scene release not allowed")
 		return false
 	}
 	if len(filter.releaseType) != 0 && !StringInSlice(r.releaseType, filter.releaseType) {
-		return false
-	}
-	if len(filter.releaseType) != 0 && !StringInSlice(r.releaseType, filter.releaseType) {
+		log.Println(filter.label + ": Wrong release type")
 		return false
 	}
 	for _, excluded := range filter.excludedTags {
 		if StringInSlice(excluded, r.tags) {
+			log.Println(filter.label + ": Has excluded tag")
 			return false
 		}
 	}
@@ -162,6 +187,7 @@ func (r *Release) Satisfies(filter Filter) bool {
 			}
 		}
 		if !atLeastOneIncludedTag {
+			log.Println(filter.label + ": Does not have any wanted tag")
 			return false
 		}
 	}
@@ -170,18 +196,18 @@ func (r *Release) Satisfies(filter Filter) bool {
 
 func (r *Release) PassesAdditionalChecks(filter Filter, info *AdditionalInfo) bool {
 	if filter.maxSize != 0 && filter.maxSize < (r.size/(1024*1024)) {
-		log.Println("Release too big.")
+		log.Println(filter.label + ": Release too big.")
 		return false
 	}
 	if filter.logScore != 0 && filter.logScore != info.logScore {
-		log.Println("Incorrect log score")
+		log.Println(filter.label + ": Incorrect log score")
 		return false
 	}
 	if len(filter.recordLabel) != 0 && !StringInSlice(info.label, filter.recordLabel) {
-		log.Println("No match for record label")
+		log.Println(filter.label + ": No match for record label")
 		return false
 	}
-	if r.artist == "Various Artists" &&  len(filter.artist) != 0 {
+	if r.artist == "Various Artists" && len(filter.artist) != 0 {
 		var foundAtLeastOneArtist bool
 		for _, iArtist := range info.artists {
 			if StringInSlice(iArtist, filter.artist) {
@@ -189,7 +215,7 @@ func (r *Release) PassesAdditionalChecks(filter Filter, info *AdditionalInfo) bo
 			}
 		}
 		if !foundAtLeastOneArtist {
-			log.Println("No match for artists")
+			log.Println(filter.label + ": No match for artists")
 			return false
 		}
 	}

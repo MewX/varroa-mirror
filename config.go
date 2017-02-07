@@ -20,6 +20,9 @@ type Filter struct {
 	maxSize           uint64
 	logScore          int
 	recordLabel       []string
+	hasLog            bool
+	hasCue            bool
+	allowScene        bool
 }
 
 type Config struct {
@@ -164,7 +167,15 @@ func (c *Config) load(path string) (err error) {
 				}
 			}
 		}
-
+		if hasLog, ok := tinfo["has_log"]; ok {
+			t.hasLog = hasLog.(bool)
+		}
+		if hasCue, ok := tinfo["has_cue"]; ok {
+			t.hasCue = hasCue.(bool)
+		}
+		if allowScene, ok := tinfo["allow_scene"]; ok {
+			t.allowScene = allowScene.(bool)
+		}
 		c.filters = append(c.filters, t)
 	}
 	return

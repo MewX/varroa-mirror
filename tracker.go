@@ -167,9 +167,6 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
 		label = gt.Response.Torrent.RemasterRecordLabel
 	}
 	info := &AdditionalInfo{id: gt.Response.Torrent.ID, label:label, logScore: gt.Response.Torrent.LogScore, artists: artists}
-
-	//fmt.Println(string(data))
-	log.Println(info)
 	return info, nil
 }
 

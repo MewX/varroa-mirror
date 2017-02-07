@@ -14,7 +14,7 @@ import (
 	"github.com/thoj/go-ircevent"
 )
 
-const announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3) / ([\w/ ()]*) / ([\w]*) - (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
+const announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3) / (Lossless|24bit Lossless|V0 \(VBR\)|320) /( (Log) /)?( (Cue) /)? ([\w]*) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
 
 func sendTorrentNotification(notification *pushover.Pushover, recipient *pushover.Recipient, torrent *Release, filterLabel string) {
 	if notification == nil {
@@ -37,14 +37,16 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(newTorrent)
+		log.Println(newTorrent)
 
 		// if satisfies a filter, download
 		var downloadedTorrent bool
+		var downloadedInfo bool
+		var autoDownload bool
+		var info *AdditionalInfo
 		for _, filter := range config.filters {
 			if newTorrent.Satisfies(filter) {
 				log.Println("Caught by filter " + filter.label + ".")
-				var info *AdditionalInfo
 				var dlErr error
 
 				var wg sync.WaitGroup
@@ -64,12 +66,16 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 				go func() {
 					defer wg.Done()
 					// get torrent info!
-					info, err = tracker.GetTorrentInfo(newTorrent.torrentID)
-					if err != nil {
-						log.Println("Could not retrieve torrent info from tracker")
+					if !downloadedInfo {
+						info, err = tracker.GetTorrentInfo(newTorrent.torrentID)
+						if err != nil {
+							log.Println("Could not retrieve torrent info from tracker")
+						} else {
+							downloadedInfo = true
+							log.Println(info)
+						}
+						// TODO save info in yaml file somewhere, in torrent dl folder
 					}
-					// TODO save info in yaml file somewhere, in torrent dl folder
-					fmt.Println("GOT INFO")
 				}()
 				// sync
 				wg.Wait()
@@ -80,12 +86,13 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 				}
 				// else check other criteria
 				if newTorrent.PassesAdditionalChecks(filter, info) {
-					log.Println("OK for auto-download, moving to watch folder.")
+					log.Println("++ OK for auto-download, moving to watch folder.")
 					// move to relevant subfolder
 					if err := CopyFile(newTorrent.filename, filepath.Join(filter.destinationFolder, newTorrent.filename)); err != nil {
 						log.Println("Err: could not move to destination folder!")
 					}
 					sendTorrentNotification(notification, recipient, newTorrent, filter.label)
+					autoDownload = true
 					break
 				} else {
 					log.Println("Release does not pass additional checks, disregarding for this filter.")
@@ -97,9 +104,13 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 			if err := os.Remove(newTorrent.filename); err != nil {
 				log.Println("Err: could not remove temporary file!")
 			}
+			if !autoDownload {
+				log.Println("++ No filter is interested in that release. Ignoring.")
+			}
 			return newTorrent, nil
 		}
-		return nil, errors.New("Not interesting.")
+		log.Println("++ No filter is interested in that release. Ignoring.")
+		return nil, nil
 
 	}
 	return nil, errors.New("No hits!")
@@ -116,7 +127,7 @@ func ircHandler(conf Config, tracker GazelleTracker, notification *pushover.Push
 	irccon.AddCallback("PRIVMSG", func(e *irc.Event) {
 		if e.Nick == conf.announcer {
 			announced := e.Message()
-			log.Println("Announced: " + announced)
+			log.Println("++ Announced: " + announced)
 			if _, err := AnalyzeAnnounce(conf, announced, tracker, notification, recipient); err != nil {
 				log.Println("ERR: " + err.Error())
 				return
