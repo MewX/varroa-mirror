@@ -88,7 +88,11 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 				if newTorrent.PassesAdditionalChecks(filter, info) {
 					log.Println("++ OK for auto-download, moving to watch folder.")
 					// move to relevant subfolder
-					if err := CopyFile(newTorrent.filename, filepath.Join(filter.destinationFolder, newTorrent.filename)); err != nil {
+					destination := config.defaultDestinationFolder
+					if filter.destinationFolder != "" {
+						destination = filter.destinationFolder
+					}
+					if err := CopyFile(newTorrent.filename, filepath.Join(destination, newTorrent.filename)); err != nil {
 						log.Println("Err: could not move to destination folder!")
 					}
 					sendTorrentNotification(notification, recipient, newTorrent, filter.label)

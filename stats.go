@@ -335,7 +335,7 @@ func monitorStats(conf Config, tracker GazelleTracker, notification *pushover.Pu
 	previousStats := &Stats{}
 	previousStats = getStats(conf, tracker, previousStats, notification, recipient)
 	// periodic check
-	period := time.NewTicker(time.Minute * time.Duration(conf.statsUpdatePeriod)).C
+	period := time.NewTicker(time.Hour * time.Duration(conf.statsUpdatePeriod)).C
 	for {
 		select {
 		case <-period:

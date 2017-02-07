@@ -41,6 +41,7 @@ type Config struct {
 	statsFile                   string
 	statsUpdatePeriod           int
 	maxBufferDecreaseByPeriodMB int
+	defaultDestinationFolder    string
 }
 
 func (c *Config) load(path string) (err error) {
@@ -65,8 +66,15 @@ func (c *Config) load(path string) (err error) {
 	c.announcer = conf.GetString("tracker.announcer")
 	c.announceChannel = conf.GetString("tracker.announce_channel")
 	c.statsFile = conf.GetString("tracker.stats_file")
-	c.statsUpdatePeriod = conf.GetInt("tracker.stats_update_period_min")
+	c.statsUpdatePeriod = conf.GetInt("tracker.stats_update_period_hour")
+	if c.statsUpdatePeriod < 1 {
+		return errors.New("Period must be at least 1 hour")
+	}
 	c.maxBufferDecreaseByPeriodMB = conf.GetInt("tracker.max_buffer_decrease_by_period_mb")
+	c.defaultDestinationFolder = conf.GetString("tracker.default_destination_folder")
+	if c.defaultDestinationFolder == "" || !DirectoryExists(c.defaultDestinationFolder) {
+		return errors.New("Default destination folder does not exist")
+	}
 	// pushover configuration
 	c.pushoverToken = conf.GetString("pushover.token")
 	c.pushoverUser = conf.GetString("pushover.user")

@@ -63,7 +63,10 @@ func main() {
 	log.Println("+ dronelistener started")
 
 	conf := Config{}
-	conf.load("config.yaml")
+	if err := conf.load("config.yaml"); err != nil {
+		log.Println(" - Error loading configuration: " + err.Error())
+		return
+	}
 	log.Println(" - Configuration loaded.")
 
 	// notifications with pushover
