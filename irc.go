@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sync"
 
 	"github.com/gregdel/pushover"
 	"github.com/thoj/go-ircevent"
@@ -28,7 +28,7 @@ func sendTorrentNotification(notification *pushover.Pushover, recipient *pushove
 	}
 }
 
-func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notification *pushover.Pushover, recipient *pushover.Recipient) (*Release, error) {
+func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
 	hits := r.FindAllStringSubmatch(announced, -1)
@@ -40,29 +40,64 @@ func AnalyzeAnnounce(config Config, announced string, hc *http.Client, notificat
 		fmt.Println(newTorrent)
 
 		// if satisfies a filter, download
+		var downloadedTorrent bool
 		for _, filter := range config.filters {
 			if newTorrent.Satisfies(filter) {
-				log.Println("Caught by filter " + filter.label + ", downloading.")
-				if _, err = newTorrent.Download(hc); err != nil {
-					return nil, err
+				log.Println("Caught by filter " + filter.label + ".")
+				var info *AdditionalInfo
+				var dlErr error
+
+				var wg sync.WaitGroup
+				wg.Add(2)
+				// goroutine1: download the torrent
+				go func() {
+					defer wg.Done()
+					if !downloadedTorrent {
+						_, dlErr = newTorrent.Download(tracker.client)
+						if dlErr == nil {
+							downloadedTorrent = true
+							newTorrent.Parse()
+						}
+					}
+				}()
+				// goroutine2: get release info from tracker
+				go func() {
+					defer wg.Done()
+					// get torrent info!
+					info, err = tracker.GetTorrentInfo(newTorrent.torrentID)
+					if err != nil {
+						log.Println("Could not retrieve torrent info from tracker")
+					}
+					// TODO save info in yaml file somewhere, in torrent dl folder
+					fmt.Println("GOT INFO")
+				}()
+				// sync
+				wg.Wait()
+
+				// if nothing was downloaded, abort
+				if dlErr != nil {
+					return nil, dlErr
 				}
-				// compare with max-size from filter
-				newTorrent.GetSize()
-				if filter.maxSize == 0 || filter.maxSize > (newTorrent.size/(1024*1024)) {
+				// else check other criteria
+				if newTorrent.PassesAdditionalChecks(filter, info) {
 					log.Println("OK for auto-download, moving to watch folder.")
 					// move to relevant subfolder
 					if err := CopyFile(newTorrent.filename, filepath.Join(filter.destinationFolder, newTorrent.filename)); err != nil {
 						log.Println("Err: could not move to destination folder!")
 					}
 					sendTorrentNotification(notification, recipient, newTorrent, filter.label)
+					break
 				} else {
-					log.Println("Release is too big")
+					log.Println("Release does not pass additional checks, disregarding for this filter.")
 				}
-				if err := os.Remove(newTorrent.filename); err != nil {
-					log.Println("Err: could not remove temporary file!")
-				}
-				return newTorrent, nil
 			}
+		}
+		// if torrent was downloaded, remove temp copy
+		if downloadedTorrent {
+			if err := os.Remove(newTorrent.filename); err != nil {
+				log.Println("Err: could not remove temporary file!")
+			}
+			return newTorrent, nil
 		}
 		return nil, errors.New("Not interesting.")
 
@@ -82,7 +117,7 @@ func ircHandler(conf Config, tracker GazelleTracker, notification *pushover.Push
 		if e.Nick == conf.announcer {
 			announced := e.Message()
 			log.Println("Announced: " + announced)
-			if _, err := AnalyzeAnnounce(conf, announced, tracker.client, notification, recipient); err != nil {
+			if _, err := AnalyzeAnnounce(conf, announced, tracker, notification, recipient); err != nil {
 				log.Println("ERR: " + err.Error())
 				return
 			}

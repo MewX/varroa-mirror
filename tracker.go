@@ -143,15 +143,48 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 	return stats, nil
 }
 
-func (t *GazelleTracker) GetTorrentInfo(id string) error {
+func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
 	data, err := retrieveGetRequestData(t.client, t.rootURL+"/ajax.php?action=torrent&id="+id)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var index GazelleIndex
-	json.Unmarshal(data, &index)
-	fmt.Println(string(data))
-	return nil
+	var gt GazelleTorrent
+	json.Unmarshal(data, &gt)
+
+	artists := []string{}
+	// for now, using artists, composers, "with" categories
+	for _, el := range gt.Response.Group.MusicInfo.Artists {
+		artists = append(artists, el.Name)
+	}
+	for _, el := range gt.Response.Group.MusicInfo.With {
+		artists = append(artists, el.Name)
+	}
+	for _, el := range gt.Response.Group.MusicInfo.Composers {
+		artists = append(artists, el.Name)
+	}
+	label := gt.Response.Group.RecordLabel
+	if gt.Response.Torrent.Remastered {
+		label = gt.Response.Torrent.RemasterRecordLabel
+	}
+	info := &AdditionalInfo{id: gt.Response.Torrent.ID, label:label, logScore: gt.Response.Torrent.LogScore, artists: artists}
+
+	//fmt.Println(string(data))
+	log.Println(info)
+	return info, nil
+}
+
+//--------------------
+
+type AdditionalInfo struct {
+	id int
+	label string
+	logScore int
+	artists []string // concat artists, composers, etc
+	// TODO: cover (WikiImage), releaseinfo (WikiBody), catnum (CatalogueNumber), filelist (Torrent.FileList), folder? (Torrent.FilePath)
+}
+
+func (a *AdditionalInfo) String() string {
+	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s", a.label, a.logScore, strings.Join(a.artists, ","))
 }
 
 //--------------------
@@ -238,11 +271,26 @@ type GazelleTorrent struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`
 				} `json:"artists"`
-				Composers []interface{} `json:"composers"`
-				Conductor []interface{} `json:"conductor"`
-				Dj        []interface{} `json:"dj"`
-				Producer  []interface{} `json:"producer"`
-				RemixedBy []interface{} `json:"remixedBy"`
+				Composers []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"composers"`
+				Conductor []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"conductor"`
+				Dj        []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"dj"`
+				Producer  []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"producer"`
+				RemixedBy []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"remixedBy"`
 				With      []struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`

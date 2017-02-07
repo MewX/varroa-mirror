@@ -18,7 +18,8 @@ type Filter struct {
 	excludedTags      []string
 	destinationFolder string
 	maxSize           uint64
-	// TODO
+	logScore          int
+	recordLabel       []string
 }
 
 type Config struct {
@@ -150,7 +151,19 @@ func (c *Config) load(path string) (err error) {
 				}
 			}
 		}
-		// TODO : quality
+		if logScore, ok := tinfo["log_score"]; ok {
+			t.logScore = logScore.(int)
+		}
+		if recordLabel, ok := tinfo["record_label"]; ok {
+			switch recordLabel.(type) {
+			case string:
+				t.recordLabel = append(t.recordLabel, recordLabel.(string))
+			case []interface{}:
+				for _, el := range recordLabel.([]interface{}) {
+					t.recordLabel = append(t.recordLabel, el.(string))
+				}
+			}
+		}
 
 		c.filters = append(c.filters, t)
 	}

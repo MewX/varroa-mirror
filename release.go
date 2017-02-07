@@ -104,7 +104,7 @@ func (r *Release) Download(hc *http.Client) (string, error) {
 	return r.filename, err
 }
 
-func (r *Release) GetSize() {
+func (r *Release) Parse() {
 	mi, err := metainfo.LoadFromFile(r.filename)
 	if err != nil {
 		log.Println("ERR: " + err.Error())
@@ -132,7 +132,7 @@ func (r *Release) Satisfies(filter Filter) bool {
 	if len(filter.format) != 0 && !StringInSlice(r.format, filter.format) {
 		return false
 	}
-	if len(filter.artist) != 0 && !StringInSlice(r.artist, filter.artist) {
+	if r.artist != "Various Artists" && len(filter.artist) != 0 && !StringInSlice(r.artist, filter.artist) {
 		return false
 	}
 	if len(filter.source) != 0 && !StringInSlice(r.source, filter.source) {
@@ -162,6 +162,34 @@ func (r *Release) Satisfies(filter Filter) bool {
 			}
 		}
 		if !atLeastOneIncludedTag {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Release) PassesAdditionalChecks(filter Filter, info *AdditionalInfo) bool {
+	if filter.maxSize != 0 && filter.maxSize < (r.size/(1024*1024)) {
+		log.Println("Release too big.")
+		return false
+	}
+	if filter.logScore != 0 && filter.logScore != info.logScore {
+		log.Println("Incorrect log score")
+		return false
+	}
+	if len(filter.recordLabel) != 0 && !StringInSlice(info.label, filter.recordLabel) {
+		log.Println("No match for record label")
+		return false
+	}
+	if r.artist == "Various Artists" &&  len(filter.artist) != 0 {
+		var foundAtLeastOneArtist bool
+		for _, iArtist := range info.artists {
+			if StringInSlice(iArtist, filter.artist) {
+				foundAtLeastOneArtist = true
+			}
+		}
+		if !foundAtLeastOneArtist {
+			log.Println("No match for artists")
 			return false
 		}
 	}
