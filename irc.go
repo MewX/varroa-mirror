@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sync"
 
 	"github.com/gregdel/pushover"
 	"github.com/thoj/go-ircevent"
@@ -40,53 +39,28 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 		log.Println(newTorrent)
 
 		// if satisfies a filter, download
-		var downloadedTorrent bool
 		var downloadedInfo bool
-		var autoDownload bool
+		var downloadedTorrent bool
 		var info *AdditionalInfo
 		for _, filter := range config.filters {
 			if newTorrent.Satisfies(filter) {
-				log.Println("Caught by filter " + filter.label + ".")
-				var dlErr error
-
-				var wg sync.WaitGroup
-				wg.Add(2)
-				// goroutine1: download the torrent
-				go func() {
-					defer wg.Done()
-					if !downloadedTorrent {
-						_, dlErr = newTorrent.Download(tracker.client)
-						if dlErr == nil {
-							downloadedTorrent = true
-							newTorrent.Parse()
-						}
+				// get torrent info!
+				if !downloadedInfo {
+					info, err = tracker.GetTorrentInfo(newTorrent.torrentID)
+					if err != nil {
+						return nil, errors.New("Could not retrieve torrent info from tracker")
 					}
-				}()
-				// goroutine2: get release info from tracker
-				go func() {
-					defer wg.Done()
-					// get torrent info!
-					if !downloadedInfo {
-						info, err = tracker.GetTorrentInfo(newTorrent.torrentID)
-						if err != nil {
-							log.Println("Could not retrieve torrent info from tracker")
-						} else {
-							downloadedInfo = true
-							log.Println(info)
-						}
-						// TODO save info in yaml file somewhere, in torrent dl folder
-					}
-				}()
-				// sync
-				wg.Wait()
-
-				// if nothing was downloaded, abort
-				if dlErr != nil {
-					return nil, dlErr
+					downloadedInfo = true
+					log.Println(info)
+					// TODO save info in yaml file somewhere, in torrent dl folder
 				}
 				// else check other criteria
 				if newTorrent.PassesAdditionalChecks(filter, info) {
-					log.Println("++ OK for auto-download, moving to watch folder.")
+					log.Println("++ " + filter.label + ": OK for auto-download, moving to watch folder.")
+					if _, err := newTorrent.Download(tracker.client); err != nil {
+						return nil, err
+					}
+					downloadedTorrent = true
 					// move to relevant subfolder
 					destination := config.defaultDestinationFolder
 					if filter.destinationFolder != "" {
@@ -96,10 +70,7 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 						log.Println("Err: could not move to destination folder!")
 					}
 					sendTorrentNotification(notification, recipient, newTorrent, filter.label)
-					autoDownload = true
 					break
-				} else {
-					log.Println("Release does not pass additional checks, disregarding for this filter.")
 				}
 			}
 		}
@@ -107,9 +78,6 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 		if downloadedTorrent {
 			if err := os.Remove(newTorrent.filename); err != nil {
 				log.Println("Err: could not remove temporary file!")
-			}
-			if !autoDownload {
-				log.Println("++ No filter is interested in that release. Ignoring.")
 			}
 			return newTorrent, nil
 		}

@@ -114,6 +114,7 @@ func (r *Release) Download(hc *http.Client) (string, error) {
 }
 
 func (r *Release) Parse() {
+	// TODO: remove if not necessary
 	mi, err := metainfo.LoadFromFile(r.filename)
 	if err != nil {
 		log.Println("ERR: " + err.Error())
@@ -195,7 +196,7 @@ func (r *Release) Satisfies(filter Filter) bool {
 }
 
 func (r *Release) PassesAdditionalChecks(filter Filter, info *AdditionalInfo) bool {
-	if filter.maxSize != 0 && filter.maxSize < (r.size/(1024*1024)) {
+	if filter.maxSize != 0 && filter.maxSize < (info.size/(1024*1024)) {
 		log.Println(filter.label + ": Release too big.")
 		return false
 	}

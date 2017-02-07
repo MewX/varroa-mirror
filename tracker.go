@@ -11,8 +11,10 @@ import (
 	"net/url"
 	"strings"
 
-	"golang.org/x/net/publicsuffix"
 	"math"
+
+	"golang.org/x/net/publicsuffix"
+	"github.com/dustin/go-humanize"
 )
 
 func login(siteUrl, username, password string) (hc *http.Client, returnData string, err error) {
@@ -101,10 +103,11 @@ func readableUint64(a uint64) string {
 }
 func readableint64(a int64) string {
 	if a >= 0 {
-		return "+"+ByteSize(math.Abs(float64(a))).String()
+		return "+" + ByteSize(math.Abs(float64(a))).String()
 	}
-	return "-"+ByteSize(math.Abs(float64(a))).String()
+	return "-" + ByteSize(math.Abs(float64(a))).String()
 }
+
 //--------------------
 
 type GazelleTracker struct {
@@ -166,22 +169,23 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
 	if gt.Response.Torrent.Remastered {
 		label = gt.Response.Torrent.RemasterRecordLabel
 	}
-	info := &AdditionalInfo{id: gt.Response.Torrent.ID, label:label, logScore: gt.Response.Torrent.LogScore, artists: artists}
+	info := &AdditionalInfo{id: gt.Response.Torrent.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size)}
 	return info, nil
 }
 
 //--------------------
 
 type AdditionalInfo struct {
-	id int
-	label string
+	id       int
+	label    string
 	logScore int
-	artists []string // concat artists, composers, etc
+	artists  []string // concat artists, composers, etc
+	size     uint64
 	// TODO: cover (WikiImage), releaseinfo (WikiBody), catnum (CatalogueNumber), filelist (Torrent.FileList), folder? (Torrent.FilePath)
 }
 
 func (a *AdditionalInfo) String() string {
-	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s", a.label, a.logScore, strings.Join(a.artists, ","))
+	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s | Size %s", a.label, a.logScore, strings.Join(a.artists, ","), humanize.IBytes(uint64(a.size)))
 }
 
 //--------------------
@@ -218,8 +222,8 @@ func (s *Stats) IsProgressAcceptable(previous *Stats, conf Config) bool {
 		return true
 	}
 	_, _, bufferChange, _, _ := s.Diff(previous)
-	if bufferChange > - int64(conf.maxBufferDecreaseByPeriodMB) {
-	    return true
+	if bufferChange > -int64(conf.maxBufferDecreaseByPeriodMB) {
+		return true
 	}
 	return false
 }
@@ -276,11 +280,11 @@ type GazelleTorrent struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`
 				} `json:"conductor"`
-				Dj        []struct {
+				Dj []struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`
 				} `json:"dj"`
-				Producer  []struct {
+				Producer []struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`
 				} `json:"producer"`
@@ -288,7 +292,7 @@ type GazelleTorrent struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`
 				} `json:"remixedBy"`
-				With      []struct {
+				With []struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`
 				} `json:"with"`
