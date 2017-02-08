@@ -200,7 +200,7 @@ func (r *Release) PassesAdditionalChecks(filter Filter, info *AdditionalInfo) bo
 		log.Println(filter.label + ": Release too big.")
 		return false
 	}
-	if filter.logScore != 0 && filter.logScore != info.logScore {
+	if r.source == "CD" && filter.logScore != 0 && filter.logScore != info.logScore {
 		log.Println(filter.label + ": Incorrect log score")
 		return false
 	}
