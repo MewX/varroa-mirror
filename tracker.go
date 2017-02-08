@@ -131,6 +131,9 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 	}
 	var i GazelleIndex
 	json.Unmarshal(data, &i)
+	if i.Status != "success" {
+		return nil, errors.New("Error getting data from tracker: " + i.Status)
+	}
 
 	// GazelleIndex to Stats
 	stats := &Stats{
@@ -153,6 +156,9 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
 	}
 	var gt GazelleTorrent
 	json.Unmarshal(data, &gt)
+	if gt.Status != "success" {
+		return nil, errors.New("Error getting data from tracker: " + gt.Status)
+	}
 
 	artists := []string{}
 	// for now, using artists, composers, "with" categories
