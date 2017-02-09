@@ -12,11 +12,6 @@ import (
 	daemon "github.com/sevlyar/go-daemon"
 )
 
-/*
-- /nick NEWNICK
-- /msg NickServ register PSWWF ADDR
-*/
-
 //------------------
 
 var (
