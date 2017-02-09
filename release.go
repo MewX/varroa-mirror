@@ -196,6 +196,7 @@ func (r *Release) Satisfies(filter Filter) bool {
 }
 
 func (r *Release) PassesAdditionalChecks(filter Filter, info *AdditionalInfo) bool {
+	r.size = info.size
 	if filter.maxSize != 0 && filter.maxSize < (info.size/(1024*1024)) {
 		log.Println(filter.label + ": Release too big.")
 		return false

@@ -27,7 +27,7 @@ func sendTorrentNotification(notification *pushover.Pushover, recipient *pushove
 	}
 }
 
-func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) (*Release, error) {
+func AnalyzeAnnounce(config *Config, announced string, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
 	hits := r.FindAllStringSubmatch(announced, -1)
@@ -36,7 +36,7 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 		if err != nil {
 			return nil, err
 		}
-		log.Println(newTorrent)
+		//log.Println(newTorrent)
 
 		// if satisfies a filter, download
 		var downloadedInfo bool
@@ -88,7 +88,7 @@ func AnalyzeAnnounce(config Config, announced string, tracker GazelleTracker, no
 	return nil, errors.New("No hits!")
 }
 
-func ircHandler(conf Config, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) {
+func ircHandler(conf *Config, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) {
 	irccon := irc.IRC(conf.botName, conf.user)
 	irccon.UseTLS = false
 	irccon.TLSConfig = &tls.Config{InsecureSkipVerify: true}

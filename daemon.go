@@ -34,6 +34,8 @@ var (
 		Umask:       027,
 		Args:        []string{"[irc bot for PTH]"},
 	}
+
+	conf = &Config{}
 )
 
 func main() {
@@ -62,7 +64,6 @@ func main() {
 
 	log.Println("+ dronelistener started")
 
-	conf := Config{}
 	if err := conf.load("config.yaml"); err != nil {
 		log.Println(" - Error loading configuration: " + err.Error())
 		return
@@ -119,7 +120,11 @@ func termHandler(sig os.Signal) error {
 }
 
 func reloadHandler(sig os.Signal) error {
-	log.Println("configuration reloaded")
+	if err := conf.load("config.yaml"); err != nil {
+		log.Println(" - Error loading configuration: " + err.Error())
+		return nil
+	}
+	log.Println(" - Configuration reloaded.")
 	return nil
 }
 

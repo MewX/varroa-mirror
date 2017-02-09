@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strconv"
 	"strings"
 
-	"math"
-
-	"golang.org/x/net/publicsuffix"
 	"github.com/dustin/go-humanize"
+	"golang.org/x/net/publicsuffix"
 )
 
 func login(siteUrl, username, password string) (hc *http.Client, returnData string, err error) {
@@ -113,6 +113,7 @@ func readableint64(a int64) string {
 type GazelleTracker struct {
 	client  *http.Client
 	rootURL string
+	userID  int
 }
 
 func (t *GazelleTracker) Login(user, password string) error {
@@ -125,27 +126,43 @@ func (t *GazelleTracker) Login(user, password string) error {
 }
 
 func (t *GazelleTracker) GetStats() (*Stats, error) {
-	data, err := retrieveGetRequestData(t.client, t.rootURL+"/ajax.php?action=index")
+	if t.userID == 0 {
+		data, err := retrieveGetRequestData(t.client, t.rootURL+"/ajax.php?action=index")
+		if err != nil {
+			return nil, err
+		}
+		var i GazelleIndex
+		json.Unmarshal(data, &i)
+		if i.Status != "success" {
+			return nil, errors.New("Error getting data from tracker: " + i.Status)
+		}
+		t.userID = i.Response.ID
+	}
+	// userStats, more precise and updated faster
+	data, err := retrieveGetRequestData(t.client, t.rootURL+"/ajax.php?action=user&id="+strconv.Itoa(t.userID))
 	if err != nil {
 		return nil, err
 	}
-	var i GazelleIndex
-	json.Unmarshal(data, &i)
-	if i.Status != "success" {
-		return nil, errors.New("Error getting data from tracker: " + i.Status)
+	var s GazelleUserStats
+	json.Unmarshal(data, &s)
+	if s.Status != "success" {
+		return nil, errors.New("Error getting data from tracker: " + s.Status)
 	}
-
+	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
+	if err != nil {
+		log.Println("Incorrect ratio: " + s.Response.Stats.Ratio)
+		ratio = 0.0
+	}
 	// GazelleIndex to Stats
 	stats := &Stats{
-		Username:      i.Response.Username,
-		Class:         i.Response.Userstats.Class,
-		Up:            uint64(i.Response.Userstats.Uploaded),
-		Down:          uint64(i.Response.Userstats.Downloaded),
-		Buffer:        uint64(float64(i.Response.Userstats.Uploaded)/0.95) - uint64(i.Response.Userstats.Downloaded),
-		WarningBuffer: uint64(float64(i.Response.Userstats.Uploaded)/0.6) - uint64(i.Response.Userstats.Downloaded),
-		Ratio:         i.Response.Userstats.Ratio,
+		Username:      s.Response.Username,
+		Class:         s.Response.Personal.Class,
+		Up:            uint64(s.Response.Stats.Uploaded),
+		Down:          uint64(s.Response.Stats.Downloaded),
+		Buffer:        uint64(float64(s.Response.Stats.Uploaded)/0.95) - uint64(s.Response.Stats.Downloaded),
+		WarningBuffer: uint64(float64(s.Response.Stats.Uploaded)/0.6) - uint64(s.Response.Stats.Downloaded),
+		Ratio:         ratio,
 	}
-
 	return stats, nil
 }
 
@@ -197,8 +214,8 @@ func (a *AdditionalInfo) String() string {
 //--------------------
 
 const userStats = "User: %s (%s) | "
-const progress = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.2f (%.2f)"
-const firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.2f"
+const progress = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.3f (%.3f)"
+const firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.3f"
 
 type Stats struct {
 	Username      string
@@ -222,7 +239,7 @@ func (s *Stats) Progress(previous *Stats) string {
 	return fmt.Sprintf(progress, readableUint64(s.Up), readableint64(dup), readableUint64(s.Down), readableint64(ddown), readableUint64(s.Buffer), readableint64(ddbuff), readableUint64(s.WarningBuffer), readableint64(ddwbuff), s.Ratio, dratio)
 }
 
-func (s *Stats) IsProgressAcceptable(previous *Stats, conf Config) bool {
+func (s *Stats) IsProgressAcceptable(previous *Stats, conf *Config) bool {
 	if previous.Ratio == 0 {
 		// first pass
 		return true
@@ -260,6 +277,58 @@ type GazelleIndex struct {
 			Requiredratio float64 `json:"requiredratio"`
 			Uploaded      int     `json:"uploaded"`
 		} `json:"userstats"`
+	} `json:"response"`
+	Status string `json:"status"`
+}
+
+type GazelleUserStats struct {
+	Response struct {
+		Avatar    string `json:"avatar"`
+		Community struct {
+			CollagesContrib int `json:"collagesContrib"`
+			CollagesStarted int `json:"collagesStarted"`
+			Groups          int `json:"groups"`
+			Invited         int `json:"invited"`
+			Leeching        int `json:"leeching"`
+			PerfectFlacs    int `json:"perfectFlacs"`
+			Posts           int `json:"posts"`
+			RequestsFilled  int `json:"requestsFilled"`
+			RequestsVoted   int `json:"requestsVoted"`
+			Seeding         int `json:"seeding"`
+			Snatched        int `json:"snatched"`
+			TorrentComments int `json:"torrentComments"`
+			Uploaded        int `json:"uploaded"`
+		} `json:"community"`
+		IsFriend bool `json:"isFriend"`
+		Personal struct {
+			Class        string `json:"class"`
+			Donor        bool   `json:"donor"`
+			Enabled      bool   `json:"enabled"`
+			Paranoia     int    `json:"paranoia"`
+			ParanoiaText string `json:"paranoiaText"`
+			Passkey      string `json:"passkey"`
+			Warned       bool   `json:"warned"`
+		} `json:"personal"`
+		ProfileText string `json:"profileText"`
+		Ranks       struct {
+			Artists    int `json:"artists"`
+			Bounty     int `json:"bounty"`
+			Downloaded int `json:"downloaded"`
+			Overall    int `json:"overall"`
+			Posts      int `json:"posts"`
+			Requests   int `json:"requests"`
+			Uploaded   int `json:"uploaded"`
+			Uploads    int `json:"uploads"`
+		} `json:"ranks"`
+		Stats struct {
+			Downloaded    int     `json:"downloaded"`
+			JoinedDate    string  `json:"joinedDate"`
+			LastAccess    string  `json:"lastAccess"`
+			Ratio         string `json:"ratio"`
+			RequiredRatio float64 `json:"requiredRatio"`
+			Uploaded      int     `json:"uploaded"`
+		} `json:"stats"`
+		Username string `json:"username"`
 	} `json:"response"`
 	Status string `json:"status"`
 }

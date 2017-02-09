@@ -25,7 +25,7 @@ func sliceByteToGigabyte(in []float64) []float64 {
 	return out
 }
 
-func generateGraph(conf Config) error {
+func generateGraph(conf *Config) error {
 	// prepare directory for pngs if necessary
 	if !DirectoryExists("stats") {
 		os.MkdirAll("stats", 0777)
@@ -292,7 +292,7 @@ func addStatsToCSV(filename string, stats []string) error {
 	return nil
 }
 
-func getStats(conf Config, tracker GazelleTracker, previousStats *Stats, notification *pushover.Pushover, recipient *pushover.Recipient) *Stats {
+func getStats(conf *Config, tracker GazelleTracker, previousStats *Stats, notification *pushover.Pushover, recipient *pushover.Recipient) *Stats {
 	stats, err := tracker.GetStats()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -330,7 +330,7 @@ func getStats(conf Config, tracker GazelleTracker, previousStats *Stats, notific
 	return stats
 }
 
-func monitorStats(conf Config, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) {
+func monitorStats(conf *Config, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) {
 	// initial stats
 	previousStats := &Stats{}
 	previousStats = getStats(conf, tracker, previousStats, notification, recipient)
