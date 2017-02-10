@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"math"
 )
 
 // StringInSlice checks if a string is in a []string, returns bool.
@@ -140,4 +141,40 @@ func copyFileContents(src, dst string) (err error) {
 	}
 	err = out.Sync()
 	return
+}
+
+//-----------------------------------------------------------------------------
+
+type ByteSize float64
+
+const (
+	_           = iota // ignore first value by assigning to blank identifier
+	KB ByteSize = 1 << (10 * iota)
+	MB
+	GB
+	TB
+)
+
+func (b ByteSize) String() string {
+	switch {
+	case b >= TB:
+		return fmt.Sprintf("%.3fTB", b/TB)
+	case b >= GB:
+		return fmt.Sprintf("%.3fGB", b/GB)
+	case b >= MB:
+		return fmt.Sprintf("%.3fMB", b/MB)
+	case b >= KB:
+		return fmt.Sprintf("%.3fKB", b/KB)
+	}
+	return fmt.Sprintf("%.3fB", b)
+}
+
+func readableUInt64(a uint64) string {
+	return ByteSize(float64(a)).String()
+}
+func readableInt64(a int64) string {
+	if a >= 0 {
+		return "+" + ByteSize(math.Abs(float64(a))).String()
+	}
+	return "-" + ByteSize(math.Abs(float64(a))).String()
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -16,43 +15,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"golang.org/x/net/publicsuffix"
 )
-
-func login(siteUrl, username, password string) (hc *http.Client, returnData string, err error) {
-	form := url.Values{}
-	form.Add("username", username)
-	form.Add("password", password)
-	req, err := http.NewRequest("POST", siteUrl, strings.NewReader(form.Encode()))
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	options := cookiejar.Options{
-		PublicSuffixList: publicsuffix.List,
-	}
-	jar, err := cookiejar.New(&options)
-	if err != nil {
-		log.Fatal(err)
-	}
-	hc = &http.Client{Jar: jar}
-
-	resp, err := hc.Do(req)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		err = errors.New("Returned status: " + resp.Status)
-	}
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	returnData = string(data)
-	return
-}
 
 func retrieveGetRequestData(client *http.Client, url string) ([]byte, error) {
 	if client == nil {
@@ -71,41 +33,18 @@ func retrieveGetRequestData(client *http.Client, url string) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
+	// check success
+	var r GazelleGenericResponse
+	json.Unmarshal(data, &r)
+	if r.Status != "success" {
+		if r.Status == "" {
+			// TODO : eventuallly remove debug
+			log.Println(string(data))
+			return []byte{}, errors.New("Gazelle API call unsuccessful, invalid response. Maybe log in again?")
+		}
+		return []byte{}, errors.New("Gazelle API call unsuccessful: " + r.Status)
+	}
 	return data, nil
-}
-
-type ByteSize float64
-
-const (
-	_           = iota // ignore first value by assigning to blank identifier
-	KB ByteSize = 1 << (10 * iota)
-	MB
-	GB
-	TB
-)
-
-func (b ByteSize) String() string {
-	switch {
-	case b >= TB:
-		return fmt.Sprintf("%.3fTB", b/TB)
-	case b >= GB:
-		return fmt.Sprintf("%.3fGB", b/GB)
-	case b >= MB:
-		return fmt.Sprintf("%.3fMB", b/MB)
-	case b >= KB:
-		return fmt.Sprintf("%.3fKB", b/KB)
-	}
-	return fmt.Sprintf("%.3fB", b)
-}
-
-func readableUint64(a uint64) string {
-	return ByteSize(float64(a)).String()
-}
-func readableint64(a int64) string {
-	if a >= 0 {
-		return "+" + ByteSize(math.Abs(float64(a))).String()
-	}
-	return "-" + ByteSize(math.Abs(float64(a))).String()
 }
 
 //--------------------
@@ -117,37 +56,73 @@ type GazelleTracker struct {
 }
 
 func (t *GazelleTracker) Login(user, password string) error {
-	client, _, err := login(t.rootURL+"/login.php", user, password)
+	form := url.Values{}
+	form.Add("username", user)
+	form.Add("password", password)
+	req, err := http.NewRequest("POST", t.rootURL+"/login.php", strings.NewReader(form.Encode()))
 	if err != nil {
-		return errors.New("Could not log in")
+		fmt.Println(err.Error())
+		return err
 	}
-	t.client = client
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	options := cookiejar.Options{
+		PublicSuffixList: publicsuffix.List,
+	}
+	jar, err := cookiejar.New(&options)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	t.client = &http.Client{Jar: jar}
+	resp, err := t.client.Do(req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("Returned status: " + resp.Status)
+	}
 	return nil
+}
+
+func (t *GazelleTracker) get(url string) ([]byte, error) {
+	data, err := retrieveGetRequestData(t.client, url)
+	if err != nil {
+		// if error, try once again after logging in again
+		if err.Error() == "Gazelle API call unsuccessful, invalid response. Maybe log in again?" {
+			if err := t.Login(conf.user, conf.password); err == nil {
+				data, err := retrieveGetRequestData(t.client, url)
+				if err != nil {
+					return nil, err
+				}
+				return data, err
+			}
+		}
+		return nil, err
+	}
+	return data, err
 }
 
 func (t *GazelleTracker) GetStats() (*Stats, error) {
 	if t.userID == 0 {
-		data, err := retrieveGetRequestData(t.client, t.rootURL+"/ajax.php?action=index")
+		data, err := t.get(t.rootURL+"/ajax.php?action=index")
 		if err != nil {
 			return nil, err
 		}
 		var i GazelleIndex
 		json.Unmarshal(data, &i)
-		if i.Status != "success" {
-			return nil, errors.New("Error getting data from tracker: " + i.Status)
-		}
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
-	data, err := retrieveGetRequestData(t.client, t.rootURL+"/ajax.php?action=user&id="+strconv.Itoa(t.userID))
+	data, err := t.get(t.rootURL+"/ajax.php?action=user&id="+strconv.Itoa(t.userID))
 	if err != nil {
 		return nil, err
 	}
 	var s GazelleUserStats
 	json.Unmarshal(data, &s)
-	if s.Status != "success" {
-		return nil, errors.New("Error getting data from tracker: " + s.Status)
-	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
 		log.Println("Incorrect ratio: " + s.Response.Stats.Ratio)
@@ -167,15 +142,12 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 }
 
 func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
-	data, err := retrieveGetRequestData(t.client, t.rootURL+"/ajax.php?action=torrent&id="+id)
+	data, err := t.get(t.rootURL+"/ajax.php?action=torrent&id="+id)
 	if err != nil {
 		return nil, err
 	}
 	var gt GazelleTorrent
 	json.Unmarshal(data, &gt)
-	if gt.Status != "success" {
-		return nil, errors.New("Error getting data from tracker: " + gt.Status)
-	}
 
 	artists := []string{}
 	// for now, using artists, composers, "with" categories
@@ -236,7 +208,7 @@ func (s *Stats) Progress(previous *Stats) string {
 		return s.String()
 	}
 	dup, ddown, ddbuff, ddwbuff, dratio := s.Diff(previous)
-	return fmt.Sprintf(progress, readableUint64(s.Up), readableint64(dup), readableUint64(s.Down), readableint64(ddown), readableUint64(s.Buffer), readableint64(ddbuff), readableUint64(s.WarningBuffer), readableint64(ddwbuff), s.Ratio, dratio)
+	return fmt.Sprintf(progress, readableUInt64(s.Up), readableInt64(dup), readableUInt64(s.Down), readableInt64(ddown), readableUInt64(s.Buffer), readableInt64(ddbuff), readableUInt64(s.WarningBuffer), readableInt64(ddwbuff), s.Ratio, dratio)
 }
 
 func (s *Stats) IsProgressAcceptable(previous *Stats, conf *Config) bool {
@@ -252,162 +224,7 @@ func (s *Stats) IsProgressAcceptable(previous *Stats, conf *Config) bool {
 }
 
 func (s *Stats) String() string {
-	return fmt.Sprintf(userStats, s.Username, s.Class) + fmt.Sprintf(firstProgress, readableUint64(s.Up), readableUint64(s.Down), readableUint64(s.Buffer), readableUint64(s.WarningBuffer), s.Ratio)
+	return fmt.Sprintf(userStats, s.Username, s.Class) + fmt.Sprintf(firstProgress, readableUInt64(s.Up), readableUInt64(s.Down), readableUInt64(s.Buffer), readableUInt64(s.WarningBuffer), s.Ratio)
 }
 
 //-----------
-
-type GazelleIndex struct {
-	Response struct {
-		Authkey       string `json:"authkey"`
-		ID            int    `json:"id"`
-		Notifications struct {
-			Messages         int  `json:"messages"`
-			NewAnnouncement  bool `json:"newAnnouncement"`
-			NewBlog          bool `json:"newBlog"`
-			NewSubscriptions bool `json:"newSubscriptions"`
-			Notifications    int  `json:"notifications"`
-		} `json:"notifications"`
-		Passkey   string `json:"passkey"`
-		Username  string `json:"username"`
-		Userstats struct {
-			Class         string  `json:"class"`
-			Downloaded    int     `json:"downloaded"`
-			Ratio         float64 `json:"ratio"`
-			Requiredratio float64 `json:"requiredratio"`
-			Uploaded      int     `json:"uploaded"`
-		} `json:"userstats"`
-	} `json:"response"`
-	Status string `json:"status"`
-}
-
-type GazelleUserStats struct {
-	Response struct {
-		Avatar    string `json:"avatar"`
-		Community struct {
-			CollagesContrib int `json:"collagesContrib"`
-			CollagesStarted int `json:"collagesStarted"`
-			Groups          int `json:"groups"`
-			Invited         int `json:"invited"`
-			Leeching        int `json:"leeching"`
-			PerfectFlacs    int `json:"perfectFlacs"`
-			Posts           int `json:"posts"`
-			RequestsFilled  int `json:"requestsFilled"`
-			RequestsVoted   int `json:"requestsVoted"`
-			Seeding         int `json:"seeding"`
-			Snatched        int `json:"snatched"`
-			TorrentComments int `json:"torrentComments"`
-			Uploaded        int `json:"uploaded"`
-		} `json:"community"`
-		IsFriend bool `json:"isFriend"`
-		Personal struct {
-			Class        string `json:"class"`
-			Donor        bool   `json:"donor"`
-			Enabled      bool   `json:"enabled"`
-			Paranoia     int    `json:"paranoia"`
-			ParanoiaText string `json:"paranoiaText"`
-			Passkey      string `json:"passkey"`
-			Warned       bool   `json:"warned"`
-		} `json:"personal"`
-		ProfileText string `json:"profileText"`
-		Ranks       struct {
-			Artists    int `json:"artists"`
-			Bounty     int `json:"bounty"`
-			Downloaded int `json:"downloaded"`
-			Overall    int `json:"overall"`
-			Posts      int `json:"posts"`
-			Requests   int `json:"requests"`
-			Uploaded   int `json:"uploaded"`
-			Uploads    int `json:"uploads"`
-		} `json:"ranks"`
-		Stats struct {
-			Downloaded    int     `json:"downloaded"`
-			JoinedDate    string  `json:"joinedDate"`
-			LastAccess    string  `json:"lastAccess"`
-			Ratio         string  `json:"ratio"`
-			RequiredRatio float64 `json:"requiredRatio"`
-			Uploaded      int     `json:"uploaded"`
-		} `json:"stats"`
-		Username string `json:"username"`
-	} `json:"response"`
-	Status string `json:"status"`
-}
-
-//----------------------
-
-type GazelleTorrent struct {
-	Response struct {
-		Group struct {
-			CatalogueNumber string `json:"catalogueNumber"`
-			CategoryID      int    `json:"categoryId"`
-			CategoryName    string `json:"categoryName"`
-			ID              int    `json:"id"`
-			MusicInfo       struct {
-				Artists []struct {
-					ID   int    `json:"id"`
-					Name string `json:"name"`
-				} `json:"artists"`
-				Composers []struct {
-					ID   int    `json:"id"`
-					Name string `json:"name"`
-				} `json:"composers"`
-				Conductor []struct {
-					ID   int    `json:"id"`
-					Name string `json:"name"`
-				} `json:"conductor"`
-				Dj []struct {
-					ID   int    `json:"id"`
-					Name string `json:"name"`
-				} `json:"dj"`
-				Producer []struct {
-					ID   int    `json:"id"`
-					Name string `json:"name"`
-				} `json:"producer"`
-				RemixedBy []struct {
-					ID   int    `json:"id"`
-					Name string `json:"name"`
-				} `json:"remixedBy"`
-				With []struct {
-					ID   int    `json:"id"`
-					Name string `json:"name"`
-				} `json:"with"`
-			} `json:"musicInfo"`
-			Name        string `json:"name"`
-			RecordLabel string `json:"recordLabel"`
-			ReleaseType int    `json:"releaseType"`
-			Time        string `json:"time"`
-			VanityHouse bool   `json:"vanityHouse"`
-			WikiBody    string `json:"wikiBody"`
-			WikiImage   string `json:"wikiImage"`
-			Year        int    `json:"year"`
-		} `json:"group"`
-		Torrent struct {
-			Description             string      `json:"description"`
-			Encoding                string      `json:"encoding"`
-			FileCount               int         `json:"fileCount"`
-			FileList                string      `json:"fileList"`
-			FilePath                string      `json:"filePath"`
-			Format                  string      `json:"format"`
-			FreeTorrent             bool        `json:"freeTorrent"`
-			HasCue                  bool        `json:"hasCue"`
-			HasLog                  bool        `json:"hasLog"`
-			ID                      int         `json:"id"`
-			Leechers                int         `json:"leechers"`
-			LogScore                int         `json:"logScore"`
-			Media                   string      `json:"media"`
-			RemasterCatalogueNumber string      `json:"remasterCatalogueNumber"`
-			RemasterRecordLabel     string      `json:"remasterRecordLabel"`
-			RemasterTitle           string      `json:"remasterTitle"`
-			RemasterYear            int         `json:"remasterYear"`
-			Remastered              bool        `json:"remastered"`
-			Scene                   bool        `json:"scene"`
-			Seeders                 int         `json:"seeders"`
-			Size                    int         `json:"size"`
-			Snatched                int         `json:"snatched"`
-			Time                    string      `json:"time"`
-			UserID                  int         `json:"userId"`
-			Username                interface{} `json:"username"`
-		} `json:"torrent"`
-	} `json:"response"`
-	Status string `json:"status"`
-}
