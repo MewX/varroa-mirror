@@ -38,7 +38,7 @@ func retrieveGetRequestData(client *http.Client, url string) ([]byte, error) {
 	json.Unmarshal(data, &r)
 	if r.Status != "success" {
 		if r.Status == "" {
-			// TODO : eventuallly remove debug
+			// TODO : eventually remove debug
 			log.Println(string(data))
 			return []byte{}, errors.New("Gazelle API call unsuccessful, invalid response. Maybe log in again?")
 		}
@@ -226,5 +226,3 @@ func (s *Stats) IsProgressAcceptable(previous *Stats, conf *Config) bool {
 func (s *Stats) String() string {
 	return fmt.Sprintf(userStats, s.Username, s.Class) + fmt.Sprintf(firstProgress, readableUInt64(s.Up), readableUInt64(s.Down), readableUInt64(s.Buffer), readableUInt64(s.WarningBuffer), s.Ratio)
 }
-
-//-----------

@@ -45,7 +45,6 @@ type Config struct {
 }
 
 func (c *Config) load(path string) (err error) {
-
 	conf := viper.New()
 	conf.SetConfigType("yaml")
 	conf.SetConfigFile(path)

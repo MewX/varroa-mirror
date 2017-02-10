@@ -98,10 +98,12 @@ func checkSignals() {
 }
 
 func loadConfiguration(sig os.Signal) error {
-	if err := conf.load("config.yaml"); err != nil {
+	newConf := &Config{}
+	if err := newConf.load("config.yaml"); err != nil {
 		log.Println(" - Error loading configuration: " + err.Error())
 		return err
 	}
+	conf = newConf
 	log.Println(" - Configuration reloaded.")
 	return nil
 }
