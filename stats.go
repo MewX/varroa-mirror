@@ -154,7 +154,7 @@ func generateGraph() error {
 		},
 		Series: []chart.Series{
 			upSeries,
-			chart.LastValueAnnotation(upSeries),
+			//chart.LastValueAnnotation(upSeries),
 		},
 	}
 	bufferUp := bytes.NewBuffer([]byte{})
@@ -174,7 +174,7 @@ func generateGraph() error {
 		},
 		Series: []chart.Series{
 			downSeries,
-			chart.LastValueAnnotation(downSeries),
+			//chart.LastValueAnnotation(downSeries),
 		},
 	}
 	bufferDown := bytes.NewBuffer([]byte{})
@@ -194,7 +194,7 @@ func generateGraph() error {
 		},
 		Series: []chart.Series{
 			bufferSeries,
-			chart.LastValueAnnotation(bufferSeries),
+			//chart.LastValueAnnotation(bufferSeries),
 			//warningBufferSeries,
 			//chart.LastValueAnnotation(warningBufferSeries),
 		},
@@ -216,7 +216,7 @@ func generateGraph() error {
 		},
 		Series: []chart.Series{
 			ratioSeries,
-			chart.LastValueAnnotation(ratioSeries),
+			//chart.LastValueAnnotation(ratioSeries),
 		},
 	}
 	bufferRatio := bytes.NewBuffer([]byte{})
