@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anacrolix/torrent/metainfo"
 	"github.com/dustin/go-humanize"
 )
 
@@ -107,28 +106,6 @@ func (r *Release) Download(hc *http.Client) (string, error) {
 	_, err = io.Copy(file, response.Body)
 	log.Println("++ Downloaded " + r.filename)
 	return r.filename, err
-}
-
-func (r *Release) Parse() {
-	// TODO: remove if not necessary
-	mi, err := metainfo.LoadFromFile(r.filename)
-	if err != nil {
-		log.Println("ERR: " + err.Error())
-		return
-	}
-	info, err := mi.UnmarshalInfo()
-	if err != nil {
-		log.Println("ERR: " + err.Error())
-		return
-	}
-	r.folder = info.Name
-	log.Printf("Torrent folder: %s\n", info.Name)
-	totalSize := int64(0)
-	for _, f := range info.Files {
-		totalSize += f.Length
-	}
-	log.Printf("Total size: %s\n", humanize.IBytes(uint64(totalSize)))
-	r.size = uint64(totalSize)
 }
 
 func (r *Release) Satisfies(filter Filter) bool {
