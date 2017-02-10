@@ -14,6 +14,12 @@ import (
 
 //------------------
 
+const (
+	// PTH only allows 5 API calls every 10s
+	allowedAPICallsByPeriod = 5
+	apiCallsPeriodS         = 10
+)
+
 var (
 	signal = flag.String("s", "", `send orders to the daemon:
 		reload — reload the configuration file
@@ -34,6 +40,9 @@ var (
 	// daemon control channels
 	stop = make(chan struct{})
 	done = make(chan struct{})
+
+	// channel of allowedAPICallsByPeriod elements, which will rate-limit the requests
+	limiter = make(chan time.Time, allowedAPICallsByPeriod)
 )
 
 func main() {
@@ -80,6 +89,7 @@ func main() {
 	go checkSignals()
 	go ircHandler(tracker)
 	go monitorStats(tracker)
+	go apiCallRateLimiter()
 
 	if err := daemon.ServeSignals(); err != nil {
 		log.Println("Error:", err)
@@ -135,6 +145,20 @@ func killDaemon() {
 				log.Fatalf("error checking daemon exited: %s\n", err)
 			}
 			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+func apiCallRateLimiter() {
+	// every apiCallsPeriodS, refill the limiter channel
+	for t := range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
+		for i := 0; i < allowedAPICallsByPeriod; i++ {
+			select {
+			case limiter <- t:
+			default:
+				// if channel is full, do nothing
+				break
+			}
 		}
 	}
 }

@@ -94,10 +94,6 @@ func (r *Release) Download(hc *http.Client) (string, error) {
 	if r.torrentURL == "" {
 		return "", errors.New("unknown torrent url")
 	}
-	/*if _, err := h.FileExists(torrentFilename); err == nil {
-		// already downloaded
-		return nil
-	}*/
 	response, err := hc.Get(r.torrentURL)
 	if err != nil {
 		return "", err

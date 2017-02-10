@@ -20,6 +20,10 @@ func retrieveGetRequestData(client *http.Client, url string) ([]byte, error) {
 	if client == nil {
 		return []byte{}, errors.New("Not logged in")
 	}
+
+	// wait for rate limiter
+	<-limiter
+	// get request
 	resp, err := client.Get(url)
 	if err != nil {
 		return []byte{}, err
@@ -108,7 +112,7 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 
 func (t *GazelleTracker) GetStats() (*Stats, error) {
 	if t.userID == 0 {
-		data, err := t.get(t.rootURL+"/ajax.php?action=index")
+		data, err := t.get(t.rootURL + "/ajax.php?action=index")
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +121,7 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
-	data, err := t.get(t.rootURL+"/ajax.php?action=user&id="+strconv.Itoa(t.userID))
+	data, err := t.get(t.rootURL + "/ajax.php?action=user&id=" + strconv.Itoa(t.userID))
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +146,7 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 }
 
 func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
-	data, err := t.get(t.rootURL+"/ajax.php?action=torrent&id="+id)
+	data, err := t.get(t.rootURL + "/ajax.php?action=torrent&id=" + id)
 	if err != nil {
 		return nil, err
 	}
