@@ -42,7 +42,7 @@ var (
 	done = make(chan struct{})
 
 	// channel of allowedAPICallsByPeriod elements, which will rate-limit the requests
-	limiter = make(chan time.Time, allowedAPICallsByPeriod)
+	limiter = make(chan bool, allowedAPICallsByPeriod)
 )
 
 func main() {
@@ -150,11 +150,15 @@ func killDaemon() {
 }
 
 func apiCallRateLimiter() {
+	// fill the rate limiter the first time
+	for i := 0; i < allowedAPICallsByPeriod; i++ {
+		limiter <- true
+	}
 	// every apiCallsPeriodS, refill the limiter channel
-	for t := range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
+	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
 		for i := 0; i < allowedAPICallsByPeriod; i++ {
 			select {
-			case limiter <- t:
+			case limiter <- true:
 			default:
 				// if channel is full, do nothing
 				break
