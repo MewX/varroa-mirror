@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gregdel/pushover"
 	"github.com/wcharczuk/go-chart"
 )
 
@@ -25,7 +24,7 @@ func sliceByteToGigabyte(in []float64) []float64 {
 	return out
 }
 
-func generateGraph(conf *Config) error {
+func generateGraph() error {
 	// prepare directory for pngs if necessary
 	if !DirectoryExists("stats") {
 		os.MkdirAll("stats", 0777)
@@ -292,7 +291,7 @@ func addStatsToCSV(filename string, stats []string) error {
 	return nil
 }
 
-func getStats(conf *Config, tracker GazelleTracker, previousStats *Stats, notification *pushover.Pushover, recipient *pushover.Recipient) *Stats {
+func getStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 	stats, err := tracker.GetStats()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -305,22 +304,18 @@ func getStats(conf *Config, tracker GazelleTracker, previousStats *Stats, notifi
 			log.Println(err.Error())
 		}
 		// generate graphs
-		if err := generateGraph(conf); err != nil {
+		if err := generateGraph(); err != nil {
 			log.Println(err.Error())
 		}
 		// send notification
-		message := pushover.NewMessageWithTitle("Current stats: "+stats.Progress(previousStats), "varroa musica")
-		_, err := notification.SendMessage(message, recipient)
-		if err != nil {
+		if err := notification.Send("Current stats: " + stats.Progress(previousStats)); err != nil {
 			log.Println(err.Error())
 		}
 		// if something is wrong, send notif and stop
 		if !stats.IsProgressAcceptable(previousStats, conf) {
 			log.Println("Drop in buffer too important, stopping autodl.")
 			// sending notification
-			message := pushover.NewMessageWithTitle("Drop in buffer too important, stopping autodl.", "varroa musica")
-			_, err := notification.SendMessage(message, recipient)
-			if err != nil {
+			if err := notification.Send("Drop in buffer too important, stopping autodl."); err != nil {
 				log.Println(err.Error())
 			}
 			// stopping things
@@ -330,17 +325,17 @@ func getStats(conf *Config, tracker GazelleTracker, previousStats *Stats, notifi
 	return stats
 }
 
-func monitorStats(conf *Config, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) {
+func monitorStats(tracker GazelleTracker) {
 	// initial stats
 	previousStats := &Stats{}
-	previousStats = getStats(conf, tracker, previousStats, notification, recipient)
+	previousStats = getStats(tracker, previousStats)
 	// periodic check
 	period := time.NewTicker(time.Hour * time.Duration(conf.statsUpdatePeriod)).C
 	for {
 		select {
 		case <-period:
 			log.Println("Getting stats...")
-			previousStats = getStats(conf, tracker, previousStats, notification, recipient)
+			previousStats = getStats(tracker, previousStats)
 		case <-done:
 			return
 		case <-stop:

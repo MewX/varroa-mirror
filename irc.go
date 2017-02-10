@@ -9,25 +9,12 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/gregdel/pushover"
 	"github.com/thoj/go-ircevent"
 )
 
 const announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3) / (Lossless|24bit Lossless|V0 \(VBR\)|320) /( (Log) /)?( (Cue) /)? ([\w]*) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
 
-func sendTorrentNotification(notification *pushover.Pushover, recipient *pushover.Recipient, torrent *Release, filterLabel string) {
-	if notification == nil {
-		return
-	}
-	// send notification
-	message := pushover.NewMessageWithTitle(filterLabel+": Snatched "+torrent.ShortString(), "varroa musica")
-	_, err := notification.SendMessage(message, recipient)
-	if err != nil {
-		log.Println(err.Error())
-	}
-}
-
-func AnalyzeAnnounce(config *Config, announced string, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) (*Release, error) {
+func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
 	hits := r.FindAllStringSubmatch(announced, -1)
@@ -42,7 +29,7 @@ func AnalyzeAnnounce(config *Config, announced string, tracker GazelleTracker, n
 		var downloadedInfo bool
 		var downloadedTorrent bool
 		var info *AdditionalInfo
-		for _, filter := range config.filters {
+		for _, filter := range conf.filters {
 			if newTorrent.Satisfies(filter) {
 				// get torrent info!
 				if !downloadedInfo {
@@ -62,14 +49,17 @@ func AnalyzeAnnounce(config *Config, announced string, tracker GazelleTracker, n
 					}
 					downloadedTorrent = true
 					// move to relevant subfolder
-					destination := config.defaultDestinationFolder
+					destination := conf.defaultDestinationFolder
 					if filter.destinationFolder != "" {
 						destination = filter.destinationFolder
 					}
 					if err := CopyFile(newTorrent.filename, filepath.Join(destination, newTorrent.filename)); err != nil {
 						log.Println("Err: could not move to destination folder!")
 					}
-					sendTorrentNotification(notification, recipient, newTorrent, filter.label)
+					// send notification
+					if err := notification.Send(filter.label + ": Snatched " + newTorrent.ShortString()); err != nil {
+						log.Println(err.Error())
+					}
 					break
 				}
 			}
@@ -88,29 +78,29 @@ func AnalyzeAnnounce(config *Config, announced string, tracker GazelleTracker, n
 	return nil, errors.New("No hits!")
 }
 
-func ircHandler(conf *Config, tracker GazelleTracker, notification *pushover.Pushover, recipient *pushover.Recipient) {
-	irccon := irc.IRC(conf.botName, conf.user)
-	irccon.UseTLS = false
-	irccon.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	irccon.AddCallback("001", func(e *irc.Event) {
-		irccon.Privmsg("NickServ", "IDENTIFY "+conf.nickServPassword)
-		irccon.Privmsg(conf.announcer, fmt.Sprintf("enter %s %s %s", conf.announceChannel, conf.user, conf.ircKey))
+func ircHandler(tracker GazelleTracker) {
+	IRCClient := irc.IRC(conf.botName, conf.user)
+	IRCClient.UseTLS = false
+	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	IRCClient.AddCallback("001", func(e *irc.Event) {
+		IRCClient.Privmsg("NickServ", "IDENTIFY "+conf.nickServPassword)
+		IRCClient.Privmsg(conf.announcer, fmt.Sprintf("enter %s %s %s", conf.announceChannel, conf.user, conf.ircKey))
 	})
-	irccon.AddCallback("PRIVMSG", func(e *irc.Event) {
+	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
 		if e.Nick == conf.announcer {
 			announced := e.Message()
 			log.Println("++ Announced: " + announced)
-			if _, err := AnalyzeAnnounce(conf, announced, tracker, notification, recipient); err != nil {
+			if _, err := AnalyzeAnnounce(announced, tracker); err != nil {
 				log.Println("ERR: " + err.Error())
 				return
 			}
 		}
 	})
 
-	err := irccon.Connect(conf.ircServer)
+	err := IRCClient.Connect(conf.ircServer)
 	if err != nil {
 		fmt.Printf("Err %s", err)
 		return
 	}
-	irccon.Loop()
+	IRCClient.Loop()
 }

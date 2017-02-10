@@ -29,8 +29,8 @@ var (
 		Umask:       027,
 		Args:        []string{"[irc bot for PTH]"},
 	}
-
 	conf = &Config{}
+	notification = &Notification{}
 )
 
 func main() {
@@ -65,12 +65,10 @@ func main() {
 	}
 	log.Println(" - Configuration loaded.")
 
-	// notifications with pushover
-	var notification *pushover.Pushover
-	var recipient *pushover.Recipient
+	// init notifications with pushover
 	if conf.pushoverUser != "" && conf.pushoverToken != "" {
-		notification = pushover.New(conf.pushoverToken)
-		recipient = pushover.NewRecipient(conf.pushoverUser)
+		notification.client = pushover.New(conf.pushoverToken)
+		notification.recipient = pushover.NewRecipient(conf.pushoverUser)
 	}
 
 	tracker := GazelleTracker{rootURL: conf.url}
@@ -81,8 +79,8 @@ func main() {
 	log.Println(" - Logged in tracker.")
 
 	go checkSignals()
-	go ircHandler(conf, tracker, notification, recipient)
-	go monitorStats(conf, tracker, notification, recipient)
+	go ircHandler(tracker)
+	go monitorStats(tracker)
 
 	if err := daemon.ServeSignals(); err != nil {
 		log.Println("Error:", err)
