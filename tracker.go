@@ -42,8 +42,6 @@ func retrieveGetRequestData(client *http.Client, url string) ([]byte, error) {
 	json.Unmarshal(data, &r)
 	if r.Status != "success" {
 		if r.Status == "" {
-			// TODO : eventually remove debug
-			log.Println(string(data))
 			return []byte{}, errors.New("Gazelle API call unsuccessful, invalid response. Maybe log in again?")
 		}
 		return []byte{}, errors.New("Gazelle API call unsuccessful: " + r.Status)
@@ -81,7 +79,7 @@ func (t *GazelleTracker) Login(user, password string) error {
 	t.client = &http.Client{Jar: jar}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("Error logging in: " + err.Error())
 		return err
 	}
 	defer resp.Body.Close()
@@ -95,14 +93,17 @@ func (t *GazelleTracker) Login(user, password string) error {
 func (t *GazelleTracker) get(url string) ([]byte, error) {
 	data, err := retrieveGetRequestData(t.client, url)
 	if err != nil {
+		log.Println(err.Error())
 		// if error, try once again after logging in again
-		if err.Error() == "Gazelle API call unsuccessful, invalid response. Maybe log in again?" {
+		if err.Error() == "Gazelle API call unsuccessful, invalid response. Maybe log in again?" || err.Error() == "Not logged in" {
 			if err := t.Login(conf.user, conf.password); err == nil {
 				data, err := retrieveGetRequestData(t.client, url)
 				if err != nil {
 					return nil, err
 				}
 				return data, err
+			} else {
+				return nil, errors.New("Could not log in and send get request to " + url)
 			}
 		}
 		return nil, err

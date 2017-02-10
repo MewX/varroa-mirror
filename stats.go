@@ -16,12 +16,41 @@ import (
 	"github.com/wcharczuk/go-chart"
 )
 
+var (
+	uploadStatsFile = "stats/up.png"
+	downloadStatsFile = "stats/down.png"
+	ratioStatsFile = "stats/ratio.png"
+	bufferStatsFile = "stats/buffer.png"
+	overallStatsFile = "stats/stats.png"
+)
+
+
 func sliceByteToGigabyte(in []float64) []float64 {
 	out := make([]float64, len(in))
 	for i, v := range in {
 		out[i] = v / (1024 * 1024 * 1024)
 	}
 	return out
+}
+
+
+func writeGraph(xAxis chart.XAxis, series chart.Series, axisLabel, filename string) error {
+	graphUp := chart.Chart{
+		XAxis: xAxis,
+		YAxis: chart.YAxis{
+			Style:     chart.StyleShow(),
+			Name:      axisLabel,
+			NameStyle: chart.StyleShow(),
+		},
+		Series: []chart.Series{
+			series,
+		},
+	}
+	buffer := bytes.NewBuffer([]byte{})
+	if err := graphUp.Render(chart.PNG, buffer); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filename, buffer.Bytes(), 0644)
 }
 
 func generateGraph() error {
@@ -86,52 +115,31 @@ func generateGraph() error {
 		ratios = append(ratios, ratio)
 	}
 
-	upSeries := chart.TimeSeries{
-		Style: chart.Style{
+	commonStyle := chart.Style{
 			Show:        true,
 			StrokeColor: chart.ColorBlue,
 			FillColor:   chart.ColorBlue.WithAlpha(25),
-		},
+		}
+	upSeries := chart.TimeSeries{
+		Style: commonStyle,
 		Name:    "Upload",
 		XValues: timestamps,
 		YValues: sliceByteToGigabyte(ups),
 	}
 	downSeries := chart.TimeSeries{
-		Style: chart.Style{
-			Show:        true,
-			StrokeColor: chart.ColorBlue,
-			FillColor:   chart.ColorBlue.WithAlpha(25),
-		},
+		Style: commonStyle,
 		Name:    "Download",
 		XValues: timestamps,
 		YValues: sliceByteToGigabyte(downs),
 	}
 	bufferSeries := chart.TimeSeries{
-		Style: chart.Style{
-			Show:        true,
-			StrokeColor: chart.ColorBlue,
-			FillColor:   chart.ColorBlue.WithAlpha(25),
-		},
+		Style: commonStyle,
 		Name:    "Buffer",
 		XValues: timestamps,
 		YValues: sliceByteToGigabyte(buffers),
 	}
-	/*warningBufferSeries := chart.TimeSeries{
-		Style: chart.Style{
-			Show:        true,
-			StrokeColor: chart.ColorBlue,
-			FillColor:   chart.ColorBlue.WithAlpha(25),
-		},
-		Name:    "Warning Buffer",
-		XValues: timestamps,
-		YValues: sliceByteToGigabyte(warningBuffers),
-	}*/
 	ratioSeries := chart.TimeSeries{
-		Style: chart.Style{
-			Show:        true,
-			StrokeColor: chart.ColorBlue,
-			FillColor:   chart.ColorBlue.WithAlpha(25),
-		},
+		Style: commonStyle,
 		Name:    "Ratio",
 		XValues: timestamps,
 		YValues: ratios,
@@ -145,93 +153,25 @@ func generateGraph() error {
 		ValueFormatter: chart.TimeValueFormatter,
 	}
 
-	graphUp := chart.Chart{
-		XAxis: xAxis,
-		YAxis: chart.YAxis{
-			Style:     chart.StyleShow(),
-			Name:      "Upload (Gb)",
-			NameStyle: chart.StyleShow(),
-		},
-		Series: []chart.Series{
-			upSeries,
-			//chart.LastValueAnnotation(upSeries),
-		},
-	}
-	bufferUp := bytes.NewBuffer([]byte{})
-	if err := graphUp.Render(chart.PNG, bufferUp); err != nil {
+	// write individual graphs
+	if err := writeGraph(xAxis, upSeries,  "Upload (Gb)", uploadStatsFile); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile("stats/up.png", bufferUp.Bytes(), 0644); err != nil {
+	if err := writeGraph(xAxis, downSeries,  "Download (Gb)", downloadStatsFile); err != nil {
 		return err
 	}
-
-	graphDown := chart.Chart{
-		XAxis: xAxis,
-		YAxis: chart.YAxis{
-			Style:     chart.StyleShow(),
-			Name:      "Download (Gb)",
-			NameStyle: chart.StyleShow(),
-		},
-		Series: []chart.Series{
-			downSeries,
-			//chart.LastValueAnnotation(downSeries),
-		},
-	}
-	bufferDown := bytes.NewBuffer([]byte{})
-	if err := graphDown.Render(chart.PNG, bufferDown); err != nil {
+	if err := writeGraph(xAxis, bufferSeries,  "Buffer (Gb)", bufferStatsFile); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile("stats/down.png", bufferDown.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	graphBuffer := chart.Chart{
-		XAxis: xAxis,
-		YAxis: chart.YAxis{
-			Style:     chart.StyleShow(),
-			Name:      "Buffer (Gb)",
-			NameStyle: chart.StyleShow(),
-		},
-		Series: []chart.Series{
-			bufferSeries,
-			//chart.LastValueAnnotation(bufferSeries),
-			//warningBufferSeries,
-			//chart.LastValueAnnotation(warningBufferSeries),
-		},
-	}
-	bufferBuffer := bytes.NewBuffer([]byte{})
-	if err := graphBuffer.Render(chart.PNG, bufferBuffer); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile("stats/buffer.png", bufferBuffer.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	graphRatio := chart.Chart{
-		XAxis: xAxis,
-		YAxis: chart.YAxis{
-			Style:     chart.StyleShow(),
-			Name:      "Ratio",
-			NameStyle: chart.StyleShow(),
-		},
-		Series: []chart.Series{
-			ratioSeries,
-			//chart.LastValueAnnotation(ratioSeries),
-		},
-	}
-	bufferRatio := bytes.NewBuffer([]byte{})
-	if err := graphRatio.Render(chart.PNG, bufferRatio); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile("stats/ratio.png", bufferRatio.Bytes(), 0644); err != nil {
+	if err := writeGraph(xAxis, ratioSeries,  "Ratio", ratioStatsFile); err != nil {
 		return err
 	}
 
 	// open and decode images
-	imgFile1, err1 := os.Open("stats/up.png")
-	imgFile2, err2 := os.Open("stats/down.png")
-	imgFile3, err3 := os.Open("stats/buffer.png")
-	imgFile4, err4 := os.Open("stats/ratio.png")
+	imgFile1, err1 := os.Open(uploadStatsFile)
+	imgFile2, err2 := os.Open(downloadStatsFile)
+	imgFile3, err3 := os.Open(bufferStatsFile)
+	imgFile4, err4 := os.Open(ratioStatsFile)
 	if err := checkErrors(err1, err2, err3, err4); err != nil {
 		return err
 	}
@@ -271,7 +211,7 @@ func generateGraph() error {
 	draw.Draw(rgba, r4, img4, image.Point{0, 0}, draw.Src)
 
 	// save new image
-	out, err := os.Create("stats/grid.png")
+	out, err := os.Create(overallStatsFile)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -311,7 +251,7 @@ func getStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 		if err := notification.Send("Current stats: " + stats.Progress(previousStats)); err != nil {
 			log.Println(err.Error())
 		}
-		// if something is wrong, send notif and stop
+		// if something is wrong, send notification and stop
 		if !stats.IsProgressAcceptable(previousStats, conf) {
 			log.Println("Drop in buffer too important, stopping autodl.")
 			// sending notification
@@ -334,7 +274,6 @@ func monitorStats(tracker GazelleTracker) {
 	for {
 		select {
 		case <-period:
-			log.Println("Getting stats...")
 			previousStats = getStats(tracker, previousStats)
 		case <-done:
 			return
