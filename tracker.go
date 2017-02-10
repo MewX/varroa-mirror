@@ -324,7 +324,7 @@ type GazelleUserStats struct {
 			Downloaded    int     `json:"downloaded"`
 			JoinedDate    string  `json:"joinedDate"`
 			LastAccess    string  `json:"lastAccess"`
-			Ratio         string `json:"ratio"`
+			Ratio         string  `json:"ratio"`
 			RequiredRatio float64 `json:"requiredRatio"`
 			Uploaded      int     `json:"uploaded"`
 		} `json:"stats"`

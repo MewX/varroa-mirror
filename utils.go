@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 )
 
-
-
 // StringInSlice checks if a string is in a []string, returns bool.
 func StringInSlice(a string, list []string) bool {
 	for _, b := range list {

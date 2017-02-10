@@ -188,3 +188,10 @@ func (c *Config) load(path string) (err error) {
 	}
 	return
 }
+
+func (c *Config) pushoverConfigured() bool {
+	if conf.pushoverUser != "" && conf.pushoverToken != "" {
+		return true
+	}
+	return false
+}
