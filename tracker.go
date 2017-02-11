@@ -222,7 +222,7 @@ func (s *Stats) IsProgressAcceptable(previous *Stats, conf *Config) bool {
 		return true
 	}
 	_, _, bufferChange, _, _ := s.Diff(previous)
-	if bufferChange > -int64(conf.maxBufferDecreaseByPeriodMB) {
+	if bufferChange > -int64(conf.maxBufferDecreaseByPeriodMB*1024*1024) {
 		return true
 	}
 	return false
