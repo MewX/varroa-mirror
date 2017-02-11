@@ -16,7 +16,7 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-func retrieveGetRequestData(client *http.Client, url string) ([]byte, error) {
+func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	if client == nil {
 		return []byte{}, errors.New("Not logged in")
 	}
@@ -91,13 +91,13 @@ func (t *GazelleTracker) Login(user, password string) error {
 }
 
 func (t *GazelleTracker) get(url string) ([]byte, error) {
-	data, err := retrieveGetRequestData(t.client, url)
+	data, err := callJSONAPI(t.client, url)
 	if err != nil {
 		log.Println(err.Error())
 		// if error, try once again after logging in again
 		if err.Error() == "Gazelle API call unsuccessful, invalid response. Maybe log in again?" || err.Error() == "Not logged in" {
 			if err := t.Login(conf.user, conf.password); err == nil {
-				data, err := retrieveGetRequestData(t.client, url)
+				data, err := callJSONAPI(t.client, url)
 				if err != nil {
 					return nil, err
 				}
