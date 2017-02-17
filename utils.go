@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
-	"math"
 )
 
 // StringInSlice checks if a string is in a []string, returns bool.
@@ -84,7 +84,7 @@ func FileExists(path string) (absolutePath string, err error) {
 }
 
 // CopyFile copies a file from src to dst. If src and dst files exist, and are
-// the same, then return success. Otherise, attempt to create a hard link
+// the same, then return success. Otherwise, attempt to create a hard link
 // between the two files. If that fail, copy the file contents from src to dst.
 func CopyFile(src, dst string) (err error) {
 	sfi, err := os.Stat(src)

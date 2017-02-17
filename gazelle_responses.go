@@ -2,7 +2,7 @@ package main
 
 type GazelleGenericResponse struct {
 	Response interface{} `json:"response"`
-	Status string `json:"status"`
+	Status   string      `json:"status"`
 }
 
 type GazelleIndex struct {
@@ -157,4 +157,3 @@ type GazelleTorrent struct {
 	} `json:"response"`
 	Status string `json:"status"`
 }
-

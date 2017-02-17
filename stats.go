@@ -250,7 +250,7 @@ func getStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 			log.Println(err.Error())
 		}
 		// if something is wrong, send notification and stop
-		if !stats.IsProgressAcceptable(previousStats, conf) {
+		if !stats.IsProgressAcceptable(previousStats, conf.maxBufferDecreaseByPeriodMB) {
 			log.Println("Drop in buffer too important, stopping autodl.")
 			// sending notification
 			if err := notification.Send("Drop in buffer too important, stopping autodl."); err != nil {

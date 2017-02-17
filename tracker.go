@@ -39,7 +39,9 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	}
 	// check success
 	var r GazelleGenericResponse
-	json.Unmarshal(data, &r)
+	if err := json.Unmarshal(data, &r); err != nil {
+		return []byte{}, err
+	}
 	if r.Status != "success" {
 		if r.Status == "" {
 			return []byte{}, errors.New("Gazelle API call unsuccessful, invalid response. Maybe log in again?")
@@ -122,7 +124,9 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 			return nil, err
 		}
 		var i GazelleIndex
-		json.Unmarshal(data, &i)
+		if err := json.Unmarshal(data, &i); err != nil {
+			return nil, err
+		}
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
@@ -131,7 +135,9 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 		return nil, err
 	}
 	var s GazelleUserStats
-	json.Unmarshal(data, &s)
+	if err := json.Unmarshal(data, &s); err != nil {
+		return nil, err
+	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
 		log.Println("Incorrect ratio: " + s.Response.Stats.Ratio)
@@ -156,7 +162,9 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
 		return nil, err
 	}
 	var gt GazelleTorrent
-	json.Unmarshal(data, &gt)
+	if err := json.Unmarshal(data, &gt); err != nil {
+		return nil, err
+	}
 
 	artists := []string{}
 	// for now, using artists, composers, "with" categories
@@ -216,19 +224,20 @@ func (s *Stats) Progress(previous *Stats) string {
 	if previous.Ratio == 0 {
 		return s.String()
 	}
-	dup, ddown, ddbuff, ddwbuff, dratio := s.Diff(previous)
-	return fmt.Sprintf(progress, readableUInt64(s.Up), readableInt64(dup), readableUInt64(s.Down), readableInt64(ddown), readableUInt64(s.Buffer), readableInt64(ddbuff), readableUInt64(s.WarningBuffer), readableInt64(ddwbuff), s.Ratio, dratio)
+	dup, ddown, dbuff, dwbuff, dratio := s.Diff(previous)
+	return fmt.Sprintf(progress, readableUInt64(s.Up), readableInt64(dup), readableUInt64(s.Down), readableInt64(ddown), readableUInt64(s.Buffer), readableInt64(dbuff), readableUInt64(s.WarningBuffer), readableInt64(dwbuff), s.Ratio, dratio)
 }
 
-func (s *Stats) IsProgressAcceptable(previous *Stats, conf *Config) bool {
+func (s *Stats) IsProgressAcceptable(previous *Stats, maxDecrease int) bool {
 	if previous.Ratio == 0 {
 		// first pass
 		return true
 	}
 	_, _, bufferChange, _, _ := s.Diff(previous)
-	if bufferChange > -int64(conf.maxBufferDecreaseByPeriodMB*1024*1024) {
+	if bufferChange > -int64(maxDecrease*1024*1024) {
 		return true
 	}
+	log.Printf("Decrease: %d bytes, only %d allowed. Unacceptable.", bufferChange, maxDecrease*1024*1024)
 	return false
 }
 
