@@ -232,6 +232,7 @@ func getStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 	stats, err := tracker.GetStats()
 	if err != nil {
 		fmt.Println(err.Error())
+		return &Stats{}
 	} else {
 		log.Println(stats.Progress(previousStats))
 		// save to CSV

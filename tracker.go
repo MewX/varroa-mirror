@@ -87,6 +87,10 @@ func (t *GazelleTracker) Login(user, password string) error {
 	if resp.StatusCode != http.StatusOK {
 		return errors.New("Returned status: " + resp.Status)
 	}
+	if resp.Request.URL.String() == t.rootURL+"/login.php" {
+		// if after sending the request we're still redirected to the login page, something went wrong.
+		return errors.New("Failed to log in.")
+	}
 	return nil
 }
 
