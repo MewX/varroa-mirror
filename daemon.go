@@ -31,7 +31,7 @@ var (
 		LogFileName: "log",
 		LogFilePerm: 0640,
 		WorkDir:     "./",
-		Umask:       027,
+		Umask:       0002,
 		Args:        []string{"[irc bot for PTH]"},
 	}
 	conf         = &Config{}
