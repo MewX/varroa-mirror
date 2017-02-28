@@ -168,7 +168,7 @@ func (r *Release) Satisfies(filter Filter) bool {
 	return true
 }
 
-func (r *Release) PassesAdditionalChecks(filter Filter, info *AdditionalInfo) bool {
+func (r *Release) PassesAdditionalChecks(filter Filter, blacklistedUploaders []string, info *AdditionalInfo) bool {
 	r.size = info.size
 	if filter.maxSize != 0 && filter.maxSize < (info.size/(1024*1024)) {
 		log.Println(filter.label + ": Release too big.")
@@ -193,6 +193,10 @@ func (r *Release) PassesAdditionalChecks(filter Filter, info *AdditionalInfo) bo
 			log.Println(filter.label + ": No match for artists")
 			return false
 		}
+	}
+	if StringInSlice(info.uploader, blacklistedUploaders) {
+		log.Println(filter.label + ": Uploader " + info.uploader + " is blacklisted.")
+		return false
 	}
 	return true
 }

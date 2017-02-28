@@ -128,31 +128,31 @@ type GazelleTorrent struct {
 			Year        int    `json:"year"`
 		} `json:"group"`
 		Torrent struct {
-			Description             string      `json:"description"`
-			Encoding                string      `json:"encoding"`
-			FileCount               int         `json:"fileCount"`
-			FileList                string      `json:"fileList"`
-			FilePath                string      `json:"filePath"`
-			Format                  string      `json:"format"`
-			FreeTorrent             bool        `json:"freeTorrent"`
-			HasCue                  bool        `json:"hasCue"`
-			HasLog                  bool        `json:"hasLog"`
-			ID                      int         `json:"id"`
-			Leechers                int         `json:"leechers"`
-			LogScore                int         `json:"logScore"`
-			Media                   string      `json:"media"`
-			RemasterCatalogueNumber string      `json:"remasterCatalogueNumber"`
-			RemasterRecordLabel     string      `json:"remasterRecordLabel"`
-			RemasterTitle           string      `json:"remasterTitle"`
-			RemasterYear            int         `json:"remasterYear"`
-			Remastered              bool        `json:"remastered"`
-			Scene                   bool        `json:"scene"`
-			Seeders                 int         `json:"seeders"`
-			Size                    int         `json:"size"`
-			Snatched                int         `json:"snatched"`
-			Time                    string      `json:"time"`
-			UserID                  int         `json:"userId"`
-			Username                interface{} `json:"username"`
+			Description             string `json:"description"`
+			Encoding                string `json:"encoding"`
+			FileCount               int    `json:"fileCount"`
+			FileList                string `json:"fileList"`
+			FilePath                string `json:"filePath"`
+			Format                  string `json:"format"`
+			FreeTorrent             bool   `json:"freeTorrent"`
+			HasCue                  bool   `json:"hasCue"`
+			HasLog                  bool   `json:"hasLog"`
+			ID                      int    `json:"id"`
+			Leechers                int    `json:"leechers"`
+			LogScore                int    `json:"logScore"`
+			Media                   string `json:"media"`
+			RemasterCatalogueNumber string `json:"remasterCatalogueNumber"`
+			RemasterRecordLabel     string `json:"remasterRecordLabel"`
+			RemasterTitle           string `json:"remasterTitle"`
+			RemasterYear            int    `json:"remasterYear"`
+			Remastered              bool   `json:"remastered"`
+			Scene                   bool   `json:"scene"`
+			Seeders                 int    `json:"seeders"`
+			Size                    int    `json:"size"`
+			Snatched                int    `json:"snatched"`
+			Time                    string `json:"time"`
+			UserID                  int    `json:"userId"`
+			Username                string `json:"username"`
 		} `json:"torrent"`
 	} `json:"response"`
 	Status string `json:"status"`

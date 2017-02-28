@@ -42,7 +42,7 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 					// TODO save info in yaml file somewhere, in torrent dl folder
 				}
 				// else check other criteria
-				if newTorrent.PassesAdditionalChecks(filter, info) {
+				if newTorrent.PassesAdditionalChecks(filter, conf.blacklistedUploaders, info) {
 					log.Println("++ " + filter.label + ": OK for auto-download, moving to watch folder.")
 					if _, err := newTorrent.Download(tracker.client); err != nil {
 						return nil, err

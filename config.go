@@ -43,6 +43,7 @@ type Config struct {
 	statsUpdatePeriod           int
 	maxBufferDecreaseByPeriodMB int
 	defaultDestinationFolder    string
+	blacklistedUploaders        []string
 }
 
 func getStringValues(source map[string]interface{}, key string) []string {
@@ -94,6 +95,7 @@ func (c *Config) load(path string) (err error) {
 	if c.defaultDestinationFolder == "" || !DirectoryExists(c.defaultDestinationFolder) {
 		return errors.New("Default destination folder does not exist")
 	}
+	c.blacklistedUploaders = conf.GetStringSlice("tracker.blacklisted_uploaders")
 	// pushover configuration
 	c.pushoverToken = conf.GetString("pushover.token")
 	c.pushoverUser = conf.GetString("pushover.user")
