@@ -32,7 +32,7 @@ var (
 		LogFilePerm: 0640,
 		WorkDir:     "./",
 		Umask:       0002,
-		Args:        []string{"[irc bot for PTH]"},
+		Args:        []string{"[autosnatcher for your favorite tracker]"},
 	}
 	conf         = &Config{}
 	notification = &Notification{}

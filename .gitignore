@@ -1,5 +1,6 @@
 .idea/
 img/
+watch/
 *.csv
 *.yaml
 *.txt
