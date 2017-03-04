@@ -6,6 +6,10 @@ import (
 	"github.com/gregdel/pushover"
 )
 
+const (
+	errorNotification = "Error while sending pushover notification: "
+)
+
 type Notification struct {
 	client    *pushover.Pushover
 	recipient *pushover.Recipient

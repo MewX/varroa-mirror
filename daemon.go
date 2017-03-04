@@ -18,6 +18,9 @@ const (
 	// PTH only allows 5 API calls every 10s
 	allowedAPICallsByPeriod = 5
 	apiCallsPeriodS         = 10
+
+	errorKillingDaemon = "Error killing running daemon"
+	errorLoadingConfig = "Error loading configuration: "
 )
 
 var (
@@ -110,7 +113,7 @@ func checkSignals() {
 func loadConfiguration(sig os.Signal) error {
 	newConf := &Config{}
 	if err := newConf.load("config.yaml"); err != nil {
-		log.Println(" - Error loading configuration: " + err.Error())
+		log.Println(errorLoadingConfig + err.Error())
 		return err
 	}
 	conf = newConf
@@ -119,7 +122,6 @@ func loadConfiguration(sig os.Signal) error {
 }
 
 func quitDaemon(sig os.Signal) error {
-	log.Println("terminating...")
 	stop <- struct{}{}
 	if sig == syscall.SIGQUIT {
 		<-done
@@ -134,7 +136,7 @@ func killDaemon() {
 	}
 	if d != nil {
 		if err := d.Signal(syscall.SIGTERM); err != nil {
-			log.Fatalf("error killing running daemon: %s\n", err)
+			log.Fatal(errorKillingDaemon + err.Error())
 		}
 		// Ascertain process has exited
 		for {

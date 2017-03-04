@@ -18,6 +18,15 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
+const (
+	unknownTorrentURL = "Unknown torrent URL"
+
+	errorLogIn             = "Error logging in: "
+	errorJSONAPI           = "Error calling JSON API: "
+	errorGET               = "Error calling GET on URL, got HTTP status: "
+	errorUnmarshallingJSON = "Error reading JSON: "
+)
+
 func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	if client == nil {
 		return []byte{}, errors.New("Not logged in")
@@ -33,7 +42,7 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return []byte{}, errors.New("Error getting URL, returned status: " + resp.Status)
+		return []byte{}, errors.New(errorGET + resp.Status)
 	}
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -42,13 +51,13 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	// check success
 	var r GazelleGenericResponse
 	if err := json.Unmarshal(data, &r); err != nil {
-		return []byte{}, err
+		return []byte{}, errors.New(errorUnmarshallingJSON + err.Error())
 	}
 	if r.Status != "success" {
 		if r.Status == "" {
-			return []byte{}, errors.New("Gazelle API call unsuccessful, invalid response. Maybe log in again?")
+			return data, errors.New("Invalid response. Maybe log in again?")
 		}
-		return []byte{}, errors.New("Gazelle API call unsuccessful: " + r.Status)
+		return data, errors.New("Got JSON API status: " + r.Status)
 	}
 	return data, nil
 }
@@ -83,17 +92,17 @@ func (t *GazelleTracker) Login(user, password string) error {
 	t.client = &http.Client{Jar: jar}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		fmt.Println("Error logging in: " + err.Error())
+		fmt.Println(errorLogIn + err.Error())
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("Returned status: " + resp.Status)
+		return errors.New(errorLogIn + "Returned status: " + resp.Status)
 	}
 	if resp.Request.URL.String() == t.rootURL+"/login.php" {
 		// if after sending the request we're still redirected to the login page, something went wrong.
-		return errors.New("Failed to log in.")
+		return errors.New(errorLogIn + "login page returned")
 	}
 	return nil
 }
@@ -101,7 +110,7 @@ func (t *GazelleTracker) Login(user, password string) error {
 func (t *GazelleTracker) get(url string) ([]byte, error) {
 	data, err := callJSONAPI(t.client, url)
 	if err != nil {
-		log.Println(err.Error())
+		log.Println(errorJSONAPI + err.Error())
 		// if error, try once again after logging in again
 		if err.Error() == "Gazelle API call unsuccessful, invalid response. Maybe log in again?" || err.Error() == "Not logged in" {
 			if err := t.Login(conf.user, conf.password); err == nil {
@@ -121,7 +130,7 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 
 func (t *GazelleTracker) Download(r *Release) (string, error) {
 	if r.torrentURL == "" {
-		return "", errors.New("unknown torrent url")
+		return "", errors.New(unknownTorrentURL)
 	}
 	response, err := t.client.Get(r.torrentURL)
 	if err != nil {
@@ -134,7 +143,6 @@ func (t *GazelleTracker) Download(r *Release) (string, error) {
 	}
 	defer file.Close()
 	_, err = io.Copy(file, response.Body)
-	log.Println("++ Downloaded " + r.filename)
 	return r.filename, err
 }
 
@@ -142,22 +150,22 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 	if t.userID == 0 {
 		data, err := t.get(t.rootURL + "/ajax.php?action=index")
 		if err != nil {
-			return nil, err
+			return nil, errors.New(errorJSONAPI + err.Error())
 		}
 		var i GazelleIndex
 		if err := json.Unmarshal(data, &i); err != nil {
-			return nil, err
+			return nil, errors.New(errorUnmarshallingJSON + err.Error())
 		}
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
 	data, err := t.get(t.rootURL + "/ajax.php?action=user&id=" + strconv.Itoa(t.userID))
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errorJSONAPI + err.Error())
 	}
 	var s GazelleUserStats
 	if err := json.Unmarshal(data, &s); err != nil {
-		return nil, err
+		return nil, errors.New(errorUnmarshallingJSON + err.Error())
 	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
@@ -180,11 +188,11 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
 	data, err := t.get(t.rootURL + "/ajax.php?action=torrent&id=" + id)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errorJSONAPI + err.Error())
 	}
 	var gt GazelleTorrent
 	if err := json.Unmarshal(data, &gt); err != nil {
-		return nil, err
+		return nil, errors.New(errorUnmarshallingJSON + err.Error())
 	}
 
 	artists := []string{}

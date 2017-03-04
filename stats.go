@@ -14,7 +14,16 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
+)
+
+const (
+	errorGettingStats        = "Error getting stats: "
+	errorWritingCSV          = "Error writing stats to CSV file: "
+	errorGeneratingGraphs    = "Error generating graphs: "
+	errorNotEnoughDataPoints = "Not enough data points (yet) to generate graph"
+	errorBufferDrop          = "Buffer drop too important, varroa will shutdown"
 )
 
 var (
@@ -159,6 +168,9 @@ func generateGraph() error {
 		}
 		ratios = append(ratios, ratio)
 	}
+	if len(timestamps) < 2 {
+		return errors.New(errorNotEnoughDataPoints)
+	}
 
 	commonStyle := chart.Style{
 		Show:        true,
@@ -228,10 +240,10 @@ func addStatsToCSV(filename string, stats []string) error {
 	return nil
 }
 
-func getStats(tracker GazelleTracker, previousStats *Stats) *Stats {
+func manageStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 	stats, err := tracker.GetStats()
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(errorGettingStats + err.Error())
 		return &Stats{}
 	} else {
 		log.Println(stats.Progress(previousStats))
@@ -239,22 +251,22 @@ func getStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 		timestamp := time.Now().Unix()
 		newStats := []string{fmt.Sprintf("%d", timestamp), strconv.FormatUint(stats.Up, 10), strconv.FormatUint(stats.Down, 10), strconv.FormatFloat(stats.Ratio, 'f', -1, 64), strconv.FormatUint(stats.Buffer, 10), strconv.FormatUint(stats.WarningBuffer, 10)}
 		if err := addStatsToCSV(conf.statsFile, newStats); err != nil {
-			log.Println(err.Error())
+			log.Println(errorWritingCSV + err.Error())
 		}
 		// generate graphs
 		if err := generateGraph(); err != nil {
-			log.Println(err.Error())
+			log.Println(errorGeneratingGraphs + err.Error())
 		}
 		// send notification
 		if err := notification.Send("Current stats: " + stats.Progress(previousStats)); err != nil {
-			log.Println(err.Error())
+			log.Println(errorNotification + err.Error())
 		}
 		// if something is wrong, send notification and stop
 		if !stats.IsProgressAcceptable(previousStats, conf.maxBufferDecreaseByPeriodMB) {
-			log.Println("Drop in buffer too important, stopping autodl.")
+			log.Println(errorBufferDrop)
 			// sending notification
-			if err := notification.Send("Drop in buffer too important, stopping autodl."); err != nil {
-				log.Println(err.Error())
+			if err := notification.Send(errorBufferDrop); err != nil {
+				log.Println(errorNotification + err.Error())
 			}
 			// stopping things
 			killDaemon()
@@ -266,13 +278,13 @@ func getStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 func monitorStats(tracker GazelleTracker) {
 	// initial stats
 	previousStats := &Stats{}
-	previousStats = getStats(tracker, previousStats)
+	previousStats = manageStats(tracker, previousStats)
 	// periodic check
 	period := time.NewTicker(time.Hour * time.Duration(conf.statsUpdatePeriod)).C
 	for {
 		select {
 		case <-period:
-			previousStats = getStats(tracker, previousStats)
+			previousStats = manageStats(tracker, previousStats)
 		case <-done:
 			return
 		case <-stop:

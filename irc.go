@@ -12,7 +12,16 @@ import (
 	"github.com/thoj/go-ircevent"
 )
 
-const announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3) / (Lossless|24bit Lossless|V0 \(VBR\)|320) /( (Log) /)?( (Cue) /)? ([\w]*) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
+const (
+	announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3) / (Lossless|24bit Lossless|V0 \(VBR\)|320) /( (Log) /)?( (Cue) /)? ([\w]*) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
+
+	errorDealingWithAnnounce    = "Error dealing with announced torrent: "
+	errorConnectingToIRC        = "Error connecting to IRC: "
+	errorCouldNotGetTorrentInfo = "Error retreiving torrent info from tracker"
+	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder: "
+	errorDownloadingTorrent     = "Error downloading torrent: "
+	errorRemovingTempFile       = "Error removing temporary file %s"
+)
 
 func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error) {
 	// getting information
@@ -35,7 +44,7 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 				if !downloadedInfo {
 					info, err = tracker.GetTorrentInfo(newTorrent.torrentID)
 					if err != nil {
-						return nil, errors.New("Could not retrieve torrent info from tracker")
+						return nil, errors.New(errorCouldNotGetTorrentInfo)
 					}
 					downloadedInfo = true
 					log.Println(info)
@@ -43,9 +52,9 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 				}
 				// else check other criteria
 				if newTorrent.PassesAdditionalChecks(filter, conf.blacklistedUploaders, info) {
-					log.Println("++ " + filter.label + ": OK for auto-download, moving to watch folder.")
+					log.Println("++ " + filter.label + ": filter triggered, autosnatching and moving to watch folder.")
 					if _, err := tracker.Download(newTorrent); err != nil {
-						return nil, err
+						return nil, errors.New(errorDownloadingTorrent + err.Error())
 					}
 					downloadedTorrent = true
 					// move to relevant subfolder
@@ -54,11 +63,11 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 						destination = filter.destinationFolder
 					}
 					if err := CopyFile(newTorrent.filename, filepath.Join(destination, newTorrent.filename)); err != nil {
-						log.Println("Err: could not move to destination folder!")
+						return nil, errors.New(errorCouldNotMoveTorrent + err.Error())
 					}
 					// send notification
 					if err := notification.Send(filter.label + ": Snatched " + newTorrent.ShortString()); err != nil {
-						log.Println(err.Error())
+						log.Println(errorNotification + err.Error())
 					}
 					break
 				}
@@ -67,7 +76,7 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 		// if torrent was downloaded, remove temp copy
 		if downloadedTorrent {
 			if err := os.Remove(newTorrent.filename); err != nil {
-				log.Println("Err: could not remove temporary file!")
+				log.Println(fmt.Sprintf(errorRemovingTempFile, newTorrent.filename))
 			}
 			return newTorrent, nil
 		}
@@ -91,15 +100,14 @@ func ircHandler(tracker GazelleTracker) {
 			announced := e.Message()
 			log.Println("++ Announced: " + announced)
 			if _, err := AnalyzeAnnounce(announced, tracker); err != nil {
-				log.Println("ERR: " + err.Error())
+				log.Println(errorDealingWithAnnounce + err.Error())
 				return
 			}
 		}
 	})
-
 	err := IRCClient.Connect(conf.ircServer)
 	if err != nil {
-		fmt.Printf("Err %s", err)
+		log.Println(errorConnectingToIRC + err.Error())
 		return
 	}
 	IRCClient.Loop()
