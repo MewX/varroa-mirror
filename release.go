@@ -3,10 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -87,25 +84,6 @@ func (r *Release) String() string {
 
 func (r *Release) ShortString() string {
 	return fmt.Sprintf(TorrentNotification, r.artist, r.title, r.year, r.releaseType, r.format, r.quality, r.source, humanize.IBytes(r.size))
-}
-
-func (r *Release) Download(hc *http.Client) (string, error) {
-	if r.torrentURL == "" {
-		return "", errors.New("unknown torrent url")
-	}
-	response, err := hc.Get(r.torrentURL)
-	if err != nil {
-		return "", err
-	}
-	defer response.Body.Close()
-	file, err := os.Create(r.filename)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	_, err = io.Copy(file, response.Body)
-	log.Println("++ Downloaded " + r.filename)
-	return r.filename, err
 }
 
 func (r *Release) Satisfies(filter Filter) bool {

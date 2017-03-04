@@ -44,7 +44,7 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 				// else check other criteria
 				if newTorrent.PassesAdditionalChecks(filter, conf.blacklistedUploaders, info) {
 					log.Println("++ " + filter.label + ": OK for auto-download, moving to watch folder.")
-					if _, err := newTorrent.Download(tracker.client); err != nil {
+					if _, err := tracker.Download(newTorrent); err != nil {
 						return nil, err
 					}
 					downloadedTorrent = true

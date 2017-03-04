@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -115,6 +117,25 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 		return nil, err
 	}
 	return data, err
+}
+
+func (t *GazelleTracker) Download(r *Release) (string, error) {
+	if r.torrentURL == "" {
+		return "", errors.New("unknown torrent url")
+	}
+	response, err := t.client.Get(r.torrentURL)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	file, err := os.Create(r.filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	_, err = io.Copy(file, response.Body)
+	log.Println("++ Downloaded " + r.filename)
+	return r.filename, err
 }
 
 func (t *GazelleTracker) GetStats() (*Stats, error) {
