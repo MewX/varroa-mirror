@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -49,7 +48,7 @@ type Release struct {
 	folder      string
 }
 
-func NewTorrent(parts []string) (*Release, error) {
+func NewRelease(parts []string) (*Release, error) {
 	if len(parts) != 17 {
 		return nil, errors.New("Incomplete announce information")
 	}
@@ -88,44 +87,44 @@ func (r *Release) ShortString() string {
 
 func (r *Release) Satisfies(filter Filter) bool {
 	if len(filter.year) != 0 && !IntInSlice(r.year, filter.year) {
-		log.Println(filter.label + ": Wrong year")
+		logThis(filter.label+": Wrong year", VERBOSE)
 		return false
 	}
 	if len(filter.format) != 0 && !StringInSlice(r.format, filter.format) {
-		log.Println(filter.label + ": Wrong format")
+		logThis(filter.label+": Wrong format", VERBOSE)
 		return false
 	}
 	if r.artist != "Various Artists" && len(filter.artist) != 0 && !StringInSlice(r.artist, filter.artist) {
-		log.Println(filter.label + ": Wrong artist")
+		logThis(filter.label+": Wrong artist", VERBOSE)
 		return false
 	}
 	if len(filter.source) != 0 && !StringInSlice(r.source, filter.source) {
-		log.Println(filter.label + ": Wrong source")
+		logThis(filter.label+": Wrong source", VERBOSE)
 		return false
 	}
 	if len(filter.quality) != 0 && !StringInSlice(r.quality, filter.quality) {
-		log.Println(filter.label + ": Wrong quality")
+		logThis(filter.label+": Wrong quality", VERBOSE)
 		return false
 	}
 	if r.source == "CD" && filter.hasLog && !r.hasLog {
-		log.Println(filter.label + ": Release has no log")
+		logThis(filter.label+": Release has no log", VERBOSE)
 		return false
 	}
 	if r.source == "CD" && filter.hasCue && !r.hasCue {
-		log.Println(filter.label + ": Release has no cue")
+		logThis(filter.label+": Release has no cue", VERBOSE)
 		return false
 	}
 	if !filter.allowScene && r.isScene {
-		log.Println(filter.label + ": Scene release not allowed")
+		logThis(filter.label+": Scene release not allowed", VERBOSE)
 		return false
 	}
 	if len(filter.releaseType) != 0 && !StringInSlice(r.releaseType, filter.releaseType) {
-		log.Println(filter.label + ": Wrong release type")
+		logThis(filter.label+": Wrong release type", VERBOSE)
 		return false
 	}
 	for _, excluded := range filter.excludedTags {
 		if StringInSlice(excluded, r.tags) {
-			log.Println(filter.label + ": Has excluded tag")
+			logThis(filter.label+": Has excluded tag", VERBOSE)
 			return false
 		}
 	}
@@ -139,25 +138,25 @@ func (r *Release) Satisfies(filter Filter) bool {
 			}
 		}
 		if !atLeastOneIncludedTag {
-			log.Println(filter.label + ": Does not have any wanted tag")
+			logThis(filter.label+": Does not have any wanted tag", VERBOSE)
 			return false
 		}
 	}
 	return true
 }
 
-func (r *Release) PassesAdditionalChecks(filter Filter, blacklistedUploaders []string, info *AdditionalInfo) bool {
+func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders []string, info *AdditionalInfo) bool {
 	r.size = info.size
 	if filter.maxSize != 0 && filter.maxSize < (info.size/(1024*1024)) {
-		log.Println(filter.label + ": Release too big.")
+		logThis(filter.label+": Release too big.", VERBOSE)
 		return false
 	}
 	if r.source == "CD" && filter.logScore != 0 && filter.logScore != info.logScore {
-		log.Println(filter.label + ": Incorrect log score")
+		logThis(filter.label+": Incorrect log score", VERBOSE)
 		return false
 	}
 	if len(filter.recordLabel) != 0 && !StringInSlice(info.label, filter.recordLabel) {
-		log.Println(filter.label + ": No match for record label")
+		logThis(filter.label+": No match for record label", VERBOSE)
 		return false
 	}
 	if r.artist == "Various Artists" && len(filter.artist) != 0 {
@@ -168,12 +167,12 @@ func (r *Release) PassesAdditionalChecks(filter Filter, blacklistedUploaders []s
 			}
 		}
 		if !foundAtLeastOneArtist {
-			log.Println(filter.label + ": No match for artists")
+			logThis(filter.label+": No match for artists", VERBOSE)
 			return false
 		}
 	}
 	if StringInSlice(info.uploader, blacklistedUploaders) {
-		log.Println(filter.label + ": Uploader " + info.uploader + " is blacklisted.")
+		logThis(filter.label+": Uploader "+info.uploader+" is blacklisted.", VERBOSE)
 		return false
 	}
 	return true

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"time"
@@ -33,30 +32,30 @@ func addStatsToCSV(filename string, stats []string) error {
 func manageStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 	stats, err := tracker.GetStats()
 	if err != nil {
-		log.Println(errorGettingStats + err.Error())
+		logThis(errorGettingStats+err.Error(), NORMAL)
 		return &Stats{}
 	} else {
-		log.Println(stats.Progress(previousStats))
+		logThis(stats.Progress(previousStats), NORMAL)
 		// save to CSV
 		timestamp := time.Now().Unix()
 		newStats := []string{fmt.Sprintf("%d", timestamp), strconv.FormatUint(stats.Up, 10), strconv.FormatUint(stats.Down, 10), strconv.FormatFloat(stats.Ratio, 'f', -1, 64), strconv.FormatUint(stats.Buffer, 10), strconv.FormatUint(stats.WarningBuffer, 10)}
 		if err := addStatsToCSV(conf.statsFile, newStats); err != nil {
-			log.Println(errorWritingCSV + err.Error())
+			logThis(errorWritingCSV+err.Error(), NORMAL)
 		}
 		// generate graphs
 		if err := generateGraph(); err != nil {
-			log.Println(errorGeneratingGraphs + err.Error())
+			logThis(errorGeneratingGraphs+err.Error(), NORMAL)
 		}
 		// send notification
 		if err := notification.Send("Current stats: " + stats.Progress(previousStats)); err != nil {
-			log.Println(errorNotification + err.Error())
+			logThis(errorNotification+err.Error(), VERBOSE)
 		}
 		// if something is wrong, send notification and stop
 		if !stats.IsProgressAcceptable(previousStats, conf.maxBufferDecreaseByPeriodMB) {
-			log.Println(errorBufferDrop)
+			logThis(errorBufferDrop, NORMAL)
 			// sending notification
 			if err := notification.Send(errorBufferDrop); err != nil {
-				log.Println(errorNotification + err.Error())
+				logThis(errorNotification+err.Error(), VERBOSE)
 			}
 			// stopping things
 			killDaemon()

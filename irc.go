@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +20,8 @@ const (
 	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder: "
 	errorDownloadingTorrent     = "Error downloading torrent: "
 	errorRemovingTempFile       = "Error removing temporary file %s"
+
+
 )
 
 func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error) {
@@ -28,32 +29,32 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 	r := regexp.MustCompile(announcePattern)
 	hits := r.FindAllStringSubmatch(announced, -1)
 	if len(hits) != 0 {
-		newTorrent, err := NewTorrent(hits[0])
+		release, err := NewRelease(hits[0])
 		if err != nil {
 			return nil, err
 		}
-		//log.Println(newTorrent)
+		logThis(release.String(), VERBOSEST)
 
 		// if satisfies a filter, download
 		var downloadedInfo bool
 		var downloadedTorrent bool
 		var info *AdditionalInfo
 		for _, filter := range conf.filters {
-			if newTorrent.Satisfies(filter) {
+			if release.Satisfies(filter) {
 				// get torrent info!
 				if !downloadedInfo {
-					info, err = tracker.GetTorrentInfo(newTorrent.torrentID)
+					info, err = tracker.GetTorrentInfo(release.torrentID)
 					if err != nil {
 						return nil, errors.New(errorCouldNotGetTorrentInfo)
 					}
 					downloadedInfo = true
-					log.Println(info)
+					logThis(info.String(), VERBOSE)
 					// TODO save info in yaml file somewhere, in torrent dl folder
 				}
 				// else check other criteria
-				if newTorrent.PassesAdditionalChecks(filter, conf.blacklistedUploaders, info) {
-					log.Println("++ " + filter.label + ": filter triggered, autosnatching and moving to watch folder.")
-					if _, err := tracker.Download(newTorrent); err != nil {
+				if release.HasCompatibleTrackerInfo(filter, conf.blacklistedUploaders, info) {
+					logThis(" -> " + release.ShortString() + " triggered filter " + filter.label + ", snatching.", NORMAL)
+					if _, err := tracker.Download(release); err != nil {
 						return nil, errors.New(errorDownloadingTorrent + err.Error())
 					}
 					downloadedTorrent = true
@@ -62,12 +63,12 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 					if filter.destinationFolder != "" {
 						destination = filter.destinationFolder
 					}
-					if err := CopyFile(newTorrent.filename, filepath.Join(destination, newTorrent.filename)); err != nil {
+					if err := CopyFile(release.filename, filepath.Join(destination, release.filename)); err != nil {
 						return nil, errors.New(errorCouldNotMoveTorrent + err.Error())
 					}
 					// send notification
-					if err := notification.Send(filter.label + ": Snatched " + newTorrent.ShortString()); err != nil {
-						log.Println(errorNotification + err.Error())
+					if err := notification.Send(filter.label + ": Snatched " + release.ShortString()); err != nil {
+						logThis(errorNotification+err.Error(), VERBOSE)
 					}
 					break
 				}
@@ -75,12 +76,12 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 		}
 		// if torrent was downloaded, remove temp copy
 		if downloadedTorrent {
-			if err := os.Remove(newTorrent.filename); err != nil {
-				log.Println(fmt.Sprintf(errorRemovingTempFile, newTorrent.filename))
+			if err := os.Remove(release.filename); err != nil {
+				logThis(fmt.Sprintf(errorRemovingTempFile, release.filename), VERBOSE)
 			}
-			return newTorrent, nil
+			return release, nil
 		}
-		log.Println("++ No filter is interested in that release. Ignoring.")
+		logThis("No filter is interested in that release. Ignoring.", VERBOSE)
 		return nil, nil
 
 	}
@@ -98,16 +99,16 @@ func ircHandler(tracker GazelleTracker) {
 	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
 		if e.Nick == conf.announcer {
 			announced := e.Message()
-			log.Println("++ Announced: " + announced)
+			logThis("++ Announced: "+announced, VERBOSE)
 			if _, err := AnalyzeAnnounce(announced, tracker); err != nil {
-				log.Println(errorDealingWithAnnounce + err.Error())
+				logThis(errorDealingWithAnnounce+err.Error(), VERBOSE)
 				return
 			}
 		}
 	})
 	err := IRCClient.Connect(conf.ircServer)
 	if err != nil {
-		log.Println(errorConnectingToIRC + err.Error())
+		logThis(errorConnectingToIRC+err.Error(), NORMAL)
 		return
 	}
 	IRCClient.Loop()

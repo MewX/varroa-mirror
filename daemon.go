@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"syscall"
 	"time"
@@ -15,12 +14,16 @@ import (
 //------------------
 
 const (
-	// PTH only allows 5 API calls every 10s
+	// RED only allows 5 API calls every 10s
 	allowedAPICallsByPeriod = 5
 	apiCallsPeriodS         = 10
 
-	errorKillingDaemon = "Error killing running daemon"
-	errorLoadingConfig = "Error loading configuration: "
+	errorKillingDaemon        = "Error killing running daemon"
+	errorLoadingConfig        = "Error loading configuration: "
+	errorServingSignals       = "Error serving signals: "
+	errorSendingSignal        = "Error sending signal to the daemon: "
+	errorGettingDaemonContext = "Error launching daemon: "
+	errorCheckDaemonExited    = "Error checking daemon exited: "
 )
 
 var (
@@ -57,21 +60,23 @@ func main() {
 	if len(daemon.ActiveFlags()) > 0 {
 		d, err := daemonContext.Search()
 		if err != nil {
-			log.Fatalln("Unable send signal to the daemon:", err)
+			logThis(errorSendingSignal+err.Error(), NORMAL)
+			return
 		}
 		daemon.SendCommands(d)
 		return
 	}
 	d, err := daemonContext.Reborn()
 	if err != nil {
-		log.Fatalln(err)
+		logThis(errorGettingDaemonContext+err.Error(), NORMAL)
+		return
 	}
 	if d != nil {
 		return
 	}
 	defer daemonContext.Release()
 
-	log.Println("+ varroa musica started")
+	logThis("+ varroa musica started", NORMAL)
 	// load configuration
 	if err := loadConfiguration(nil); err != nil {
 		return
@@ -87,7 +92,7 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
-	log.Println(" - Logged in tracker.")
+	logThis(" - Logged in tracker.", NORMAL)
 
 	go checkSignals()
 	go ircHandler(tracker)
@@ -95,9 +100,9 @@ func main() {
 	go apiCallRateLimiter()
 
 	if err := daemon.ServeSignals(); err != nil {
-		log.Println("Error:", err)
+		logThis(errorServingSignals+err.Error(), NORMAL)
 	}
-	log.Println("+ varroa musica stopped")
+	logThis("+ varroa musica stopped", NORMAL)
 }
 
 func checkSignals() {
@@ -113,15 +118,16 @@ func checkSignals() {
 func loadConfiguration(sig os.Signal) error {
 	newConf := &Config{}
 	if err := newConf.load("config.yaml"); err != nil {
-		log.Println(errorLoadingConfig + err.Error())
+		logThis(errorLoadingConfig+err.Error(), NORMAL)
 		return err
 	}
 	conf = newConf
-	log.Println(" - Configuration reloaded.")
+	logThis(" - Configuration reloaded.", NORMAL)
 	return nil
 }
 
 func quitDaemon(sig os.Signal) error {
+	logThis("+ terminating", VERBOSE)
 	stop <- struct{}{}
 	if sig == syscall.SIGQUIT {
 		<-done
@@ -132,11 +138,12 @@ func quitDaemon(sig os.Signal) error {
 func killDaemon() {
 	d, err := daemonContext.Search()
 	if err != nil {
-		log.Fatalln("Unable send signal to the daemon:", err)
+		logThis(errorSendingSignal, NORMAL)
 	}
 	if d != nil {
 		if err := d.Signal(syscall.SIGTERM); err != nil {
-			log.Fatal(errorKillingDaemon + err.Error())
+			logThis(errorKillingDaemon+err.Error(), NORMAL)
+			return
 		}
 		// Ascertain process has exited
 		for {
@@ -144,7 +151,8 @@ func killDaemon() {
 				if err.Error() == "os: process already finished" {
 					break
 				}
-				log.Fatalf("error checking daemon exited: %s\n", err)
+				logThis(errorCheckDaemonExited+err.Error(), NORMAL)
+				return
 			}
 			time.Sleep(100 * time.Millisecond)
 		}

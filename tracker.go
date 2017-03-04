@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -86,13 +85,13 @@ func (t *GazelleTracker) Login(user, password string) error {
 	}
 	jar, err := cookiejar.New(&options)
 	if err != nil {
-		log.Fatal(err)
+		logThis(errorLogIn+err.Error(), NORMAL)
 		return err
 	}
 	t.client = &http.Client{Jar: jar}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		fmt.Println(errorLogIn + err.Error())
+		logThis(errorLogIn+err.Error(), NORMAL)
 		return err
 	}
 	defer resp.Body.Close()
@@ -110,7 +109,7 @@ func (t *GazelleTracker) Login(user, password string) error {
 func (t *GazelleTracker) get(url string) ([]byte, error) {
 	data, err := callJSONAPI(t.client, url)
 	if err != nil {
-		log.Println(errorJSONAPI + err.Error())
+		logThis(errorJSONAPI+err.Error(), NORMAL)
 		// if error, try once again after logging in again
 		if err.Error() == "Gazelle API call unsuccessful, invalid response. Maybe log in again?" || err.Error() == "Not logged in" {
 			if err := t.Login(conf.user, conf.password); err == nil {
@@ -169,7 +168,7 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
-		log.Println("Incorrect ratio: " + s.Response.Stats.Ratio)
+		logThis("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
 		ratio = 0.0
 	}
 	// GazelleIndex to Stats
@@ -267,7 +266,7 @@ func (s *Stats) IsProgressAcceptable(previous *Stats, maxDecrease int) bool {
 	if bufferChange > -int64(maxDecrease*1024*1024) {
 		return true
 	}
-	log.Printf("Decrease: %d bytes, only %d allowed. Unacceptable.", bufferChange, maxDecrease*1024*1024)
+	logThis(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.\n", bufferChange, maxDecrease*1024*1024), VERBOSE)
 	return false
 }
 

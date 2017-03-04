@@ -4,10 +4,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
 )
+
+const (
+	NORMAL = iota
+	VERBOSE
+	VERBOSEST
+)
+
+func logThis(msg string, level int) {
+	if conf.logLevel >= level {
+		log.Print(msg)
+	}
+}
 
 // StringInSlice checks if a string is in a []string, returns bool.
 func StringInSlice(a string, list []string) bool {
