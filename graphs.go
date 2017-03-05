@@ -18,12 +18,20 @@ import (
 )
 
 var (
-	statsDir          = "stats"
-	uploadStatsFile   = filepath.Join(statsDir, "up.png")
-	downloadStatsFile = filepath.Join(statsDir, "down.png")
-	ratioStatsFile    = filepath.Join(statsDir, "ratio.png")
-	bufferStatsFile   = filepath.Join(statsDir, "buffer.png")
-	overallStatsFile  = filepath.Join(statsDir, "stats.png")
+	statsDir                 = "stats"
+	uploadStatsFile          = filepath.Join(statsDir, "up.png")
+	downloadStatsFile        = filepath.Join(statsDir, "down.png")
+	ratioStatsFile           = filepath.Join(statsDir, "ratio.png")
+	bufferStatsFile          = filepath.Join(statsDir, "buffer.png")
+	overallStatsFile         = filepath.Join(statsDir, "stats.png")
+	numberSnatchedPerDayFile = filepath.Join(statsDir, "snatches_per_day.png")
+	sizeSnatchedPerDayFile   = filepath.Join(statsDir, "size_snatched_per_day.png")
+
+	commonStyle = chart.Style{
+		Show:        true,
+		StrokeColor: chart.ColorBlue,
+		FillColor:   chart.ColorBlue.WithAlpha(25),
+	}
 )
 
 func sliceByteToGigabyte(in []float64) []float64 {
@@ -110,7 +118,11 @@ func generateGraph() error {
 	if !DirectoryExists(statsDir) {
 		os.MkdirAll(statsDir, 0777)
 	}
-
+	// generate history stats graphs if necessary
+	if err := history.GenerateGraphs(); err != nil {
+		return err
+	}
+	// generate tracker stats graphs
 	f, err := os.OpenFile(conf.statsFile, os.O_RDONLY, 0644)
 	if err != nil {
 		return err
@@ -163,11 +175,6 @@ func generateGraph() error {
 		return errors.New(errorNotEnoughDataPoints)
 	}
 
-	commonStyle := chart.Style{
-		Show:        true,
-		StrokeColor: chart.ColorBlue,
-		FillColor:   chart.ColorBlue.WithAlpha(25),
-	}
 	upSeries := chart.TimeSeries{
 		Style:   commonStyle,
 		Name:    "Upload",

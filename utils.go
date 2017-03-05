@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const (
@@ -20,6 +21,14 @@ func logThis(msg string, level int) {
 	if conf.logLevel >= level {
 		log.Print(msg)
 	}
+}
+
+func startOfDay(t time.Time) time.Time {
+	return t.Truncate(24*time.Hour)
+}
+
+func nextDay(t time.Time) time.Time {
+	return t.Add(time.Duration(24)*time.Hour)
 }
 
 // StringInSlice checks if a string is in a []string, returns bool.
