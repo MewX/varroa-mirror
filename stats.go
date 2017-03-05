@@ -21,6 +21,7 @@ func addStatsToCSV(filename string, stats []string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	w := csv.NewWriter(f)
 	if err := w.Write(stats); err != nil {
 		return err

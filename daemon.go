@@ -23,6 +23,8 @@ const (
 	errorSendingSignal        = "Error sending signal to the daemon: "
 	errorGettingDaemonContext = "Error launching daemon: "
 	errorCheckDaemonExited    = "Error checking daemon exited: "
+
+	historyFile = "history.csv"
 )
 
 var (
@@ -95,7 +97,7 @@ func main() {
 	}
 	logThis(" - Logged in tracker.", NORMAL)
 	// load history
-	if err := history.Load("history.csv"); err != nil {
+	if err := history.Load(historyFile); err != nil {
 		logThis(err.Error(), NORMAL)
 	}
 
