@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"syscall"
 	"time"
@@ -42,6 +41,7 @@ var (
 	}
 	conf         = &Config{}
 	notification = &Notification{}
+	history      = &History{}
 
 	// daemon control channels
 	stop = make(chan struct{})
@@ -79,6 +79,7 @@ func main() {
 	logThis("+ varroa musica started", NORMAL)
 	// load configuration
 	if err := loadConfiguration(nil); err != nil {
+		logThis(err.Error(), NORMAL)
 		return
 	}
 	// init notifications with pushover
@@ -89,11 +90,16 @@ func main() {
 	// log in tracker
 	tracker := GazelleTracker{rootURL: conf.url}
 	if err := tracker.Login(conf.user, conf.password); err != nil {
-		fmt.Println(err.Error())
+		logThis(err.Error(), NORMAL)
 		return
 	}
 	logThis(" - Logged in tracker.", NORMAL)
+	// load history
+	if err := history.Load("history.csv"); err != nil {
+		logThis(err.Error(), NORMAL)
+	}
 
+	// launch goroutines
 	go checkSignals()
 	go ircHandler(tracker)
 	go monitorStats(tracker)

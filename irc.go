@@ -21,7 +21,7 @@ const (
 	errorDownloadingTorrent     = "Error downloading torrent: "
 	errorRemovingTempFile       = "Error removing temporary file %s"
 
-
+	notSnatchingDuplicate = "Similar release already downloaded, and duplicates are not allowed"
 )
 
 func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error) {
@@ -40,6 +40,12 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 		var downloadedTorrent bool
 		var info *AdditionalInfo
 		for _, filter := range conf.filters {
+			// checking if duplicate
+			if !filter.allowDuplicate && history.HasDupe(release) {
+				logThis(notSnatchingDuplicate, VERBOSE)
+				continue
+			}
+			// checking if a filter is triggered
 			if release.Satisfies(filter) {
 				// get torrent info!
 				if !downloadedInfo {
@@ -49,7 +55,6 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 					}
 					downloadedInfo = true
 					logThis(info.String(), VERBOSE)
-					// TODO save info in yaml file somewhere, in torrent dl folder
 				}
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, conf.blacklistedUploaders, info) {
@@ -58,7 +63,7 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 						return nil, errors.New(errorDownloadingTorrent + err.Error())
 					}
 					downloadedTorrent = true
-					// move to relevant subfolder
+					// move to relevant watch directory
 					destination := conf.defaultDestinationFolder
 					if filter.destinationFolder != "" {
 						destination = filter.destinationFolder

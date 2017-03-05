@@ -23,6 +23,7 @@ type Filter struct {
 	hasLog            bool
 	hasCue            bool
 	allowScene        bool
+	allowDuplicate bool
 }
 
 type Config struct {
@@ -143,6 +144,9 @@ func (c *Config) load(path string) (err error) {
 		}
 		if allowScene, ok := tinfo["allow_scene"]; ok {
 			t.allowScene = allowScene.(bool)
+		}
+		if allowDuplicate, ok := tinfo["allow_duplicate"]; ok {
+			t.allowDuplicate = allowDuplicate.(bool)
 		}
 		c.filters = append(c.filters, t)
 	}
