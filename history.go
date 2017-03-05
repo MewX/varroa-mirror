@@ -163,12 +163,22 @@ func (h *History) GenerateGraphs() error {
 	}
 
 	// generate graphs
-	if err := writeGraph(xAxis, sizeSnatchedSeries, "Size snatched (Gb)", sizeSnatchedPerDayFile); err != nil {
+	if err := writeGraph(xAxis, sizeSnatchedSeries, "Size snatched (Gb) per day", sizeSnatchedPerDayFile); err != nil {
 		return err
 	}
-	if err := writeGraph(xAxis, numberSnatchedSeries, "Number of snatches", numberSnatchedPerDayFile); err != nil {
+	if err := writeGraph(xAxis, numberSnatchedSeries, "Number of snatches per day", numberSnatchedPerDayFile); err != nil {
 		return err
 	}
+
+	// generate pie chart
+	filterHits := map[string]float64{}
+	for _, r := range h.Records {
+		filterHits[r[1]] += 1
+	}
+	if err := writePie(filterHits, "Total snatches by filter", totalSnatchesByFilterFile); err != nil {
+		return err
+	}
+
 	// keep total number of snatches as reference for later
 	h.LastGenerated = len(h.Releases)
 	return nil

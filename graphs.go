@@ -18,14 +18,15 @@ import (
 )
 
 var (
-	statsDir                 = "stats"
-	uploadStatsFile          = filepath.Join(statsDir, "up.png")
-	downloadStatsFile        = filepath.Join(statsDir, "down.png")
-	ratioStatsFile           = filepath.Join(statsDir, "ratio.png")
-	bufferStatsFile          = filepath.Join(statsDir, "buffer.png")
-	overallStatsFile         = filepath.Join(statsDir, "stats.png")
-	numberSnatchedPerDayFile = filepath.Join(statsDir, "snatches_per_day.png")
-	sizeSnatchedPerDayFile   = filepath.Join(statsDir, "size_snatched_per_day.png")
+	statsDir                  = "stats"
+	uploadStatsFile           = filepath.Join(statsDir, "up.png")
+	downloadStatsFile         = filepath.Join(statsDir, "down.png")
+	ratioStatsFile            = filepath.Join(statsDir, "ratio.png")
+	bufferStatsFile           = filepath.Join(statsDir, "buffer.png")
+	overallStatsFile          = filepath.Join(statsDir, "stats.png")
+	numberSnatchedPerDayFile  = filepath.Join(statsDir, "snatches_per_day.png")
+	sizeSnatchedPerDayFile    = filepath.Join(statsDir, "size_snatched_per_day.png")
+	totalSnatchesByFilterFile = filepath.Join(statsDir, "total_snatched_by_filter.png")
 
 	commonStyle = chart.Style{
 		Show:        true,
@@ -40,6 +41,30 @@ func sliceByteToGigabyte(in []float64) []float64 {
 		out[i] = v / (1024 * 1024 * 1024)
 	}
 	return out
+}
+
+func writePie(values map[string]float64, title, filename string) error {
+	// map to []chart.Value
+	pieSlices := []chart.Value{}
+	for k, v := range values {
+		pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
+	}
+	// pie chart
+	pie := chart.PieChart{
+		Title: title,
+		TitleStyle: chart.Style{
+			Show:      true,
+			FontColor: chart.ColorBlack,
+			FontSize:  chart.DefaultTitleFontSize,
+		},
+		Values: pieSlices,
+	}
+	// generate image
+	buffer := bytes.NewBuffer([]byte{})
+	if err := pie.Render(chart.PNG, buffer); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filename, buffer.Bytes(), 0644)
 }
 
 func writeGraph(xAxis chart.XAxis, series chart.Series, axisLabel, filename string) error {
