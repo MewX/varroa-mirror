@@ -21,14 +21,16 @@ const (
 	unknownTorrentURL = "Unknown torrent URL"
 
 	errorLogIn             = "Error logging in: "
+	errorNotLoggedIn       = "Not logged in"
 	errorJSONAPI           = "Error calling JSON API: "
 	errorGET               = "Error calling GET on URL, got HTTP status: "
 	errorUnmarshallingJSON = "Error reading JSON: "
+	errorInvalidResponse   = "Invalid response. Maybe log in again?"
 )
 
 func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	if client == nil {
-		return []byte{}, errors.New("Not logged in")
+		return []byte{}, errors.New(errorNotLoggedIn)
 	}
 
 	// wait for rate limiter
@@ -54,7 +56,7 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	}
 	if r.Status != "success" {
 		if r.Status == "" {
-			return data, errors.New("Invalid response. Maybe log in again?")
+			return data, errors.New(errorInvalidResponse)
 		}
 		return data, errors.New("Got JSON API status: " + r.Status)
 	}
@@ -111,18 +113,15 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 	if err != nil {
 		logThis(errorJSONAPI+err.Error(), NORMAL)
 		// if error, try once again after logging in again
-		if err.Error() == "Gazelle API call unsuccessful, invalid response. Maybe log in again?" || err.Error() == "Not logged in" {
-			if err := t.Login(conf.user, conf.password); err == nil {
-				data, err := callJSONAPI(t.client, url)
-				if err != nil {
-					return nil, err
-				}
-				return data, err
-			} else {
-				return nil, errors.New("Could not log in and send get request to " + url)
+		if err := t.Login(conf.user, conf.password); err == nil {
+			data, err := callJSONAPI(t.client, url)
+			if err != nil {
+				return nil, err
 			}
+			return data, err
+		} else {
+			return nil, errors.New("Could not log in and send get request to " + url)
 		}
-		return nil, err
 	}
 	return data, err
 }
