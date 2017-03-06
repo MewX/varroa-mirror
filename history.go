@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
-
-	"math"
 
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"

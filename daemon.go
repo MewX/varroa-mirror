@@ -29,6 +29,7 @@ const (
 var (
 	signal = flag.String("s", "", `send orders to the daemon:
 		reload — reload the configuration file
+		stats  — generate graphs now
 		quit   — graceful shutdown
 		stop   — fast shutdown`)
 	daemonContext = &daemon.Context{
@@ -57,6 +58,7 @@ func main() {
 	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, quitDaemon)
 	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, quitDaemon)
 	daemon.AddCommand(daemon.StringFlag(signal, "reload"), syscall.SIGHUP, loadConfiguration)
+	daemon.AddCommand(daemon.StringFlag(signal, "stats"), syscall.SIGUNUSED, generateStats)
 
 	if len(daemon.ActiveFlags()) > 0 {
 		d, err := daemonContext.Search()
@@ -130,6 +132,13 @@ func loadConfiguration(sig os.Signal) error {
 	}
 	conf = newConf
 	logThis(" - Configuration reloaded.", NORMAL)
+	return nil
+}
+
+func generateStats(sig os.Signal) error {
+	if err := history.GenerateGraphs(); err != nil {
+		logThis(errorGeneratingGraphs, NORMAL)
+	}
 	return nil
 }
 
