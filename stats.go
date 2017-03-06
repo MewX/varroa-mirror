@@ -40,7 +40,7 @@ func manageStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 		// save to CSV
 		timestamp := time.Now().Unix()
 		newStats := []string{fmt.Sprintf("%d", timestamp), strconv.FormatUint(stats.Up, 10), strconv.FormatUint(stats.Down, 10), strconv.FormatFloat(stats.Ratio, 'f', -1, 64), strconv.FormatUint(stats.Buffer, 10), strconv.FormatUint(stats.WarningBuffer, 10)}
-		if err := addStatsToCSV(conf.statsFile, newStats); err != nil {
+		if err := addStatsToCSV(statsFile, newStats); err != nil {
 			logThis(errorWritingCSV+err.Error(), NORMAL)
 		}
 		// generate graphs

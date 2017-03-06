@@ -202,7 +202,7 @@ func generateGraph() error {
 		return err
 	}
 	// generate tracker stats graphs
-	f, err := os.OpenFile(conf.statsFile, os.O_RDONLY, 0644)
+	f, err := os.OpenFile(statsFile, os.O_RDONLY, 0644)
 	if err != nil {
 		return err
 	}

@@ -25,6 +25,7 @@ const (
 	errorCheckDaemonExited    = "Error checking daemon exited: "
 
 	historyFile = "history.csv"
+	statsFile   = "stats.csv"
 )
 
 var (

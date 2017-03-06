@@ -40,7 +40,6 @@ type Config struct {
 	announceChannel             string
 	pushoverToken               string
 	pushoverUser                string
-	statsFile                   string
 	statsUpdatePeriod           int
 	maxBufferDecreaseByPeriodMB int
 	defaultDestinationFolder    string
@@ -84,7 +83,6 @@ func (c *Config) load(path string) (err error) {
 	c.botName = conf.GetString("tracker.bot_name")
 	c.announcer = conf.GetString("tracker.announcer")
 	c.announceChannel = conf.GetString("tracker.announce_channel")
-	c.statsFile = conf.GetString("tracker.stats_file")
 	c.statsUpdatePeriod = conf.GetInt("tracker.stats_update_period_hour")
 	if c.statsUpdatePeriod < 1 {
 		return errors.New("Period must be at least 1 hour")
