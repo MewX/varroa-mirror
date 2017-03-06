@@ -17,6 +17,7 @@ const (
 	errorLoadingLine      = "Error loading line %d of history file"
 	errorNoHistory        = "No history yet"
 	errorInvalidTimestamp = "Error parsing timestamp"
+	errorNotEnoughDays    = "Not enough days in history to generate daily graphs"
 )
 
 var (
@@ -207,12 +208,14 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := s.SnatchedPerDay()
 	if err != nil {
 		if err.Error() == errorNoHistory {
+			logThis(errorNoHistory, NORMAL)
 			return nil // nothing to do yet
 		} else {
 			return err
 		}
 	}
 	if len(timestamps) < 2 {
+		logThis(errorNotEnoughDays, NORMAL)
 		return nil // not enough days yet
 	}
 	if !firstOverallTimestamp.Equal(timestamps[0]) {
