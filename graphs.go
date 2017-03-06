@@ -17,6 +17,11 @@ import (
 	"github.com/wcharczuk/go-chart"
 )
 
+const (
+	errorImageNotFound = "Error opening png: "
+	errorNoImageFound  = "Error: no image found"
+)
+
 var (
 	statsDir                  = "stats"
 	uploadStatsFile           = filepath.Join(statsDir, "up.png")
@@ -94,13 +99,18 @@ func combineAllGraphs(combined string, graphs ...string) error {
 	for _, graph := range graphs {
 		imgFile, err := os.Open(graph)
 		if err != nil {
-			return err
+			logThis(errorImageNotFound+err.Error(), NORMAL)
+			continue
 		}
 		img, _, err := image.Decode(imgFile)
 		if err != nil {
-			return err
+			logThis(errorImageNotFound+err.Error(), NORMAL)
+			continue
 		}
 		images = append(images, img)
+	}
+	if len(images) == 0 {
+		return errors.New(errorNoImageFound)
 	}
 
 	// ----------------
@@ -147,7 +157,6 @@ func combineAllGraphs(combined string, graphs ...string) error {
 			}
 		}
 	}
-	fmt.Println(maxX, maxY)
 	//rectangle for the big image
 	r := image.Rectangle{image.Point{0, 0}, image.Point{maxX, maxY}}
 	// new image
@@ -201,6 +210,9 @@ func generateGraph() error {
 	records, err := w.ReadAll()
 	if err != nil {
 		return err
+	}
+	if len(records) < 2 {
+		return nil // not enough data points yet
 	}
 
 	//  create []time.Time{} from timestamps

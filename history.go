@@ -51,7 +51,7 @@ func (h *History) Add(r *Release, filter string) error {
 func (h *History) Load(path string) error {
 	h.Path = path
 	// load history file
-	f, err := os.OpenFile(h.Path, os.O_RDONLY, 0644)
+	f, err := os.OpenFile(h.Path, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
@@ -139,6 +139,9 @@ func (h *History) GenerateGraphs() error {
 		} else {
 			return err
 		}
+	}
+	if len(timestamps) < 2 {
+		return nil // not enough days yet
 	}
 
 	xAxis := chart.XAxis{
