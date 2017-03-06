@@ -32,11 +32,13 @@ var (
 
 type History struct {
 	SnatchesPath        string
-	Releases            []*Release
-	Records             [][]string
+	SnatchedReleases    []*Release
+	SnatchesRecords     [][]string
 	LastGeneratedPerDay int
 
-	TrackerStatsPath string
+	TrackerStatsPath    string
+	TrackerStatsRecords [][]string
+	TrackerStats        []*TrackerStats
 }
 
 func (h *History) AddSnatch(r *Release, filter string) error {
@@ -58,8 +60,8 @@ func (h *History) AddSnatch(r *Release, filter string) error {
 	}
 	w.Flush()
 	// add to in-memory slices
-	h.Releases = append(h.Releases, r)
-	h.Records = append(h.Records, info)
+	h.SnatchedReleases = append(h.SnatchedReleases, r)
+	h.SnatchesRecords = append(h.SnatchesRecords, info)
 	return nil
 }
 
@@ -77,14 +79,35 @@ func (h *History) Load(statsFile, snatchesFile string) error {
 	if err != nil {
 		return err
 	}
-	h.Records = records
+	h.SnatchesRecords = records
 	// load releases from history to in-memory slice
 	for i, record := range records {
 		r := &Release{}
 		if err := r.FromSlice(record); err != nil {
 			logThis(fmt.Sprintf(errorLoadingLine, i), NORMAL)
 		} else {
-			h.Releases = append(h.Releases, r)
+			h.SnatchedReleases = append(h.SnatchedReleases, r)
+		}
+	}
+	// load tracker stats
+	f2, err := os.OpenFile(h.TrackerStatsPath, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer f2.Close()
+	w2 := csv.NewReader(f2)
+	trackerStats, err := w2.ReadAll()
+	if err != nil {
+		return err
+	}
+	h.TrackerStatsRecords = trackerStats
+	// load stats to in-memory slice
+	for i, stats := range trackerStats {
+		r := &TrackerStats{}
+		if err := r.FromSlice(stats); err != nil {
+			logThis(fmt.Sprintf(errorLoadingLine, i), NORMAL)
+		} else {
+			h.TrackerStats = append(h.TrackerStats, r)
 		}
 	}
 	return nil
@@ -92,7 +115,7 @@ func (h *History) Load(statsFile, snatchesFile string) error {
 
 func (h *History) HasDupe(r *Release) bool {
 	// check if r is already in history
-	for _, hr := range h.Releases {
+	for _, hr := range h.SnatchedReleases {
 		if r.IsDupe(hr) {
 			return true
 		}
@@ -101,13 +124,13 @@ func (h *History) HasDupe(r *Release) bool {
 }
 
 func (h *History) SnatchedPerDay() ([]time.Time, []float64, []float64, error) {
-	if len(h.Records) == 0 {
+	if len(h.SnatchesRecords) == 0 {
 		return nil, nil, nil, errors.New(errorNoHistory)
 	}
 	// all snatches should already be available in-memory
 	// get all times
 	allTimes := []time.Time{}
-	for _, record := range h.Records {
+	for _, record := range h.SnatchesRecords {
 		timestamp, err := strconv.ParseInt(record[0], 0, 64)
 		if err != nil {
 			return nil, nil, nil, errors.New(errorInvalidTimestamp)
@@ -136,14 +159,14 @@ func (h *History) SnatchedPerDay() ([]time.Time, []float64, []float64, error) {
 			}
 			// increment number of snatched and size snatched
 			snatchesPerDay[len(snatchesPerDay)-1] += 1
-			sizePerDay[len(sizePerDay)-1] += float64(h.Releases[i].size)
+			sizePerDay[len(sizePerDay)-1] += float64(h.SnatchedReleases[i].size)
 		}
 	}
 	return dayTimes, snatchesPerDay, sizePerDay, nil
 }
 
 func (h *History) GenerateDailyGraphs() error {
-	if len(h.Releases) == h.LastGeneratedPerDay {
+	if len(h.SnatchedReleases) == h.LastGeneratedPerDay {
 		// no additional snatch since the graphs were last generated, nothing needs to be done
 		return nil
 	}
@@ -160,38 +183,28 @@ func (h *History) GenerateDailyGraphs() error {
 		return nil // not enough days yet
 	}
 
-	xAxis := chart.XAxis{
-		Style: chart.Style{
-			Show: true,
-		},
-		Name:           "Time",
-		NameStyle:      chart.StyleShow(),
-		ValueFormatter: chart.TimeValueFormatter,
-	}
 	sizeSnatchedSeries := chart.TimeSeries{
 		Style:   commonStyle,
-		Name:    "Size of snatches",
 		XValues: timestamps,
 		YValues: sliceByteToGigabyte(sizeSnatchedPerDay),
 	}
 	numberSnatchedSeries := chart.TimeSeries{
 		Style:   commonStyle,
-		Name:    "Number of snatches",
 		XValues: timestamps,
 		YValues: numberOfSnatchesPerDay,
 	}
 
 	// generate graphs
-	if err := writeTimeSeriesChart(xAxis, sizeSnatchedSeries, "Size snatched (Gb) per day", sizeSnatchedPerDayFile); err != nil {
+	if err := writeTimeSeriesChart(sizeSnatchedSeries, "Size snatched (Gb) per day", sizeSnatchedPerDayFile); err != nil {
 		return err
 	}
-	if err := writeTimeSeriesChart(xAxis, numberSnatchedSeries, "Number of snatches per day", numberSnatchedPerDayFile); err != nil {
+	if err := writeTimeSeriesChart(numberSnatchedSeries, "Number of snatches per day", numberSnatchedPerDayFile); err != nil {
 		return err
 	}
 
 	// generate pie chart
 	filterHits := map[string]float64{}
-	for _, r := range h.Records {
+	for _, r := range h.SnatchesRecords {
 		filterHits[r[1]] += 1
 	}
 	if err := writePieChart(filterHits, "Total snatches by filter", totalSnatchesByFilterFile); err != nil {
@@ -199,14 +212,17 @@ func (h *History) GenerateDailyGraphs() error {
 	}
 
 	// keep total number of snatches as reference for later
-	h.LastGeneratedPerDay = len(h.Releases)
+	h.LastGeneratedPerDay = len(h.SnatchedReleases)
 	return nil
 }
 
-func (h *History) AddStats(stats *Stats) error {
+func (h *History) AddStats(stats *TrackerStats) error {
+	h.TrackerStats = append(h.TrackerStats, stats)
 	// prepare csv fields
 	timestamp := time.Now().Unix()
-	newStats := []string{fmt.Sprintf("%d", timestamp), strconv.FormatUint(stats.Up, 10), strconv.FormatUint(stats.Down, 10), strconv.FormatFloat(stats.Ratio, 'f', -1, 64), strconv.FormatUint(stats.Buffer, 10), strconv.FormatUint(stats.WarningBuffer, 10)}
+	newStats := []string{fmt.Sprintf("%d", timestamp)}
+	newStats = append(newStats, stats.ToSlice()...)
+	h.TrackerStatsRecords = append(h.TrackerStatsRecords, newStats)
 	// append to file
 	f, err := os.OpenFile(h.TrackerStatsPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -218,6 +234,74 @@ func (h *History) AddStats(stats *Stats) error {
 		return err
 	}
 	w.Flush()
+	return nil
+}
+
+func (h *History) GenerateStatsGraphs() error {
+	// generate tracker stats graphs
+	if len(h.TrackerStatsRecords) < 2 {
+		return nil // not enough data points yet
+	}
+	if len(h.TrackerStatsRecords) != len(h.TrackerStats) {
+		return errors.New("Incoherent in-memory stats")
+	}
+	//  generate data slices
+	timestamps := []time.Time{}
+	ups := []float64{}
+	downs := []float64{}
+	buffers := []float64{}
+	ratios := []float64{}
+	for _, stats := range h.TrackerStatsRecords {
+		timestamp, err := strconv.ParseInt(stats[0], 10, 64)
+		if err != nil {
+			return errors.New(errorInvalidTimestamp)
+		}
+		timestamps = append(timestamps, time.Unix(timestamp, 0))
+	}
+	if len(timestamps) < 2 {
+		return errors.New(errorNotEnoughDataPoints)
+	}
+	for _, stats := range h.TrackerStats {
+		ups = append(ups, float64(stats.Up))
+		downs = append(downs, float64(stats.Down))
+		buffers = append(buffers, float64(stats.Buffer))
+		ratios = append(ratios, float64(stats.Ratio))
+	}
+
+	upSeries := chart.TimeSeries{
+		Style:   commonStyle,
+		XValues: timestamps,
+		YValues: sliceByteToGigabyte(ups),
+	}
+	downSeries := chart.TimeSeries{
+		Style:   commonStyle,
+		XValues: timestamps,
+		YValues: sliceByteToGigabyte(downs),
+	}
+	bufferSeries := chart.TimeSeries{
+		Style:   commonStyle,
+		XValues: timestamps,
+		YValues: sliceByteToGigabyte(buffers),
+	}
+	ratioSeries := chart.TimeSeries{
+		Style:   commonStyle,
+		XValues: timestamps,
+		YValues: ratios,
+	}
+
+	// write individual graphs
+	if err := writeTimeSeriesChart(upSeries, "Upload (Gb)", uploadStatsFile); err != nil {
+		return err
+	}
+	if err := writeTimeSeriesChart(downSeries, "Download (Gb)", downloadStatsFile); err != nil {
+		return err
+	}
+	if err := writeTimeSeriesChart(bufferSeries, "Buffer (Gb)", bufferStatsFile); err != nil {
+		return err
+	}
+	if err := writeTimeSeriesChart(ratioSeries, "Ratio", ratioStatsFile); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -238,110 +322,4 @@ func (h *History) GenerateGraphs() error {
 	}
 	// combine graphs into overallStatsFile
 	return combineAllGraphs(overallStatsFile, uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile)
-}
-
-func (h *History) GenerateStatsGraphs() error {
-	// generate tracker stats graphs
-	f, err := os.OpenFile(statsFile, os.O_RDONLY, 0644)
-	if err != nil {
-		return err
-	}
-	w := csv.NewReader(f)
-	records, err := w.ReadAll()
-	if err != nil {
-		return err
-	}
-	if len(records) < 2 {
-		return nil // not enough data points yet
-	}
-
-	//  create []time.Time{} from timestamps
-	//  create []float64 from buffer
-	timestamps := []time.Time{}
-	ups := []float64{}
-	downs := []float64{}
-	buffers := []float64{}
-	ratios := []float64{}
-	for _, stats := range records {
-		timestamp, err := strconv.ParseInt(stats[0], 10, 64)
-		if err != nil {
-			continue // bad line
-		}
-		timestamps = append(timestamps, time.Unix(timestamp, 0))
-
-		up, err := strconv.ParseUint(stats[1], 10, 64)
-		if err != nil {
-			continue // bad line
-		}
-		ups = append(ups, float64(up))
-
-		down, err := strconv.ParseUint(stats[2], 10, 64)
-		if err != nil {
-			continue // bad line
-		}
-		downs = append(downs, float64(down))
-
-		buffer, err := strconv.ParseUint(stats[4], 10, 64)
-		if err != nil {
-			continue // bad line
-		}
-		buffers = append(buffers, float64(buffer))
-
-		ratio, err := strconv.ParseFloat(stats[3], 64)
-		if err != nil {
-			continue // bad line
-		}
-		ratios = append(ratios, ratio)
-	}
-	if len(timestamps) < 2 {
-		return errors.New(errorNotEnoughDataPoints)
-	}
-
-	upSeries := chart.TimeSeries{
-		Style:   commonStyle,
-		Name:    "Upload",
-		XValues: timestamps,
-		YValues: sliceByteToGigabyte(ups),
-	}
-	downSeries := chart.TimeSeries{
-		Style:   commonStyle,
-		Name:    "Download",
-		XValues: timestamps,
-		YValues: sliceByteToGigabyte(downs),
-	}
-	bufferSeries := chart.TimeSeries{
-		Style:   commonStyle,
-		Name:    "Buffer",
-		XValues: timestamps,
-		YValues: sliceByteToGigabyte(buffers),
-	}
-	ratioSeries := chart.TimeSeries{
-		Style:   commonStyle,
-		Name:    "Ratio",
-		XValues: timestamps,
-		YValues: ratios,
-	}
-	xAxis := chart.XAxis{
-		Style: chart.Style{
-			Show: true,
-		},
-		Name:           "Time",
-		NameStyle:      chart.StyleShow(),
-		ValueFormatter: chart.TimeValueFormatter,
-	}
-
-	// write individual graphs
-	if err := writeTimeSeriesChart(xAxis, upSeries, "Upload (Gb)", uploadStatsFile); err != nil {
-		return err
-	}
-	if err := writeTimeSeriesChart(xAxis, downSeries, "Download (Gb)", downloadStatsFile); err != nil {
-		return err
-	}
-	if err := writeTimeSeriesChart(xAxis, bufferSeries, "Buffer (Gb)", bufferStatsFile); err != nil {
-		return err
-	}
-	if err := writeTimeSeriesChart(xAxis, ratioSeries, "Ratio", ratioStatsFile); err != nil {
-		return err
-	}
-	return nil
 }

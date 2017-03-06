@@ -8,15 +8,15 @@ import (
 )
 
 func TestStats(t *testing.T) {
-	fmt.Println("+ Testing Stats...")
+	fmt.Println("+ Testing TrackerStats...")
 	verify := assert.New(t)
 
-	s1 := &Stats{}
-	s2 := &Stats{Up: 1000 * 1024 * 1024, Down: 1000 * 1024 * 1024, Buffer: 1000 * 1024 * 1024, WarningBuffer: 1000 * 1024 * 1024, Ratio: float64(1.0)}
-	s3 := &Stats{Up: 1050 * 1024 * 1024, Down: 2000 * 1024 * 1024, Buffer: 800 * 1024 * 1024, WarningBuffer: 1200 * 1024 * 1024, Ratio: float64(0.95)}
-	s4 := &Stats{Up: 1551450749434, Down: 169522649052, Buffer: 1463583402983, WarningBuffer: 2416228600004, Ratio: 9.15187}
-	s5 := &Stats{Up: 1551450749434, Down: 169522649052, Buffer: 1463382402983, WarningBuffer: 2416228600004, Ratio: 9.15187}
-	s6 := &Stats{Up: 1551450749434, Down: 169522649052, Buffer: 1463563402983, WarningBuffer: 2416228600004, Ratio: 9.15187}
+	s1 := &TrackerStats{}
+	s2 := &TrackerStats{Up: 1000 * 1024 * 1024, Down: 1000 * 1024 * 1024, Buffer: 1000 * 1024 * 1024, WarningBuffer: 1000 * 1024 * 1024, Ratio: float64(1.0)}
+	s3 := &TrackerStats{Up: 1050 * 1024 * 1024, Down: 2000 * 1024 * 1024, Buffer: 800 * 1024 * 1024, WarningBuffer: 1200 * 1024 * 1024, Ratio: float64(0.95)}
+	s4 := &TrackerStats{Up: 1551450749434, Down: 169522649052, Buffer: 1463583402983, WarningBuffer: 2416228600004, Ratio: 9.15187}
+	s5 := &TrackerStats{Up: 1551450749434, Down: 169522649052, Buffer: 1463382402983, WarningBuffer: 2416228600004, Ratio: 9.15187}
+	s6 := &TrackerStats{Up: 1551450749434, Down: 169522649052, Buffer: 1463563402983, WarningBuffer: 2416228600004, Ratio: 9.15187}
 	// check first diff
 	dup, ddown, dbuf, dwbuf, dratio := s2.Diff(s1)
 	verify.Equal(int64(s2.Up), dup)

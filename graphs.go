@@ -24,6 +24,14 @@ var (
 		StrokeColor: chart.ColorBlue,
 		FillColor:   chart.ColorBlue.WithAlpha(25),
 	}
+	timeAxis = chart.XAxis{
+		Style: chart.Style{
+			Show: true,
+		},
+		Name:           "Time",
+		NameStyle:      chart.StyleShow(),
+		ValueFormatter: chart.TimeValueFormatter,
+	}
 )
 
 func sliceByteToGigabyte(in []float64) []float64 {
@@ -59,10 +67,10 @@ func writePieChart(values map[string]float64, title, filename string) error {
 	return ioutil.WriteFile(filename, buffer.Bytes(), 0644)
 }
 
-func writeTimeSeriesChart(xAxis chart.XAxis, series chart.Series, axisLabel, filename string) error {
+func writeTimeSeriesChart(series chart.Series, axisLabel, filename string) error {
 	graphUp := chart.Chart{
 		Height: 500,
-		XAxis:  xAxis,
+		XAxis:  timeAxis,
 		YAxis: chart.YAxis{
 			Style:     chart.StyleShow(),
 			Name:      axisLabel,

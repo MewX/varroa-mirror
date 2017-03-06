@@ -144,7 +144,7 @@ func (t *GazelleTracker) Download(r *Release) (string, error) {
 	return r.filename, err
 }
 
-func (t *GazelleTracker) GetStats() (*Stats, error) {
+func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 	if t.userID == 0 {
 		data, err := t.get(t.rootURL + "/ajax.php?action=index")
 		if err != nil {
@@ -170,8 +170,8 @@ func (t *GazelleTracker) GetStats() (*Stats, error) {
 		logThis("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
 		ratio = 0.0
 	}
-	// GazelleIndex to Stats
-	stats := &Stats{
+	// GazelleIndex to TrackerStats
+	stats := &TrackerStats{
 		Username:      s.Response.Username,
 		Class:         s.Response.Personal.Class,
 		Up:            uint64(s.Response.Stats.Uploaded),
@@ -234,7 +234,7 @@ const userStats = "User: %s (%s) | "
 const progress = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.3f (%.3f)"
 const firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.3f"
 
-type Stats struct {
+type TrackerStats struct {
 	Username      string
 	Class         string
 	Up            uint64
@@ -244,11 +244,11 @@ type Stats struct {
 	Ratio         float64
 }
 
-func (s *Stats) Diff(previous *Stats) (int64, int64, int64, int64, float64) {
+func (s *TrackerStats) Diff(previous *TrackerStats) (int64, int64, int64, int64, float64) {
 	return int64(s.Up - previous.Up), int64(s.Down - previous.Down), int64(s.Buffer - previous.Buffer), int64(s.WarningBuffer - previous.WarningBuffer), s.Ratio - previous.Ratio
 }
 
-func (s *Stats) Progress(previous *Stats) string {
+func (s *TrackerStats) Progress(previous *TrackerStats) string {
 	if previous.Ratio == 0 {
 		return s.String()
 	}
@@ -256,7 +256,7 @@ func (s *Stats) Progress(previous *Stats) string {
 	return fmt.Sprintf(progress, readableUInt64(s.Up), readableInt64(dup), readableUInt64(s.Down), readableInt64(ddown), readableUInt64(s.Buffer), readableInt64(dbuff), readableUInt64(s.WarningBuffer), readableInt64(dwbuff), s.Ratio, dratio)
 }
 
-func (s *Stats) IsProgressAcceptable(previous *Stats, maxDecrease int) bool {
+func (s *TrackerStats) IsProgressAcceptable(previous *TrackerStats, maxDecrease int) bool {
 	if previous.Ratio == 0 {
 		// first pass
 		return true
@@ -269,6 +269,44 @@ func (s *Stats) IsProgressAcceptable(previous *Stats, maxDecrease int) bool {
 	return false
 }
 
-func (s *Stats) String() string {
+func (s *TrackerStats) String() string {
 	return fmt.Sprintf(userStats, s.Username, s.Class) + fmt.Sprintf(firstProgress, readableUInt64(s.Up), readableUInt64(s.Down), readableUInt64(s.Buffer), readableUInt64(s.WarningBuffer), s.Ratio)
+}
+
+func (s *TrackerStats) ToSlice() []string {
+	// up;down;ratio;buffer;warningBuffer
+	return []string{strconv.FormatUint(s.Up, 10), strconv.FormatUint(s.Down, 10), strconv.FormatFloat(s.Ratio, 'f', -1, 64), strconv.FormatUint(s.Buffer, 10), strconv.FormatUint(s.WarningBuffer, 10)}
+}
+
+func (s *TrackerStats) FromSlice(slice []string) error {
+	// slice contains timestamp, which is ignored
+	if len(slice) != 6 {
+		return errors.New("Incorrect entry, cannot load stats")
+	}
+	up, err := strconv.ParseUint(slice[1], 10, 64)
+	if err != nil {
+		return err
+	}
+	s.Up = up
+	down, err := strconv.ParseUint(slice[2], 10, 64)
+	if err != nil {
+		return err
+	}
+	s.Down = down
+	ratio, err := strconv.ParseFloat(slice[3], 64)
+	if err != nil {
+		return err
+	}
+	s.Ratio = ratio
+	buffer, err := strconv.ParseUint(slice[4], 10, 64)
+	if err != nil {
+		return err
+	}
+	s.Buffer = buffer
+	warningBuffer, err := strconv.ParseUint(slice[5], 10, 64)
+	if err != nil {
+		return err
+	}
+	s.WarningBuffer = warningBuffer
+	return nil
 }

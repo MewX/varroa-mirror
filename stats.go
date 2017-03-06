@@ -12,11 +12,11 @@ const (
 	errorBufferDrop          = "Buffer drop too important, varroa will shutdown"
 )
 
-func manageStats(tracker GazelleTracker, previousStats *Stats) *Stats {
+func manageStats(tracker GazelleTracker, previousStats *TrackerStats) *TrackerStats {
 	stats, err := tracker.GetStats()
 	if err != nil {
 		logThis(errorGettingStats+err.Error(), NORMAL)
-		return &Stats{}
+		return &TrackerStats{}
 	} else {
 		logThis(stats.Progress(previousStats), NORMAL)
 		// save to CSV
@@ -47,7 +47,7 @@ func manageStats(tracker GazelleTracker, previousStats *Stats) *Stats {
 
 func monitorStats(tracker GazelleTracker) {
 	// initial stats
-	previousStats := &Stats{}
+	previousStats := &TrackerStats{}
 	previousStats = manageStats(tracker, previousStats)
 	// periodic check
 	period := time.NewTicker(time.Hour * time.Duration(conf.statsUpdatePeriod)).C
