@@ -73,7 +73,7 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 						return nil, errors.New(errorCouldNotMoveTorrent + err.Error())
 					}
 					// adding to history
-					if err := history.Add(release, filter.label); err != nil {
+					if err := history.AddSnatch(release, filter.label); err != nil {
 						logThis(errorAddingToHistory, NORMAL)
 					}
 					// send notification

@@ -98,7 +98,7 @@ func main() {
 	}
 	logThis(" - Logged in tracker.", NORMAL)
 	// load history
-	if err := history.Load(historyFile); err != nil {
+	if err := history.Load(statsFile, historyFile); err != nil {
 		logThis(err.Error(), NORMAL)
 	}
 

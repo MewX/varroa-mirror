@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"image"
@@ -10,9 +9,6 @@ import (
 	"image/png"
 	"io/ioutil"
 	"os"
-	"path/filepath"
-	"strconv"
-	"time"
 
 	"github.com/wcharczuk/go-chart"
 )
@@ -23,16 +19,6 @@ const (
 )
 
 var (
-	statsDir                  = "stats"
-	uploadStatsFile           = filepath.Join(statsDir, "up.png")
-	downloadStatsFile         = filepath.Join(statsDir, "down.png")
-	ratioStatsFile            = filepath.Join(statsDir, "ratio.png")
-	bufferStatsFile           = filepath.Join(statsDir, "buffer.png")
-	overallStatsFile          = filepath.Join(statsDir, "stats.png")
-	numberSnatchedPerDayFile  = filepath.Join(statsDir, "snatches_per_day.png")
-	sizeSnatchedPerDayFile    = filepath.Join(statsDir, "size_snatched_per_day.png")
-	totalSnatchesByFilterFile = filepath.Join(statsDir, "total_snatched_by_filter.png")
-
 	commonStyle = chart.Style{
 		Show:        true,
 		StrokeColor: chart.ColorBlue,
@@ -190,119 +176,4 @@ func combineAllGraphs(combined string, graphs ...string) error {
 		fmt.Println(err)
 	}
 	return png.Encode(out, rgba)
-}
-
-func generateGraph() error {
-	// prepare directory for pngs if necessary
-	if !DirectoryExists(statsDir) {
-		os.MkdirAll(statsDir, 0777)
-	}
-	// generate history stats graphs if necessary
-	if err := history.GenerateGraphs(); err != nil {
-		return err
-	}
-	// generate tracker stats graphs
-	f, err := os.OpenFile(statsFile, os.O_RDONLY, 0644)
-	if err != nil {
-		return err
-	}
-	w := csv.NewReader(f)
-	records, err := w.ReadAll()
-	if err != nil {
-		return err
-	}
-	if len(records) < 2 {
-		return nil // not enough data points yet
-	}
-
-	//  create []time.Time{} from timestamps
-	//  create []float64 from buffer
-	timestamps := []time.Time{}
-	ups := []float64{}
-	downs := []float64{}
-	buffers := []float64{}
-	ratios := []float64{}
-	for _, stats := range records {
-		timestamp, err := strconv.ParseInt(stats[0], 10, 64)
-		if err != nil {
-			continue // bad line
-		}
-		timestamps = append(timestamps, time.Unix(timestamp, 0))
-
-		up, err := strconv.ParseUint(stats[1], 10, 64)
-		if err != nil {
-			continue // bad line
-		}
-		ups = append(ups, float64(up))
-
-		down, err := strconv.ParseUint(stats[2], 10, 64)
-		if err != nil {
-			continue // bad line
-		}
-		downs = append(downs, float64(down))
-
-		buffer, err := strconv.ParseUint(stats[4], 10, 64)
-		if err != nil {
-			continue // bad line
-		}
-		buffers = append(buffers, float64(buffer))
-
-		ratio, err := strconv.ParseFloat(stats[3], 64)
-		if err != nil {
-			continue // bad line
-		}
-		ratios = append(ratios, ratio)
-	}
-	if len(timestamps) < 2 {
-		return errors.New(errorNotEnoughDataPoints)
-	}
-
-	upSeries := chart.TimeSeries{
-		Style:   commonStyle,
-		Name:    "Upload",
-		XValues: timestamps,
-		YValues: sliceByteToGigabyte(ups),
-	}
-	downSeries := chart.TimeSeries{
-		Style:   commonStyle,
-		Name:    "Download",
-		XValues: timestamps,
-		YValues: sliceByteToGigabyte(downs),
-	}
-	bufferSeries := chart.TimeSeries{
-		Style:   commonStyle,
-		Name:    "Buffer",
-		XValues: timestamps,
-		YValues: sliceByteToGigabyte(buffers),
-	}
-	ratioSeries := chart.TimeSeries{
-		Style:   commonStyle,
-		Name:    "Ratio",
-		XValues: timestamps,
-		YValues: ratios,
-	}
-	xAxis := chart.XAxis{
-		Style: chart.Style{
-			Show: true,
-		},
-		Name:           "Time",
-		NameStyle:      chart.StyleShow(),
-		ValueFormatter: chart.TimeValueFormatter,
-	}
-
-	// write individual graphs
-	if err := writeTimeSeriesChart(xAxis, upSeries, "Upload (Gb)", uploadStatsFile); err != nil {
-		return err
-	}
-	if err := writeTimeSeriesChart(xAxis, downSeries, "Download (Gb)", downloadStatsFile); err != nil {
-		return err
-	}
-	if err := writeTimeSeriesChart(xAxis, bufferSeries, "Buffer (Gb)", bufferStatsFile); err != nil {
-		return err
-	}
-	if err := writeTimeSeriesChart(xAxis, ratioSeries, "Ratio", ratioStatsFile); err != nil {
-		return err
-	}
-	// combine graphs into overallStatsFile
-	return combineAllGraphs(overallStatsFile, uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile)
 }
