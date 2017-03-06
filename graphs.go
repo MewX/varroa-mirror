@@ -43,7 +43,7 @@ func sliceByteToGigabyte(in []float64) []float64 {
 	return out
 }
 
-func writePie(values map[string]float64, title, filename string) error {
+func writePieChart(values map[string]float64, title, filename string) error {
 	// map to []chart.Value
 	pieSlices := []chart.Value{}
 	for k, v := range values {
@@ -51,7 +51,8 @@ func writePie(values map[string]float64, title, filename string) error {
 	}
 	// pie chart
 	pie := chart.PieChart{
-		Title: title,
+		Height: 500,
+		Title:  title,
 		TitleStyle: chart.Style{
 			Show:      true,
 			FontColor: chart.ColorBlack,
@@ -67,9 +68,10 @@ func writePie(values map[string]float64, title, filename string) error {
 	return ioutil.WriteFile(filename, buffer.Bytes(), 0644)
 }
 
-func writeGraph(xAxis chart.XAxis, series chart.Series, axisLabel, filename string) error {
+func writeTimeSeriesChart(xAxis chart.XAxis, series chart.Series, axisLabel, filename string) error {
 	graphUp := chart.Chart{
-		XAxis: xAxis,
+		Height: 500,
+		XAxis:  xAxis,
 		YAxis: chart.YAxis{
 			Style:     chart.StyleShow(),
 			Name:      axisLabel,
@@ -86,50 +88,93 @@ func writeGraph(xAxis chart.XAxis, series chart.Series, axisLabel, filename stri
 	return ioutil.WriteFile(filename, buffer.Bytes(), 0644)
 }
 
-func combineGraphs(up, down, buffer, ratio, combined string) error {
+func combineAllGraphs(combined string, graphs ...string) error {
+	images := []image.Image{}
 	// open and decode images
-	imgFile1, err1 := os.Open(up)
-	imgFile2, err2 := os.Open(down)
-	imgFile3, err3 := os.Open(buffer)
-	imgFile4, err4 := os.Open(ratio)
-	if err := checkErrors(err1, err2, err3, err4); err != nil {
-		return err
-	}
-	img1, _, err1 := image.Decode(imgFile1)
-	img2, _, err2 := image.Decode(imgFile2)
-	img3, _, err3 := image.Decode(imgFile3)
-	img4, _, err4 := image.Decode(imgFile4)
-	if err := checkErrors(err1, err2, err3, err4); err != nil {
-		return err
+	for _, graph := range graphs {
+		imgFile, err := os.Open(graph)
+		if err != nil {
+			return err
+		}
+		img, _, err := image.Decode(imgFile)
+		if err != nil {
+			return err
+		}
+		images = append(images, img)
 	}
 
-	// create the rectangle, assuming they all have the same size
-	// ------------
-	// |  1  | 2  |
-	// ------------
-	// |  3  | 4  |
-	// ------------
+	// ----------------
+	// |  1    | 2    |
+	// ----------------
+	// |  3    | 4    |
+	// ----------------
+	// |  ...  | ...  |
+	// ----------------
+	// |  n    | n+1  |
+	// ----------------
+	// |  n+2  | n+3  |
+	// ----------------
 
-	sp2 := image.Point{img1.Bounds().Dx(), 0}
-	r2 := image.Rectangle{sp2, sp2.Add(img2.Bounds().Size())}
-
-	sp3 := image.Point{0, img1.Bounds().Dy()}
-	r3 := image.Rectangle{sp3, sp3.Add(img3.Bounds().Size())}
-
-	sp4 := img1.Bounds().Size()
-	r4 := image.Rectangle{sp4, sp4.Add(img4.Bounds().Size())}
-
+	maxX := 0
+	maxY := 0
+	tempMaxX := 0
+	tempMaxY := 0
+	// max size of combined graph:
+	// max X = max (firstColumn.X + secondColumn.X)
+	// max Y = sum (max(firstColumn.Y, secondColumn.Y))
+	for i, img := range images {
+		if i%2 == 0 {
+			// first column
+			tempMaxY = img.Bounds().Dy()
+			tempMaxX = img.Bounds().Dx()
+			if i == len(images)-1 {
+				// if we're on the last row and this is the last image
+				maxY += tempMaxY
+				if tempMaxX > maxX {
+					maxX = tempMaxX
+				}
+			}
+		} else {
+			// second column
+			tempMaxX += img.Bounds().Dx()
+			if tempMaxX > maxX {
+				maxX = tempMaxX
+			}
+			if img.Bounds().Dy() > tempMaxY {
+				maxY += img.Bounds().Dy()
+			} else {
+				maxY += tempMaxY
+			}
+		}
+	}
+	fmt.Println(maxX, maxY)
 	//rectangle for the big image
-	r := image.Rectangle{image.Point{0, 0}, r4.Max}
-
+	r := image.Rectangle{image.Point{0, 0}, image.Point{maxX, maxY}}
 	// new image
 	rgba := image.NewRGBA(r)
-	// draw original images in new rectangle
-	draw.Draw(rgba, img1.Bounds(), img1, image.Point{0, 0}, draw.Src)
-	draw.Draw(rgba, r2, img2, image.Point{0, 0}, draw.Src)
-	draw.Draw(rgba, r3, img3, image.Point{0, 0}, draw.Src)
-	draw.Draw(rgba, r4, img4, image.Point{0, 0}, draw.Src)
 
+	currentX := 0
+	currentY := 0
+	currentRowHeight := 0
+	for i, img := range images {
+		if i%2 == 0 {
+			// first column
+			currentX = 0
+			sp := image.Point{currentX, currentY}
+			draw.Draw(rgba, image.Rectangle{sp, sp.Add(img.Bounds().Size())}, img, image.Point{0, 0}, draw.Src)
+			currentX = img.Bounds().Dx()
+			currentRowHeight = img.Bounds().Dy()
+
+		} else {
+			// second column
+			sp := image.Point{currentX, currentY}
+			draw.Draw(rgba, image.Rectangle{sp, sp.Add(img.Bounds().Size())}, img, image.Point{0, 0}, draw.Src)
+			if img.Bounds().Dy() > currentRowHeight {
+				currentRowHeight = img.Bounds().Dy()
+			}
+			currentY += currentRowHeight
+		}
+	}
 	// save new image
 	out, err := os.Create(combined)
 	if err != nil {
@@ -234,18 +279,18 @@ func generateGraph() error {
 	}
 
 	// write individual graphs
-	if err := writeGraph(xAxis, upSeries, "Upload (Gb)", uploadStatsFile); err != nil {
+	if err := writeTimeSeriesChart(xAxis, upSeries, "Upload (Gb)", uploadStatsFile); err != nil {
 		return err
 	}
-	if err := writeGraph(xAxis, downSeries, "Download (Gb)", downloadStatsFile); err != nil {
+	if err := writeTimeSeriesChart(xAxis, downSeries, "Download (Gb)", downloadStatsFile); err != nil {
 		return err
 	}
-	if err := writeGraph(xAxis, bufferSeries, "Buffer (Gb)", bufferStatsFile); err != nil {
+	if err := writeTimeSeriesChart(xAxis, bufferSeries, "Buffer (Gb)", bufferStatsFile); err != nil {
 		return err
 	}
-	if err := writeGraph(xAxis, ratioSeries, "Ratio", ratioStatsFile); err != nil {
+	if err := writeTimeSeriesChart(xAxis, ratioSeries, "Ratio", ratioStatsFile); err != nil {
 		return err
 	}
 	// combine graphs into overallStatsFile
-	return combineGraphs(uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, overallStatsFile)
+	return combineAllGraphs(overallStatsFile, uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile)
 }

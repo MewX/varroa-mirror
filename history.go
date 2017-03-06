@@ -163,10 +163,10 @@ func (h *History) GenerateGraphs() error {
 	}
 
 	// generate graphs
-	if err := writeGraph(xAxis, sizeSnatchedSeries, "Size snatched (Gb) per day", sizeSnatchedPerDayFile); err != nil {
+	if err := writeTimeSeriesChart(xAxis, sizeSnatchedSeries, "Size snatched (Gb) per day", sizeSnatchedPerDayFile); err != nil {
 		return err
 	}
-	if err := writeGraph(xAxis, numberSnatchedSeries, "Number of snatches per day", numberSnatchedPerDayFile); err != nil {
+	if err := writeTimeSeriesChart(xAxis, numberSnatchedSeries, "Number of snatches per day", numberSnatchedPerDayFile); err != nil {
 		return err
 	}
 
@@ -175,7 +175,7 @@ func (h *History) GenerateGraphs() error {
 	for _, r := range h.Records {
 		filterHits[r[1]] += 1
 	}
-	if err := writePie(filterHits, "Total snatches by filter", totalSnatchesByFilterFile); err != nil {
+	if err := writePieChart(filterHits, "Total snatches by filter", totalSnatchesByFilterFile); err != nil {
 		return err
 	}
 
