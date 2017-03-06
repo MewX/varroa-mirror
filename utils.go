@@ -27,6 +27,10 @@ func startOfDay(t time.Time) time.Time {
 	return t.Truncate(24 * time.Hour)
 }
 
+func previousDay(t time.Time) time.Time {
+	return t.Add(time.Duration(-24) * time.Hour)
+}
+
 func nextDay(t time.Time) time.Time {
 	return t.Add(time.Duration(24) * time.Hour)
 }

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"math"
+
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
 )
@@ -30,18 +32,98 @@ var (
 	totalSnatchesByFilterFile = filepath.Join(statsDir, "total_snatched_by_filter.png")
 )
 
+// History manages stats and generates graphs.
 type History struct {
+	SnatchHistory
+	TrackerStatsHistory
+}
+
+func (h *History) LoadAll(statsFile, snatchesFile string) error {
+	if err := h.TrackerStatsHistory.Load(statsFile); err != nil {
+		return err
+	}
+	if err := h.SnatchHistory.Load(snatchesFile); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *History) GenerateGraphs() error {
+	// prepare directory for pngs if necessary
+	if !DirectoryExists(statsDir) {
+		if err := os.MkdirAll(statsDir, 0777); err != nil {
+			return err
+		}
+	}
+	// get first overall timestamp in all history sources
+	firstOverallTimestamp := h.getFirstTimestamp()
+	if firstOverallTimestamp.After(time.Now()) {
+		return errors.New(errorInvalidTimestamp)
+	}
+
+	// generate history graphs if necessary
+	if err := h.GenerateDailyGraphs(firstOverallTimestamp); err != nil {
+		return err
+	}
+	// generate stats graphs
+	if err := h.GenerateStatsGraphs(firstOverallTimestamp); err != nil {
+		return err
+	}
+	// combine graphs into overallStatsFile
+	return combineAllGraphs(overallStatsFile, uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile)
+}
+
+func (h *History) getFirstTimestamp() time.Time {
+	snatchTimestamp, err := strconv.ParseInt(h.SnatchesRecords[0][0], 0, 64)
+	if err != nil {
+		snatchTimestamp = math.MaxInt32 // max timestamp
+	}
+	statsTimestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64)
+	if err != nil {
+		statsTimestamp = math.MaxInt32 // max timestamp
+	}
+	if snatchTimestamp < statsTimestamp {
+		return time.Unix(snatchTimestamp, 0)
+	}
+	return time.Unix(statsTimestamp, 0)
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+type SnatchHistory struct {
 	SnatchesPath        string
 	SnatchedReleases    []*Release
 	SnatchesRecords     [][]string
 	LastGeneratedPerDay int
-
-	TrackerStatsPath    string
-	TrackerStatsRecords [][]string
-	TrackerStats        []*TrackerStats
 }
 
-func (h *History) AddSnatch(r *Release, filter string) error {
+func (s *SnatchHistory) Load(snatchesFile string) error {
+	s.SnatchesPath = snatchesFile
+	// load history file
+	f, err := os.OpenFile(s.SnatchesPath, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := csv.NewReader(f)
+	records, err := w.ReadAll()
+	if err != nil {
+		return err
+	}
+	s.SnatchesRecords = records
+	// load releases from history to in-memory slice
+	for i, record := range records {
+		r := &Release{}
+		if err := r.FromSlice(record); err != nil {
+			logThis(fmt.Sprintf(errorLoadingLine, i), NORMAL)
+		} else {
+			s.SnatchedReleases = append(s.SnatchedReleases, r)
+		}
+	}
+	return nil
+}
+
+func (s *SnatchHistory) Add(r *Release, filter string) error {
 	// preparing info
 	timestamp := time.Now().Unix()
 	// timestamp;filter;artist;title;year;size;type;quality;source;format;tags
@@ -49,7 +131,7 @@ func (h *History) AddSnatch(r *Release, filter string) error {
 	info = append(info, r.ToSlice()...)
 
 	// write to history file
-	f, err := os.OpenFile(h.SnatchesPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(s.SnatchesPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
@@ -60,62 +142,14 @@ func (h *History) AddSnatch(r *Release, filter string) error {
 	}
 	w.Flush()
 	// add to in-memory slices
-	h.SnatchedReleases = append(h.SnatchedReleases, r)
-	h.SnatchesRecords = append(h.SnatchesRecords, info)
+	s.SnatchedReleases = append(s.SnatchedReleases, r)
+	s.SnatchesRecords = append(s.SnatchesRecords, info)
 	return nil
 }
 
-func (h *History) Load(statsFile, snatchesFile string) error {
-	h.SnatchesPath = snatchesFile
-	h.TrackerStatsPath = statsFile
-	// load history file
-	f, err := os.OpenFile(h.SnatchesPath, os.O_RDONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	w := csv.NewReader(f)
-	records, err := w.ReadAll()
-	if err != nil {
-		return err
-	}
-	h.SnatchesRecords = records
-	// load releases from history to in-memory slice
-	for i, record := range records {
-		r := &Release{}
-		if err := r.FromSlice(record); err != nil {
-			logThis(fmt.Sprintf(errorLoadingLine, i), NORMAL)
-		} else {
-			h.SnatchedReleases = append(h.SnatchedReleases, r)
-		}
-	}
-	// load tracker stats
-	f2, err := os.OpenFile(h.TrackerStatsPath, os.O_RDONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer f2.Close()
-	w2 := csv.NewReader(f2)
-	trackerStats, err := w2.ReadAll()
-	if err != nil {
-		return err
-	}
-	h.TrackerStatsRecords = trackerStats
-	// load stats to in-memory slice
-	for i, stats := range trackerStats {
-		r := &TrackerStats{}
-		if err := r.FromSlice(stats); err != nil {
-			logThis(fmt.Sprintf(errorLoadingLine, i), NORMAL)
-		} else {
-			h.TrackerStats = append(h.TrackerStats, r)
-		}
-	}
-	return nil
-}
-
-func (h *History) HasDupe(r *Release) bool {
+func (s *SnatchHistory) HasDupe(r *Release) bool {
 	// check if r is already in history
-	for _, hr := range h.SnatchedReleases {
+	for _, hr := range s.SnatchedReleases {
 		if r.IsDupe(hr) {
 			return true
 		}
@@ -123,14 +157,14 @@ func (h *History) HasDupe(r *Release) bool {
 	return false
 }
 
-func (h *History) SnatchedPerDay() ([]time.Time, []float64, []float64, error) {
-	if len(h.SnatchesRecords) == 0 {
+func (s *SnatchHistory) SnatchedPerDay() ([]time.Time, []float64, []float64, error) {
+	if len(s.SnatchesRecords) == 0 {
 		return nil, nil, nil, errors.New(errorNoHistory)
 	}
 	// all snatches should already be available in-memory
 	// get all times
 	allTimes := []time.Time{}
-	for _, record := range h.SnatchesRecords {
+	for _, record := range s.SnatchesRecords {
 		timestamp, err := strconv.ParseInt(record[0], 0, 64)
 		if err != nil {
 			return nil, nil, nil, errors.New(errorInvalidTimestamp)
@@ -159,19 +193,19 @@ func (h *History) SnatchedPerDay() ([]time.Time, []float64, []float64, error) {
 			}
 			// increment number of snatched and size snatched
 			snatchesPerDay[len(snatchesPerDay)-1] += 1
-			sizePerDay[len(sizePerDay)-1] += float64(h.SnatchedReleases[i].size)
+			sizePerDay[len(sizePerDay)-1] += float64(s.SnatchedReleases[i].size)
 		}
 	}
 	return dayTimes, snatchesPerDay, sizePerDay, nil
 }
 
-func (h *History) GenerateDailyGraphs() error {
-	if len(h.SnatchedReleases) == h.LastGeneratedPerDay {
+func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) error {
+	if len(s.SnatchedReleases) == s.LastGeneratedPerDay {
 		// no additional snatch since the graphs were last generated, nothing needs to be done
 		return nil
 	}
 	// get slices of relevant data
-	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := h.SnatchedPerDay()
+	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := s.SnatchedPerDay()
 	if err != nil {
 		if err.Error() == errorNoHistory {
 			return nil // nothing to do yet
@@ -181,6 +215,12 @@ func (h *History) GenerateDailyGraphs() error {
 	}
 	if len(timestamps) < 2 {
 		return nil // not enough days yet
+	}
+	if !firstOverallTimestamp.Equal(timestamps[0]) {
+		// if the first overall timestamp isn't in the snatch history, artificially add it
+		timestamps = append([]time.Time{firstOverallTimestamp, previousDay(timestamps[0])}, timestamps...)
+		numberOfSnatchesPerDay = append([]float64{0, 0}, numberOfSnatchesPerDay...)
+		sizeSnatchedPerDay = append([]float64{0, 0}, sizeSnatchedPerDay...)
 	}
 
 	sizeSnatchedSeries := chart.TimeSeries{
@@ -204,7 +244,7 @@ func (h *History) GenerateDailyGraphs() error {
 
 	// generate pie chart
 	filterHits := map[string]float64{}
-	for _, r := range h.SnatchesRecords {
+	for _, r := range s.SnatchesRecords {
 		filterHits[r[1]] += 1
 	}
 	if err := writePieChart(filterHits, "Total snatches by filter", totalSnatchesByFilterFile); err != nil {
@@ -212,19 +252,53 @@ func (h *History) GenerateDailyGraphs() error {
 	}
 
 	// keep total number of snatches as reference for later
-	h.LastGeneratedPerDay = len(h.SnatchedReleases)
+	s.LastGeneratedPerDay = len(s.SnatchedReleases)
 	return nil
 }
 
-func (h *History) AddStats(stats *TrackerStats) error {
-	h.TrackerStats = append(h.TrackerStats, stats)
+//----------------------------------------------------------------------------------------------------------------------
+
+type TrackerStatsHistory struct {
+	TrackerStatsPath    string
+	TrackerStatsRecords [][]string
+	TrackerStats        []*TrackerStats
+}
+
+func (t *TrackerStatsHistory) Load(statsFile string) error {
+	t.TrackerStatsPath = statsFile
+	// load tracker stats
+	f, err := os.OpenFile(t.TrackerStatsPath, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := csv.NewReader(f)
+	trackerStats, err := w.ReadAll()
+	if err != nil {
+		return err
+	}
+	t.TrackerStatsRecords = trackerStats
+	// load stats to in-memory slice
+	for i, stats := range trackerStats {
+		r := &TrackerStats{}
+		if err := r.FromSlice(stats); err != nil {
+			logThis(fmt.Sprintf(errorLoadingLine, i), NORMAL)
+		} else {
+			t.TrackerStats = append(t.TrackerStats, r)
+		}
+	}
+	return nil
+}
+
+func (t *TrackerStatsHistory) Add(stats *TrackerStats) error {
+	t.TrackerStats = append(t.TrackerStats, stats)
 	// prepare csv fields
 	timestamp := time.Now().Unix()
 	newStats := []string{fmt.Sprintf("%d", timestamp)}
 	newStats = append(newStats, stats.ToSlice()...)
-	h.TrackerStatsRecords = append(h.TrackerStatsRecords, newStats)
+	t.TrackerStatsRecords = append(t.TrackerStatsRecords, newStats)
 	// append to file
-	f, err := os.OpenFile(h.TrackerStatsPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(t.TrackerStatsPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
@@ -237,12 +311,12 @@ func (h *History) AddStats(stats *TrackerStats) error {
 	return nil
 }
 
-func (h *History) GenerateStatsGraphs() error {
+func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Time) error {
 	// generate tracker stats graphs
-	if len(h.TrackerStatsRecords) < 2 {
+	if len(t.TrackerStatsRecords) < 2 {
 		return nil // not enough data points yet
 	}
-	if len(h.TrackerStatsRecords) != len(h.TrackerStats) {
+	if len(t.TrackerStatsRecords) != len(t.TrackerStats) {
 		return errors.New("Incoherent in-memory stats")
 	}
 	//  generate data slices
@@ -251,7 +325,7 @@ func (h *History) GenerateStatsGraphs() error {
 	downs := []float64{}
 	buffers := []float64{}
 	ratios := []float64{}
-	for _, stats := range h.TrackerStatsRecords {
+	for _, stats := range t.TrackerStatsRecords {
 		timestamp, err := strconv.ParseInt(stats[0], 10, 64)
 		if err != nil {
 			return errors.New(errorInvalidTimestamp)
@@ -261,11 +335,19 @@ func (h *History) GenerateStatsGraphs() error {
 	if len(timestamps) < 2 {
 		return errors.New(errorNotEnoughDataPoints)
 	}
-	for _, stats := range h.TrackerStats {
+	for _, stats := range t.TrackerStats {
 		ups = append(ups, float64(stats.Up))
 		downs = append(downs, float64(stats.Down))
 		buffers = append(buffers, float64(stats.Buffer))
 		ratios = append(ratios, float64(stats.Ratio))
+	}
+	if !firstOverallTimestamp.Equal(timestamps[0]) {
+		// if the first overall timestamp isn't in the snatch history, artificially add it
+		timestamps = append([]time.Time{firstOverallTimestamp, timestamps[0].Add(time.Duration(-conf.statsUpdatePeriod) * time.Hour)}, timestamps...)
+		ups = append([]float64{0}, ups...)
+		downs = append([]float64{0}, downs...)
+		buffers = append([]float64{0}, buffers...)
+		ratios = append([]float64{0}, ratios...)
 	}
 
 	upSeries := chart.TimeSeries{
@@ -303,23 +385,4 @@ func (h *History) GenerateStatsGraphs() error {
 		return err
 	}
 	return nil
-}
-
-func (h *History) GenerateGraphs() error {
-	// prepare directory for pngs if necessary
-	if !DirectoryExists(statsDir) {
-		if err := os.MkdirAll(statsDir, 0777); err != nil {
-			return err
-		}
-	}
-	// generate history graphs if necessary
-	if err := h.GenerateDailyGraphs(); err != nil {
-		return err
-	}
-	// generate stats graphs
-	if err := h.GenerateStatsGraphs(); err != nil {
-		return err
-	}
-	// combine graphs into overallStatsFile
-	return combineAllGraphs(overallStatsFile, uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile)
 }

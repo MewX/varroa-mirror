@@ -20,7 +20,7 @@ func manageStats(tracker GazelleTracker, previousStats *TrackerStats) *TrackerSt
 	} else {
 		logThis(stats.Progress(previousStats), NORMAL)
 		// save to CSV
-		if err := history.AddStats(stats); err != nil {
+		if err := history.TrackerStatsHistory.Add(stats); err != nil {
 			logThis(errorWritingCSV+err.Error(), NORMAL)
 		}
 		// generate graphs

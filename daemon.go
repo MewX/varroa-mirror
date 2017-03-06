@@ -10,8 +10,6 @@ import (
 	daemon "github.com/sevlyar/go-daemon"
 )
 
-//------------------
-
 const (
 	// RED only allows 5 API calls every 10s
 	allowedAPICallsByPeriod = 5
@@ -98,7 +96,7 @@ func main() {
 	}
 	logThis(" - Logged in tracker.", NORMAL)
 	// load history
-	if err := history.Load(statsFile, historyFile); err != nil {
+	if err := history.LoadAll(statsFile, historyFile); err != nil {
 		logThis(err.Error(), NORMAL)
 	}
 
