@@ -35,6 +35,16 @@ func nextDay(t time.Time) time.Time {
 	return t.Add(time.Duration(24) * time.Hour)
 }
 
+func allDaysSince(t time.Time) []time.Time {
+	firstDay := startOfDay(t)
+	tomorrow := nextDay(startOfDay(time.Now()))
+	dayTimes := []time.Time{}
+	for t := firstDay; t.Before(tomorrow); t = nextDay(t) {
+		dayTimes = append(dayTimes, t)
+	}
+	return dayTimes
+}
+
 // StringInSlice checks if a string is in a []string, returns bool.
 func StringInSlice(a string, list []string) bool {
 	for _, b := range list {

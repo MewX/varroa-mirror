@@ -24,9 +24,13 @@ const (
 var (
 	statsDir                  = "stats"
 	uploadStatsFile           = filepath.Join(statsDir, "up.png")
+	uploadPerDayStatsFile     = filepath.Join(statsDir, "up_per_day.png")
 	downloadStatsFile         = filepath.Join(statsDir, "down.png")
+	downloadPerDayStatsFile   = filepath.Join(statsDir, "down_per_day.png")
 	ratioStatsFile            = filepath.Join(statsDir, "ratio.png")
+	ratioPerDayStatsFile      = filepath.Join(statsDir, "ratio_per_day.png")
 	bufferStatsFile           = filepath.Join(statsDir, "buffer.png")
+	bufferPerDayStatsFile     = filepath.Join(statsDir, "buffer_per_day.png")
 	overallStatsFile          = filepath.Join(statsDir, "stats.png")
 	numberSnatchedPerDayFile  = filepath.Join(statsDir, "snatches_per_day.png")
 	sizeSnatchedPerDayFile    = filepath.Join(statsDir, "size_snatched_per_day.png")
@@ -72,7 +76,7 @@ func (h *History) GenerateGraphs() error {
 		return err
 	}
 	// combine graphs into overallStatsFile
-	return combineAllGraphs(overallStatsFile, uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile)
+	return combineAllGraphs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile)
 }
 
 func (h *History) getFirstTimestamp() time.Time {
@@ -159,7 +163,7 @@ func (s *SnatchHistory) HasDupe(r *Release) bool {
 	return false
 }
 
-func (s *SnatchHistory) SnatchedPerDay() ([]time.Time, []float64, []float64, error) {
+func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, []float64, []float64, error) {
 	if len(s.SnatchesRecords) == 0 {
 		return nil, nil, nil, errors.New(errorNoHistory)
 	}
@@ -174,13 +178,10 @@ func (s *SnatchHistory) SnatchedPerDay() ([]time.Time, []float64, []float64, err
 		allTimes = append(allTimes, time.Unix(timestamp, 0))
 	}
 	// slice snatches data per day
-	firstDay := startOfDay(allTimes[0])
-	tomorrow := nextDay(startOfDay(time.Now()))
-	dayTimes := []time.Time{}
+	dayTimes := allDaysSince(firstTimestamp)
 	snatchesPerDay := []float64{}
 	sizePerDay := []float64{}
-	for t := firstDay; t.Before(tomorrow); t = nextDay(t) {
-		dayTimes = append(dayTimes, t)
+	for _, t := range dayTimes {
 		snatchesPerDay = append(snatchesPerDay, 0)
 		sizePerDay = append(sizePerDay, 0)
 		// find releases snatched that day and add to stats
@@ -207,7 +208,7 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 		return nil
 	}
 	// get slices of relevant data
-	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := s.SnatchedPerDay()
+	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := s.SnatchedPerDay(firstOverallTimestamp)
 	if err != nil {
 		if err.Error() == errorNoHistory {
 			logThis(errorNoHistory, NORMAL)
@@ -239,10 +240,10 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	}
 
 	// generate graphs
-	if err := writeTimeSeriesChart(sizeSnatchedSeries, "Size snatched (Gb) per day", sizeSnatchedPerDayFile); err != nil {
+	if err := writeTimeSeriesChart(sizeSnatchedSeries, "Size snatched/day (Gb)", sizeSnatchedPerDayFile, true); err != nil {
 		return err
 	}
-	if err := writeTimeSeriesChart(numberSnatchedSeries, "Number of snatches per day", numberSnatchedPerDayFile); err != nil {
+	if err := writeTimeSeriesChart(numberSnatchedSeries, "Snatches/day", numberSnatchedPerDayFile, true); err != nil {
 		return err
 	}
 
@@ -338,6 +339,80 @@ func (t *TrackerStatsHistory) Add(stats *TrackerStats) error {
 	return nil
 }
 
+func (t *TrackerStatsHistory) StatsPerDay(firstTimestamp time.Time) ([]time.Time, []float64, []float64, []float64, []float64, error) {
+	if len(t.TrackerStatsRecords) == 0 {
+		return nil, nil, nil, nil, nil, errors.New(errorNoHistory)
+	}
+	// all snatches should already be available in-memory
+	// get all times
+	allTimes := []time.Time{}
+	for _, record := range t.TrackerStatsRecords {
+		timestamp, err := strconv.ParseInt(record[0], 0, 64)
+		if err != nil {
+			return nil, nil, nil, nil, nil, errors.New(errorInvalidTimestamp)
+		}
+		allTimes = append(allTimes, time.Unix(timestamp, 0))
+	}
+	// slice snatches data per day
+	dayTimes := allDaysSince(firstTimestamp)
+	statsAtStartOfDay := []*TrackerStats{}
+	// no sense getting stats for the last dayTimes == start of tomorrow
+	for _, d := range dayTimes[:len(dayTimes)-1] {
+		beforeIndex := -1
+		afterIndex := -1
+		// find the timestamps just before & after start of day
+		for i, recordTime := range allTimes {
+			if recordTime.Before(d) {
+				// continue until we get to start of day
+				continue
+			}
+			if i > 0 && beforeIndex == -1 && (recordTime.Equal(d) || recordTime.After(d)) {
+				beforeIndex = i - 1
+				afterIndex = i
+				break
+			}
+		}
+		// extrapolation using stats before & after the start of day to get virtual stats at that time
+		virtualStats := &TrackerStats{}
+		upSlope := float64((float64(t.TrackerStats[afterIndex].Up) - float64(t.TrackerStats[beforeIndex].Up)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
+		upOffset := float64(t.TrackerStats[beforeIndex].Up) - upSlope*float64(allTimes[beforeIndex].Unix())
+		virtualStats.Up = uint64(upSlope*float64(d.Unix()) + upOffset)
+		downSlope := float64((float64(t.TrackerStats[afterIndex].Down) - float64(t.TrackerStats[beforeIndex].Down)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
+		downOffset := float64(t.TrackerStats[beforeIndex].Down) - downSlope*float64(allTimes[beforeIndex].Unix())
+		virtualStats.Down = uint64(downSlope*float64(d.Unix()) + downOffset)
+		bufferSlope := float64((float64(t.TrackerStats[afterIndex].Buffer) - float64(t.TrackerStats[beforeIndex].Buffer)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
+		bufferOffset := float64(t.TrackerStats[beforeIndex].Buffer) - bufferSlope*float64(allTimes[beforeIndex].Unix())
+		virtualStats.Buffer = uint64(bufferSlope*float64(d.Unix()) + bufferOffset)
+		ratioSlope := float64((t.TrackerStats[afterIndex].Ratio - t.TrackerStats[beforeIndex].Ratio) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
+		ratioOffset := t.TrackerStats[beforeIndex].Ratio - ratioSlope*float64(allTimes[beforeIndex].Unix())
+		virtualStats.Ratio = ratioSlope*float64(d.Unix()) + ratioOffset
+		// keep the virtual stats in memory
+		statsAtStartOfDay = append(statsAtStartOfDay, virtualStats)
+	}
+
+	// now calculating differences one day from the other
+	upPerDay := []float64{}
+	downPerDay := []float64{}
+	bufferPerDay := []float64{}
+	ratioPerDay := []float64{}
+	for i, s := range statsAtStartOfDay {
+		if i == 0 {
+			continue
+		}
+		up, down, buffer, _, ratio := s.Diff(statsAtStartOfDay[i-1])
+		upPerDay = append(upPerDay, float64(up))
+		downPerDay = append(downPerDay, float64(down))
+		bufferPerDay = append(bufferPerDay, float64(buffer))
+		ratioPerDay = append(ratioPerDay, float64(ratio))
+	}
+	// adding 0s for today's and tomorrow's stats (which are still unknown)
+	upPerDay = append(upPerDay, 0, 0)
+	downPerDay = append(downPerDay, 0, 0)
+	bufferPerDay = append(bufferPerDay, 0, 0)
+	ratioPerDay = append(ratioPerDay, 0, 0)
+	return dayTimes, upPerDay, downPerDay, bufferPerDay, ratioPerDay, nil
+}
+
 func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Time) error {
 	// generate tracker stats graphs
 	if len(t.TrackerStatsRecords) < 2 {
@@ -399,16 +474,57 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	}
 
 	// write individual graphs
-	if err := writeTimeSeriesChart(upSeries, "Upload (Gb)", uploadStatsFile); err != nil {
+	if err := writeTimeSeriesChart(upSeries, "Upload (Gb)", uploadStatsFile, false); err != nil {
 		return err
 	}
-	if err := writeTimeSeriesChart(downSeries, "Download (Gb)", downloadStatsFile); err != nil {
+	if err := writeTimeSeriesChart(downSeries, "Download (Gb)", downloadStatsFile, false); err != nil {
 		return err
 	}
-	if err := writeTimeSeriesChart(bufferSeries, "Buffer (Gb)", bufferStatsFile); err != nil {
+	if err := writeTimeSeriesChart(bufferSeries, "Buffer (Gb)", bufferStatsFile, false); err != nil {
 		return err
 	}
-	if err := writeTimeSeriesChart(ratioSeries, "Ratio", ratioStatsFile); err != nil {
+	if err := writeTimeSeriesChart(ratioSeries, "Ratio", ratioStatsFile, false); err != nil {
+		return err
+	}
+
+	// generating stats per day graphs
+	dayTimes, upPerDay, downPerDay, bufferPerDay, ratioPerDay, err := t.StatsPerDay(firstOverallTimestamp)
+	if err != nil {
+		return err
+	}
+
+	upPerDaySeries := chart.TimeSeries{
+		Style:   commonStyle,
+		XValues: dayTimes,
+		YValues: sliceByteToGigabyte(upPerDay),
+	}
+	downPerDaySeries := chart.TimeSeries{
+		Style:   commonStyle,
+		XValues: dayTimes,
+		YValues: sliceByteToGigabyte(downPerDay),
+	}
+	bufferPerDaySeries := chart.TimeSeries{
+		Style:   commonStyle,
+		XValues: dayTimes,
+		YValues: sliceByteToGigabyte(bufferPerDay),
+	}
+	ratioPerDaySeries := chart.TimeSeries{
+		Style:   commonStyle,
+		XValues: dayTimes,
+		YValues: ratioPerDay,
+	}
+
+	// write individual graphs
+	if err := writeTimeSeriesChart(upPerDaySeries, "Upload/day (Gb)", uploadPerDayStatsFile, true); err != nil {
+		return err
+	}
+	if err := writeTimeSeriesChart(downPerDaySeries, "Download/day (Gb)", downloadPerDayStatsFile, true); err != nil {
+		return err
+	}
+	if err := writeTimeSeriesChart(bufferPerDaySeries, "Buffer/day (Gb)", bufferPerDayStatsFile, true); err != nil {
+		return err
+	}
+	if err := writeTimeSeriesChart(ratioPerDaySeries, "Ratio/day", ratioPerDayStatsFile, true); err != nil {
 		return err
 	}
 	return nil

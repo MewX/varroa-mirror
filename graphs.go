@@ -62,7 +62,19 @@ func writePieChart(values []chart.Value, title, filename string) error {
 	return ioutil.WriteFile(filename, buffer.Bytes(), 0644)
 }
 
-func writeTimeSeriesChart(series chart.Series, axisLabel, filename string) error {
+func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, addSMA bool) error {
+	plottedSeries := []chart.Series{series}
+	if addSMA {
+		sma := &chart.SMASeries{
+			Style: chart.Style{
+				Show:            true,
+				StrokeColor:     chart.ColorRed,
+				StrokeDashArray: []float64{5.0, 5.0},
+			},
+			InnerSeries: series,
+		}
+		plottedSeries = append(plottedSeries, sma)
+	}
 	graphUp := chart.Chart{
 		Height: 500,
 		XAxis:  timeAxis,
@@ -71,9 +83,7 @@ func writeTimeSeriesChart(series chart.Series, axisLabel, filename string) error
 			Name:      axisLabel,
 			NameStyle: chart.StyleShow(),
 		},
-		Series: []chart.Series{
-			series,
-		},
+		Series: plottedSeries,
 	}
 	buffer := bytes.NewBuffer([]byte{})
 	if err := graphUp.Render(chart.PNG, buffer); err != nil {
