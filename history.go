@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"time"
 
@@ -30,6 +31,7 @@ var (
 	numberSnatchedPerDayFile  = filepath.Join(statsDir, "snatches_per_day.png")
 	sizeSnatchedPerDayFile    = filepath.Join(statsDir, "size_snatched_per_day.png")
 	totalSnatchesByFilterFile = filepath.Join(statsDir, "total_snatched_by_filter.png")
+	toptagsFile               = filepath.Join(statsDir, "top_tags.png")
 )
 
 // History manages stats and generates graphs.
@@ -70,7 +72,7 @@ func (h *History) GenerateGraphs() error {
 		return err
 	}
 	// combine graphs into overallStatsFile
-	return combineAllGraphs(overallStatsFile, uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile)
+	return combineAllGraphs(overallStatsFile, uploadStatsFile, downloadStatsFile, bufferStatsFile, ratioStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile)
 }
 
 func (h *History) getFirstTimestamp() time.Time {
@@ -244,12 +246,35 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 		return err
 	}
 
-	// generate pie chart
+	// generate filters chart
 	filterHits := map[string]float64{}
 	for _, r := range s.SnatchesRecords {
 		filterHits[r[1]] += 1
 	}
-	if err := writePieChart(filterHits, "Total snatches by filter", totalSnatchesByFilterFile); err != nil {
+	pieSlices := []chart.Value{}
+	for k, v := range filterHits {
+		pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
+	}
+	if err := writePieChart(pieSlices, "Total snatches by filter", totalSnatchesByFilterFile); err != nil {
+		return err
+	}
+
+	// generate top 10 tags chart
+	popularTags := map[string]int{}
+	for _, r := range s.SnatchedReleases {
+		for _, t := range r.tags {
+			popularTags[t] += 1
+		}
+	}
+	top10tags := []chart.Value{}
+	for k, v := range popularTags {
+		top10tags = append(top10tags, chart.Value{Label: k, Value: float64(v)})
+	}
+	sort.Slice(top10tags, func(i, j int) bool { return top10tags[i].Value > top10tags[j].Value })
+	if len(top10tags) > 10 {
+		top10tags = top10tags[:10]
+	}
+	if err := writePieChart(top10tags, "Top tags", toptagsFile); err != nil {
 		return err
 	}
 

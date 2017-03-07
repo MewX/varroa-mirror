@@ -42,12 +42,7 @@ func sliceByteToGigabyte(in []float64) []float64 {
 	return out
 }
 
-func writePieChart(values map[string]float64, title, filename string) error {
-	// map to []chart.Value
-	pieSlices := []chart.Value{}
-	for k, v := range values {
-		pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
-	}
+func writePieChart(values []chart.Value, title, filename string) error {
 	// pie chart
 	pie := chart.PieChart{
 		Height: 500,
@@ -57,7 +52,7 @@ func writePieChart(values map[string]float64, title, filename string) error {
 			FontColor: chart.ColorBlack,
 			FontSize:  chart.DefaultTitleFontSize,
 		},
-		Values: pieSlices,
+		Values: values,
 	}
 	// generate image
 	buffer := bytes.NewBuffer([]byte{})
