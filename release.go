@@ -46,6 +46,8 @@ type Release struct {
 	filename    string
 	size        uint64
 	folder      string
+	logScore    int
+	uploader    string
 }
 
 func NewRelease(parts []string) (*Release, error) {
@@ -83,6 +85,66 @@ func (r *Release) String() string {
 
 func (r *Release) ShortString() string {
 	return fmt.Sprintf(TorrentNotification, r.artist, r.title, r.year, r.releaseType, r.format, r.quality, r.source, humanize.IBytes(r.size))
+}
+
+func (r *Release) ToSlice() []string {
+	// artist;title;year;size;type;quality;haslog;logscore;hascue;isscene;source;format;tags
+	return []string{r.artist, r.title, strconv.Itoa(r.year), strconv.FormatUint(r.size, 10), r.releaseType, r.quality, strconv.FormatBool(r.hasLog), strconv.Itoa(r.logScore), strconv.FormatBool(r.hasCue), strconv.FormatBool(r.isScene), r.source, r.format, strings.Join(r.tags, ","), r.uploader}
+}
+
+func (r *Release) FromSlice(slice []string) error {
+	// slice contains timestamp + filter, which are ignored
+	if len(slice) != 16 {
+		return errors.New("Incorrect entry, cannot load release")
+	}
+	r.artist = slice[2]
+	r.title = slice[3]
+	year, err := strconv.Atoi(slice[4])
+	if err != nil {
+		return err
+	}
+	r.year = year
+	size, err := strconv.ParseUint(slice[5], 10, 64)
+	if err != nil {
+		return err
+	}
+	r.size = size
+	r.releaseType = slice[6]
+	r.quality = slice[7]
+	hasLog, err := strconv.ParseBool(slice[8])
+	if err != nil {
+		return err
+	}
+	r.hasLog = hasLog
+	logScore, err := strconv.Atoi(slice[9])
+	if err != nil {
+		return err
+	}
+	r.logScore = logScore
+	hasCue, err := strconv.ParseBool(slice[10])
+	if err != nil {
+		return err
+	}
+	r.hasCue = hasCue
+	isScene, err := strconv.ParseBool(slice[11])
+	if err != nil {
+		return err
+	}
+	r.isScene = isScene
+	r.source = slice[12]
+	r.format = slice[13]
+	r.tags = strings.Split(slice[14], ",")
+	r.uploader = slice[15]
+	return nil
+}
+
+func (r *Release) IsDupe(o *Release) bool {
+	// checking if similar
+	// size and tags are not taken into account
+	if r.artist == o.artist && r.title == o.title && r.year == o.year && r.releaseType == o.releaseType && r.quality == o.quality && r.source == o.source && r.format == o.format && r.hasLog == o.hasLog && r.logScore == o.logScore && r.hasCue == o.hasCue && r.isScene == o.isScene {
+		return true
+	}
+	return false
 }
 
 func (r *Release) Satisfies(filter Filter) bool {
@@ -147,6 +209,8 @@ func (r *Release) Satisfies(filter Filter) bool {
 
 func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders []string, info *AdditionalInfo) bool {
 	r.size = info.size
+	r.logScore = info.logScore
+	r.uploader = info.uploader
 	if filter.maxSize != 0 && filter.maxSize < (info.size/(1024*1024)) {
 		logThis(filter.label+": Release too big.", VERBOSE)
 		return false

@@ -23,6 +23,7 @@ type Filter struct {
 	hasLog            bool
 	hasCue            bool
 	allowScene        bool
+	allowDuplicate    bool
 }
 
 type Config struct {
@@ -39,7 +40,6 @@ type Config struct {
 	announceChannel             string
 	pushoverToken               string
 	pushoverUser                string
-	statsFile                   string
 	statsUpdatePeriod           int
 	maxBufferDecreaseByPeriodMB int
 	defaultDestinationFolder    string
@@ -83,7 +83,6 @@ func (c *Config) load(path string) (err error) {
 	c.botName = conf.GetString("tracker.bot_name")
 	c.announcer = conf.GetString("tracker.announcer")
 	c.announceChannel = conf.GetString("tracker.announce_channel")
-	c.statsFile = conf.GetString("tracker.stats_file")
 	c.statsUpdatePeriod = conf.GetInt("tracker.stats_update_period_hour")
 	if c.statsUpdatePeriod < 1 {
 		return errors.New("Period must be at least 1 hour")
@@ -143,6 +142,10 @@ func (c *Config) load(path string) (err error) {
 		}
 		if allowScene, ok := tinfo["allow_scene"]; ok {
 			t.allowScene = allowScene.(bool)
+		}
+		t.allowDuplicate = true // by default, accept duplicates
+		if allowDuplicate, ok := tinfo["allow_duplicate"]; ok {
+			t.allowDuplicate = allowDuplicate.(bool)
 		}
 		c.filters = append(c.filters, t)
 	}

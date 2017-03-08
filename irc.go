@@ -20,8 +20,9 @@ const (
 	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder: "
 	errorDownloadingTorrent     = "Error downloading torrent: "
 	errorRemovingTempFile       = "Error removing temporary file %s"
+	errorAddingToHistory        = "Error adding release to history"
 
-
+	notSnatchingDuplicate = "Similar release already downloaded, and duplicates are not allowed"
 )
 
 func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error) {
@@ -40,6 +41,12 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 		var downloadedTorrent bool
 		var info *AdditionalInfo
 		for _, filter := range conf.filters {
+			// checking if duplicate
+			if !filter.allowDuplicate && history.HasDupe(release) {
+				logThis(notSnatchingDuplicate, VERBOSE)
+				continue
+			}
+			// checking if a filter is triggered
 			if release.Satisfies(filter) {
 				// get torrent info!
 				if !downloadedInfo {
@@ -49,22 +56,25 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 					}
 					downloadedInfo = true
 					logThis(info.String(), VERBOSE)
-					// TODO save info in yaml file somewhere, in torrent dl folder
 				}
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, conf.blacklistedUploaders, info) {
-					logThis(" -> " + release.ShortString() + " triggered filter " + filter.label + ", snatching.", NORMAL)
+					logThis(" -> "+release.ShortString()+" triggered filter "+filter.label+", snatching.", NORMAL)
 					if _, err := tracker.Download(release); err != nil {
 						return nil, errors.New(errorDownloadingTorrent + err.Error())
 					}
 					downloadedTorrent = true
-					// move to relevant subfolder
+					// move to relevant watch directory
 					destination := conf.defaultDestinationFolder
 					if filter.destinationFolder != "" {
 						destination = filter.destinationFolder
 					}
 					if err := CopyFile(release.filename, filepath.Join(destination, release.filename)); err != nil {
 						return nil, errors.New(errorCouldNotMoveTorrent + err.Error())
+					}
+					// adding to history
+					if err := history.SnatchHistory.Add(release, filter.label); err != nil {
+						logThis(errorAddingToHistory, NORMAL)
 					}
 					// send notification
 					if err := notification.Send(filter.label + ": Snatched " + release.ShortString()); err != nil {

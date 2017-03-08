@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"syscall"
 	"time"
@@ -10,8 +9,6 @@ import (
 	"github.com/gregdel/pushover"
 	daemon "github.com/sevlyar/go-daemon"
 )
-
-//------------------
 
 const (
 	// RED only allows 5 API calls every 10s
@@ -24,11 +21,15 @@ const (
 	errorSendingSignal        = "Error sending signal to the daemon: "
 	errorGettingDaemonContext = "Error launching daemon: "
 	errorCheckDaemonExited    = "Error checking daemon exited: "
+
+	historyFile = "history.csv"
+	statsFile   = "stats.csv"
 )
 
 var (
 	signal = flag.String("s", "", `send orders to the daemon:
 		reload — reload the configuration file
+		stats  — generate graphs now
 		quit   — graceful shutdown
 		stop   — fast shutdown`)
 	daemonContext = &daemon.Context{
@@ -42,6 +43,7 @@ var (
 	}
 	conf         = &Config{}
 	notification = &Notification{}
+	history      = &History{}
 
 	// daemon control channels
 	stop = make(chan struct{})
@@ -56,6 +58,7 @@ func main() {
 	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, quitDaemon)
 	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, quitDaemon)
 	daemon.AddCommand(daemon.StringFlag(signal, "reload"), syscall.SIGHUP, loadConfiguration)
+	daemon.AddCommand(daemon.StringFlag(signal, "stats"), syscall.SIGUNUSED, generateStats)
 
 	if len(daemon.ActiveFlags()) > 0 {
 		d, err := daemonContext.Search()
@@ -79,6 +82,7 @@ func main() {
 	logThis("+ varroa musica started", NORMAL)
 	// load configuration
 	if err := loadConfiguration(nil); err != nil {
+		logThis(err.Error(), NORMAL)
 		return
 	}
 	// init notifications with pushover
@@ -89,11 +93,16 @@ func main() {
 	// log in tracker
 	tracker := GazelleTracker{rootURL: conf.url}
 	if err := tracker.Login(conf.user, conf.password); err != nil {
-		fmt.Println(err.Error())
+		logThis(err.Error(), NORMAL)
 		return
 	}
 	logThis(" - Logged in tracker.", NORMAL)
+	// load history
+	if err := history.LoadAll(statsFile, historyFile); err != nil {
+		logThis(err.Error(), NORMAL)
+	}
 
+	// launch goroutines
 	go checkSignals()
 	go ircHandler(tracker)
 	go monitorStats(tracker)
@@ -123,6 +132,13 @@ func loadConfiguration(sig os.Signal) error {
 	}
 	conf = newConf
 	logThis(" - Configuration reloaded.", NORMAL)
+	return nil
+}
+
+func generateStats(sig os.Signal) error {
+	if err := history.GenerateGraphs(); err != nil {
+		logThis(errorGeneratingGraphs, NORMAL)
+	}
 	return nil
 }
 
