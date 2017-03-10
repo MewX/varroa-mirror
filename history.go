@@ -80,14 +80,17 @@ func (h *History) GenerateGraphs() error {
 }
 
 func (h *History) getFirstTimestamp() time.Time {
-	snatchTimestamp, err := strconv.ParseInt(h.SnatchesRecords[0][0], 0, 64)
-	if err != nil {
-		snatchTimestamp = math.MaxInt32 // max timestamp
+	var snatchTimestamp int64 = math.MaxInt32
+	var statsTimestamp int64 = math.MaxInt32
+
+	// Handle empty CSV files
+	if len(h.SnatchesRecords) != 0 && len(h.SnatchesRecords[0]) > 0 {
+		snatchTimestamp, err := strconv.ParseInt(h.SnatchesRecords[0][0], 0, 64)
 	}
-	statsTimestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64)
-	if err != nil {
-		statsTimestamp = math.MaxInt32 // max timestamp
+	if len(h.TrackerStatsRecords) != 0 && len(h.TrackerStatsRecords[0]) > 0 {
+		statsTimestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64)
 	}
+
 	if snatchTimestamp < statsTimestamp {
 		return time.Unix(snatchTimestamp, 0)
 	}
