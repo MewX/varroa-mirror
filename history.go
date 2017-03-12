@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	git "github.com/libgit2/git2go"
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
 )
@@ -19,10 +21,36 @@ const (
 	errorNoHistory        = "No history yet"
 	errorInvalidTimestamp = "Error parsing timestamp"
 	errorNotEnoughDays    = "Not enough days in history to generate daily graphs"
+
+	statsDir = "stats"
+	gitlabCI = `# plain-htlm CI
+pages:
+  stage: deploy
+  script:
+  - mkdir .public
+  - cp -r * .public
+  - mv .public public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
+`
+	htlmIndex = `
+<html>
+  <head>
+    <title></title>
+    <meta content="">
+    <style></style>
+  </head>
+  <body>
+    <h1>Varroa Musica</h1>
+    <p style="text-align:center;"><img src="stats.png" alt="stats" style="align:center"></p>
+  </body>
+</html>`
 )
 
 var (
-	statsDir                  = "stats"
 	uploadStatsFile           = filepath.Join(statsDir, "up.png")
 	uploadPerDayStatsFile     = filepath.Join(statsDir, "up_per_day.png")
 	downloadStatsFile         = filepath.Join(statsDir, "down.png")
@@ -36,6 +64,8 @@ var (
 	sizeSnatchedPerDayFile    = filepath.Join(statsDir, "size_snatched_per_day.png")
 	totalSnatchesByFilterFile = filepath.Join(statsDir, "total_snatched_by_filter.png")
 	toptagsFile               = filepath.Join(statsDir, "top_tags.png")
+	gitlabCIYamlFile          = filepath.Join(statsDir, ".gitlab-ci.yml")
+	htmlIndexFile             = filepath.Join(statsDir, "index.html")
 )
 
 // History manages stats and generates graphs.
@@ -76,7 +106,11 @@ func (h *History) GenerateGraphs() error {
 		return err
 	}
 	// combine graphs into overallStatsFile
-	return combineAllGraphs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile)
+	if err := combineAllGraphs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
+		return err
+	}
+	// deploy automatically
+	return h.Deploy()
 }
 
 func (h *History) getFirstTimestamp() time.Time {
@@ -92,6 +126,109 @@ func (h *History) getFirstTimestamp() time.Time {
 		return time.Unix(snatchTimestamp, 0)
 	}
 	return time.Unix(statsTimestamp, 0)
+}
+
+// Deploy to gitlab pages
+func (h *History) Deploy() error {
+	if !conf.gitlabPagesConfigured() {
+		return nil
+	}
+	// use git
+	firstCommit := false
+	repo, err := git.OpenRepository(statsDir)
+	if err != nil {
+		repo, err = git.InitRepository(statsDir, false)
+		if err != nil {
+			return err
+		}
+		firstCommit = true
+	}
+	index, err := repo.Index()
+	if err != nil {
+		return err
+	}
+	if err := index.AddByPath(filepath.Base(overallStatsFile)); err != nil {
+		return err
+	}
+	if firstCommit {
+		// create .gitlab-ci.yml
+		if err := ioutil.WriteFile(gitlabCIYamlFile, []byte(gitlabCI), 0666); err != nil {
+			return err
+		}
+		// add it to commit
+		if err := index.AddByPath(filepath.Base(gitlabCIYamlFile)); err != nil {
+			return err
+		}
+		// create index.html
+		if err := ioutil.WriteFile(htmlIndexFile, []byte(htlmIndex), 0666); err != nil {
+			return err
+		}
+		// add it to commit
+		if err := index.AddByPath(filepath.Base(htmlIndexFile)); err != nil {
+			return err
+		}
+	}
+
+	treeID, err := index.WriteTree()
+	if err != nil {
+		return err
+	}
+	if err := index.Write(); err != nil {
+		return err
+	}
+	tree, err := repo.LookupTree(treeID)
+	if err != nil {
+		return err
+	}
+
+	signature := &git.Signature{
+		Name:  "varroa musica",
+		Email: "varroa@musica.com",
+		When:  time.Now(),
+	}
+	message := "varroa musica stats update."
+	if firstCommit {
+		_, err = repo.CreateCommit("HEAD", signature, signature, message, tree)
+	} else {
+		head, err := repo.Head()
+		if err != nil {
+			return err
+		}
+		headCommit, err := repo.LookupCommit(head.Target())
+		if err != nil {
+			return err
+		}
+		_, err = repo.CreateCommit("HEAD", signature, signature, message, tree, headCommit)
+	}
+
+	// push
+	gitlab := &git.Remote{}
+	if firstCommit {
+		// add remote
+		gitlab, err = repo.Remotes.Create("origin", conf.gitlabPagesGitURL)
+	} else {
+		gitlab, err = repo.Remotes.Lookup("origin")
+	}
+	if err != nil {
+		return err
+	}
+	called := false
+	err = gitlab.Push([]string{"refs/heads/master"}, &git.PushOptions{
+		RemoteCallbacks: git.RemoteCallbacks{
+			CredentialsCallback: func(url string, username_from_url string, allowed_types git.CredType) (git.ErrorCode, *git.Cred) {
+				if called {
+					return git.ErrUser, nil
+				}
+				called = true
+				ret, creds := git.NewCredUserpassPlaintext(conf.gitlabUser, conf.gitlabPassword)
+				return git.ErrorCode(ret), &creds
+			},
+		},
+	})
+	if err != nil {
+		logThis("Pushed new stats to gitlab pages.", NORMAL)
+	}
+	return err
 }
 
 //----------------------------------------------------------------------------------------------------------------------

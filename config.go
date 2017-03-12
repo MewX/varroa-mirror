@@ -45,6 +45,9 @@ type Config struct {
 	defaultDestinationFolder    string
 	blacklistedUploaders        []string
 	logLevel                    int
+	gitlabUser                  string
+	gitlabPassword              string
+	gitlabPagesGitURL           string
 }
 
 func getStringValues(source map[string]interface{}, key string) []string {
@@ -62,14 +65,13 @@ func getStringValues(source map[string]interface{}, key string) []string {
 	return result
 }
 
-func (c *Config) load(path string) (err error) {
+func (c *Config) load(path string) error {
 	conf := viper.New()
 	conf.SetConfigType("yaml")
 	conf.SetConfigFile(path)
 
-	err = conf.ReadInConfig()
-	if err != nil {
-		return
+	if err := conf.ReadInConfig(); err != nil {
+		return err
 	}
 
 	// tracker configuration
@@ -100,6 +102,10 @@ func (c *Config) load(path string) (err error) {
 	// pushover configuration
 	c.pushoverToken = conf.GetString("pushover.token")
 	c.pushoverUser = conf.GetString("pushover.user")
+	// gitlab pages configuration
+	c.gitlabPagesGitURL = conf.GetString("gitlab.git")
+	c.gitlabUser = conf.GetString("gitlab.user")
+	c.gitlabPassword = conf.GetString("gitlab.password")
 	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
@@ -149,11 +155,18 @@ func (c *Config) load(path string) (err error) {
 		}
 		c.filters = append(c.filters, t)
 	}
-	return
+	return nil
 }
 
 func (c *Config) pushoverConfigured() bool {
 	if conf.pushoverUser != "" && conf.pushoverToken != "" {
+		return true
+	}
+	return false
+}
+
+func (c *Config) gitlabPagesConfigured() bool {
+	if conf.gitlabPagesGitURL != "" && conf.gitlabUser != "" && conf.gitlabPassword != "" {
 		return true
 	}
 	return false
