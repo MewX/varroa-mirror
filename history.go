@@ -48,7 +48,8 @@ pages:
     <style></style>
   </head>
   <body>
-    <h1>Varroa Musica</h1>
+    <h1 style="text-align:center;">Varroa Musica</h1>
+    <p style="text-align:center;">Last updated: %s</p>
     <p style="text-align:center;"><img src="stats.png" alt="stats" style="align:center"></p>
   </body>
 </html>`
@@ -258,10 +259,11 @@ func (h *History) Deploy() error {
 		if err := ioutil.WriteFile(gitlabCIYamlFile, []byte(gitlabCI), 0666); err != nil {
 			return err
 		}
-		// create index.html
-		if err := ioutil.WriteFile(htmlIndexFile, []byte(htlmIndex), 0666); err != nil {
-			return err
-		}
+
+	}
+	// create/update index.html
+	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"))), 0666); err != nil {
+		return err
 	}
 	// add overall stats and other files
 	if err := git.Add(filepath.Base(overallStatsFile), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
