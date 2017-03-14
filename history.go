@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -11,8 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	git "github.com/libgit2/git2go"
-	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
 )
 
@@ -21,6 +20,11 @@ const (
 	errorNoHistory        = "No history yet"
 	errorInvalidTimestamp = "Error parsing timestamp"
 	errorNotEnoughDays    = "Not enough days in history to generate daily graphs"
+	errorGitInit          = "Error running git init: "
+	errorGitAdd           = "Error running git add: "
+	errorGitCommit        = "Error running git commit: "
+	errorGitAddRemote     = "Error running git remote add: "
+	errorGitPush          = "Error running git push: "
 
 	statsDir = "stats"
 	gitlabCI = `# plain-htlm CI
@@ -128,7 +132,8 @@ func (h *History) getFirstTimestamp() time.Time {
 	return time.Unix(statsTimestamp, 0)
 }
 
-// Deploy to gitlab pages
+/*
+// Deploy to gitlab pages with git2go => requires libgit2, not installed on seedhost :(
 func (h *History) Deploy() error {
 	if !conf.gitlabPagesConfigured() {
 		return nil
@@ -229,6 +234,54 @@ func (h *History) Deploy() error {
 		logThis("Pushed new stats to gitlab pages.", NORMAL)
 	}
 	return err
+}
+*/
+
+// Deploy to gitlab pages with git wrapper
+func (h *History) Deploy() error {
+	if !conf.gitlabPagesConfigured() {
+		return nil
+	}
+	git := NewGit(statsDir, conf.user, conf.user+"+varroa@redacted")
+	if git == nil {
+		return errors.New("Error setting up git")
+	}
+	// make sure we're going back to cwd
+	defer git.getBack()
+
+	// init repository if necessary
+	if !git.Exists() {
+		if err := git.Init(); err != nil {
+			return errors.New(errorGitInit + err.Error())
+		}
+		// create .gitlab-ci.yml
+		if err := ioutil.WriteFile(gitlabCIYamlFile, []byte(gitlabCI), 0666); err != nil {
+			return err
+		}
+		// create index.html
+		if err := ioutil.WriteFile(htmlIndexFile, []byte(htlmIndex), 0666); err != nil {
+			return err
+		}
+	}
+	// add overall stats and other files
+	if err := git.Add(filepath.Base(overallStatsFile), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
+		return errors.New(errorGitAdd + err.Error())
+	}
+	// commit
+	if err := git.Commit("varroa musica stats update."); err != nil {
+		return errors.New(errorGitCommit + err.Error())
+	}
+	// push
+	if !git.HasRemote("origin") {
+		if err := git.AddRemote("origin", conf.gitlabPagesGitURL); err != nil {
+			return errors.New(errorGitAddRemote + err.Error())
+		}
+	}
+	if err := git.Push("origin", conf.gitlabPagesGitURL, conf.gitlabUser, conf.gitlabPassword); err != nil {
+		return errors.New(errorGitPush + err.Error())
+	}
+	logThis("Pushed new stats to "+conf.gitlabPagesURL, NORMAL)
+	return nil
 }
 
 //----------------------------------------------------------------------------------------------------------------------

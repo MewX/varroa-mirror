@@ -3,6 +3,9 @@ package main
 import (
 	"errors"
 
+	"fmt"
+	"strings"
+
 	"github.com/spf13/viper"
 )
 
@@ -48,6 +51,7 @@ type Config struct {
 	gitlabUser                  string
 	gitlabPassword              string
 	gitlabPagesGitURL           string
+	gitlabPagesURL              string
 }
 
 func getStringValues(source map[string]interface{}, key string) []string {
@@ -106,6 +110,10 @@ func (c *Config) load(path string) error {
 	c.gitlabPagesGitURL = conf.GetString("gitlab.git")
 	c.gitlabUser = conf.GetString("gitlab.user")
 	c.gitlabPassword = conf.GetString("gitlab.password")
+	if c.gitlabPagesConfigured() {
+		repoNameParts := strings.Split(c.gitlabPagesGitURL, "/")
+		c.gitlabPagesURL = fmt.Sprintf("https://%s.gitlab.io/%s", c.gitlabUser, strings.Replace(repoNameParts[len(repoNameParts)-1], ".git", "", -1))
+	}
 	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
@@ -159,14 +167,14 @@ func (c *Config) load(path string) error {
 }
 
 func (c *Config) pushoverConfigured() bool {
-	if conf.pushoverUser != "" && conf.pushoverToken != "" {
+	if c.pushoverUser != "" && c.pushoverToken != "" {
 		return true
 	}
 	return false
 }
 
 func (c *Config) gitlabPagesConfigured() bool {
-	if conf.gitlabPagesGitURL != "" && conf.gitlabUser != "" && conf.gitlabPassword != "" {
+	if c.gitlabPagesGitURL != "" && c.gitlabUser != "" && c.gitlabPassword != "" {
 		return true
 	}
 	return false
