@@ -50,10 +50,6 @@ func NewGit(root, user, email string) *Git {
 	return &Git{path: root, user: user, email: email, currentPath: path}
 }
 
-func (g *Git) author() string {
-	return fmt.Sprintf("%s <%s>", g.user, g.email)
-}
-
 func (g *Git) goToRepositoryRoot() error {
 	return os.Chdir(g.path)
 }
@@ -80,6 +76,18 @@ func (g *Git) Init() error {
 	g.goToRepositoryRoot()
 	defer g.getBack()
 	_, err := exec.Command(git, initCommand...).Output()
+	if err != nil {
+		return err
+	}
+	// set up identity
+	_, err = exec.Command(git, "config", "user.name", g.user).Output()
+	if err != nil {
+		return err
+	}
+	_, err = exec.Command(git, "config", "user.email", g.email).Output()
+	if err != nil {
+		return err
+	}
 	return err
 }
 
@@ -95,7 +103,10 @@ func (g *Git) Add(files ...string) error {
 func (g *Git) Commit(message string) error {
 	g.goToRepositoryRoot()
 	defer g.getBack()
-	_, err := exec.Command(git, "commit", "-m", message, "--author="+g.author()).Output()
+	out, err := exec.Command(git, "commit", "-m", message).CombinedOutput()
+	if err != nil {
+		logThis("Error committing stats: "+string(out), NORMAL)
+	}
 	return err
 }
 
