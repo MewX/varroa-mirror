@@ -58,7 +58,7 @@ func main() {
 	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, quitDaemon)
 	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, quitDaemon)
 	daemon.AddCommand(daemon.StringFlag(signal, "reload"), syscall.SIGHUP, loadConfiguration)
-	daemon.AddCommand(daemon.StringFlag(signal, "stats"), syscall.SIGUNUSED, generateStats)
+	daemon.AddCommand(daemon.StringFlag(signal, "stats"), syscall.SIGUSR1, generateStats)
 
 	if len(daemon.ActiveFlags()) > 0 {
 		d, err := daemonContext.Search()
