@@ -27,6 +27,8 @@ const (
 	errorGitPush          = "Error running git push: "
 
 	statsDir = "stats"
+	pngExt   = ".png"
+	svgExt   = ".svg"
 	gitlabCI = `# plain-htlm CI
 pages:
   stage: deploy
@@ -50,25 +52,34 @@ pages:
   <body>
     <h1 style="text-align:center;">Varroa Musica</h1>
     <p style="text-align:center;">Last updated: %s</p>
-    <p style="text-align:center;"><img src="stats.png" alt="stats" style="align:center"></p>
+    <p style="text-align:center;">Latest stats: %s</p>
+    <p style="text-align:center;"><a href="#buffer">Buffer</a> | <a href="#up">Upload</a> | <a href="#down">Download</a> | <a href="#ratio">Ratio</a> | <a href="#buffer_per_day">Buffer/day</a> | <a href="#up_per_day">Upload/day</a> | <a href="#down_per_day">Download/day</a> | <a href="#ratio_per_day">Ratio/day</a></p>
+    <p id="buffer" style="text-align:center;"><img src="buffer.svg" alt="stats" style="align:center"></p>
+    <p id="up" style="text-align:center;"><img src="up.svg" alt="stats" style="align:center"></p>
+    <p id="down" style="text-align:center;"><img src="down.svg" alt="stats" style="align:center"></p>
+    <p id="ratio" style="text-align:center;"><img src="ratio.svg" alt="stats" style="align:center"></p>
+    <p id="buffer_per_day" style="text-align:center;"><img src="buffer_per_day.svg" alt="stats" style="align:center"></p>
+    <p id="up_per_day" style="text-align:center;"><img src="up_per_day.svg" alt="stats" style="align:center"></p>
+    <p id="down_per_day" style="text-align:center;"><img src="down_per_day.svg" alt="stats" style="align:center"></p>
+    <p id="ratio_per_day" style="text-align:center;"><img src="ratio_per_day.svg" alt="stats" style="align:center"></p>
   </body>
 </html>`
 )
 
 var (
-	uploadStatsFile           = filepath.Join(statsDir, "up.png")
-	uploadPerDayStatsFile     = filepath.Join(statsDir, "up_per_day.png")
-	downloadStatsFile         = filepath.Join(statsDir, "down.png")
-	downloadPerDayStatsFile   = filepath.Join(statsDir, "down_per_day.png")
-	ratioStatsFile            = filepath.Join(statsDir, "ratio.png")
-	ratioPerDayStatsFile      = filepath.Join(statsDir, "ratio_per_day.png")
-	bufferStatsFile           = filepath.Join(statsDir, "buffer.png")
-	bufferPerDayStatsFile     = filepath.Join(statsDir, "buffer_per_day.png")
-	overallStatsFile          = filepath.Join(statsDir, "stats.png")
-	numberSnatchedPerDayFile  = filepath.Join(statsDir, "snatches_per_day.png")
-	sizeSnatchedPerDayFile    = filepath.Join(statsDir, "size_snatched_per_day.png")
-	totalSnatchesByFilterFile = filepath.Join(statsDir, "total_snatched_by_filter.png")
-	toptagsFile               = filepath.Join(statsDir, "top_tags.png")
+	uploadStatsFile           = filepath.Join(statsDir, "up")
+	uploadPerDayStatsFile     = filepath.Join(statsDir, "up_per_day")
+	downloadStatsFile         = filepath.Join(statsDir, "down")
+	downloadPerDayStatsFile   = filepath.Join(statsDir, "down_per_day")
+	ratioStatsFile            = filepath.Join(statsDir, "ratio")
+	ratioPerDayStatsFile      = filepath.Join(statsDir, "ratio_per_day")
+	bufferStatsFile           = filepath.Join(statsDir, "buffer")
+	bufferPerDayStatsFile     = filepath.Join(statsDir, "buffer_per_day")
+	overallStatsFile          = filepath.Join(statsDir, "stats")
+	numberSnatchedPerDayFile  = filepath.Join(statsDir, "snatches_per_day")
+	sizeSnatchedPerDayFile    = filepath.Join(statsDir, "size_snatched_per_day")
+	totalSnatchesByFilterFile = filepath.Join(statsDir, "total_snatched_by_filter")
+	toptagsFile               = filepath.Join(statsDir, "top_tags")
 	gitlabCIYamlFile          = filepath.Join(statsDir, ".gitlab-ci.yml")
 	htmlIndexFile             = filepath.Join(statsDir, "index.html")
 )
@@ -111,7 +122,7 @@ func (h *History) GenerateGraphs() error {
 		return err
 	}
 	// combine graphs into overallStatsFile
-	if err := combineAllGraphs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
+	if err := combineAllPNGs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
 		return err
 	}
 	// deploy automatically
@@ -119,13 +130,17 @@ func (h *History) GenerateGraphs() error {
 }
 
 func (h *History) getFirstTimestamp() time.Time {
-	snatchTimestamp, err := strconv.ParseInt(h.SnatchesRecords[0][0], 0, 64)
-	if err != nil {
-		snatchTimestamp = math.MaxInt32 // max timestamp
+	snatchTimestamp, statsTimestamp := int64(math.MaxInt32), int64(math.MaxInt32)
+	// If CSV files are NOT empty
+	if len(h.SnatchesRecords) != 0 && len(h.SnatchesRecords[0]) > 0 {
+		if timestamp, err := strconv.ParseInt(h.SnatchesRecords[0][0], 0, 64); err == nil {
+			snatchTimestamp = timestamp
+		}
 	}
-	statsTimestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64)
-	if err != nil {
-		statsTimestamp = math.MaxInt32 // max timestamp
+	if len(h.TrackerStatsRecords) != 0 && len(h.TrackerStatsRecords[0]) > 0 {
+		if timestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64); err == nil {
+			statsTimestamp = timestamp
+		}
 	}
 	if snatchTimestamp < statsTimestamp {
 		return time.Unix(snatchTimestamp, 0)
@@ -243,6 +258,9 @@ func (h *History) Deploy() error {
 	if !conf.gitlabPagesConfigured() {
 		return nil
 	}
+	if len(h.TrackerStats) == 0 {
+		return nil
+	}
 	git := NewGit(statsDir, conf.user, conf.user+"+varroa@redacted")
 	if git == nil {
 		return errors.New("Error setting up git")
@@ -262,11 +280,11 @@ func (h *History) Deploy() error {
 
 	}
 	// create/update index.html
-	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"))), 0666); err != nil {
+	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
 		return err
 	}
 	// add overall stats and other files
-	if err := git.Add(filepath.Base(overallStatsFile), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
+	if err := git.Add("*"+svgExt, filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
 		return errors.New(errorGitAdd + err.Error())
 	}
 	// commit
@@ -397,6 +415,7 @@ func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, [
 func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) error {
 	if len(s.SnatchedReleases) == s.LastGeneratedPerDay {
 		// no additional snatch since the graphs were last generated, nothing needs to be done
+		logThis("Empty daily history", VERBOSE)
 		return nil
 	}
 	// get slices of relevant data
@@ -607,7 +626,8 @@ func (t *TrackerStatsHistory) StatsPerDay(firstTimestamp time.Time) ([]time.Time
 
 func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Time) error {
 	// generate tracker stats graphs
-	if len(t.TrackerStatsRecords) < 2 {
+	if len(t.TrackerStatsRecords) <= 2 {
+		logThis("Empty stats history", VERBOSE)
 		return nil // not enough data points yet
 	}
 	if len(t.TrackerStatsRecords) != len(t.TrackerStats) {
@@ -667,16 +687,16 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 
 	// write individual graphs
 	if err := writeTimeSeriesChart(upSeries, "Upload (Gb)", uploadStatsFile, false); err != nil {
-		return err
+		return errors.New("Error generating chart for upload: " + err.Error())
 	}
 	if err := writeTimeSeriesChart(downSeries, "Download (Gb)", downloadStatsFile, false); err != nil {
-		return err
+		return errors.New("Error generating chart for download: " + err.Error())
 	}
 	if err := writeTimeSeriesChart(bufferSeries, "Buffer (Gb)", bufferStatsFile, false); err != nil {
-		return err
+		return errors.New("Error generating chart for buffer: " + err.Error())
 	}
 	if err := writeTimeSeriesChart(ratioSeries, "Ratio", ratioStatsFile, false); err != nil {
-		return err
+		return errors.New("Error generating chart for ratio: " + err.Error())
 	}
 
 	// generating stats per day graphs
@@ -708,16 +728,16 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 
 	// write individual graphs
 	if err := writeTimeSeriesChart(upPerDaySeries, "Upload/day (Gb)", uploadPerDayStatsFile, true); err != nil {
-		return err
+		return errors.New("Error generating chart for upload/day: " + err.Error())
 	}
 	if err := writeTimeSeriesChart(downPerDaySeries, "Download/day (Gb)", downloadPerDayStatsFile, true); err != nil {
-		return err
+		return errors.New("Error generating chart for download/day: " + err.Error())
 	}
 	if err := writeTimeSeriesChart(bufferPerDaySeries, "Buffer/day (Gb)", bufferPerDayStatsFile, true); err != nil {
-		return err
+		return errors.New("Error generating chart for buffer/day: " + err.Error())
 	}
 	if err := writeTimeSeriesChart(ratioPerDaySeries, "Ratio/day", ratioPerDayStatsFile, true); err != nil {
-		return err
+		return errors.New("Error generating chart for ratio/day: " + err.Error())
 	}
 	return nil
 }

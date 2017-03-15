@@ -7,7 +7,7 @@ import (
 const (
 	errorGettingStats        = "Error getting stats: "
 	errorWritingCSV          = "Error writing stats to CSV file: "
-	errorGeneratingGraphs    = "Error generating graphs: "
+	errorGeneratingGraphs    = "Error generating graphs (may require more data): "
 	errorNotEnoughDataPoints = "Not enough data points (yet) to generate graph"
 	errorBufferDrop          = "Buffer drop too important, varroa will shutdown"
 )
