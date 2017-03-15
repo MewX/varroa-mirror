@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
@@ -55,11 +54,20 @@ func writePieChart(values []chart.Value, title, filename string) error {
 		Values: values,
 	}
 	// generate image
-	buffer := bytes.NewBuffer([]byte{})
-	if err := pie.Render(chart.PNG, buffer); err != nil {
+	// generate SVG
+	bufferSVG := bytes.NewBuffer([]byte{})
+	if err := pie.Render(chart.SVG, bufferSVG); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filename, buffer.Bytes(), 0644)
+	if err := ioutil.WriteFile(filename+svgExt, bufferSVG.Bytes(), 0644); err != nil {
+		return err
+	}
+	// generate PNG
+	bufferPNG := bytes.NewBuffer([]byte{})
+	if err := pie.Render(chart.PNG, bufferPNG); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filename+pngExt, bufferPNG.Bytes(), 0644)
 }
 
 func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, addSMA bool) error {
@@ -75,7 +83,7 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 		}
 		plottedSeries = append(plottedSeries, sma)
 	}
-	graphUp := chart.Chart{
+	graph := chart.Chart{
 		Height: 500,
 		XAxis:  timeAxis,
 		YAxis: chart.YAxis{
@@ -85,18 +93,27 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 		},
 		Series: plottedSeries,
 	}
-	buffer := bytes.NewBuffer([]byte{})
-	if err := graphUp.Render(chart.PNG, buffer); err != nil {
+	// generate SVG
+	bufferSVG := bytes.NewBuffer([]byte{})
+	if err := graph.Render(chart.SVG, bufferSVG); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filename, buffer.Bytes(), 0644)
+	if err := ioutil.WriteFile(filename+svgExt, bufferSVG.Bytes(), 0644); err != nil {
+		return err
+	}
+	// generate PNG
+	bufferPNG := bytes.NewBuffer([]byte{})
+	if err := graph.Render(chart.PNG, bufferPNG); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filename+pngExt, bufferPNG.Bytes(), 0644)
 }
 
-func combineAllGraphs(combined string, graphs ...string) error {
+func combineAllPNGs(combined string, graphs ...string) error {
 	images := []image.Image{}
 	// open and decode images
 	for _, graph := range graphs {
-		imgFile, err := os.Open(graph)
+		imgFile, err := os.Open(graph + pngExt)
 		if err != nil {
 			logThis(errorImageNotFound+err.Error(), NORMAL)
 			continue
@@ -184,9 +201,9 @@ func combineAllGraphs(combined string, graphs ...string) error {
 		}
 	}
 	// save new image
-	out, err := os.Create(combined)
+	out, err := os.Create(combined + pngExt)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	return png.Encode(out, rgba)
 }
