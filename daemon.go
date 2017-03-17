@@ -21,9 +21,7 @@ const (
 	errorSendingSignal        = "Error sending signal to the daemon: "
 	errorGettingDaemonContext = "Error launching daemon: "
 	errorCheckDaemonExited    = "Error checking daemon exited: "
-
-	historyFile = "history.csv"
-	statsFile   = "stats.csv"
+	errorCreatingStatsDir     = "Error creating stats directory: "
 )
 
 var (
@@ -84,6 +82,13 @@ func main() {
 	if err := loadConfiguration(nil); err != nil {
 		logThis(err.Error(), NORMAL)
 		return
+	}
+	// prepare directory for stats if necessary
+	if !DirectoryExists(statsDir) {
+		if err := os.MkdirAll(statsDir, 0777); err != nil {
+			logThis(errorCreatingStatsDir+err.Error(), NORMAL)
+			return
+		}
 	}
 	// init notifications with pushover
 	if conf.pushoverConfigured() {

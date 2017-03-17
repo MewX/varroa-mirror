@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,6 +14,10 @@ const (
 	NORMAL = iota
 	VERBOSE
 	VERBOSEST
+)
+
+const (
+	errorFileDoesNotExist = "File does not exist"
 )
 
 func logThis(msg string, level int) {
@@ -114,7 +117,7 @@ func FileExists(path string) (absolutePath string, err error) {
 	if AbsoluteFileExists(candidate) {
 		absolutePath = candidate
 	} else {
-		err = errors.New("File does not exist")
+		err = os.ErrNotExist
 	}
 	return
 }

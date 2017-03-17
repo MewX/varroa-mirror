@@ -25,6 +25,7 @@ const (
 	errorGitCommit        = "Error running git commit: "
 	errorGitAddRemote     = "Error running git remote add: "
 	errorGitPush          = "Error running git push: "
+	errorMovingFile       = "Error moving file to stats folder: "
 
 	statsDir = "stats"
 	pngExt   = ".png"
@@ -84,6 +85,8 @@ var (
 	toptagsFile               = filepath.Join(statsDir, "top_tags")
 	gitlabCIYamlFile          = filepath.Join(statsDir, ".gitlab-ci.yml")
 	htmlIndexFile             = filepath.Join(statsDir, "index.html")
+	historyFile               = filepath.Join(statsDir, "history.csv")
+	statsFile                 = filepath.Join(statsDir, "stats.csv")
 )
 
 // History manages stats and generates graphs.
@@ -93,6 +96,23 @@ type History struct {
 }
 
 func (h *History) LoadAll(statsFile, snatchesFile string) error {
+	// if upgrading from v5, trying to move the csv files to the stats folder, their new home
+	if _, oldStatsFileExists := FileExists(filepath.Base(statsFile)); oldStatsFileExists == nil {
+		if _, newStatsFileExists := FileExists(statsFile); newStatsFileExists == os.ErrNotExist {
+			logThis("Migrating tracker stats file to the stats folder.", NORMAL)
+			if err := os.Rename(filepath.Base(statsFile), statsFile); err != nil {
+				logThis(errorMovingFile, NORMAL)
+			}
+		}
+	}
+	if _, oldSnatchesFileExists := FileExists(filepath.Base(snatchesFile)); oldSnatchesFileExists == nil {
+		if _, newSnatchesFileExists := FileExists(snatchesFile); newSnatchesFileExists == os.ErrNotExist {
+			logThis("Migrating sntach history file to the stats folder.", NORMAL)
+			if err := os.Rename(filepath.Base(snatchesFile), snatchesFile); err != nil {
+				logThis(errorMovingFile, NORMAL)
+			}
+		}
+	}
 	if err := h.TrackerStatsHistory.Load(statsFile); err != nil {
 		return err
 	}
@@ -103,12 +123,6 @@ func (h *History) LoadAll(statsFile, snatchesFile string) error {
 }
 
 func (h *History) GenerateGraphs() error {
-	// prepare directory for pngs if necessary
-	if !DirectoryExists(statsDir) {
-		if err := os.MkdirAll(statsDir, 0777); err != nil {
-			return err
-		}
-	}
 	// get first overall timestamp in all history sources
 	firstOverallTimestamp := h.getFirstTimestamp()
 	if firstOverallTimestamp.After(time.Now()) {
