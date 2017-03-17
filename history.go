@@ -46,14 +46,14 @@ pages:
 	htlmIndex = `
 <html>
   <head>
-    <title></title>
+    <title>varroa musica</title>
     <meta content="">
     <style></style>
   </head>
   <body>
     <h1 style="text-align:center;">Varroa Musica</h1>
     <p style="text-align:center;">Last updated: %s</p>
-    <p style="text-align:center;">Latest stats: %s</p>
+    <p style="text-align:center;">Latest stats: %s | <a href="%s">csv</a></p>
     <p style="text-align:center;"><a href="#buffer">Buffer</a> | <a href="#up">Upload</a> | <a href="#down">Download</a> | <a href="#ratio">Ratio</a> | <a href="#buffer_per_day">Buffer/day</a> | <a href="#up_per_day">Upload/day</a> | <a href="#down_per_day">Download/day</a> | <a href="#ratio_per_day">Ratio/day</a> | <a href="#snatches_per_day">Snatches/day</a> | <a href="#size_snatched_per_day">Size Snatched/day</a></p>
     <p id="buffer" style="text-align:center;"><img src="buffer.svg" alt="stats" style="align:center"></p>
     <p id="up" style="text-align:center;"><img src="up.svg" alt="stats" style="align:center"></p>
@@ -296,11 +296,11 @@ func (h *History) Deploy() error {
 
 	}
 	// create/update index.html
-	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
+	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), h.TrackerStats[len(h.TrackerStats)-1].String(), filepath.Base(statsFile))), 0666); err != nil {
 		return err
 	}
 	// add overall stats and other files
-	if err := git.Add("*"+svgExt, filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
+	if err := git.Add("*"+svgExt, filepath.Base(statsFile), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
 		return errors.New(errorGitAdd + err.Error())
 	}
 	// commit
