@@ -19,6 +19,7 @@ type Filter struct {
 	includedTags      []string
 	excludedTags      []string
 	destinationFolder string
+	minSize           uint64
 	maxSize           uint64
 	logScore          int
 	recordLabel       []string
@@ -143,6 +144,9 @@ func (c *Config) load(path string) error {
 		}
 		if maxSize, ok := tinfo["max_size_mb"]; ok {
 			t.maxSize = uint64(maxSize.(int))
+		}
+		if minSize, ok := tinfo["min_size_mb"]; ok {
+			t.minSize = uint64(minSize.(int))
 		}
 		if logScore, ok := tinfo["log_score"]; ok {
 			t.logScore = logScore.(int)
