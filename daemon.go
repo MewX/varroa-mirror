@@ -11,6 +11,8 @@ import (
 )
 
 const (
+	varroa = "varroa musica"
+
 	// RED only allows 5 API calls every 10s
 	allowedAPICallsByPeriod = 5
 	apiCallsPeriodS         = 10
@@ -22,6 +24,7 @@ const (
 	errorGettingDaemonContext = "Error launching daemon: "
 	errorCheckDaemonExited    = "Error checking daemon exited: "
 	errorCreatingStatsDir     = "Error creating stats directory: "
+
 )
 
 var (

@@ -19,7 +19,12 @@ func (n *Notification) Send(message string) error {
 	if n.client == nil || n.recipient == nil {
 		return errors.New("Could not send notification: " + message)
 	}
-	pushoverMessage := pushover.NewMessageWithTitle(message, "varroa musica")
+	var pushoverMessage *pushover.Message
+	if conf.gitlabPagesConfigured() {
+		pushoverMessage = &pushover.Message{Message:message, Title: varroa, URL: conf.gitlabPagesURL, URLTitle: "Graphs"}
+	} else {
+		pushoverMessage = pushover.NewMessageWithTitle(message, varroa)
+	}
 	_, err := n.client.SendMessage(pushoverMessage, n.recipient)
 	return err
 }
