@@ -52,6 +52,9 @@ var (
 
 	// channel of allowedAPICallsByPeriod elements, which will rate-limit the requests
 	limiter = make(chan bool, allowedAPICallsByPeriod)
+
+	// disable  autosnatching
+	disabledAutosnatching = false
 )
 
 func main() {
@@ -140,6 +143,8 @@ func loadConfiguration(sig os.Signal) error {
 	}
 	conf = newConf
 	logThis(" - Configuration reloaded.", NORMAL)
+	disabledAutosnatching = false
+	logThis(" - Autosnatching enabled.", NORMAL)
 	return nil
 }
 

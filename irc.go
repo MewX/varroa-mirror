@@ -107,12 +107,14 @@ func ircHandler(tracker GazelleTracker) {
 		IRCClient.Privmsg(conf.announcer, fmt.Sprintf("enter %s %s %s", conf.announceChannel, conf.user, conf.ircKey))
 	})
 	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
-		if e.Nick == conf.announcer {
-			announced := e.Message()
-			logThis("++ Announced: "+announced, VERBOSE)
-			if _, err := AnalyzeAnnounce(announced, tracker); err != nil {
-				logThis(errorDealingWithAnnounce+err.Error(), VERBOSE)
-				return
+		if !disabledAutosnatching {
+			if e.Nick == conf.announcer {
+				announced := e.Message()
+				logThis("++ Announced: "+announced, VERBOSE)
+				if _, err := AnalyzeAnnounce(announced, tracker); err != nil {
+					logThis(errorDealingWithAnnounce+err.Error(), VERBOSE)
+					return
+				}
 			}
 		}
 	})
