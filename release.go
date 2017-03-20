@@ -10,7 +10,8 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-const ReleaseString = `Release info:
+const (
+	ReleaseString = `Release info:
 	Artist: %s
 	Title: %s
 	Year: %d
@@ -18,6 +19,7 @@ const ReleaseString = `Release info:
 	Format: %s
 	Quality: %s
 	HasLog: %t
+	Log Score: %d
 	Has Cue: %t
 	Scene: %t
 	Source: %s
@@ -25,8 +27,11 @@ const ReleaseString = `Release info:
 	URL: %s
 	Torrent URL: %s
 	Torrent ID: %s`
-const TorrentPath = `%s - %s (%d) [%s %s %s %s] - %s.torrent`
-const TorrentNotification = `%s - %s (%d) [%s/%s/%s/%s] [%s]`
+	TorrentPath         = `%s - %s (%d) [%s %s %s %s] - %s.torrent`
+	TorrentNotification = `%s - %s (%d) [%s/%s/%s/%s] [%s]`
+
+	logScoreNotInAnnounce = -9999
+)
 
 type Release struct {
 	artist      []string
@@ -51,12 +56,12 @@ type Release struct {
 }
 
 func NewRelease(parts []string) (*Release, error) {
-	if len(parts) != 17 {
+	if len(parts) != 19 {
 		return nil, errors.New("Incomplete announce information")
 	}
 	pattern := `http[s]?://[[:alnum:]\./:]*torrents\.php\?action=download&id=([\d]*)`
 	rg := regexp.MustCompile(pattern)
-	hits := rg.FindAllStringSubmatch(parts[15], -1)
+	hits := rg.FindAllStringSubmatch(parts[17], -1)
 	torrentID := ""
 	if len(hits) != 0 {
 		torrentID = hits[0][1]
@@ -65,13 +70,17 @@ func NewRelease(parts []string) (*Release, error) {
 	if err != nil {
 		year = -1
 	}
-	tags := strings.Split(parts[16], ",")
+	tags := strings.Split(parts[18], ",")
 	for i, el := range tags {
 		tags[i] = strings.TrimSpace(el)
 	}
 	hasLog := parts[8] != ""
-	hasCue := parts[10] != ""
-	isScene := parts[13] != ""
+	logScore, err := strconv.Atoi(parts[10])
+	if err != nil {
+		logScore = logScoreNotInAnnounce
+	}
+	hasCue := parts[12] != ""
+	isScene := parts[15] != ""
 
 	artist := []string{parts[1]}
 	// if the raw artist announce contains & or "performed by", split and add to slice
@@ -83,14 +92,14 @@ func NewRelease(parts []string) (*Release, error) {
 		artist = append(artist, subArtists...)
 	}
 
-	r := &Release{artist: artist, title: parts[2], year: year, releaseType: parts[4], format: parts[5], quality: parts[6], source: parts[11], hasLog: hasLog, hasCue: hasCue, isScene: isScene, url: parts[14], torrentURL: parts[15], tags: tags, torrentID: torrentID}
+	r := &Release{artist: artist, title: parts[2], year: year, releaseType: parts[4], format: parts[5], quality: parts[6], source: parts[13], hasLog: hasLog, logScore: logScore, hasCue: hasCue, isScene: isScene, url: parts[16], torrentURL: parts[17], tags: tags, torrentID: torrentID}
 	r.filename = fmt.Sprintf(TorrentPath, r.artist[0], r.title, r.year, r.releaseType, r.format, r.quality, r.source, r.torrentID)
 	r.filename = strings.Replace(r.filename, "/", "-", -1)
 	return r, nil
 }
 
 func (r *Release) String() string {
-	return fmt.Sprintf(ReleaseString, strings.Join(r.artist, ","), r.title, r.year, r.releaseType, r.format, r.quality, r.hasLog, r.hasCue, r.isScene, r.source, r.tags, r.url, r.torrentURL, r.torrentID)
+	return fmt.Sprintf(ReleaseString, strings.Join(r.artist, ","), r.title, r.year, r.releaseType, r.format, r.quality, r.hasLog, r.logScore, r.hasCue, r.isScene, r.source, r.tags, r.url, r.torrentURL, r.torrentID)
 }
 
 func (r *Release) ShortString() string {
@@ -193,6 +202,11 @@ func (r *Release) Satisfies(filter Filter) bool {
 		logThis(filter.label+": Release has no log", VERBOSE)
 		return false
 	}
+	// only compare logscores if the announce contained that information
+	if r.source == "CD" && filter.logScore != 0 && r.logScore != logScoreNotInAnnounce && filter.logScore > r.logScore {
+		logThis(filter.label+": Incorrect log score", VERBOSE)
+		return false
+	}
 	if r.source == "CD" && filter.hasCue && !r.hasCue {
 		logThis(filter.label+": Release has no cue", VERBOSE)
 		return false
@@ -240,7 +254,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders [
 		logThis(filter.label+": Release too small.", VERBOSE)
 		return false
 	}
-	if r.source == "CD" && filter.logScore != 0 && filter.logScore > info.logScore {
+	if r.source == "CD" && r.hasLog && filter.logScore != 0 && filter.logScore > info.logScore {
 		logThis(filter.label+": Incorrect log score", VERBOSE)
 		return false
 	}
