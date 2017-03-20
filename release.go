@@ -219,7 +219,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders [
 		logThis(filter.label+": Release too small.", VERBOSE)
 		return false
 	}
-	if r.source == "CD" && filter.logScore != 0 && filter.logScore != info.logScore {
+	if r.source == "CD" && filter.logScore != 0 && filter.logScore > info.logScore {
 		logThis(filter.label+": Incorrect log score", VERBOSE)
 		return false
 	}
