@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/thoj/go-ircevent"
 )
@@ -105,11 +106,21 @@ func ircHandler(tracker GazelleTracker) {
 	IRCClient.AddCallback("001", func(e *irc.Event) {
 		IRCClient.Privmsg("NickServ", "IDENTIFY "+conf.nickServPassword)
 		IRCClient.Privmsg(conf.announcer, fmt.Sprintf("enter %s %s %s", conf.announceChannel, conf.user, conf.ircKey))
-		IRCClient.Join(conf.announceChannel)
 	})
 	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
-		if !disabledAutosnatching {
-			if e.Nick == conf.announcer {
+		if e.Nick != conf.announcer {
+			return // spam
+		}
+		// e.Arguments's first element is the message's recipient, the second is the actual message
+		switch e.Arguments[0] {
+		case conf.botName:
+			// if sent to the bot, it's now ok to join the announce channel
+			// waiting for the announcer bot to actually invite us
+			time.Sleep(100 * time.Millisecond)
+			IRCClient.Join(conf.announceChannel)
+		case conf.announceChannel:
+			// if sent to the announce channel, it's a new release
+			if !disabledAutosnatching {
 				announced := e.Message()
 				logThis("++ Announced: "+announced, VERBOSE)
 				if _, err := AnalyzeAnnounce(announced, tracker); err != nil {
