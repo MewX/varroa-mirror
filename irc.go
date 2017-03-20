@@ -101,10 +101,11 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 func ircHandler(tracker GazelleTracker) {
 	IRCClient := irc.IRC(conf.botName, conf.user)
 	IRCClient.UseTLS = conf.ircSSL
-	IRCClient.TLSConfig = &tls.Config{}
+	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: conf.ircSSLSkipVerify}
 	IRCClient.AddCallback("001", func(e *irc.Event) {
 		IRCClient.Privmsg("NickServ", "IDENTIFY "+conf.nickServPassword)
 		IRCClient.Privmsg(conf.announcer, fmt.Sprintf("enter %s %s %s", conf.announceChannel, conf.user, conf.ircKey))
+		IRCClient.Join(conf.announceChannel)
 	})
 	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
 		if !disabledAutosnatching {

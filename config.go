@@ -37,6 +37,7 @@ type Config struct {
 	ircServer                   string
 	ircKey                      string
 	ircSSL                      bool
+	ircSSLSkipVerify	    bool
 	nickServPassword            string
 	botName                     string
 	announcer                   string
@@ -85,6 +86,7 @@ func (c *Config) load(path string) error {
 	c.ircServer = conf.GetString("tracker.irc_server")
 	c.ircKey = conf.GetString("tracker.irc_key")
 	c.ircSSL = conf.GetBool("tracker.irc_ssl")
+	c.ircSSLSkipVerify = conf.GetBool("tracker.irc_ssl_skip_verify")
 	c.nickServPassword = conf.GetString("tracker.nickserv_password")
 	c.botName = conf.GetString("tracker.bot_name")
 	c.announcer = conf.GetString("tracker.announcer")
