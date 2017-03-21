@@ -208,7 +208,12 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
 	if gt.Response.Torrent.Remastered {
 		label = gt.Response.Torrent.RemasterRecordLabel
 	}
-	info := &AdditionalInfo{id: gt.Response.Torrent.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: gt.Response.Torrent.Username}
+	// json for metadata
+	metadataJson, err := json.MarshalIndent(gt.Response, "", "    ")
+	if err != nil {
+		metadataJson = data // falling back to complete json
+	}
+	info := &AdditionalInfo{id: gt.Response.Torrent.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: gt.Response.Torrent.Username, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJson}
 	return info, nil
 }
 
@@ -221,7 +226,8 @@ type AdditionalInfo struct {
 	artists  []string // concat artists, composers, etc
 	size     uint64
 	uploader string
-	// TODO: cover (WikiImage), releaseinfo (WikiBody), catnum (CatalogueNumber), filelist (Torrent.FileList), folder? (Torrent.FilePath)
+	folder   string
+	fullJSON []byte
 }
 
 func (a *AdditionalInfo) String() string {

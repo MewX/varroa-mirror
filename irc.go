@@ -94,7 +94,6 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 		}
 		logThis("No filter is interested in that release. Ignoring.", VERBOSE)
 		return nil, nil
-
 	}
 	return nil, errors.New("No hits!")
 }
