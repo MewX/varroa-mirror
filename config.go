@@ -37,7 +37,7 @@ type Config struct {
 	ircServer                   string
 	ircKey                      string
 	ircSSL                      bool
-	ircSSLSkipVerify	    bool
+	ircSSLSkipVerify            bool
 	nickServPassword            string
 	botName                     string
 	announcer                   string
@@ -166,6 +166,20 @@ func (c *Config) load(path string) error {
 		if allowDuplicate, ok := tinfo["allow_duplicate"]; ok {
 			t.allowDuplicate = allowDuplicate.(bool)
 		}
+		// special option which forces filter settings
+		if perfectFlac, ok := tinfo["perfect_flac"]; ok {
+			if perfectFlac.(bool) {
+				// set all options that make a perfect flac
+				// ie: 16bit/24bit FLAC 100%/log/cue/CD, or any Vinyl,DVD,Soundboard,WEB,Cassette,Blu-ray,SACD,DAT
+				t.format = []string{"FLAC"}
+				t.quality = []string{"Lossless", "24bit Lossless"}
+				t.hasLog = true
+				t.hasCue = true
+				t.logScore = 100
+				t.source = []string{"CD", "Vinyl", "DVD", "Soundboard", "WEB", "Cassette", "Blu-ray", "SACD", "DAT"}
+			}
+		}
+
 		c.filters = append(c.filters, t)
 	}
 	return nil
