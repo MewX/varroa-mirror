@@ -24,7 +24,6 @@ const (
 	errorGettingDaemonContext = "Error launching daemon: "
 	errorCheckDaemonExited    = "Error checking daemon exited: "
 	errorCreatingStatsDir     = "Error creating stats directory: "
-
 )
 
 var (

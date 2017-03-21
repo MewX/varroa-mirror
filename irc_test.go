@@ -8,18 +8,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 var (
-	filter1 = &Filter{label: "filter1", artist: []string{"another one"}}
-	filter2 = &Filter{label: "filter2", artist: []string{"Another one"}}
-	filter3 = &Filter{label: "filter3", artist: []string{"Aníkúlápó"}}
-	filter4 = &Filter{label: "filter4", artist: []string{"An artist"}}
-	filter5 = &Filter{label: "filter5", artist: []string{"An artist"}, format: []string{"FLAC"}}
-	filter6 = &Filter{label: "filter6", artist: []string{"An artist"}, format: []string{"FLAC", "MP3"}}
-	filter7 = &Filter{label: "filter7", format: []string{"AAC"}}
-	filter8 = &Filter{label: "filter8", source: []string{"CD"}, hasLog: true}
-	filter9 = &Filter{label: "filter9", year:[]int{1999}}
-	filter10 = &Filter{label: "filter10", year:[]int{1999}, allowScene: true}
+	filter1  = &Filter{label: "filter1", artist: []string{"another one"}}
+	filter2  = &Filter{label: "filter2", artist: []string{"Another one"}}
+	filter3  = &Filter{label: "filter3", artist: []string{"Aníkúlápó"}}
+	filter4  = &Filter{label: "filter4", artist: []string{"An artist"}}
+	filter5  = &Filter{label: "filter5", artist: []string{"An artist"}, format: []string{"FLAC"}}
+	filter6  = &Filter{label: "filter6", artist: []string{"An artist"}, format: []string{"FLAC", "MP3"}}
+	filter7  = &Filter{label: "filter7", format: []string{"AAC"}}
+	filter8  = &Filter{label: "filter8", source: []string{"CD"}, hasLog: true}
+	filter9  = &Filter{label: "filter9", year: []int{1999}}
+	filter10 = &Filter{label: "filter10", year: []int{1999}, allowScene: true}
 	filter11 = &Filter{label: "filter11", artist: []string{"Another !ONE", "his friend"}}
 	filter12 = &Filter{label: "filter12", releaseType: []string{"Album", "Anthology"}}
 	filter13 = &Filter{label: "filter13", quality: []string{"Lossless", "24bit Lossless"}, allowScene: true}
@@ -30,11 +29,10 @@ var (
 	allFilters = []*Filter{filter1, filter2, filter3, filter4, filter5, filter6, filter7, filter8, filter9, filter10, filter11, filter12, filter13, filter14, filter15, filter16}
 )
 
-
 var announces = []struct {
-	announce        string
-	expectedHit     bool
-	expectedRelease string
+	announce         string
+	expectedHit      bool
+	expectedRelease  string
 	satisfiedFilters []*Filter
 }{
 	{
@@ -131,9 +129,6 @@ func TestRegexp(t *testing.T) {
 				}
 			}
 			verify.Equal(len(announced.satisfiedFilters), satisfied)
-
-
-
 
 		} else {
 			verify.Zero(len(hits))

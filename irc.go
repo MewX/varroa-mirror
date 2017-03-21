@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,16 +16,71 @@ import (
 const (
 	announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
 
-	errorDealingWithAnnounce    = "Error dealing with announced torrent: "
-	errorConnectingToIRC        = "Error connecting to IRC: "
-	errorCouldNotGetTorrentInfo = "Error retreiving torrent info from tracker"
-	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder: "
-	errorDownloadingTorrent     = "Error downloading torrent: "
-	errorRemovingTempFile       = "Error removing temporary file %s"
-	errorAddingToHistory        = "Error adding release to history"
+	errorDealingWithAnnounce     = "Error dealing with announced torrent: "
+	errorConnectingToIRC         = "Error connecting to IRC: "
+	errorCouldNotGetTorrentInfo  = "Error retreiving torrent info from tracker"
+	errorCouldNotMoveTorrent     = "Error moving torrent to destination folder: "
+	errorDownloadingTorrent      = "Error downloading torrent: "
+	errorRemovingTempFile        = "Error removing temporary file %s"
+	errorAddingToHistory         = "Error adding release to history"
+	errorWaitingForDownload      = "Error waiting for download folder to be created"
+	errorWritingJSONMetadata     = "Error writing metadata file: "
+	errorDownloadingTrackerCover = "Error downloading tracker cover: "
 
 	notSnatchingDuplicate = "Similar release already downloaded, and duplicates are not allowed"
+	metadataSaved         = "Metadata saved to: "
+	coverSaved            = "Cover saved to: "
+	trackerMetadataFile   = "tracker_metadata.json"
+	trackerCoverFile      = "tracker_cover"
+
+	timeoutDownloadFolderCreation = 100
 )
+
+func waitUntilExists(path string) error {
+	cpt := 0
+	var err error
+	keepScanning := true
+	for keepScanning {
+		if !DirectoryExists(path) {
+			if cpt < timeoutDownloadFolderCreation {
+				time.Sleep(1 * time.Second)
+				cpt += 1
+			} else {
+				err = errors.New(errorWaitingForDownload)
+				keepScanning = false
+			}
+		} else {
+			err = nil
+			keepScanning = false
+		}
+	}
+	return err
+}
+
+func saveTrackerMetadata(info *AdditionalInfo) {
+	if !conf.downloadFolderConfigured() {
+		return
+	}
+	go func() {
+		completePath := filepath.Join(conf.downloadFolder, info.folder)
+		if err := waitUntilExists(completePath); err != nil {
+			logThis(err.Error(), VERBOSE)
+			return
+		}
+		// write tracker metadata to target folder
+		if err := ioutil.WriteFile(filepath.Join(completePath, trackerMetadataFile), info.fullJSON, 0644); err != nil {
+			logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+		} else {
+			logThis(metadataSaved+info.folder, VERBOSE)
+		}
+		// download tracker cover to target folder
+		if err := info.DownloadCover(filepath.Join(completePath, trackerCoverFile)); err != nil {
+			logThis(errorDownloadingTrackerCover+err.Error(), NORMAL)
+		} else {
+			logThis(coverSaved+info.folder, VERBOSE)
+		}
+	}()
+}
 
 func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error) {
 	// getting information
@@ -81,6 +137,9 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 					if err := notification.Send(filter.label + ": Snatched " + release.ShortString()); err != nil {
 						logThis(errorNotification+err.Error(), VERBOSE)
 					}
+					// save metadata once the download folder is created
+					saveTrackerMetadata(info)
+					// no need to consider other filters
 					break
 				}
 			}

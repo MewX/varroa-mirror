@@ -47,6 +47,7 @@ type Config struct {
 	statsUpdatePeriod           int
 	maxBufferDecreaseByPeriodMB int
 	defaultDestinationFolder    string
+	downloadFolder              string
 	blacklistedUploaders        []string
 	logLevel                    int
 	gitlabUser                  string
@@ -102,6 +103,10 @@ func (c *Config) load(path string) error {
 	c.defaultDestinationFolder = conf.GetString("tracker.default_destination_folder")
 	if c.defaultDestinationFolder == "" || !DirectoryExists(c.defaultDestinationFolder) {
 		return errors.New("Default destination folder does not exist")
+	}
+	c.downloadFolder = conf.GetString("tracker.download_folder")
+	if c.downloadFolder != "" && !DirectoryExists(c.downloadFolder) {
+		return errors.New("Download folder does not exist")
 	}
 	c.blacklistedUploaders = conf.GetStringSlice("tracker.blacklisted_uploaders")
 	c.logLevel = conf.GetInt("tracker.log_level")
@@ -194,6 +199,13 @@ func (c *Config) pushoverConfigured() bool {
 
 func (c *Config) gitlabPagesConfigured() bool {
 	if c.gitlabPagesGitURL != "" && c.gitlabUser != "" && c.gitlabPassword != "" {
+		return true
+	}
+	return false
+}
+
+func (c *Config) downloadFolderConfigured() bool {
+	if c.downloadFolder != "" && DirectoryExists(c.downloadFolder) {
 		return true
 	}
 	return false
