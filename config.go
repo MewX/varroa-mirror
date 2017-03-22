@@ -57,6 +57,7 @@ type Config struct {
 	webServerPort               int
 	webServerServeStats         bool
 	webServerAllowDownloads     bool
+	webServerToken              string
 }
 
 func getStringValues(source map[string]interface{}, key string) []string {
@@ -128,6 +129,7 @@ func (c *Config) load(path string) error {
 	c.webServerPort = conf.GetInt("webserver.web_server_port")
 	c.webServerAllowDownloads = conf.GetBool("webserver.allow_downloads")
 	c.webServerServeStats = conf.GetBool("webserver.serve_stats")
+	c.webServerToken = conf.GetString("webserver.token")
 	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
@@ -219,8 +221,8 @@ func (c *Config) downloadFolderConfigured() bool {
 }
 
 func (c *Config) webserverConfigured() bool {
-	// valid port, and at least one feature (serving stats and allowing downloads) is enabled
-	if c.webServerPort > 1024 && (c.webServerServeStats || c.webServerAllowDownloads) {
+	// valid port, and at least one feature (serving stats and allowing downloads) is enabled, and we have a token
+	if c.webServerPort > 1024 && (c.webServerServeStats || c.webServerAllowDownloads) && c.webServerToken != "" {
 		return true
 	}
 	return false

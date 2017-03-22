@@ -12,6 +12,8 @@ import (
 const (
 	webServerNotConfigured = "No configuration found for the web server."
 	errorServing           = "Error launching web interface: "
+	errorWrongToken        = "Error receiving download order from https: wrong token"
+	errorNoToken           = "Error receiving download order from https: no token"
 )
 
 func webServer(tracker GazelleTracker) {
@@ -23,10 +25,22 @@ func webServer(tracker GazelleTracker) {
 	if conf.webServerAllowDownloads {
 		// interface for remotely ordering downloads
 		rtr.HandleFunc("/get/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
-			params := mux.Vars(r)
-			id := params["id"]
+			// checking token
+			queryParameters := r.URL.Query()
+			token, ok := queryParameters["token"]
+			if !ok {
+				logThis(errorNoToken, NORMAL)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			if token[0] != conf.webServerToken {
+				logThis(errorWrongToken, NORMAL)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			// get torrent ID
+			id := mux.Vars(r)["id"]
 			release := &Release{torrentID: id, torrentURL: conf.url + "/torrents.php?action=download&id=" + id, filename: "remote-id" + id + ".torrent"}
-
 			// get torrent info
 			info, err := tracker.GetTorrentInfo(release.torrentID)
 			if err != nil {
@@ -45,18 +59,17 @@ func webServer(tracker GazelleTracker) {
 			if err := os.Remove(release.filename); err != nil {
 				logThis(fmt.Sprintf(errorRemovingTempFile, release.filename), VERBOSE)
 			}
-			// adding to history ?
+			// add to history ?
 			// NOTE: or do we keep history for autosnatching only? would require filling in the Release struct from the info JSON
-			// NOTE: this would allow sending release.ShortString to the notification later
-			//if err := history.SnatchHistory.Add(release, "remote"); err != nil {
-			//	logThis(errorAddingToHistory, NORMAL)
-			//}
+			// NOTE: this would allow sending release.ShortString to the notification
+
 			// send notification
 			if err := notification.Send("Snatched with web interface " + "torrent #" + id); err != nil {
 				logThis(errorNotification+err.Error(), VERBOSE)
 			}
 			// save metadata once the download folder is created
 			saveTrackerMetadata(info)
+			w.WriteHeader(http.StatusOK)
 		}).Methods("GET")
 	}
 	if conf.webServerServeStats {
