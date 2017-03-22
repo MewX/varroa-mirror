@@ -55,6 +55,8 @@ type Config struct {
 	gitlabPagesGitURL           string
 	gitlabPagesURL              string
 	webServerPort               int
+	webServerServeStats         bool
+	webServerAllowDownloads     bool
 }
 
 func getStringValues(source map[string]interface{}, key string) []string {
@@ -123,7 +125,9 @@ func (c *Config) load(path string) error {
 		c.gitlabPagesURL = fmt.Sprintf("https://%s.gitlab.io/%s", c.gitlabUser, strings.Replace(repoNameParts[len(repoNameParts)-1], ".git", "", -1))
 	}
 	// web server configuration
-	c.webServerPort = conf.GetInt("tracker.web_server_port")
+	c.webServerPort = conf.GetInt("webserver.web_server_port")
+	c.webServerAllowDownloads = conf.GetBool("webserver.allow_downloads")
+	c.webServerServeStats = conf.GetBool("webserver.serve_stats")
 	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
@@ -215,7 +219,8 @@ func (c *Config) downloadFolderConfigured() bool {
 }
 
 func (c *Config) webserverConfigured() bool {
-	if c.webServerPort > 1024 {
+	// valid port, and at least one feature (serving stats and allowing downloads) is enabled
+	if c.webServerPort > 1024 && (c.webServerServeStats || c.webServerAllowDownloads) {
 		return true
 	}
 	return false
