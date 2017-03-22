@@ -117,6 +117,7 @@ func main() {
 	go ircHandler(tracker)
 	go monitorStats(tracker)
 	go apiCallRateLimiter()
+	go webServer(tracker)
 
 	if err := daemon.ServeSignals(); err != nil {
 		logThis(errorServingSignals+err.Error(), NORMAL)

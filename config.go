@@ -54,6 +54,7 @@ type Config struct {
 	gitlabPassword              string
 	gitlabPagesGitURL           string
 	gitlabPagesURL              string
+	webServerPort               int
 }
 
 func getStringValues(source map[string]interface{}, key string) []string {
@@ -121,6 +122,8 @@ func (c *Config) load(path string) error {
 		repoNameParts := strings.Split(c.gitlabPagesGitURL, "/")
 		c.gitlabPagesURL = fmt.Sprintf("https://%s.gitlab.io/%s", c.gitlabUser, strings.Replace(repoNameParts[len(repoNameParts)-1], ".git", "", -1))
 	}
+	// web server configuration
+	c.webServerPort = conf.GetInt("tracker.web_server_port")
 	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
@@ -206,6 +209,13 @@ func (c *Config) gitlabPagesConfigured() bool {
 
 func (c *Config) downloadFolderConfigured() bool {
 	if c.downloadFolder != "" && DirectoryExists(c.downloadFolder) {
+		return true
+	}
+	return false
+}
+
+func (c *Config) webserverConfigured() bool {
+	if c.webServerPort > 1024 {
 		return true
 	}
 	return false
