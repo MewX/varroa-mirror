@@ -4,16 +4,28 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/gorilla/mux"
 )
 
 const (
-	webServerNotConfigured = "No configuration found for the web server."
-	errorServing           = "Error launching web interface: "
-	errorWrongToken        = "Error receiving download order from https: wrong token"
-	errorNoToken           = "Error receiving download order from https: no token"
+	webServerNotConfigured     = "No configuration found for the web server."
+	errorServing               = "Error launching web interface: "
+	errorWrongToken            = "Error receiving download order from https: wrong token"
+	errorNoToken               = "Error receiving download order from https: no token"
+	errorGeneratingCertificate = "Error generating self-signed certificate: "
+	errorOpenSSL               = "openssl is not available on this system. "
+
+	openssl        = "openssl"
+	certificateKey = "key.pem"
+	certificate    = "cert.pem"
+)
+
+var (
+	provideCertificate         = fmt.Sprintf("You must provide your own self-signed certificate (%s & %s).", certificate, certificateKey)
+	generateCertificateCommand = []string{"req", "-x509", "-nodes", "-days", "365", "-newkey", "rsa:2048", "-keyout", certificateKey, "-out", certificate, "-subj", "/C=IT/ST=Oregon/L=Moscow/O=varroa musica/OU=Org/CN=127.0.0.1"}
 )
 
 func webServer(tracker GazelleTracker) {
@@ -21,6 +33,26 @@ func webServer(tracker GazelleTracker) {
 		logThis(webServerNotConfigured, NORMAL)
 		return
 	}
+
+	// if not there yet, generate the self-signed certificate
+	_, certificateKeyExists := FileExists(certificateKey)
+	_, certificateExists := FileExists(certificate)
+	if certificateExists == os.ErrNotExist || certificateKeyExists == os.ErrNotExist {
+		// checking openssl is available
+		_, err := exec.LookPath(openssl)
+		if err != nil {
+			logThis(errorOpenSSL+provideCertificate, NORMAL)
+			return
+		}
+		// generate certificate
+		if cmdOut, err := exec.Command(openssl, generateCertificateCommand...).Output(); err != nil {
+			logThis(errorGeneratingCertificate+err.Error()+string(cmdOut), NORMAL)
+			logThis(provideCertificate, NORMAL)
+			return
+		}
+		// first connection will require manual approval since the certificate is self-signed, then things will work smoothly afterwards
+	}
+
 	rtr := mux.NewRouter()
 	if conf.webServerAllowDownloads {
 		// interface for remotely ordering downloads
@@ -78,7 +110,7 @@ func webServer(tracker GazelleTracker) {
 	}
 	http.Handle("/", rtr)
 	// serve
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", conf.webServerPort), nil); err != nil {
+	if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", conf.webServerPort), certificate, certificateKey, nil); err != nil {
 		logThis(errorServing+err.Error(), NORMAL)
 	}
 }
