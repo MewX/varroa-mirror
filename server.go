@@ -102,6 +102,7 @@ func webServer(tracker GazelleTracker) {
 			// save metadata once the download folder is created
 			saveTrackerMetadata(info)
 			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Downloaded torrent #"+id+" successfully."))
 		}).Methods("GET")
 	}
 	if conf.webServerServeStats {
