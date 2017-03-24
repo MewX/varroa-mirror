@@ -12,7 +12,7 @@ const (
 	errorBufferDrop          = "Buffer drop too important, stopping autosnatching. Reload to start again."
 )
 
-func manageStats(tracker GazelleTracker, previousStats *TrackerStats) *TrackerStats {
+func manageStats(tracker *GazelleTracker, previousStats *TrackerStats) *TrackerStats {
 	stats, err := tracker.GetStats()
 	if err != nil {
 		logThis(errorGettingStats+err.Error(), NORMAL)
@@ -46,7 +46,7 @@ func manageStats(tracker GazelleTracker, previousStats *TrackerStats) *TrackerSt
 	return stats
 }
 
-func monitorStats(tracker GazelleTracker) {
+func monitorStats() {
 	// initial stats
 	previousStats := &TrackerStats{}
 	previousStats = manageStats(tracker, previousStats)

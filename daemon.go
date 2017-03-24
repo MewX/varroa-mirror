@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"net/http"
 	"os"
 	"syscall"
 	"time"
@@ -24,6 +26,7 @@ const (
 	errorGettingDaemonContext = "Error launching daemon: "
 	errorCheckDaemonExited    = "Error checking daemon exited: "
 	errorCreatingStatsDir     = "Error creating stats directory: "
+	errorShuttingDownServer   = "Error shutting down web server: "
 )
 
 var (
@@ -44,6 +47,8 @@ var (
 	conf         = &Config{}
 	notification = &Notification{}
 	history      = &History{}
+	server       = &http.Server{}
+	tracker      = &GazelleTracker{}
 
 	// daemon control channels
 	stop = make(chan struct{})
@@ -101,7 +106,7 @@ func main() {
 		notification.recipient = pushover.NewRecipient(conf.pushoverUser)
 	}
 	// log in tracker
-	tracker := GazelleTracker{rootURL: conf.url}
+	tracker = &GazelleTracker{rootURL: conf.url}
 	if err := tracker.Login(conf.user, conf.password); err != nil {
 		logThis(err.Error(), NORMAL)
 		return
@@ -114,10 +119,10 @@ func main() {
 
 	// launch goroutines
 	go checkSignals()
-	go ircHandler(tracker)
-	go monitorStats(tracker)
+	go ircHandler()
+	go monitorStats()
 	go apiCallRateLimiter()
-	go webServer(tracker)
+	go webServer()
 
 	if err := daemon.ServeSignals(); err != nil {
 		logThis(errorServingSignals+err.Error(), NORMAL)
@@ -145,6 +150,16 @@ func loadConfiguration(sig os.Signal) error {
 	logThis(" - Configuration reloaded.", NORMAL)
 	disabledAutosnatching = false
 	logThis(" - Autosnatching enabled.", NORMAL)
+	// if server up
+	if server.Addr != "" {
+		// shut down gracefully, but wait no longer than 5 seconds before halting
+		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := server.Shutdown(ctx); err != nil {
+			logThis(errorShuttingDownServer+err.Error(), NORMAL)
+		}
+		// launch server again
+		go webServer()
+	}
 	return nil
 }
 

@@ -82,7 +82,7 @@ func saveTrackerMetadata(info *AdditionalInfo) {
 	}()
 }
 
-func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error) {
+func AnalyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
 	hits := r.FindAllStringSubmatch(announced, -1)
@@ -157,7 +157,7 @@ func AnalyzeAnnounce(announced string, tracker GazelleTracker) (*Release, error)
 	return nil, errors.New("No hits!")
 }
 
-func ircHandler(tracker GazelleTracker) {
+func ircHandler() {
 	IRCClient := irc.IRC(conf.botName, conf.user)
 	IRCClient.UseTLS = conf.ircSSL
 	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: conf.ircSSLSkipVerify}

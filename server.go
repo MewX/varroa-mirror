@@ -12,6 +12,8 @@ import (
 
 const (
 	webServerNotConfigured     = "No configuration found for the web server."
+	webServerShutDown          = " - Web server has closed."
+	webServerUp                = " - Starting web server."
 	errorServing               = "Error launching web interface: "
 	errorWrongToken            = "Error receiving download order from https: wrong token"
 	errorNoToken               = "Error receiving download order from https: no token"
@@ -28,7 +30,7 @@ var (
 	generateCertificateCommand = []string{"req", "-x509", "-nodes", "-days", "365", "-newkey", "rsa:2048", "-keyout", certificateKey, "-out", certificate, "-subj", "/C=IT/ST=Oregon/L=Moscow/O=varroa musica/OU=Org/CN=127.0.0.1"}
 )
 
-func webServer(tracker GazelleTracker) {
+func webServer() {
 	if !conf.webserverConfigured() {
 		logThis(webServerNotConfigured, NORMAL)
 		return
@@ -102,16 +104,22 @@ func webServer(tracker GazelleTracker) {
 			// save metadata once the download folder is created
 			saveTrackerMetadata(info)
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Downloaded torrent #"+id+" successfully."))
+			w.Write([]byte("Downloaded torrent #" + id + " successfully."))
 		}).Methods("GET")
 	}
 	if conf.webServerServeStats {
 		// serving static index.html in stats dir
 		rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
 	}
-	http.Handle("/", rtr)
+
 	// serve
-	if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", conf.webServerPort), certificate, certificateKey, nil); err != nil {
-		logThis(errorServing+err.Error(), NORMAL)
+	logThis(webServerUp, NORMAL)
+	server = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServerPort), Handler: rtr}
+	if err := server.ListenAndServeTLS(certificate, certificateKey); err != nil {
+		if err == http.ErrServerClosed {
+			logThis(webServerShutDown, NORMAL)
+		} else {
+			logThis(errorServing+err.Error(), NORMAL)
+		}
 	}
 }
