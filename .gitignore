@@ -9,4 +9,5 @@ log
 pid
 TODO
 *.png
+*.pem
 stats/

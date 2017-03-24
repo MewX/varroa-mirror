@@ -9,10 +9,10 @@ const (
 	errorWritingCSV          = "Error writing stats to CSV file: "
 	errorGeneratingGraphs    = "Error generating graphs (may require more data): "
 	errorNotEnoughDataPoints = "Not enough data points (yet) to generate graph"
-	errorBufferDrop          = "Buffer drop too important, varroa will shutdown"
+	errorBufferDrop          = "Buffer drop too important, stopping autosnatching. Reload to start again."
 )
 
-func manageStats(tracker GazelleTracker, previousStats *TrackerStats) *TrackerStats {
+func manageStats(tracker *GazelleTracker, previousStats *TrackerStats) *TrackerStats {
 	stats, err := tracker.GetStats()
 	if err != nil {
 		logThis(errorGettingStats+err.Error(), NORMAL)
@@ -39,13 +39,14 @@ func manageStats(tracker GazelleTracker, previousStats *TrackerStats) *TrackerSt
 				logThis(errorNotification+err.Error(), VERBOSE)
 			}
 			// stopping things
-			killDaemon()
+			disabledAutosnatching = true
+			// killDaemon()
 		}
 	}
 	return stats
 }
 
-func monitorStats(tracker GazelleTracker) {
+func monitorStats() {
 	// initial stats
 	previousStats := &TrackerStats{}
 	previousStats = manageStats(tracker, previousStats)

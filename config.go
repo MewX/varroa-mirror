@@ -37,6 +37,7 @@ type Config struct {
 	ircServer                   string
 	ircKey                      string
 	ircSSL                      bool
+	ircSSLSkipVerify            bool
 	nickServPassword            string
 	botName                     string
 	announcer                   string
@@ -46,12 +47,17 @@ type Config struct {
 	statsUpdatePeriod           int
 	maxBufferDecreaseByPeriodMB int
 	defaultDestinationFolder    string
+	downloadFolder              string
 	blacklistedUploaders        []string
 	logLevel                    int
 	gitlabUser                  string
 	gitlabPassword              string
 	gitlabPagesGitURL           string
 	gitlabPagesURL              string
+	webServerPort               int
+	webServerServeStats         bool
+	webServerAllowDownloads     bool
+	webServerToken              string
 }
 
 func getStringValues(source map[string]interface{}, key string) []string {
@@ -85,6 +91,7 @@ func (c *Config) load(path string) error {
 	c.ircServer = conf.GetString("tracker.irc_server")
 	c.ircKey = conf.GetString("tracker.irc_key")
 	c.ircSSL = conf.GetBool("tracker.irc_ssl")
+	c.ircSSLSkipVerify = conf.GetBool("tracker.irc_ssl_skip_verify")
 	c.nickServPassword = conf.GetString("tracker.nickserv_password")
 	c.botName = conf.GetString("tracker.bot_name")
 	c.announcer = conf.GetString("tracker.announcer")
@@ -101,6 +108,10 @@ func (c *Config) load(path string) error {
 	if c.defaultDestinationFolder == "" || !DirectoryExists(c.defaultDestinationFolder) {
 		return errors.New("Default destination folder does not exist")
 	}
+	c.downloadFolder = conf.GetString("tracker.download_folder")
+	if c.downloadFolder != "" && !DirectoryExists(c.downloadFolder) {
+		return errors.New("Download folder does not exist")
+	}
 	c.blacklistedUploaders = conf.GetStringSlice("tracker.blacklisted_uploaders")
 	c.logLevel = conf.GetInt("tracker.log_level")
 	// pushover configuration
@@ -114,6 +125,11 @@ func (c *Config) load(path string) error {
 		repoNameParts := strings.Split(c.gitlabPagesGitURL, "/")
 		c.gitlabPagesURL = fmt.Sprintf("https://%s.gitlab.io/%s", c.gitlabUser, strings.Replace(repoNameParts[len(repoNameParts)-1], ".git", "", -1))
 	}
+	// web server configuration
+	c.webServerPort = conf.GetInt("webserver.web_server_port")
+	c.webServerAllowDownloads = conf.GetBool("webserver.allow_downloads")
+	c.webServerServeStats = conf.GetBool("webserver.serve_stats")
+	c.webServerToken = conf.GetString("webserver.token")
 	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
@@ -164,6 +180,20 @@ func (c *Config) load(path string) error {
 		if allowDuplicate, ok := tinfo["allow_duplicate"]; ok {
 			t.allowDuplicate = allowDuplicate.(bool)
 		}
+		// special option which forces filter settings
+		if perfectFlac, ok := tinfo["perfect_flac"]; ok {
+			if perfectFlac.(bool) {
+				// set all options that make a perfect flac
+				// ie: 16bit/24bit FLAC 100%/log/cue/CD, or any Vinyl,DVD,Soundboard,WEB,Cassette,Blu-ray,SACD,DAT
+				t.format = []string{"FLAC"}
+				t.quality = []string{"Lossless", "24bit Lossless"}
+				t.hasLog = true
+				t.hasCue = true
+				t.logScore = 100
+				t.source = []string{"CD", "Vinyl", "DVD", "Soundboard", "WEB", "Cassette", "Blu-ray", "SACD", "DAT"}
+			}
+		}
+
 		c.filters = append(c.filters, t)
 	}
 	return nil
@@ -178,6 +208,21 @@ func (c *Config) pushoverConfigured() bool {
 
 func (c *Config) gitlabPagesConfigured() bool {
 	if c.gitlabPagesGitURL != "" && c.gitlabUser != "" && c.gitlabPassword != "" {
+		return true
+	}
+	return false
+}
+
+func (c *Config) downloadFolderConfigured() bool {
+	if c.downloadFolder != "" && DirectoryExists(c.downloadFolder) {
+		return true
+	}
+	return false
+}
+
+func (c *Config) webserverConfigured() bool {
+	// valid port, and at least one feature (serving stats and allowing downloads) is enabled, and we have a token
+	if c.webServerPort > 1024 && (c.webServerServeStats || c.webServerAllowDownloads) && c.webServerToken != "" {
 		return true
 	}
 	return false

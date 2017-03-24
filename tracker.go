@@ -10,6 +10,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -208,7 +209,12 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*AdditionalInfo, error) {
 	if gt.Response.Torrent.Remastered {
 		label = gt.Response.Torrent.RemasterRecordLabel
 	}
-	info := &AdditionalInfo{id: gt.Response.Torrent.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: gt.Response.Torrent.Username}
+	// json for metadata
+	metadataJson, err := json.MarshalIndent(gt.Response, "", "    ")
+	if err != nil {
+		metadataJson = data // falling back to complete json
+	}
+	info := &AdditionalInfo{id: gt.Response.Torrent.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: gt.Response.Torrent.Username, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJson}
 	return info, nil
 }
 
@@ -221,11 +227,36 @@ type AdditionalInfo struct {
 	artists  []string // concat artists, composers, etc
 	size     uint64
 	uploader string
-	// TODO: cover (WikiImage), releaseinfo (WikiBody), catnum (CatalogueNumber), filelist (Torrent.FileList), folder? (Torrent.FilePath)
+	folder   string
+	coverURL string
+	fullJSON []byte
 }
 
 func (a *AdditionalInfo) String() string {
 	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s | Size %s", a.label, a.logScore, strings.Join(a.artists, ","), humanize.IBytes(uint64(a.size)))
+}
+
+func (a *AdditionalInfo) DownloadCover(targetWithoutExtension string) error {
+	if a.coverURL == "" {
+		return errors.New("Unknown image url")
+	}
+	extension := filepath.Ext(a.coverURL)
+	if _, err := FileExists(targetWithoutExtension + extension); err == nil {
+		// already downloaded, or exists in folder already: do nothing
+		return nil
+	}
+	response, err := http.Get(a.coverURL)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	file, err := os.Create(targetWithoutExtension + extension)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = io.Copy(file, response.Body)
+	return err
 }
 
 //--------------------
