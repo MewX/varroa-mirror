@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/gorilla/mux"
@@ -19,6 +18,7 @@ const (
 	errorNoToken               = "Error receiving download order from https: no token"
 	errorGeneratingCertificate = "Error generating self-signed certificate: "
 	errorOpenSSL               = "openssl is not available on this system. "
+	errorNoID                  = "Error retreiving torrent ID"
 
 	openssl        = "openssl"
 	certificateKey = "key.pem"
@@ -36,6 +36,8 @@ func webServer() {
 		return
 	}
 
+	/*
+	TODO: make this work
 	// if not there yet, generate the self-signed certificate
 	_, certificateKeyExists := FileExists(certificateKey)
 	_, certificateExists := FileExists(certificate)
@@ -54,26 +56,40 @@ func webServer() {
 		}
 		// first connection will require manual approval since the certificate is self-signed, then things will work smoothly afterwards
 	}
+	*/
 
 	rtr := mux.NewRouter()
 	if conf.webServerAllowDownloads {
-		// interface for remotely ordering downloads
-		rtr.HandleFunc("/get/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
-			// checking token
+		getTorrent := func(w http.ResponseWriter, r *http.Request) {
 			queryParameters := r.URL.Query()
+			// get torrent ID
+			id, ok := mux.Vars(r)["id"]
+			if !ok {
+				// if it's not in URL, try to get from query parameters
+				queryID, ok := queryParameters["id"]
+				if !ok {
+					logThis(errorNoID, NORMAL)
+					w.WriteHeader(http.StatusUnauthorized) // TODO find better code?
+					return
+				}
+				id = queryID[0]
+			}
+			// checking token
 			token, ok := queryParameters["token"]
 			if !ok {
-				logThis(errorNoToken, NORMAL)
-				w.WriteHeader(http.StatusUnauthorized)
-				return
+				// try to get token from "pass" parameter instead
+				token, ok = queryParameters["pass"]
+				if !ok {
+					logThis(errorNoToken, NORMAL)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
 			}
 			if token[0] != conf.webServerToken {
 				logThis(errorWrongToken, NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			// get torrent ID
-			id := mux.Vars(r)["id"]
 			release := &Release{torrentID: id, torrentURL: conf.url + "/torrents.php?action=download&id=" + id, filename: "remote-id" + id + ".torrent"}
 			// get torrent info
 			info, err := tracker.GetTorrentInfo(release.torrentID)
@@ -105,7 +121,10 @@ func webServer() {
 			saveTrackerMetadata(info)
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Downloaded torrent #" + id + " successfully."))
-		}).Methods("GET")
+		}
+		// interface for remotely ordering downloads
+		rtr.HandleFunc("/get/{id:[0-9]+}", getTorrent).Methods("GET")
+		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 	}
 	if conf.webServerServeStats {
 		// serving static index.html in stats dir
@@ -115,7 +134,8 @@ func webServer() {
 	// serve
 	logThis(webServerUp, NORMAL)
 	server = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServerPort), Handler: rtr}
-	if err := server.ListenAndServeTLS(certificate, certificateKey); err != nil {
+	//if err := server.ListenAndServeTLS(certificate, certificateKey); err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
 			logThis(webServerShutDown, NORMAL)
 		} else {
