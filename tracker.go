@@ -13,14 +13,18 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"golang.org/x/net/publicsuffix"
 )
 
 const (
-	unknownTorrentURL = "Unknown torrent URL"
+	// RED only allows 5 API calls every 10s
+	allowedAPICallsByPeriod = 5
+	apiCallsPeriodS         = 10
 
+	unknownTorrentURL      = "Unknown torrent URL"
 	errorLogIn             = "Error logging in: "
 	errorNotLoggedIn       = "Not logged in"
 	errorJSONAPI           = "Error calling JSON API: "
@@ -28,6 +32,29 @@ const (
 	errorUnmarshallingJSON = "Error reading JSON: "
 	errorInvalidResponse   = "Invalid response. Maybe log in again?"
 )
+
+var (
+	// channel of allowedAPICallsByPeriod elements, which will rate-limit the requests
+	limiter = make(chan bool, allowedAPICallsByPeriod)
+)
+
+func apiCallRateLimiter() {
+	// fill the rate limiter the first time
+	for i := 0; i < allowedAPICallsByPeriod; i++ {
+		limiter <- true
+	}
+	// every apiCallsPeriodS, refill the limiter channel
+	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
+		for i := 0; i < allowedAPICallsByPeriod; i++ {
+			select {
+			case limiter <- true:
+			default:
+				// if channel is full, do nothing
+				break
+			}
+		}
+	}
+}
 
 func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	if client == nil {

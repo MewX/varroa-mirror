@@ -40,7 +40,6 @@ func manageStats(tracker *GazelleTracker, previousStats *TrackerStats) *TrackerS
 			}
 			// stopping things
 			disabledAutosnatching = true
-			// killDaemon()
 		}
 	}
 	return stats
@@ -56,10 +55,6 @@ func monitorStats() {
 		select {
 		case <-period:
 			previousStats = manageStats(tracker, previousStats)
-		case <-done:
-			return
-		case <-stop:
-			return
 		}
 	}
 }
