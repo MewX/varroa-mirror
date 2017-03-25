@@ -242,7 +242,7 @@ func (r *Release) Satisfies(filter Filter) bool {
 	return true
 }
 
-func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders []string, info *AdditionalInfo) bool {
+func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders []string, info *TrackerTorrentInfo) bool {
 	r.size = info.size
 	r.logScore = info.logScore
 	r.uploader = info.uploader

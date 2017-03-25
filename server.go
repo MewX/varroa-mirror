@@ -37,25 +37,25 @@ func webServer() {
 	}
 
 	/*
-	TODO: make this work
-	// if not there yet, generate the self-signed certificate
-	_, certificateKeyExists := FileExists(certificateKey)
-	_, certificateExists := FileExists(certificate)
-	if certificateExists == os.ErrNotExist || certificateKeyExists == os.ErrNotExist {
-		// checking openssl is available
-		_, err := exec.LookPath(openssl)
-		if err != nil {
-			logThis(errorOpenSSL+provideCertificate, NORMAL)
-			return
+		TODO: make this work
+		// if not there yet, generate the self-signed certificate
+		_, certificateKeyExists := FileExists(certificateKey)
+		_, certificateExists := FileExists(certificate)
+		if certificateExists == os.ErrNotExist || certificateKeyExists == os.ErrNotExist {
+			// checking openssl is available
+			_, err := exec.LookPath(openssl)
+			if err != nil {
+				logThis(errorOpenSSL+provideCertificate, NORMAL)
+				return
+			}
+			// generate certificate
+			if cmdOut, err := exec.Command(openssl, generateCertificateCommand...).Output(); err != nil {
+				logThis(errorGeneratingCertificate+err.Error()+string(cmdOut), NORMAL)
+				logThis(provideCertificate, NORMAL)
+				return
+			}
+			// first connection will require manual approval since the certificate is self-signed, then things will work smoothly afterwards
 		}
-		// generate certificate
-		if cmdOut, err := exec.Command(openssl, generateCertificateCommand...).Output(); err != nil {
-			logThis(errorGeneratingCertificate+err.Error()+string(cmdOut), NORMAL)
-			logThis(provideCertificate, NORMAL)
-			return
-		}
-		// first connection will require manual approval since the certificate is self-signed, then things will work smoothly afterwards
-	}
 	*/
 
 	rtr := mux.NewRouter()
