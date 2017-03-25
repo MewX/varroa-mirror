@@ -5,35 +5,98 @@
 // @include        http*://*redacted.ch/*
 // @version        1
 // @date           2017-03.27
+// @grant          GM_getValue
+// @grant          GM_setValue
+// @grant          GM_notification
 // ==/UserScript==
-
-// EDIT THIS
-var weblink = "https://hostname:your_chosen_port/get/";
-var token = "insert_your_token";
 
 var linkregex = /torrents\.php\?action=download.*?id=(\d+).*?authkey=.*?torrent_pass=(?=([a-z0-9]+))\2(?!&)/i;
 var divider = ' | ';
 
-alltorrents = [];
-for (var i=0; i < document.links.length; i++) {
-    alltorrents.push(document.links[i]);
+var settings = getSettings();
+var settingsPage = window.location.href.match('user.php\\?action=edit&userid=');
+
+if (settings.token && settings.weblink) {
+	alltorrents = [];
+	for (var i = 0; i < document.links.length; i++) {
+		alltorrents.push(document.links[i]);
+	}
+
+	for (var i = 0; i < alltorrents.length; i++) {
+		if (linkregex.exec(alltorrents[i])) {
+			id = RegExp.$1;
+			createLink(alltorrents[i], id);
+		}
+	}
 }
 
-for (var i=0; i < alltorrents.length; i++) {
-    if (linkregex.exec(alltorrents[i])) {
-        id = RegExp.$1;
-        createLink(alltorrents[i],id);
-    }
+if (settingsPage) {
+	appendSettings();
+	document.getElementById('varroa_settings_token').addEventListener('change', saveSettings, false);
+	document.getElementById('varroa_settings_weblink').addEventListener('change', saveSettings, false);
+}
+
+if (!settings && !settingsPage) {
+	GM_notification({
+		text: 'Missing configuration\nVisit user settings and setup',
+		title: 'Varroa Musica:',
+		timeout: 6000,
+	});
 }
 
 function createLink(linkelement, id) {
-    var link = document.createElement("varroa");
-    link.appendChild(document.createElement("a"));
-    link.firstChild.appendChild(document.createTextNode("VM"));
-    link.appendChild(document.createTextNode(divider));
-    link.firstChild.href=weblink+id+"?token="+token;
+	var link = document.createElement("varroa");
+	link.appendChild(document.createElement("a"));
+	link.firstChild.appendChild(document.createTextNode("VM"));
+	link.appendChild(document.createTextNode(divider));
+	link.firstChild.href = settings.weblink + id + "?token=" + settings.token;
 
-    link.firstChild.target="_blank";
-    link.firstChild.title="Direct Download to varroa musica";
-    linkelement.parentNode.insertBefore(link, linkelement);
+	link.firstChild.target = "_blank";
+	link.firstChild.title = "Direct Download to varroa musica";
+	linkelement.parentNode.insertBefore(link, linkelement);
+}
+
+function appendSettings() {
+	var container = document.getElementsByClassName('main_column')[0];
+	var lastTable = container.lastElementChild;
+	var settingsHTML = '<a name="varroa_settings"></a>\n<table cellpadding="6" cellspacing="1" border="0" width="100%" class="layout border user_options" id="varroa_settings">\n';
+	settingsHTML += '<tbody>\n<tr class="colhead_dark"><td colspan="2"><strong>Varroa Musica Settings</strong></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Token set in varroa">Token</td><td><input type="text" id="varroa_settings_token" placeholder="insert_your_token" value="' + GM_getValue('token', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Your seedbox hostname + port set in varroa">Web Link</td><td><input type="text" id="varroa_settings_weblink" placeholder="http://hostname:your_chosen_port/get/" value="' + GM_getValue('weblink', '') + '"></td></tr>\n';
+	settingsHTML += '</tbody>\n</table>';
+	lastTable.insertAdjacentHTML('afterend', settingsHTML);
+
+  var sectionsElem = document.querySelectorAll('#settings_sections > ul')[0];
+  sectionsHTML = '<h2><a href="#varroa_settings" class="tooltip" title="Varroa Musica Settings">Varroa Musica</a></h2>';
+  var li = document.createElement('li');
+  li.innerHTML = sectionsHTML;
+  sectionsElem.insertBefore(li, document.querySelectorAll('#settings_sections > ul > li:nth-child(10)')[0]);
+}
+
+function getSettings() {
+	var token = GM_getValue('token', '');
+	var weblink = GM_getValue('weblink', '');
+	if (token && weblink) {
+		return {
+			token: token,
+			weblink: weblink
+		};
+	} else {
+		return false;
+	}
+}
+
+function saveSettings() {
+	var elem = document.getElementById(this.id);
+	var setting = this.id.replace('varroa_settings_', '');
+	var border = elem.style.border;
+	GM_setValue(setting, elem.value);
+	if (GM_getValue(setting) === elem.value) {
+		elem.style.border = '1px solid green';
+		setTimeout(function () {
+			elem.style.border = border;
+		}, 2000);
+	} else {
+		elem.style.border = '1px solid red';
+	}
 }
