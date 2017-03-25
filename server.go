@@ -120,7 +120,7 @@ func webServer() {
 			// save metadata once the download folder is created
 			saveTrackerMetadata(info)
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Downloaded torrent #" + id + " successfully."))
+			w.Write([]byte("<html><head><script>t = null;function moveMe(){t = setTimeout(\"self.close()\",5000);}</script></head><body onload=\"moveMe()\">Downloaded torrent #" + id + " successfully.</body></html>"))
 		}
 		// interface for remotely ordering downloads
 		rtr.HandleFunc("/get/{id:[0-9]+}", getTorrent).Methods("GET")
