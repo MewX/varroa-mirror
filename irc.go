@@ -44,7 +44,7 @@ func waitUntilExists(path string) error {
 		if !DirectoryExists(path) {
 			if cpt < timeoutDownloadFolderCreation {
 				time.Sleep(1 * time.Second)
-				cpt += 1
+				cpt++
 			} else {
 				err = errors.New(errorWaitingForDownload)
 				keepScanning = false
@@ -57,7 +57,7 @@ func waitUntilExists(path string) error {
 	return err
 }
 
-func saveTrackerMetadata(info *AdditionalInfo) {
+func saveTrackerMetadata(info *TrackerTorrentInfo) {
 	if !conf.downloadFolderConfigured() {
 		return
 	}
@@ -96,7 +96,7 @@ func AnalyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 		// if satisfies a filter, download
 		var downloadedInfo bool
 		var downloadedTorrent bool
-		var info *AdditionalInfo
+		var info *TrackerTorrentInfo
 		for _, filter := range conf.filters {
 			// checking if duplicate
 			if !filter.allowDuplicate && history.HasDupe(release) {

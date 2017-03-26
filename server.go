@@ -37,25 +37,25 @@ func webServer() {
 	}
 
 	/*
-	TODO: make this work
-	// if not there yet, generate the self-signed certificate
-	_, certificateKeyExists := FileExists(certificateKey)
-	_, certificateExists := FileExists(certificate)
-	if certificateExists == os.ErrNotExist || certificateKeyExists == os.ErrNotExist {
-		// checking openssl is available
-		_, err := exec.LookPath(openssl)
-		if err != nil {
-			logThis(errorOpenSSL+provideCertificate, NORMAL)
-			return
+		TODO: make this work
+		// if not there yet, generate the self-signed certificate
+		_, certificateKeyExists := FileExists(certificateKey)
+		_, certificateExists := FileExists(certificate)
+		if certificateExists == os.ErrNotExist || certificateKeyExists == os.ErrNotExist {
+			// checking openssl is available
+			_, err := exec.LookPath(openssl)
+			if err != nil {
+				logThis(errorOpenSSL+provideCertificate, NORMAL)
+				return
+			}
+			// generate certificate
+			if cmdOut, err := exec.Command(openssl, generateCertificateCommand...).Output(); err != nil {
+				logThis(errorGeneratingCertificate+err.Error()+string(cmdOut), NORMAL)
+				logThis(provideCertificate, NORMAL)
+				return
+			}
+			// first connection will require manual approval since the certificate is self-signed, then things will work smoothly afterwards
 		}
-		// generate certificate
-		if cmdOut, err := exec.Command(openssl, generateCertificateCommand...).Output(); err != nil {
-			logThis(errorGeneratingCertificate+err.Error()+string(cmdOut), NORMAL)
-			logThis(provideCertificate, NORMAL)
-			return
-		}
-		// first connection will require manual approval since the certificate is self-signed, then things will work smoothly afterwards
-	}
 	*/
 
 	rtr := mux.NewRouter()
@@ -66,10 +66,10 @@ func webServer() {
 			id, ok := mux.Vars(r)["id"]
 			if !ok {
 				// if it's not in URL, try to get from query parameters
-				queryID, ok := queryParameters["id"]
-				if !ok {
+				queryID, ok2 := queryParameters["id"]
+				if !ok2 {
 					logThis(errorNoID, NORMAL)
-					w.WriteHeader(http.StatusUnauthorized) // TODO find better code?
+					w.WriteHeader(http.StatusUnauthorized) // TODO find better status code?
 					return
 				}
 				id = queryID[0]
@@ -90,13 +90,21 @@ func webServer() {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			release := &Release{torrentID: id, torrentURL: conf.url + "/torrents.php?action=download&id=" + id, filename: "remote-id" + id + ".torrent"}
+
 			// get torrent info
-			info, err := tracker.GetTorrentInfo(release.torrentID)
+			info, err := tracker.GetTorrentInfo(id)
 			if err != nil {
 				logThis(errorCouldNotGetTorrentInfo, NORMAL)
 				return // probably the ID does not exist
 			}
+			release := info.Release()
+			if release == nil {
+				logThis("Error parsing Torrent Info", NORMAL)
+				release = &Release{torrentID: id}
+			}
+			release.torrentURL = conf.url + "/torrents.php?action=download&id=" + id
+			release.filename = "remote-id" + id + ".torrent"
+
 			logThis("Downloading torrent #"+id, NORMAL)
 			if _, err := tracker.Download(release); err != nil {
 				logThis(errorDownloadingTorrent+release.torrentURL+" /  "+err.Error(), NORMAL)
@@ -109,18 +117,19 @@ func webServer() {
 			if err := os.Remove(release.filename); err != nil {
 				logThis(fmt.Sprintf(errorRemovingTempFile, release.filename), VERBOSE)
 			}
-			// add to history ?
-			// NOTE: or do we keep history for autosnatching only? would require filling in the Release struct from the info JSON
-			// NOTE: this would allow sending release.ShortString to the notification
-
+			// add to history
+			if err := history.SnatchHistory.Add(release, "remote"); err != nil {
+				logThis(errorAddingToHistory, NORMAL)
+			}
 			// send notification
-			if err := notification.Send("Snatched with web interface " + "torrent #" + id); err != nil {
+			if err := notification.Send("Snatched with web interface: " + release.ShortString()); err != nil {
 				logThis(errorNotification+err.Error(), VERBOSE)
 			}
+			// write response
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("<html><head><script>t = null;function moveMe(){t = setTimeout(\"self.close()\",5000);}</script></head><body onload=\"moveMe()\">Successfully downloaded torrent: " + release.ShortString() + "</body></html>"))
 			// save metadata once the download folder is created
 			saveTrackerMetadata(info)
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Downloaded torrent #" + id + " successfully."))
 		}
 		// interface for remotely ordering downloads
 		rtr.HandleFunc("/get/{id:[0-9]+}", getTorrent).Methods("GET")
