@@ -27,27 +27,10 @@ format:
     - go get github.com/gorilla/mux
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
-        # - go tool vet -composites=false -shadow=true *.go
+    - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
-build-commits:
-  stage: build
-  script:
-    - go get github.com/docopt/docopt-go
-    - go get github.com/spf13/viper
-    - go get github.com/wcharczuk/go-chart
-    - go get github.com/thoj/go-ircevent
-    - go get github.com/stretchr/testify/assert
-    - go get github.com/gregdel/pushover
-    - go get github.com/dustin/go-humanize
-    - go get github.com/gorilla/mux
-    - go get golang.org/x/net/publicsuffix
-    - go get github.com/sevlyar/go-daemon
-    - go build -race -ldflags "-extldflags '-static'" -o varroa
-  except:
-    - tags  
-    
-build-releases:
+compiled_varroa_dev:
   stage: build
   script:
     - go get github.com/docopt/docopt-go
@@ -62,9 +45,31 @@ build-releases:
     - go get github.com/sevlyar/go-daemon
     - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
+    paths:
+    - varroa
+    name: "varroa-dev-${CI_COMMIT_REF_NAME}"
+    expire_in: 1 week
+  except:
+    - tags  
+    
+compiled_varroa_released_version:
+  stage: build
+  script:
+    - go get github.com/docopt/docopt-go
+    - go get github.com/spf13/viper
+    - go get github.com/wcharczuk/go-chart
+    - go get github.com/thoj/go-ircevent
+    - go get github.com/stretchr/testify/assert
+    - go get github.com/gregdel/pushover
+    - go get github.com/dustin/go-humanize
+    - go get github.com/gorilla/mux
+    - go get golang.org/x/net/publicsuffix
+    - go get github.com/sevlyar/go-daemon
+    - go build -o varroa
+  artifacts:
     paths: 
     - varroa
-    name: "$CI_COMMIT_REF_NAME"
+    name: "varroa-${CI_COMMIT_REF_NAME}"
   only:
     - tags    
             
