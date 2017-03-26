@@ -347,7 +347,7 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 	for i, record := range records {
 		r := &Release{}
 		if err := r.FromSlice(record); err != nil {
-			logThis(fmt.Sprintf(errorLoadingLine, i), NORMAL)
+			logThis(fmt.Sprintf(errorLoadingLine, i)+err.Error(), NORMAL)
 		} else {
 			s.SnatchedReleases = append(s.SnatchedReleases, r)
 		}

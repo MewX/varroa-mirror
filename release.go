@@ -107,14 +107,15 @@ func (r *Release) ShortString() string {
 }
 
 func (r *Release) ToSlice() []string {
-	// artist;title;year;size;type;quality;haslog;logscore;hascue;isscene;source;format;tags
+	// artist;title;year;size;type;quality;haslog;logscore;hascue;isscene;source;format;tags;
+	// TODO: add trackerid;folder
 	// only saving r.artist[0], the raw artist announce
-	return []string{r.artist[0], r.title, strconv.Itoa(r.year), strconv.FormatUint(r.size, 10), r.releaseType, r.quality, strconv.FormatBool(r.hasLog), strconv.Itoa(r.logScore), strconv.FormatBool(r.hasCue), strconv.FormatBool(r.isScene), r.source, r.format, strings.Join(r.tags, ","), r.uploader}
+	return []string{r.artist[0], r.title, strconv.Itoa(r.year), strconv.FormatUint(r.size, 10), r.releaseType, r.quality, strconv.FormatBool(r.hasLog), strconv.Itoa(r.logScore), strconv.FormatBool(r.hasCue), strconv.FormatBool(r.isScene), r.source, r.format, strings.Join(r.tags, ","), r.uploader} // TODO , r.torrentID, r.folder}
 }
 
 func (r *Release) FromSlice(slice []string) error {
 	// slice contains timestamp + filter, which are ignored
-	if len(slice) != 16 {
+	if len(slice) < 16 {
 		return errors.New("Incorrect entry, cannot load release")
 	}
 	// no need to parse the raw artist announce again, probably
@@ -156,6 +157,12 @@ func (r *Release) FromSlice(slice []string) error {
 	r.format = slice[13]
 	r.tags = strings.Split(slice[14], ",")
 	r.uploader = slice[15]
+	/* TODO
+	if len(slice) == 18 { // after v8, contains id + folder
+		r.torrentID = slice[16]
+		r.folder = slice[17]
+	}
+	*/
 	return nil
 }
 
@@ -243,9 +250,12 @@ func (r *Release) Satisfies(filter Filter) bool {
 }
 
 func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders []string, info *TrackerTorrentInfo) bool {
+	// taking the opportunity to retrieve and save some info
 	r.size = info.size
 	r.logScore = info.logScore
 	r.uploader = info.uploader
+	r.folder = info.folder
+	// checks
 	if filter.maxSize != 0 && filter.maxSize < (info.size/(1024*1024)) {
 		logThis(filter.label+": Release too big.", VERBOSE)
 		return false
