@@ -161,13 +161,13 @@ func (t *GazelleTracker) Download(r *Release) (string, error) {
 		return "", err
 	}
 	defer response.Body.Close()
-	file, err := os.Create(r.filename)
+	file, err := os.Create(r.TorrentFile)
 	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 	_, err = io.Copy(file, response.Body)
-	return r.filename, err
+	return r.TorrentFile, err
 }
 
 func (t *GazelleTracker) GetStats() (*TrackerStats, error) {

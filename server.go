@@ -100,22 +100,22 @@ func webServer() {
 			release := info.Release()
 			if release == nil {
 				logThis("Error parsing Torrent Info", NORMAL)
-				release = &Release{torrentID: id}
+				release = &Release{TorrentID: id}
 			}
 			release.torrentURL = conf.url + "/torrents.php?action=download&id=" + id
-			release.filename = "remote-id" + id + ".torrent"
+			release.TorrentFile = "remote-id" + id + ".torrent"
 
-			logThis("Downloading torrent #"+id, NORMAL)
+			logThis("Web server: downloading torrent "+release.ShortString(), NORMAL)
 			if _, err := tracker.Download(release); err != nil {
 				logThis(errorDownloadingTorrent+release.torrentURL+" /  "+err.Error(), NORMAL)
 			}
 			// move to relevant watch directory
-			if err := CopyFile(release.filename, filepath.Join(conf.defaultDestinationFolder, release.filename)); err != nil {
+			if err := CopyFile(release.TorrentFile, filepath.Join(conf.defaultDestinationFolder, release.TorrentFile)); err != nil {
 				logThis(errorCouldNotMoveTorrent+err.Error(), NORMAL)
 				return
 			}
-			if err := os.Remove(release.filename); err != nil {
-				logThis(fmt.Sprintf(errorRemovingTempFile, release.filename), VERBOSE)
+			if err := os.Remove(release.TorrentFile); err != nil {
+				logThis(fmt.Sprintf(errorRemovingTempFile, release.TorrentFile), VERBOSE)
 			}
 			// add to history
 			if err := history.SnatchHistory.Add(release, "remote"); err != nil {

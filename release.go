@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"time"
+
 	"github.com/dustin/go-humanize"
 )
 
@@ -34,25 +36,27 @@ const (
 )
 
 type Release struct {
-	artist      []string
-	title       string
-	year        int
-	releaseType string
-	format      string
-	quality     string
-	hasLog      bool
-	hasCue      bool
-	isScene     bool
-	source      string
-	tags        []string
+	Artists     []string
+	Title       string
+	Year        int
+	ReleaseType string
+	Format      string
+	Quality     string
+	HasLog      bool
+	HasCue      bool
+	IsScene     bool
+	Source      string
+	Tags        []string
 	url         string
 	torrentURL  string
-	torrentID   string
-	filename    string
-	size        uint64
-	folder      string
-	logScore    int
-	uploader    string
+	TorrentID   string
+	TorrentFile string
+	Size        uint64
+	Folder      string
+	LogScore    int
+	Uploader    string
+	Timestamp   time.Time
+	Filter      string
 }
 
 func NewRelease(parts []string) (*Release, error) {
@@ -83,7 +87,7 @@ func NewRelease(parts []string) (*Release, error) {
 	isScene := parts[15] != ""
 
 	artist := []string{parts[1]}
-	// if the raw artist announce contains & or "performed by", split and add to slice
+	// if the raw Artists announce contains & or "performed by", split and add to slice
 	subArtists := regexp.MustCompile("&|performed by").Split(parts[1], -1)
 	if len(subArtists) != 1 {
 		for i, a := range subArtists {
@@ -92,25 +96,18 @@ func NewRelease(parts []string) (*Release, error) {
 		artist = append(artist, subArtists...)
 	}
 
-	r := &Release{artist: artist, title: parts[2], year: year, releaseType: parts[4], format: parts[5], quality: parts[6], source: parts[13], hasLog: hasLog, logScore: logScore, hasCue: hasCue, isScene: isScene, url: parts[16], torrentURL: parts[17], tags: tags, torrentID: torrentID}
-	r.filename = fmt.Sprintf(TorrentPath, r.artist[0], r.title, r.year, r.releaseType, r.format, r.quality, r.source, r.torrentID)
-	r.filename = strings.Replace(r.filename, "/", "-", -1)
+	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: parts[4], Format: parts[5], Quality: parts[6], Source: parts[13], HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: parts[16], torrentURL: parts[17], Tags: tags, TorrentID: torrentID}
+	r.TorrentFile = fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
+	r.TorrentFile = strings.Replace(r.TorrentFile, "/", "-", -1)
 	return r, nil
 }
 
 func (r *Release) String() string {
-	return fmt.Sprintf(ReleaseString, strings.Join(r.artist, ","), r.title, r.year, r.releaseType, r.format, r.quality, r.hasLog, r.logScore, r.hasCue, r.isScene, r.source, r.tags, r.url, r.torrentURL, r.torrentID)
+	return fmt.Sprintf(ReleaseString, strings.Join(r.Artists, ","), r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.HasLog, r.LogScore, r.HasCue, r.IsScene, r.Source, r.Tags, r.url, r.torrentURL, r.TorrentID)
 }
 
 func (r *Release) ShortString() string {
-	return fmt.Sprintf(TorrentNotification, r.artist[0], r.title, r.year, r.releaseType, r.format, r.quality, r.source, humanize.IBytes(r.size))
-}
-
-func (r *Release) ToSlice() []string {
-	// artist;title;year;size;type;quality;haslog;logscore;hascue;isscene;source;format;tags;
-	// TODO: add trackerid;folder
-	// only saving r.artist[0], the raw artist announce
-	return []string{r.artist[0], r.title, strconv.Itoa(r.year), strconv.FormatUint(r.size, 10), r.releaseType, r.quality, strconv.FormatBool(r.hasLog), strconv.Itoa(r.logScore), strconv.FormatBool(r.hasCue), strconv.FormatBool(r.isScene), r.source, r.format, strings.Join(r.tags, ","), r.uploader} // TODO , r.torrentID, r.folder}
+	return fmt.Sprintf(TorrentNotification, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, humanize.IBytes(r.Size))
 }
 
 func (r *Release) FromSlice(slice []string) error {
@@ -118,75 +115,81 @@ func (r *Release) FromSlice(slice []string) error {
 	if len(slice) < 16 {
 		return errors.New("Incorrect entry, cannot load release")
 	}
-	// no need to parse the raw artist announce again, probably
-	r.artist = []string{slice[2]}
-	r.title = slice[3]
+	// no need to parse the raw Artists announce again, probably
+	timestamp, err := strconv.ParseUint(slice[0], 10, 64)
+	if err != nil {
+		return err
+	}
+	r.Timestamp = time.Unix(int64(timestamp), 0)
+	r.Filter = slice[1]
+	r.Artists = []string{slice[2]}
+	r.Title = slice[3]
 	year, err := strconv.Atoi(slice[4])
 	if err != nil {
 		return err
 	}
-	r.year = year
+	r.Year = year
 	size, err := strconv.ParseUint(slice[5], 10, 64)
 	if err != nil {
 		return err
 	}
-	r.size = size
-	r.releaseType = slice[6]
-	r.quality = slice[7]
+	r.Size = size
+	r.ReleaseType = slice[6]
+	r.Quality = slice[7]
 	hasLog, err := strconv.ParseBool(slice[8])
 	if err != nil {
 		return err
 	}
-	r.hasLog = hasLog
+	r.HasLog = hasLog
 	logScore, err := strconv.Atoi(slice[9])
 	if err != nil {
 		return err
 	}
-	r.logScore = logScore
+	r.LogScore = logScore
 	hasCue, err := strconv.ParseBool(slice[10])
 	if err != nil {
 		return err
 	}
-	r.hasCue = hasCue
+	r.HasCue = hasCue
 	isScene, err := strconv.ParseBool(slice[11])
 	if err != nil {
 		return err
 	}
-	r.isScene = isScene
-	r.source = slice[12]
-	r.format = slice[13]
-	r.tags = strings.Split(slice[14], ",")
-	r.uploader = slice[15]
+	r.IsScene = isScene
+	r.Source = slice[12]
+	r.Format = slice[13]
+	r.Tags = strings.Split(slice[14], ",")
+	r.Uploader = slice[15]
 	/* TODO
 	if len(slice) == 18 { // after v8, contains id + folder
-		r.torrentID = slice[16]
+		r.TorrentID = slice[16]
 		r.folder = slice[17]
 	}
 	*/
 	return nil
 }
 
-func (r *Release) IsDupe(o *Release) bool {
+func (r *Release) IsDupe(o Release) bool {
 	// checking if similar
 	// size and tags are not taken into account
-	if r.artist[0] == o.artist[0] && r.title == o.title && r.year == o.year && r.releaseType == o.releaseType && r.quality == o.quality && r.source == o.source && r.format == o.format && r.hasLog == o.hasLog && r.logScore == o.logScore && r.hasCue == o.hasCue && r.isScene == o.isScene {
+	if r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.HasLog == o.HasLog && r.LogScore == o.LogScore && r.HasCue == o.HasCue && r.IsScene == o.IsScene {
 		return true
 	}
 	return false
 }
 
 func (r *Release) Satisfies(filter Filter) bool {
-	if len(filter.year) != 0 && !IntInSlice(r.year, filter.year) {
+	if len(filter.year) != 0 && !IntInSlice(r.Year, filter.year) {
 		logThis(filter.label+": Wrong year", VERBOSE)
 		return false
 	}
-	if len(filter.format) != 0 && !StringInSlice(r.format, filter.format) {
+	if len(filter.format) != 0 && !StringInSlice(r.Format, filter.format) {
 		logThis(filter.label+": Wrong format", VERBOSE)
 		return false
 	}
-	if r.artist[0] != "Various Artists" && len(filter.artist) != 0 {
+	if r.Artists[0] != "Various Artists" && len(filter.artist) != 0 {
 		var foundAtLeastOneArtist bool
-		for _, artist := range r.artist {
+		for _, artist := range r.Artists {
 			if StringInSlice(artist, filter.artist) {
 				foundAtLeastOneArtist = true
 				break
@@ -197,37 +200,37 @@ func (r *Release) Satisfies(filter Filter) bool {
 			return false
 		}
 	}
-	if len(filter.source) != 0 && !StringInSlice(r.source, filter.source) {
+	if len(filter.source) != 0 && !StringInSlice(r.Source, filter.source) {
 		logThis(filter.label+": Wrong source", VERBOSE)
 		return false
 	}
-	if len(filter.quality) != 0 && !StringInSlice(r.quality, filter.quality) {
+	if len(filter.quality) != 0 && !StringInSlice(r.Quality, filter.quality) {
 		logThis(filter.label+": Wrong quality", VERBOSE)
 		return false
 	}
-	if r.source == "CD" && filter.hasLog && !r.hasLog {
+	if r.Source == "CD" && filter.hasLog && !r.HasLog {
 		logThis(filter.label+": Release has no log", VERBOSE)
 		return false
 	}
 	// only compare logscores if the announce contained that information
-	if r.source == "CD" && filter.logScore != 0 && r.logScore != logScoreNotInAnnounce && filter.logScore > r.logScore {
+	if r.Source == "CD" && filter.logScore != 0 && r.LogScore != logScoreNotInAnnounce && filter.logScore > r.LogScore {
 		logThis(filter.label+": Incorrect log score", VERBOSE)
 		return false
 	}
-	if r.source == "CD" && filter.hasCue && !r.hasCue {
+	if r.Source == "CD" && filter.hasCue && !r.HasCue {
 		logThis(filter.label+": Release has no cue", VERBOSE)
 		return false
 	}
-	if !filter.allowScene && r.isScene {
+	if !filter.allowScene && r.IsScene {
 		logThis(filter.label+": Scene release not allowed", VERBOSE)
 		return false
 	}
-	if len(filter.releaseType) != 0 && !StringInSlice(r.releaseType, filter.releaseType) {
+	if len(filter.releaseType) != 0 && !StringInSlice(r.ReleaseType, filter.releaseType) {
 		logThis(filter.label+": Wrong release type", VERBOSE)
 		return false
 	}
 	for _, excluded := range filter.excludedTags {
-		if StringInSlice(excluded, r.tags) {
+		if StringInSlice(excluded, r.Tags) {
 			logThis(filter.label+": Has excluded tag", VERBOSE)
 			return false
 		}
@@ -235,7 +238,7 @@ func (r *Release) Satisfies(filter Filter) bool {
 	if len(filter.includedTags) != 0 {
 		// if none of r.tags in conf.includedTags, return false
 		atLeastOneIncludedTag := false
-		for _, t := range r.tags {
+		for _, t := range r.Tags {
 			if StringInSlice(t, filter.includedTags) {
 				atLeastOneIncludedTag = true
 				break
@@ -246,15 +249,12 @@ func (r *Release) Satisfies(filter Filter) bool {
 			return false
 		}
 	}
+	// taking the opportunity to retrieve and save some info
+	r.Filter = filter.label
 	return true
 }
 
 func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders []string, info *TrackerTorrentInfo) bool {
-	// taking the opportunity to retrieve and save some info
-	r.size = info.size
-	r.logScore = info.logScore
-	r.uploader = info.uploader
-	r.folder = info.folder
 	// checks
 	if filter.maxSize != 0 && filter.maxSize < (info.size/(1024*1024)) {
 		logThis(filter.label+": Release too big.", VERBOSE)
@@ -264,7 +264,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders [
 		logThis(filter.label+": Release too small.", VERBOSE)
 		return false
 	}
-	if r.source == "CD" && r.hasLog && filter.logScore != 0 && filter.logScore > info.logScore {
+	if r.Source == "CD" && r.HasLog && filter.logScore != 0 && filter.logScore > info.logScore {
 		logThis(filter.label+": Incorrect log score", VERBOSE)
 		return false
 	}
@@ -272,7 +272,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders [
 		logThis(filter.label+": No match for record label", VERBOSE)
 		return false
 	}
-	if r.artist[0] == "Various Artists" && len(filter.artist) != 0 {
+	if r.Artists[0] == "Various Artists" && len(filter.artist) != 0 {
 		var foundAtLeastOneArtist bool
 		for _, iArtist := range info.artists {
 			if StringInSlice(iArtist, filter.artist) {
@@ -288,5 +288,10 @@ func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders [
 		logThis(filter.label+": Uploader "+info.uploader+" is blacklisted.", VERBOSE)
 		return false
 	}
+	// taking the opportunity to retrieve and save some info
+	r.Size = info.size
+	r.LogScore = info.logScore
+	r.Uploader = info.uploader
+	r.Folder = info.folder
 	return true
 }

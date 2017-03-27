@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/wcharczuk/go-chart"
+	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 const (
@@ -26,11 +27,14 @@ const (
 	errorGitAddRemote     = "Error running git remote add: "
 	errorGitPush          = "Error running git push: "
 	errorMovingFile       = "Error moving file to stats folder: "
+	errorMigratingFile    = "Error migrating file to latest format: "
 
-	statsDir = "stats"
-	pngExt   = ".png"
-	svgExt   = ".svg"
-	gitlabCI = `# plain-htlm CI
+	statsDir   = "stats"
+	pngExt     = ".png"
+	svgExt     = ".svg"
+	csvExt     = ".csv"
+	msgpackExt = ".db"
+	gitlabCI   = `# plain-htlm CI
 pages:
   stage: deploy
   script:
@@ -85,8 +89,8 @@ var (
 	toptagsFile               = filepath.Join(statsDir, "top_tags")
 	gitlabCIYamlFile          = filepath.Join(statsDir, ".gitlab-ci.yml")
 	htmlIndexFile             = filepath.Join(statsDir, "index.html")
-	historyFile               = filepath.Join(statsDir, "history.csv")
-	statsFile                 = filepath.Join(statsDir, "stats.csv")
+	historyFile               = filepath.Join(statsDir, "history")
+	statsFile                 = filepath.Join(statsDir, "stats")
 )
 
 // History manages stats and generates graphs.
@@ -95,28 +99,87 @@ type History struct {
 	TrackerStatsHistory
 }
 
-func (h *History) LoadAll(statsFile, snatchesFile string) error {
+func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 	// if upgrading from v5, trying to move the csv files to the stats folder, their new home
-	if _, oldStatsFileExists := FileExists(filepath.Base(statsFile)); oldStatsFileExists == nil {
-		if _, newStatsFileExists := FileExists(statsFile); newStatsFileExists == os.ErrNotExist {
+	if _, oldStatsFileExists := FileExists(filepath.Base(statsFile + csvExt)); oldStatsFileExists == nil {
+		if _, newStatsFileExists := FileExists(statsFile + csvExt); newStatsFileExists == os.ErrNotExist {
 			logThis("Migrating tracker stats file to the stats folder.", NORMAL)
-			if err := os.Rename(filepath.Base(statsFile), statsFile); err != nil {
+			if err := os.Rename(filepath.Base(statsFile+csvExt), statsFile+csvExt); err != nil {
 				logThis(errorMovingFile, NORMAL)
 			}
 		}
 	}
-	if _, oldSnatchesFileExists := FileExists(filepath.Base(snatchesFile)); oldSnatchesFileExists == nil {
-		if _, newSnatchesFileExists := FileExists(snatchesFile); newSnatchesFileExists == os.ErrNotExist {
+	if _, oldSnatchesFileExists := FileExists(filepath.Base(snatchesFile + csvExt)); oldSnatchesFileExists == nil {
+		if _, newSnatchesFileExists := FileExists(snatchesFile + csvExt); newSnatchesFileExists == os.ErrNotExist {
 			logThis("Migrating sntach history file to the stats folder.", NORMAL)
-			if err := os.Rename(filepath.Base(snatchesFile), snatchesFile); err != nil {
+			if err := os.Rename(filepath.Base(snatchesFile+csvExt), snatchesFile+csvExt); err != nil {
 				logThis(errorMovingFile, NORMAL)
 			}
 		}
 	}
-	if err := h.TrackerStatsHistory.Load(statsFile); err != nil {
+
+	// if upgrading from v8, converting history.csv to history.db (msgpack)
+	if _, newSnatchesFileExists := FileExists(snatchesFile + msgpackExt); newSnatchesFileExists == os.ErrNotExist {
+		if _, oldSnatchesFileExists := FileExists(snatchesFile + csvExt); oldSnatchesFileExists == nil {
+			logThis("Migrating sntach history file to the latest format (csv -> msgpack).", NORMAL)
+			// load history file
+			f, err := os.OpenFile(snatchesFile+csvExt, os.O_RDONLY, 0644)
+			if err != nil {
+				logThis(errorMigratingFile+snatchesFile+csvExt, NORMAL)
+				return
+			}
+
+			w := csv.NewReader(f)
+			records, err := w.ReadAll()
+			if err != nil {
+				logThis("Error loading old history file: "+err.Error(), NORMAL)
+				return
+			}
+			if err := f.Close(); err != nil {
+				logThis("Error closing old history file: "+err.Error(), NORMAL)
+			}
+
+			releases := []Release{}
+			// load releases from history to in-memory slice
+			for i, record := range records {
+				r := &Release{}
+				if err := r.FromSlice(record); err != nil {
+					logThis(fmt.Sprintf(errorLoadingLine, i)+err.Error(), NORMAL)
+				} else {
+					fmt.Println(" LOADED: " + r.ShortString())
+					releases = append(releases, *r)
+				}
+			}
+
+			// save to new file
+			b, err := msgpack.Marshal(releases)
+			if err != nil {
+				logThis(errorMigratingFile+snatchesFile+msgpackExt+" :"+err.Error(), NORMAL)
+				return
+			}
+			if err := ioutil.WriteFile(snatchesFile+msgpackExt, b, 0640); err != nil {
+				logThis(errorMigratingFile+snatchesFile+msgpackExt+" :"+err.Error(), NORMAL)
+				return
+			}
+			// renaming old file
+			if err := os.Rename(snatchesFile+csvExt, snatchesFile+".csv.migrated"); err != nil {
+				logThis("Error renaming old history.csv file, please remove or move it elsewhere.", NORMAL)
+			} else {
+				logThis("Old history file renamed to "+snatchesFile+".csv.migrated", NORMAL)
+			}
+		}
+	}
+
+}
+
+func (h *History) LoadAll(statsFile, snatchesFile string) error {
+	// make sure we're using the latest format, convert if necessary
+	h.migrateOldFormats(statsFile, snatchesFile)
+
+	if err := h.TrackerStatsHistory.Load(statsFile + csvExt); err != nil {
 		return err
 	}
-	if err := h.SnatchHistory.Load(snatchesFile); err != nil {
+	if err := h.SnatchHistory.Load(snatchesFile + msgpackExt); err != nil {
 		return err
 	}
 	return nil
@@ -146,12 +209,11 @@ func (h *History) GenerateGraphs() error {
 }
 
 func (h *History) getFirstTimestamp() time.Time {
+	// assuming timestamps are in chronological order.
 	snatchTimestamp, statsTimestamp := int64(math.MaxInt32), int64(math.MaxInt32)
-	// If CSV files are NOT empty
-	if len(h.SnatchesRecords) != 0 && len(h.SnatchesRecords[0]) > 0 {
-		if timestamp, err := strconv.ParseInt(h.SnatchesRecords[0][0], 0, 64); err == nil {
-			snatchTimestamp = timestamp
-		}
+
+	if len(h.SnatchedReleases) != 0 {
+		snatchTimestamp = h.SnatchedReleases[0].Timestamp.Unix()
 	}
 	if len(h.TrackerStatsRecords) != 0 && len(h.TrackerStatsRecords[0]) > 0 {
 		if timestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64); err == nil {
@@ -324,8 +386,8 @@ func (h *History) Deploy() error {
 
 type SnatchHistory struct {
 	SnatchesPath        string
-	SnatchedReleases    []*Release
-	SnatchesRecords     [][]string
+	SnatchedReleases    []Release
+	SnatchesPacked      []byte
 	LastGeneratedPerDay int
 }
 
@@ -337,46 +399,35 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 		return err
 	}
 	defer f.Close()
-	w := csv.NewReader(f)
-	records, err := w.ReadAll()
+
+	bytes, err := ioutil.ReadFile(snatchesFile)
 	if err != nil {
+		logThis("Error reading history file", NORMAL)
 		return err
 	}
-	s.SnatchesRecords = records
+	s.SnatchesPacked = bytes
+
 	// load releases from history to in-memory slice
-	for i, record := range records {
-		r := &Release{}
-		if err := r.FromSlice(record); err != nil {
-			logThis(fmt.Sprintf(errorLoadingLine, i)+err.Error(), NORMAL)
-		} else {
-			s.SnatchedReleases = append(s.SnatchedReleases, r)
-		}
+	err = msgpack.Unmarshal(bytes, &s.SnatchedReleases)
+	if err != nil {
+		logThis("Error loading releases from history file", NORMAL)
+	} else {
+		logThis(fmt.Sprintf("Loaded %d snatches from history", len(s.SnatchedReleases)), VERBOSE)
 	}
-	return nil
+	return err
 }
 
 func (s *SnatchHistory) Add(r *Release, filter string) error {
-	// preparing info
-	timestamp := time.Now().Unix()
-	// timestamp;filter;artist;title;year;size;type;quality;source;format;tags
-	info := []string{fmt.Sprintf("%d", timestamp), filter}
-	info = append(info, r.ToSlice()...)
-
-	// write to history file
-	f, err := os.OpenFile(s.SnatchesPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	// add to in memory slice
+	s.SnatchedReleases = append(s.SnatchedReleases, *r)
+	// saving to msgpack
+	b, err := msgpack.Marshal(s.SnatchedReleases)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	w := csv.NewWriter(f)
-	if err := w.Write(info); err != nil {
-		return err
-	}
-	w.Flush()
-	// add to in-memory slices
-	s.SnatchedReleases = append(s.SnatchedReleases, r)
-	s.SnatchesRecords = append(s.SnatchesRecords, info)
-	return nil
+	s.SnatchesPacked = b
+	// write to history file
+	return ioutil.WriteFile(s.SnatchesPath, b, 0640)
 }
 
 func (s *SnatchHistory) HasDupe(r *Release) bool {
@@ -390,18 +441,14 @@ func (s *SnatchHistory) HasDupe(r *Release) bool {
 }
 
 func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, []float64, []float64, error) {
-	if len(s.SnatchesRecords) == 0 {
+	if len(s.SnatchedReleases) == 0 {
 		return nil, nil, nil, errors.New(errorNoHistory)
 	}
 	// all snatches should already be available in-memory
 	// get all times
 	allTimes := []time.Time{}
-	for _, record := range s.SnatchesRecords {
-		timestamp, err := strconv.ParseInt(record[0], 0, 64)
-		if err != nil {
-			return nil, nil, nil, errors.New(errorInvalidTimestamp)
-		}
-		allTimes = append(allTimes, time.Unix(timestamp, 0))
+	for _, record := range s.SnatchedReleases {
+		allTimes = append(allTimes, record.Timestamp)
 	}
 	// slice snatches data per day
 	dayTimes := allDaysSince(firstTimestamp)
@@ -422,7 +469,7 @@ func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, [
 			}
 			// increment number of snatched and size snatched
 			snatchesPerDay[len(snatchesPerDay)-1] += 1
-			sizePerDay[len(sizePerDay)-1] += float64(s.SnatchedReleases[i].size)
+			sizePerDay[len(sizePerDay)-1] += float64(s.SnatchedReleases[i].Size)
 		}
 	}
 	return dayTimes, snatchesPerDay, sizePerDay, nil
@@ -476,8 +523,8 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 
 	// generate filters chart
 	filterHits := map[string]float64{}
-	for _, r := range s.SnatchesRecords {
-		filterHits[r[1]] += 1
+	for _, r := range s.SnatchedReleases {
+		filterHits[r.Filter] += 1
 	}
 	pieSlices := []chart.Value{}
 	for k, v := range filterHits {
@@ -490,7 +537,7 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	// generate top 10 tags chart
 	popularTags := map[string]int{}
 	for _, r := range s.SnatchedReleases {
-		for _, t := range r.tags {
+		for _, t := range r.Tags {
 			popularTags[t] += 1
 		}
 	}

@@ -107,7 +107,7 @@ func AnalyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 			if release.Satisfies(filter) {
 				// get torrent info!
 				if !downloadedInfo {
-					info, err = tracker.GetTorrentInfo(release.torrentID)
+					info, err = tracker.GetTorrentInfo(release.TorrentID)
 					if err != nil {
 						return nil, errors.New(errorCouldNotGetTorrentInfo)
 					}
@@ -126,7 +126,7 @@ func AnalyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 					if filter.destinationFolder != "" {
 						destination = filter.destinationFolder
 					}
-					if err := CopyFile(release.filename, filepath.Join(destination, release.filename)); err != nil {
+					if err := CopyFile(release.TorrentFile, filepath.Join(destination, release.TorrentFile)); err != nil {
 						return nil, errors.New(errorCouldNotMoveTorrent + err.Error())
 					}
 					// adding to history
@@ -146,8 +146,8 @@ func AnalyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 		}
 		// if torrent was downloaded, remove temp copy
 		if downloadedTorrent {
-			if err := os.Remove(release.filename); err != nil {
-				logThis(fmt.Sprintf(errorRemovingTempFile, release.filename), VERBOSE)
+			if err := os.Remove(release.TorrentFile); err != nil {
+				logThis(fmt.Sprintf(errorRemovingTempFile, release.TorrentFile), VERBOSE)
 			}
 			return release, nil
 		}
