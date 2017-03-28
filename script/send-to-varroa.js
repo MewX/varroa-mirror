@@ -27,8 +27,17 @@ let linkLabel = 'VM';
 if (top10Page) {
 	linkLabel = '[' + linkLabel + ']';
 }
+let isWebSocketConnected = false;
+let vmStatusLI = null;
+let sock;
+const hello = {
+	Message: 'hello',
+	Status: 1
+};
+
 
 if (settings.token && settings.url && settings.port) {
+	newSocket();
 	const alltorrents = [];
 	for (let i = 0; i < document.links.length; i++) {
 		alltorrents.push(document.links[i]);
@@ -78,6 +87,52 @@ if (!settings && !settingsPage) {
 		title: 'Varroa Musica:',
 		timeout: 6000
 	});
+}
+
+function newSocket() {
+    // TODO use settings.url && settings.token
+	sock = new WebSocket('ws://localhost:' + settings.port + '/ws');
+	sock.onopen = function () {
+        // Sock.send("Msg...");
+		console.log('Connected to the server');
+		isWebSocketConnected = true;
+        // Send the msg object as a JSON-formatted string.
+		sock.send(JSON.stringify(hello));
+	};
+	sock.onerror = function (event) {
+		console.log('Error!!!!!!!!');
+		isWebSocketConnected = false;
+		setVMStatus('VM KO', sock);
+	};
+
+	sock.onmessage = function (evt) {
+		console.log(evt.data);
+		const msg = JSON.parse(evt.data);
+		if (msg.Message == 'hello') {
+			setVMStatus('VM OK', sock);
+		}
+	};
+
+	sock.onclose = function () {
+		console.log('Server connection closed.');
+		isWebSocketConnected = false;
+		setVMStatus('VM KO', sock);
+	};
+}
+
+function setVMStatus(label, sock) {
+	const a = document.createElement('a');
+	a.innerHTML = label;
+	a.addEventListener('click', newSocket, false);
+	if (vmStatusLI == null) {
+		const target = document.getElementById('userinfo_stats');
+		vmStatusLI = document.createElement('li');
+		vmStatusLI.id = 'nav_' + 'vm';
+		vmStatusLI.appendChild(a);
+		target.appendChild(vmStatusLI);
+	} else {
+		vmStatusLI.replaceChild(a, vmStatusLI.firstChild);
+	}
 }
 
 function createLink(linkelement, id) {

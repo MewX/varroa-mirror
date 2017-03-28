@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"log"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -29,6 +31,17 @@ var (
 	provideCertificate         = fmt.Sprintf("You must provide your own self-signed certificate (%s & %s).", certificate, certificateKey)
 	generateCertificateCommand = []string{"req", "-x509", "-nodes", "-days", "365", "-newkey", "rsa:2048", "-keyout", certificateKey, "-out", certificate, "-subj", "/C=IT/ST=Oregon/L=Moscow/O=varroa musica/OU=Org/CN=127.0.0.1"}
 )
+
+
+
+// TODO add token + command
+// TODO check token!!!!
+type JSONMessage struct {
+	Status int
+	Message string
+}
+
+
 
 func webServer() {
 	if !conf.webserverConfigured() {
@@ -131,9 +144,39 @@ func webServer() {
 			// save metadata once the download folder is created
 			saveTrackerMetadata(info)
 		}
+		upgrader := websocket.Upgrader{
+			// allows connection to websocket from anywhere
+			CheckOrigin: func(r *http.Request) bool { return true },
+		}
+		socket := func(w http.ResponseWriter, r *http.Request) {
+			c, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				log.Print("upgrade:", err)
+				return
+			}
+			defer c.Close()
+			for {
+				incoming := JSONMessage{}
+				err := c.ReadJSON(&incoming)
+				if err != nil {
+					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+						break
+					}
+					logThis("Error reading from websocket: " + err.Error(), NORMAL)
+					break
+				}
+				log.Printf("recv: %s %d", incoming.Message, incoming.Status)
+
+				hello := JSONMessage{Status:1, Message:"hello"}
+				if err := c.WriteJSON(hello); err != nil {
+					fmt.Println("NOPE")
+				}
+			}
+		}
 		// interface for remotely ordering downloads
 		rtr.HandleFunc("/get/{id:[0-9]+}", getTorrent).Methods("GET")
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
+		rtr.HandleFunc("/ws", socket)
 	}
 	if conf.webServerServeStats {
 		// serving static index.html in stats dir
