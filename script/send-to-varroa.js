@@ -11,6 +11,8 @@
 // ==/UserScript==
 
 // with some help from `xo --fix send_to_varroa.js`
+/* global window document MutationObserver GM_notification GM_getValue GM_setValue */
+/* eslint new-cap: "off" */
 
 const linkregex = /torrents\.php\?action=download.*?id=(\d+).*?authkey=.*?torrent_pass=(?=([a-z0-9]+))\2(?!&)/i;
 const divider = ' | ';
@@ -19,31 +21,32 @@ const settings = getSettings();
 const settingsPage = window.location.href.match('user.php\\?action=edit&userid=');
 const top10Page = window.location.href.match('top10.php');
 const torrentPage = window.location.href.match('torrents.php$');
-const torrentUserPage = window.location.href.match('torrents.php\?(.*)&userid');
+const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
+let obsElem;
 let linkLabel = 'VM';
 if (top10Page) {
 	linkLabel = '[' + linkLabel + ']';
 }
 
 if (settings.token && settings.url && settings.port) {
-	alltorrents = [];
-	for (var i = 0; i < document.links.length; i++) {
+	const alltorrents = [];
+	for (let i = 0; i < document.links.length; i++) {
 		alltorrents.push(document.links[i]);
 	}
 
-	for (var i = 0; i < alltorrents.length; i++) {
+	for (let i = 0; i < alltorrents.length; i++) {
 		if (linkregex.exec(alltorrents[i])) {
-			id = RegExp.$1;
+			const id = RegExp.$1;
 			createLink(alltorrents[i], id);
 		}
 	}
 
-	MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
-	const obs = new MutationObserver((mutations, observer) => {
+	MutationObserver = window.MutationObserver || window.WebKitMutationObserver; // eslint-disable-line no-global-assign
+	const obs = new MutationObserver(mutations => {
 		mutations.forEach(mutation => {
 			mutation.addedNodes.forEach(node => {
 				if (linkregex.exec(node.querySelector('a'))) {
-					id = RegExp.$1;
+					const id = RegExp.$1;
 					createLink(node.querySelector('a'), id);
 				}
 			});
@@ -51,12 +54,12 @@ if (settings.token && settings.url && settings.port) {
 	});
 
 	if (torrentPage) {
-		var obsElem = document.querySelector('#torrent_table > tbody');
+		obsElem = document.querySelector('#torrent_table > tbody'); // eslint-disable-line no-unused-vars
 	} else if (torrentUserPage) {
-		var obsElem = document.querySelector('.torrent_table > tbody');
+		obsElem = document.querySelector('.torrent_table > tbody'); // eslint-disable-line no-unused-vars
 	}
-	if (obsElem) {
-		obs.observe(obsElem, {
+	if (obsElem) { // eslint-disable-line no-undef
+		obs.observe(obsElem, { // eslint-disable-line no-undef
 			childList: true
 		});
 	}
@@ -100,7 +103,7 @@ function appendSettings() {
 	lastTable.insertAdjacentHTML('afterend', settingsHTML);
 
 	const sectionsElem = document.querySelectorAll('#settings_sections > ul')[0];
-	sectionsHTML = '<h2><a href="#varroa_settings" class="tooltip" title="Varroa Musica Settings">Varroa Musica</a></h2>';
+	const sectionsHTML = '<h2><a href="#varroa_settings" class="tooltip" title="Varroa Musica Settings">Varroa Musica</a></h2>';
 	const li = document.createElement('li');
 	li.innerHTML = sectionsHTML;
 	sectionsElem.insertBefore(li, document.querySelectorAll('#settings_sections > ul > li:nth-child(10)')[0]);
