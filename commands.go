@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -31,8 +33,13 @@ Loop:
 			logThis("Error reading from unix socket: "+err.Error(), NORMAL)
 			continue
 		}
+		// NOTE: simple split, do something better if necessary
+		fullCommand := strings.Split(string(buf[:n]), " ")
+		if len(fullCommand) == 0 {
+			continue
+		}
 
-		switch string(buf[:n]) {
+		switch fullCommand[0] {
 		case "stats":
 			go func() {
 				if err := generateStats(); err != nil {
@@ -45,6 +52,13 @@ Loop:
 			go func() {
 				if err := loadConfiguration(); err != nil {
 					logThis("Error reloading", NORMAL)
+				}
+			}()
+
+		case "refresh-metadata":
+			go func() {
+				if err := refreshMetadata(fullCommand[1:]); err != nil {
+					logThis("Error refreshing metadata: "+err.Error(), NORMAL)
 				}
 			}()
 		}
@@ -77,6 +91,31 @@ func loadConfiguration() error {
 		}
 		// launch server again
 		go webServer()
+	}
+	return nil
+}
+
+func refreshMetadata(IDStrings []string) error {
+	if len(IDStrings) == 0 {
+		return errors.New("Error: no ID provided")
+	}
+	// find ids in history
+	var foundAtLeastOne bool
+	for _, r := range history.SnatchedReleases {
+		if StringInSlice(r.TorrentID, IDStrings) {
+			foundAtLeastOne = true
+			logThis("Found release with ID "+r.TorrentID+" in history: "+r.ShortString()+". Getting tracker metadata.", NORMAL)
+			// get data from RED.
+			info, err := tracker.GetTorrentInfo(r.TorrentID)
+			if err != nil {
+				logThis(errorCouldNotGetTorrentInfo, NORMAL)
+			} else {
+				saveTrackerMetadata(info)
+			}
+		}
+	}
+	if !foundAtLeastOne {
+		return errors.New("Error: did not find matching ID(s) in history: " + strings.Join(IDStrings, ","))
 	}
 	return nil
 }

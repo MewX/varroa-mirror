@@ -7,6 +7,8 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,10 +16,6 @@ const (
 	NORMAL = iota
 	VERBOSE
 	VERBOSEST
-)
-
-const (
-	errorFileDoesNotExist = "File does not exist"
 )
 
 func logThis(msg string, level int) {
@@ -66,6 +64,26 @@ func IntInSlice(a int, list []int) bool {
 		}
 	}
 	return false
+}
+
+func IntSliceToString(in []int) string {
+	b := make([]string, len(in))
+	for i, v := range in {
+		b[i] = strconv.Itoa(v)
+	}
+	return strings.Join(b, ",")
+}
+
+func StringSliceToIntSlice(in []string) ([]int, error) {
+	var err error
+	b := make([]int, len(in))
+	for i, v := range in {
+		b[i], err = strconv.Atoi(v)
+		if err != nil {
+			return []int{}, err
+		}
+	}
+	return b, nil
 }
 
 func checkErrors(errs ...error) error {

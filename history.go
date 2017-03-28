@@ -146,7 +146,6 @@ func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 				if err := r.FromSlice(record); err != nil {
 					logThis(fmt.Sprintf(errorLoadingLine, i)+err.Error(), NORMAL)
 				} else {
-					fmt.Println(" LOADED: " + r.ShortString())
 					releases = append(releases, *r)
 				}
 			}
@@ -362,7 +361,7 @@ func (h *History) Deploy() error {
 		return err
 	}
 	// add overall stats and other files
-	if err := git.Add("*"+svgExt, filepath.Base(statsFile), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
+	if err := git.Add("*"+svgExt, filepath.Base(statsFile+csvExt), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
 		return errors.New(errorGitAdd + err.Error())
 	}
 	// commit
