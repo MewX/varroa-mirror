@@ -190,18 +190,23 @@ func (h *History) GenerateGraphs() error {
 	if firstOverallTimestamp.After(time.Now()) {
 		return errors.New(errorInvalidTimestamp)
 	}
-
-	// generate history graphs if necessary
-	if err := h.GenerateDailyGraphs(firstOverallTimestamp); err != nil {
-		return err
-	}
+	statsOK := true
+	dailyStatsOK := true
 	// generate stats graphs
 	if err := h.GenerateStatsGraphs(firstOverallTimestamp); err != nil {
-		return err
+		logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+		statsOK = false
 	}
-	// combine graphs into overallStatsFile
-	if err := combineAllPNGs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
-		return err
+	// generate history graphs if necessary
+	if err := h.GenerateDailyGraphs(firstOverallTimestamp); err != nil {
+		logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+		dailyStatsOK = false
+	}
+	if statsOK && dailyStatsOK {
+		// combine graphs into overallStatsFile
+		if err := combineAllPNGs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
+			logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+		}
 	}
 	// deploy automatically
 	return h.Deploy()

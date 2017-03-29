@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"log"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -32,16 +32,12 @@ var (
 	generateCertificateCommand = []string{"req", "-x509", "-nodes", "-days", "365", "-newkey", "rsa:2048", "-keyout", certificateKey, "-out", certificate, "-subj", "/C=IT/ST=Oregon/L=Moscow/O=varroa musica/OU=Org/CN=127.0.0.1"}
 )
 
-
-
 // TODO add token + command
 // TODO check token!!!!
 type JSONMessage struct {
-	Status int
+	Status  int
 	Message string
 }
-
-
 
 func webServer() {
 	if !conf.webserverConfigured() {
@@ -162,12 +158,12 @@ func webServer() {
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
 						break
 					}
-					logThis("Error reading from websocket: " + err.Error(), NORMAL)
+					logThis("Error reading from websocket: "+err.Error(), NORMAL)
 					break
 				}
 				log.Printf("recv: %s %d", incoming.Message, incoming.Status)
 
-				hello := JSONMessage{Status:1, Message:"hello"}
+				hello := JSONMessage{Status: 1, Message: "hello"}
 				if err := c.WriteJSON(hello); err != nil {
 					fmt.Println("NOPE")
 				}
