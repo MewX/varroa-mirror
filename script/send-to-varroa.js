@@ -3,7 +3,7 @@
 // @namespace      varroa
 // @description    Adds a VM link for each torrent, to send directly to varroa musica.
 // @include        http*://*redacted.ch/*
-// @version        8
+// @version        9
 // @date           2017-03
 // @grant          GM_getValue
 // @grant          GM_setValue
@@ -34,7 +34,6 @@ const hello = {
 	Message: 'hello',
 	Status: 1
 };
-
 
 if (settings.token && settings.url && settings.port) {
 	newSocket();
@@ -90,44 +89,41 @@ if (!settings && !settingsPage) {
 }
 
 function newSocket() {
-    // TODO use settings.url && settings.token
+	// TODO use settings.url && settings.token
 	sock = new WebSocket('ws://localhost:' + settings.port + '/ws');
 	sock.onopen = function () {
-        // Sock.send("Msg...");
 		console.log('Connected to the server');
 		isWebSocketConnected = true;
-        // Send the msg object as a JSON-formatted string.
+		// Send the msg object as a JSON-formatted string.
 		sock.send(JSON.stringify(hello));
 	};
-	sock.onerror = function (event) {
-		console.log('Error!!!!!!!!');
+	sock.onerror = function (evt) {
+		console.log('Websocket error.');
 		isWebSocketConnected = false;
-		setVMStatus('VM KO', sock);
+		setVMStatus('VM KO');
 	};
-
 	sock.onmessage = function (evt) {
 		console.log(evt.data);
 		const msg = JSON.parse(evt.data);
-		if (msg.Message == 'hello') {
-			setVMStatus('VM OK', sock);
+		if (msg.Message === 'hello') {
+			setVMStatus('VM OK');
 		}
 	};
-
 	sock.onclose = function () {
 		console.log('Server connection closed.');
 		isWebSocketConnected = false;
-		setVMStatus('VM KO', sock);
+		setVMStatus('VM KO');
 	};
 }
 
-function setVMStatus(label, sock) {
+function setVMStatus(label) {
 	const a = document.createElement('a');
 	a.innerHTML = label;
 	a.addEventListener('click', newSocket, false);
-	if (vmStatusLI == null) {
+	if (vmStatusLI === null) {
 		const target = document.getElementById('userinfo_stats');
 		vmStatusLI = document.createElement('li');
-		vmStatusLI.id = 'nav_' + 'vm';
+		vmStatusLI.id = 'nav_varroa';
 		vmStatusLI.appendChild(a);
 		target.appendChild(vmStatusLI);
 	} else {
