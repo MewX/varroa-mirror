@@ -117,7 +117,7 @@ func (a *TrackerTorrentInfo) Release() *Release {
 	r.HasCue = gt.Response.Torrent.HasCue
 	r.IsScene = gt.Response.Torrent.Scene
 	r.Source = gt.Response.Torrent.Media
-	// not found in Gazelle API... r.tags =
+	// found only in Artist API call... r.tags =
 	// r.url =
 	// r.torrentURL =
 	r.TorrentID = fmt.Sprintf("%d", gt.Response.Torrent.ID)

@@ -28,6 +28,7 @@ const (
 	errorGitPush          = "Error running git push: "
 	errorMovingFile       = "Error moving file to stats folder: "
 	errorMigratingFile    = "Error migrating file to latest format: "
+	errorCreatingGraphs   = "Could not generate any graph."
 
 	statsDir   = "stats"
 	pngExt     = ".png"
@@ -123,16 +124,16 @@ func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 		if _, oldSnatchesFileExists := FileExists(snatchesFile + csvExt); oldSnatchesFileExists == nil {
 			logThis("Migrating sntach history file to the latest format (csv -> msgpack).", NORMAL)
 			// load history file
-			f, err := os.OpenFile(snatchesFile+csvExt, os.O_RDONLY, 0644)
-			if err != nil {
+			f, errOpening := os.OpenFile(snatchesFile+csvExt, os.O_RDONLY, 0644)
+			if errOpening != nil {
 				logThis(errorMigratingFile+snatchesFile+csvExt, NORMAL)
 				return
 			}
 
 			w := csv.NewReader(f)
-			records, err := w.ReadAll()
-			if err != nil {
-				logThis("Error loading old history file: "+err.Error(), NORMAL)
+			records, errReading := w.ReadAll()
+			if errReading != nil {
+				logThis("Error loading old history file: "+errReading.Error(), NORMAL)
 				return
 			}
 			if err := f.Close(); err != nil {
@@ -202,14 +203,17 @@ func (h *History) GenerateGraphs() error {
 		logThis(errorGeneratingGraphs+err.Error(), NORMAL)
 		dailyStatsOK = false
 	}
-	if statsOK && dailyStatsOK {
-		// combine graphs into overallStatsFile
-		if err := combineAllPNGs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
-			logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+	if statsOK {
+		if dailyStatsOK {
+			// combine graphs into overallStatsFile
+			if err := combineAllPNGs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
+				logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+			}
 		}
+		// deploy automatically, if at least the StatsGraphs have been generated
+		return h.Deploy()
 	}
-	// deploy automatically
-	return h.Deploy()
+	return errors.New(errorCreatingGraphs)
 }
 
 func (h *History) getFirstTimestamp() time.Time {
@@ -375,14 +379,14 @@ func (h *History) Deploy() error {
 	}
 	// push
 	if !git.HasRemote("origin") {
-		if err := git.AddRemote("origin", conf.gitlabPagesGitURL); err != nil {
+		if err := git.AddRemote("origin", conf.gitlab.pagesGitURL); err != nil {
 			return errors.New(errorGitAddRemote + err.Error())
 		}
 	}
-	if err := git.Push("origin", conf.gitlabPagesGitURL, conf.gitlabUser, conf.gitlabPassword); err != nil {
+	if err := git.Push("origin", conf.gitlab.pagesGitURL, conf.gitlab.user, conf.gitlab.password); err != nil {
 		return errors.New(errorGitPush + err.Error())
 	}
-	logThis("Pushed new stats to "+conf.gitlabPagesURL, NORMAL)
+	logThis("Pushed new stats to "+conf.gitlab.pagesURL, NORMAL)
 	return nil
 }
 
@@ -482,8 +486,7 @@ func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, [
 func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) error {
 	if len(s.SnatchedReleases) == s.LastGeneratedPerDay {
 		// no additional snatch since the graphs were last generated, nothing needs to be done
-		logThis("Empty daily history", VERBOSE)
-		return nil
+		return errors.New("Empty daily history")
 	}
 	// get slices of relevant data
 	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := s.SnatchedPerDay(firstOverallTimestamp)
@@ -491,9 +494,8 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 		if err.Error() == errorNoHistory {
 			logThis(errorNoHistory, NORMAL)
 			return nil // nothing to do yet
-		} else {
-			return err
 		}
+		return err
 	}
 	if len(timestamps) < 2 {
 		logThis(errorNotEnoughDays, NORMAL)
@@ -528,7 +530,7 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	// generate filters chart
 	filterHits := map[string]float64{}
 	for _, r := range s.SnatchedReleases {
-		filterHits[r.Filter] += 1
+		filterHits[r.Filter]++
 	}
 	pieSlices := []chart.Value{}
 	for k, v := range filterHits {
@@ -542,7 +544,7 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	popularTags := map[string]int{}
 	for _, r := range s.SnatchedReleases {
 		for _, t := range r.Tags {
-			popularTags[t] += 1
+			popularTags[t]++
 		}
 	}
 	top10tags := []chart.Value{}
@@ -694,8 +696,8 @@ func (t *TrackerStatsHistory) StatsPerDay(firstTimestamp time.Time) ([]time.Time
 func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Time) error {
 	// generate tracker stats graphs
 	if len(t.TrackerStatsRecords) <= 2 {
-		logThis("Empty stats history", VERBOSE)
-		return nil // not enough data points yet
+		// not enough data points yet
+		return errors.New("Empty stats history")
 	}
 	if len(t.TrackerStatsRecords) != len(t.TrackerStats) {
 		return errors.New("Incoherent in-memory stats")

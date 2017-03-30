@@ -68,7 +68,7 @@ func webServer() {
 	*/
 
 	rtr := mux.NewRouter()
-	if conf.webServerAllowDownloads {
+	if conf.webServer.allowDownloads {
 		getTorrent := func(w http.ResponseWriter, r *http.Request) {
 			queryParameters := r.URL.Query()
 			// get torrent ID
@@ -94,7 +94,7 @@ func webServer() {
 					return
 				}
 			}
-			if token[0] != conf.webServerToken {
+			if token[0] != conf.webServer.token {
 				logThis(errorWrongToken, NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -174,14 +174,14 @@ func webServer() {
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 		rtr.HandleFunc("/ws", socket)
 	}
-	if conf.webServerServeStats {
+	if conf.webServer.serveStats {
 		// serving static index.html in stats dir
 		rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
 	}
 
 	// serve
 	logThis(webServerUp, NORMAL)
-	server = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServerPort), Handler: rtr}
+	server = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServer.port), Handler: rtr}
 	//if err := server.ListenAndServeTLS(certificate, certificateKey); err != nil {
 	if err := server.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {

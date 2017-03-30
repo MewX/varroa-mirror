@@ -50,7 +50,7 @@ func (b boolFlag) IsSet() bool {
 
 func main() {
 	// parsing CLI
-	cli := &VarroaArguments{}
+	cli := &varroaArguments{}
 	if err := cli.parseCLI(os.Args[1:]); err != nil {
 		logThis(errorArguments+err.Error(), NORMAL)
 		return
@@ -87,8 +87,8 @@ func main() {
 		}
 		// init notifications with pushover
 		if conf.pushoverConfigured() {
-			notification.client = pushover.New(conf.pushoverToken)
-			notification.recipient = pushover.NewRecipient(conf.pushoverUser)
+			notification.client = pushover.New(conf.pushover.token)
+			notification.recipient = pushover.NewRecipient(conf.pushover.user)
 		}
 		// log in tracker
 		tracker = &GazelleTracker{rootURL: conf.url}

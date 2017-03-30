@@ -23,7 +23,7 @@ Options:
 `
 )
 
-type VarroaArguments struct {
+type varroaArguments struct {
 	builtin         bool
 	start           bool
 	stop            bool
@@ -33,7 +33,7 @@ type VarroaArguments struct {
 	torrentIDs      []int
 }
 
-func (b *VarroaArguments) parseCLI(osArgs []string) error {
+func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// parse arguments and options
 	args, err := docopt.Parse(varroaUsage, osArgs, true, varroaVersion, false, false)
 	if err != nil {

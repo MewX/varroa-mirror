@@ -24,7 +24,7 @@ func (n *Notification) Send(message string) error {
 	}
 	var pushoverMessage *pushover.Message
 	if conf.gitlabPagesConfigured() {
-		pushoverMessage = &pushover.Message{Message: message, Title: varroa, URL: conf.gitlabPagesURL, URLTitle: "Graphs"}
+		pushoverMessage = &pushover.Message{Message: message, Title: varroa, URL: conf.gitlab.pagesURL, URLTitle: "Graphs"}
 	} else {
 		pushoverMessage = pushover.NewMessageWithTitle(message, varroa)
 	}

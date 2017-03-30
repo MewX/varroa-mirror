@@ -111,6 +111,8 @@ func (r *Release) ShortString() string {
 }
 
 func (r *Release) FromSlice(slice []string) error {
+	// Deprecated, only used for migrating old csv files to the new msgpack-based db.
+
 	// slice contains timestamp + filter, which are ignored
 	if len(slice) < 16 {
 		return errors.New("Incorrect entry, cannot load release")
@@ -160,12 +162,6 @@ func (r *Release) FromSlice(slice []string) error {
 	r.Format = slice[13]
 	r.Tags = strings.Split(slice[14], ",")
 	r.Uploader = slice[15]
-	/* TODO
-	if len(slice) == 18 { // after v8, contains id + folder
-		r.TorrentID = slice[16]
-		r.folder = slice[17]
-	}
-	*/
 	return nil
 }
 
@@ -229,17 +225,17 @@ func (r *Release) Satisfies(filter Filter) bool {
 		logThis(filter.label+": Wrong release type", VERBOSE)
 		return false
 	}
-	for _, excluded := range filter.excludedTags {
+	for _, excluded := range filter.tags.excluded {
 		if StringInSlice(excluded, r.Tags) {
 			logThis(filter.label+": Has excluded tag", VERBOSE)
 			return false
 		}
 	}
-	if len(filter.includedTags) != 0 {
+	if len(filter.tags.included) != 0 {
 		// if none of r.tags in conf.includedTags, return false
 		atLeastOneIncludedTag := false
 		for _, t := range r.Tags {
-			if StringInSlice(t, filter.includedTags) {
+			if StringInSlice(t, filter.tags.included) {
 				atLeastOneIncludedTag = true
 				break
 			}
@@ -256,11 +252,11 @@ func (r *Release) Satisfies(filter Filter) bool {
 
 func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders []string, info *TrackerTorrentInfo) bool {
 	// checks
-	if filter.maxSize != 0 && filter.maxSize < (info.size/(1024*1024)) {
+	if filter.size.max != 0 && filter.size.max < (info.size/(1024*1024)) {
 		logThis(filter.label+": Release too big.", VERBOSE)
 		return false
 	}
-	if filter.minSize > 0 && filter.minSize > (info.size/(1024*1024)) {
+	if filter.size.min > 0 && filter.size.min > (info.size/(1024*1024)) {
 		logThis(filter.label+": Release too small.", VERBOSE)
 		return false
 	}

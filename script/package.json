@@ -1,6 +1,6 @@
 {
   "name": "varroa",
-  "version": "8",
+  "version": "9",
   "main": "send-to-varroa.js",
   "author": "passelecasque",
   "dependencies": {

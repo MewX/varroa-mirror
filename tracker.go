@@ -43,12 +43,13 @@ func apiCallRateLimiter() {
 	}
 	// every apiCallsPeriodS, refill the limiter channel
 	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
+	Loop:
 		for i := 0; i < allowedAPICallsByPeriod; i++ {
 			select {
 			case limiter <- true:
 			default:
-				// if channel is full, do nothing
-				break
+				// if channel is full, do nothing and wait for the next tick
+				break Loop
 			}
 		}
 	}
@@ -145,9 +146,8 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 				return nil, callErr
 			}
 			return data2, callErr
-		} else {
-			return nil, errors.New("Could not log in and send get request to " + url)
 		}
+		return nil, errors.New("Could not log in and send get request to " + url)
 	}
 	return data, err
 }

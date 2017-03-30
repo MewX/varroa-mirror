@@ -82,7 +82,7 @@ func saveTrackerMetadata(info *TrackerTorrentInfo) {
 	}()
 }
 
-func AnalyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error) {
+func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
 	hits := r.FindAllStringSubmatch(announced, -1)
@@ -158,37 +158,37 @@ func AnalyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 }
 
 func ircHandler() {
-	IRCClient := irc.IRC(conf.botName, conf.user)
-	IRCClient.UseTLS = conf.ircSSL
-	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: conf.ircSSLSkipVerify}
+	IRCClient := irc.IRC(conf.irc.botName, conf.user)
+	IRCClient.UseTLS = conf.irc.SSL
+	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: conf.irc.SSLSkipVerify}
 	IRCClient.AddCallback("001", func(e *irc.Event) {
-		IRCClient.Privmsg("NickServ", "IDENTIFY "+conf.nickServPassword)
-		IRCClient.Privmsg(conf.announcer, fmt.Sprintf("enter %s %s %s", conf.announceChannel, conf.user, conf.ircKey))
+		IRCClient.Privmsg("NickServ", "IDENTIFY "+conf.irc.nickServPassword)
+		IRCClient.Privmsg(conf.irc.announcer, fmt.Sprintf("enter %s %s %s", conf.irc.announceChannel, conf.user, conf.irc.key))
 	})
 	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
-		if e.Nick != conf.announcer {
+		if e.Nick != conf.irc.announcer {
 			return // spam
 		}
 		// e.Arguments's first element is the message's recipient, the second is the actual message
 		switch e.Arguments[0] {
-		case conf.botName:
+		case conf.irc.botName:
 			// if sent to the bot, it's now ok to join the announce channel
 			// waiting for the announcer bot to actually invite us
 			time.Sleep(100 * time.Millisecond)
-			IRCClient.Join(conf.announceChannel)
-		case conf.announceChannel:
+			IRCClient.Join(conf.irc.announceChannel)
+		case conf.irc.announceChannel:
 			// if sent to the announce channel, it's a new release
 			if !disabledAutosnatching {
 				announced := e.Message()
 				logThis("++ Announced: "+announced, VERBOSE)
-				if _, err := AnalyzeAnnounce(announced, tracker); err != nil {
+				if _, err := analyzeAnnounce(announced, tracker); err != nil {
 					logThis(errorDealingWithAnnounce+err.Error(), VERBOSE)
 					return
 				}
 			}
 		}
 	})
-	err := IRCClient.Connect(conf.ircServer)
+	err := IRCClient.Connect(conf.irc.server)
 	if err != nil {
 		logThis(errorConnectingToIRC+err.Error(), NORMAL)
 		return
