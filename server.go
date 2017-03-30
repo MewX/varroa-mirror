@@ -25,19 +25,37 @@ const (
 	openssl        = "openssl"
 	certificateKey = "key.pem"
 	certificate    = "cert.pem"
+
+	downloadCommand  = "get"
+	handshakeCommand = "hello"
+	statsCommand     = "stats"
+
+	errorUnknownCommand          = "Error: unknown websocket command: "
+	errorIncomingWebSocketJSON   = "Error parsing websocket input: "
+	errorIncorrectWebServerToken = "Error validating token for web server, ignoring."
+	errorWritingToWebSocket      = "Error writing to websocket: "
 )
+
+const (
+	responseInfo = iota
+	responseError
+)
+
+type IncomingJSON struct {
+	Token   string
+	Command string
+	ID      string
+}
+
+type OutgoingJSON struct {
+	Status  int
+	Message string
+}
 
 var (
 	provideCertificate         = fmt.Sprintf("You must provide your own self-signed certificate (%s & %s).", certificate, certificateKey)
 	generateCertificateCommand = []string{"req", "-x509", "-nodes", "-days", "365", "-newkey", "rsa:2048", "-keyout", certificateKey, "-out", certificate, "-subj", "/C=IT/ST=Oregon/L=Moscow/O=varroa musica/OU=Org/CN=127.0.0.1"}
 )
-
-// TODO add token + command
-// TODO check token!!!!
-type JSONMessage struct {
-	Status  int
-	Message string
-}
 
 func webServer() {
 	if !conf.webserverConfigured() {
@@ -152,21 +170,41 @@ func webServer() {
 			}
 			defer c.Close()
 			for {
-				incoming := JSONMessage{}
-				err := c.ReadJSON(&incoming)
-				if err != nil {
+				incoming := IncomingJSON{}
+				if err := c.ReadJSON(&incoming); err != nil {
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
 						break
 					}
-					logThis("Error reading from websocket: "+err.Error(), NORMAL)
-					break
+					logThis(errorIncomingWebSocketJSON+err.Error(), NORMAL)
+					continue
 				}
-				log.Printf("recv: %s %d", incoming.Message, incoming.Status)
+				log.Printf("recv: %s %s %s", incoming.Token, incoming.Command, incoming.ID)
 
-				hello := JSONMessage{Status: 1, Message: "hello"}
-				if err := c.WriteJSON(hello); err != nil {
-					fmt.Println("NOPE")
+				if incoming.Token != conf.webServer.token {
+					logThis(errorIncorrectWebServerToken, NORMAL)
+					continue
 				}
+				switch incoming.Command {
+				case handshakeCommand:
+					fmt.Println("HELLO")
+					hello := OutgoingJSON{Status: responseInfo, Message: handshakeCommand}
+					if err := c.WriteJSON(hello); err != nil {
+						logThis(errorWritingToWebSocket+err.Error(), NORMAL)
+					}
+				case downloadCommand:
+					fmt.Println("GET")
+					// TODO go snatch like from http cli (maybe even just redirect?)
+				case statsCommand:
+					fmt.Println("STATS")
+					// TODO gather stats and send text / or svgs (ie snatched today, this week, etc...)
+				default:
+					fmt.Println("ERROR")
+					hello := OutgoingJSON{Status: responseError, Message: errorUnknownCommand + incoming.Command}
+					if err := c.WriteJSON(hello); err != nil {
+						logThis(errorWritingToWebSocket+err.Error(), NORMAL)
+					}
+				}
+
 			}
 		}
 		// interface for remotely ordering downloads

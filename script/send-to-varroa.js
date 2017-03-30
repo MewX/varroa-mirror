@@ -30,13 +30,16 @@ if (top10Page) {
 let isWebSocketConnected = false;
 let vmStatusLI = null;
 let sock;
-const hello = {
-	Message: 'hello',
-	Status: 1
-};
+let hello;
 
 if (settings.token && settings.url && settings.port) {
+	hello = {
+		Command: 'hello',
+		Token: settings.token
+	};
+	// Open the websocket to varroa
 	newSocket();
+
 	const alltorrents = [];
 	for (let i = 0; i < document.links.length; i++) {
 		alltorrents.push(document.links[i]);
@@ -91,6 +94,9 @@ if (!settings && !settingsPage) {
 function newSocket() {
 	// TODO use settings.url && settings.token
 	sock = new WebSocket('ws://localhost:' + settings.port + '/ws');
+	// Add default KO indicator
+	setVMStatus('VM KO');
+
 	sock.onopen = function () {
 		console.log('Connected to the server');
 		isWebSocketConnected = true;
