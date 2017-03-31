@@ -35,6 +35,7 @@ const (
 	svgExt     = ".svg"
 	csvExt     = ".csv"
 	msgpackExt = ".db"
+	jsonExi    = ".json"
 	gitlabCI   = `# plain-htlm CI
 pages:
   stage: deploy

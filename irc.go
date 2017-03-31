@@ -29,6 +29,7 @@ const (
 
 	notSnatchingDuplicate = "Similar release already downloaded, and duplicates are not allowed"
 	metadataSaved         = "Metadata saved to: "
+	artistMetadataSaved   = "Artist Metadata for %s saved to: %s"
 	coverSaved            = "Cover saved to: "
 	trackerMetadataFile   = "tracker_metadata.json"
 	trackerCoverFile      = "tracker_cover"
@@ -78,6 +79,21 @@ func saveTrackerMetadata(info *TrackerTorrentInfo) {
 			logThis(errorDownloadingTrackerCover+err.Error(), NORMAL)
 		} else {
 			logThis(coverSaved+info.folder, VERBOSE)
+		}
+		// get artist info
+		for _, id := range info.ArtistIDs() {
+			artistInfo, err := tracker.GetArtistInfo(id)
+			if err != nil {
+				logThis(fmt.Sprintf("Error getting info for artist %d", id), NORMAL)
+				break
+			}
+			// TODO make sure the artistInfo.name+jsonExi is a valid filename!
+			// write tracker artist metadata to target folder
+			if err := ioutil.WriteFile(filepath.Join(completePath, artistInfo.name+jsonExi), artistInfo.fullJSON, 0644); err != nil {
+				logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+			} else {
+				logThis(fmt.Sprintf(artistMetadataSaved, artistInfo.name, info.folder), VERBOSE)
+			}
 		}
 	}()
 }

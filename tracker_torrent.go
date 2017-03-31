@@ -17,7 +17,7 @@ type TrackerTorrentInfo struct {
 	id       int
 	label    string
 	logScore int
-	artists  []string // concat artists, composers, etc
+	artists  map[string]int // concat artists, composers, etc: artist name: id
 	size     uint64
 	uploader string
 	folder   string
@@ -26,7 +26,11 @@ type TrackerTorrentInfo struct {
 }
 
 func (a *TrackerTorrentInfo) String() string {
-	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s | Size %s", a.label, a.logScore, strings.Join(a.artists, ","), humanize.IBytes(uint64(a.size)))
+	artistNames := make([]string, 0, len(a.artists))
+	for k := range a.artists {
+		artistNames = append(artistNames, k)
+	}
+	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s | Size %s", a.label, a.logScore, strings.Join(artistNames, ","), humanize.IBytes(uint64(a.size)))
 }
 
 func (a *TrackerTorrentInfo) DownloadCover(targetWithoutExtension string) error {
@@ -50,6 +54,14 @@ func (a *TrackerTorrentInfo) DownloadCover(targetWithoutExtension string) error 
 	defer file.Close()
 	_, err = io.Copy(file, response.Body)
 	return err
+}
+
+func (a *TrackerTorrentInfo) ArtistIDs() []int {
+	artistIDs := make([]int, 0, len(a.artists))
+	for _, v := range a.artists {
+		artistIDs = append(artistIDs, v)
+	}
+	return artistIDs
 }
 
 func (a *TrackerTorrentInfo) Release() *Release {

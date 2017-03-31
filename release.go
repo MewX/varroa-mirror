@@ -270,7 +270,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders [
 	}
 	if r.Artists[0] == "Various Artists" && len(filter.artist) != 0 {
 		var foundAtLeastOneArtist bool
-		for _, iArtist := range info.artists {
+		for iArtist := range info.artists {
 			if StringInSlice(iArtist, filter.artist) {
 				foundAtLeastOneArtist = true
 			}
