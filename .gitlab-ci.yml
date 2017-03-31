@@ -26,6 +26,7 @@ format:
     - go get github.com/dustin/go-humanize
     - go get github.com/gorilla/mux
     - go get github.com/gorilla/websocket
+    - go get gopkg.in/vmihailenco/msgpack.v2
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
     - go tool vet -composites=false -shadow=true *.go
@@ -43,6 +44,7 @@ compiled_varroa_dev:
     - go get github.com/dustin/go-humanize
     - go get github.com/gorilla/mux
     - go get github.com/gorilla/websocket
+    - go get gopkg.in/vmihailenco/msgpack.v2
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
     - go build -race -ldflags "-extldflags '-static'" -o varroa
@@ -66,6 +68,7 @@ compiled_varroa_released_version:
     - go get github.com/dustin/go-humanize
     - go get github.com/gorilla/mux
     - go get github.com/gorilla/websocket
+    - go get gopkg.in/vmihailenco/msgpack.v2
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
     - go build -o varroa
