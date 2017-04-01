@@ -3,6 +3,7 @@
 // @namespace      varroa
 // @description    Adds a VM link for each torrent, to send directly to varroa musica.
 // @include        http*://*redacted.ch/*
+// @include        http*://*notwhat.cd/*
 // @version        9
 // @date           2017-03
 // @grant          GM_getValue
@@ -16,6 +17,14 @@
 
 const linkregex = /torrents\.php\?action=download.*?id=(\d+).*?authkey=.*?torrent_pass=(?=([a-z0-9]+))\2(?!&)/i;
 const divider = ' | ';
+
+// Get userid
+const userinfoElement = document.getElementsByClassName('username')[0];
+const userid = userinfoElement.href.match(/user\.php\?id=(\d+)/)[1];
+// Get current hostname
+const siteHostname = window.location.host;
+// Get domain-specific settings prefix to make this script multi-site
+const settingsNamePrefix = siteHostname + '_' + userid + '_';
 
 const settings = getSettings();
 const settingsPage = window.location.href.match('user.php\\?action=edit&userid=');
@@ -153,9 +162,9 @@ function appendSettings() {
 	const lastTable = container.lastElementChild;
 	let settingsHTML = '<a name="varroa_settings"></a>\n<table cellpadding="6" cellspacing="1" border="0" width="100%" class="layout border user_options" id="varroa_settings">\n';
 	settingsHTML += '<tbody>\n<tr class="colhead_dark"><td colspan="2"><strong>Varroa Musica Settings (autosaved)</strong></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Token set in varroa">Token</td><td><input type="text" id="varroa_settings_token" placeholder="insert_your_token" value="' + GM_getValue('token', '') + '"></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Your seedbox hostname set in varroa">Hostname</td><td><input type="text" id="varroa_settings_url" placeholder="http://hostname.com" value="' + GM_getValue('url', '') + '"></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Your seedbox port set in varroa">Port</td><td><input type="text" id="varroa_settings_port" placeholder="your_chosen_port" value="' + GM_getValue('port', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Token set in varroa">Token</td><td><input type="text" id="varroa_settings_token" placeholder="insert_your_token" value="' + GM_getValue(settingsNamePrefix + 'token', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Your seedbox hostname set in varroa">Hostname</td><td><input type="text" id="varroa_settings_url" placeholder="http://hostname.com" value="' + GM_getValue(settingsNamePrefix + 'url', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Your seedbox port set in varroa">Port</td><td><input type="text" id="varroa_settings_port" placeholder="your_chosen_port" value="' + GM_getValue(settingsNamePrefix + 'port', '') + '"></td></tr>\n';
 	settingsHTML += '</tbody>\n</table>';
 	lastTable.insertAdjacentHTML('afterend', settingsHTML);
 
@@ -167,9 +176,9 @@ function appendSettings() {
 }
 
 function getSettings() {
-	const token = GM_getValue('token', '');
-	const url = GM_getValue('url', '');
-	const port = GM_getValue('port', '');
+	const token = GM_getValue(settingsNamePrefix + 'token', '');
+	const url = GM_getValue(settingsNamePrefix + 'url', '');
+	const port = GM_getValue(settingsNamePrefix + 'port', '');
 	if (token && url && port) {
 		return {
 			token,
@@ -180,9 +189,9 @@ function getSettings() {
 	return false;
 }
 
-function saveSettings() {
+function () {
 	const elem = document.getElementById(this.id);
-	const setting = this.id.replace('varroa_settings_', '');
+	const setting = this.id.replace('varroa_settings_', settingsNamePrefix);
 	const border = elem.style.border;
 	GM_setValue(setting, elem.value);
 	if (GM_getValue(setting) === elem.value) {
