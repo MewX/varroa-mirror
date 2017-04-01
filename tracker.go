@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	// RED only allows 5 API calls every 10s
-	allowedAPICallsByPeriod = 5
-	apiCallsPeriodS         = 10
+	// Gazelle usually only allows 5 API calls every 10s
+	// Using 2 every 4 to force calls to be more spread in time
+	allowedAPICallsByPeriod = 2
+	apiCallsPeriodS         = 4
 
 	unknownTorrentURL      = "Unknown torrent URL"
 	errorLogIn             = "Error logging in: "
