@@ -5,11 +5,12 @@ import (
 )
 
 const (
-	errorGettingStats        = "Error getting stats: "
-	errorWritingCSV          = "Error writing stats to CSV file: "
-	errorGeneratingGraphs    = "Error generating graphs (may require more data): "
-	errorNotEnoughDataPoints = "Not enough data points (yet) to generate graph"
-	errorBufferDrop          = "Buffer drop too important, stopping autosnatching. Reload to start again."
+	errorGettingStats          = "Error getting stats: "
+	errorWritingCSV            = "Error writing stats to CSV file: "
+	errorGeneratingGraphs      = "Error generating graphs (may require more data): "
+	errorGeneratingDailyGraphs = "Error generating daily graphs (at least 24h worth of data required): "
+	errorNotEnoughDataPoints   = "Not enough data points (yet) to generate graph"
+	errorBufferDrop            = "Buffer drop too important, stopping autosnatching. Reload to start again."
 )
 
 func manageStats(tracker *GazelleTracker, previousStats *TrackerStats) *TrackerStats {

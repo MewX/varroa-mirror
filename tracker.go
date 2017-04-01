@@ -238,7 +238,7 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 	if err != nil {
 		metadataJSON = data // falling back to complete json
 	}
-	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: gt.Response.Torrent.Username, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
+	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, groupID: gt.Response.Group.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: gt.Response.Torrent.Username, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
 	return info, nil
 }
 
@@ -258,5 +258,24 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error)
 		metadataJSON = data // falling back to complete json
 	}
 	info := &TrackerArtistInfo{id: gt.Response.ID, name: gt.Response.Name, fullJSON: metadataJSON}
+	return info, nil
+}
+
+func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorrentGroupInfo, error) {
+	data, err := t.get(t.rootURL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
+	if err != nil {
+		return nil, errors.New(errorJSONAPI + err.Error())
+	}
+	var gt GazelleTorrentGroup
+	if unmarshalErr := json.Unmarshal(data, &gt); unmarshalErr != nil {
+		return nil, errors.New(errorUnmarshallingJSON + unmarshalErr.Error())
+	}
+	// TODO get specific info?
+	// json for metadata
+	metadataJSON, err := json.MarshalIndent(gt.Response, "", "    ")
+	if err != nil {
+		metadataJSON = data // falling back to complete json
+	}
+	info := &TrackerTorrentGroupInfo{id: gt.Response.Group.ID, name: gt.Response.Group.Name, fullJSON: metadataJSON}
 	return info, nil
 }

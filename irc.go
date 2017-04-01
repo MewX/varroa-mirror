@@ -16,23 +16,29 @@ import (
 const (
 	announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
 
-	errorDealingWithAnnounce     = "Error dealing with announced torrent: "
-	errorConnectingToIRC         = "Error connecting to IRC: "
-	errorCouldNotGetTorrentInfo  = "Error retreiving torrent info from tracker"
-	errorCouldNotMoveTorrent     = "Error moving torrent to destination folder: "
-	errorDownloadingTorrent      = "Error downloading torrent: "
-	errorRemovingTempFile        = "Error removing temporary file %s"
-	errorAddingToHistory         = "Error adding release to history"
-	errorWaitingForDownload      = "Error waiting for download folder to be created"
-	errorWritingJSONMetadata     = "Error writing metadata file: "
-	errorDownloadingTrackerCover = "Error downloading tracker cover: "
+	errorDealingWithAnnounce        = "Error dealing with announced torrent: "
+	errorConnectingToIRC            = "Error connecting to IRC: "
+	errorCouldNotGetTorrentInfo     = "Error retreiving torrent info from tracker"
+	errorCouldNotMoveTorrent        = "Error moving torrent to destination folder: "
+	errorDownloadingTorrent         = "Error downloading torrent: "
+	errorRemovingTempFile           = "Error removing temporary file %s"
+	errorAddingToHistory            = "Error adding release to history"
+	errorWaitingForDownload         = "Error waiting for download folder to be created"
+	errorWritingJSONMetadata        = "Error writing metadata file: "
+	errorDownloadingTrackerCover    = "Error downloading tracker cover: "
+	errorCreatingMetadataDir        = "Error creating metadata directory; "
+	errorRetrievingArtistInfo       = "Error getting info for artist %d"
+	errorRetrievingTorrentGroupInfo = "Error getting torrent group info for %d"
 
-	notSnatchingDuplicate = "Similar release already downloaded, and duplicates are not allowed"
-	metadataSaved         = "Metadata saved to: "
-	artistMetadataSaved   = "Artist Metadata for %s saved to: %s"
-	coverSaved            = "Cover saved to: "
-	trackerMetadataFile   = "tracker_metadata.json"
-	trackerCoverFile      = "tracker_cover"
+	notSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
+	metadataSaved             = "Metadata saved to: "
+	artistMetadataSaved       = "Artist Metadata for %s saved to: %s"
+	torrentGroupMetadataSaved = "Torrent Group Metadata for %s saved to: %s"
+	coverSaved                = "Cover saved to: "
+	trackerMetadataFile       = "Release.json"
+	trackerTGroupMetadataFile = "ReleaseGroup.json"
+	trackerCoverFile          = "Cover"
+	metadataDir               = "TrackerMetadata"
 
 	timeoutDownloadFolderCreation = 100
 )
@@ -68,28 +74,44 @@ func saveTrackerMetadata(info *TrackerTorrentInfo) {
 			logThis(err.Error(), VERBOSE)
 			return
 		}
+		// create metadata dir
+		if err := os.MkdirAll(filepath.Join(completePath, metadataDir), 0777); err != nil {
+			logThis(errorCreatingMetadataDir+err.Error(), VERBOSE)
+			return
+		}
 		// write tracker metadata to target folder
-		if err := ioutil.WriteFile(filepath.Join(completePath, trackerMetadataFile), info.fullJSON, 0644); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, trackerMetadataFile), info.fullJSON, 0666); err != nil {
 			logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
 		} else {
 			logThis(metadataSaved+info.folder, VERBOSE)
 		}
 		// download tracker cover to target folder
-		if err := info.DownloadCover(filepath.Join(completePath, trackerCoverFile)); err != nil {
+		if err := info.DownloadCover(filepath.Join(completePath, metadataDir, trackerCoverFile)); err != nil {
 			logThis(errorDownloadingTrackerCover+err.Error(), NORMAL)
 		} else {
 			logThis(coverSaved+info.folder, VERBOSE)
+		}
+		torrentGroupInfo, err := tracker.GetTorrentGroupInfo(info.groupID)
+		if err != nil {
+			logThis(fmt.Sprintf(errorRetrievingTorrentGroupInfo, info.groupID), NORMAL)
+		} else {
+			// write tracker artist metadata to target folder
+			if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, trackerTGroupMetadataFile), torrentGroupInfo.fullJSON, 0666); err != nil {
+				logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+			} else {
+				logThis(fmt.Sprintf(torrentGroupMetadataSaved, torrentGroupInfo.name, info.folder), VERBOSE)
+			}
 		}
 		// get artist info
 		for _, id := range info.ArtistIDs() {
 			artistInfo, err := tracker.GetArtistInfo(id)
 			if err != nil {
-				logThis(fmt.Sprintf("Error getting info for artist %d", id), NORMAL)
+				logThis(fmt.Sprintf(errorRetrievingArtistInfo, id), NORMAL)
 				break
 			}
-			// TODO make sure the artistInfo.name+jsonExi is a valid filename!
+			// TODO make sure the artistInfo.name+jsonExt is a valid filename!
 			// write tracker artist metadata to target folder
-			if err := ioutil.WriteFile(filepath.Join(completePath, artistInfo.name+jsonExi), artistInfo.fullJSON, 0644); err != nil {
+			if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, artistInfo.name+jsonExt), artistInfo.fullJSON, 0666); err != nil {
 				logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
 			} else {
 				logThis(fmt.Sprintf(artistMetadataSaved, artistInfo.name, info.folder), VERBOSE)

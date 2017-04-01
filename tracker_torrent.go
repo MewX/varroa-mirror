@@ -15,6 +15,7 @@ import (
 
 type TrackerTorrentInfo struct {
 	id       int
+	groupID  int
 	label    string
 	logScore int
 	artists  map[string]int // concat artists, composers, etc: artist name: id

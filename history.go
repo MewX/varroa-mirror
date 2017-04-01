@@ -35,7 +35,7 @@ const (
 	svgExt     = ".svg"
 	csvExt     = ".csv"
 	msgpackExt = ".db"
-	jsonExi    = ".json"
+	jsonExt    = ".json"
 	gitlabCI   = `# plain-htlm CI
 pages:
   stage: deploy
@@ -201,7 +201,7 @@ func (h *History) GenerateGraphs() error {
 	}
 	// generate history graphs if necessary
 	if err := h.GenerateDailyGraphs(firstOverallTimestamp); err != nil {
-		logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+		logThis(errorGeneratingDailyGraphs+err.Error(), NORMAL)
 		dailyStatsOK = false
 	}
 	if statsOK {
@@ -235,111 +235,6 @@ func (h *History) getFirstTimestamp() time.Time {
 	return time.Unix(statsTimestamp, 0)
 }
 
-/*
-// Deploy to gitlab pages with git2go => requires libgit2, not installed on seedhost :(
-func (h *History) Deploy() error {
-	if !conf.gitlabPagesConfigured() {
-		return nil
-	}
-	// use git
-	firstCommit := false
-	repo, err := git.OpenRepository(statsDir)
-	if err != nil {
-		repo, err = git.InitRepository(statsDir, false)
-		if err != nil {
-			return err
-		}
-		firstCommit = true
-	}
-	index, err := repo.Index()
-	if err != nil {
-		return err
-	}
-	if err := index.AddByPath(filepath.Base(overallStatsFile)); err != nil {
-		return err
-	}
-	if firstCommit {
-		// create .gitlab-ci.yml
-		if err := ioutil.WriteFile(gitlabCIYamlFile, []byte(gitlabCI), 0666); err != nil {
-			return err
-		}
-		// add it to commit
-		if err := index.AddByPath(filepath.Base(gitlabCIYamlFile)); err != nil {
-			return err
-		}
-		// create index.html
-		if err := ioutil.WriteFile(htmlIndexFile, []byte(htlmIndex), 0666); err != nil {
-			return err
-		}
-		// add it to commit
-		if err := index.AddByPath(filepath.Base(htmlIndexFile)); err != nil {
-			return err
-		}
-	}
-
-	treeID, err := index.WriteTree()
-	if err != nil {
-		return err
-	}
-	if err := index.Write(); err != nil {
-		return err
-	}
-	tree, err := repo.LookupTree(treeID)
-	if err != nil {
-		return err
-	}
-
-	signature := &git.Signature{
-		Name:  "varroa musica",
-		Email: "varroa@musica.com",
-		When:  time.Now(),
-	}
-	message := "varroa musica stats update."
-	if firstCommit {
-		_, err = repo.CreateCommit("HEAD", signature, signature, message, tree)
-	} else {
-		head, err := repo.Head()
-		if err != nil {
-			return err
-		}
-		headCommit, err := repo.LookupCommit(head.Target())
-		if err != nil {
-			return err
-		}
-		_, err = repo.CreateCommit("HEAD", signature, signature, message, tree, headCommit)
-	}
-
-	// push
-	gitlab := &git.Remote{}
-	if firstCommit {
-		// add remote
-		gitlab, err = repo.Remotes.Create("origin", conf.gitlabPagesGitURL)
-	} else {
-		gitlab, err = repo.Remotes.Lookup("origin")
-	}
-	if err != nil {
-		return err
-	}
-	called := false
-	err = gitlab.Push([]string{"refs/heads/master"}, &git.PushOptions{
-		RemoteCallbacks: git.RemoteCallbacks{
-			CredentialsCallback: func(url string, username_from_url string, allowed_types git.CredType) (git.ErrorCode, *git.Cred) {
-				if called {
-					return git.ErrUser, nil
-				}
-				called = true
-				ret, creds := git.NewCredUserpassPlaintext(conf.gitlabUser, conf.gitlabPassword)
-				return git.ErrorCode(ret), &creds
-			},
-		},
-	})
-	if err != nil {
-		logThis("Pushed new stats to gitlab pages.", NORMAL)
-	}
-	return err
-}
-*/
-
 // Deploy to gitlab pages with git wrapper
 func (h *History) Deploy() error {
 	if !conf.gitlabPagesConfigured() {
@@ -364,7 +259,6 @@ func (h *History) Deploy() error {
 		if err := ioutil.WriteFile(gitlabCIYamlFile, []byte(gitlabCI), 0666); err != nil {
 			return err
 		}
-
 	}
 	// create/update index.html
 	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), filepath.Base(statsFile), h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
