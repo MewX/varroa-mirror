@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/subosito/norma"
 	"github.com/thoj/go-ircevent"
 )
 
@@ -109,9 +110,9 @@ func saveTrackerMetadata(info *TrackerTorrentInfo) {
 				logThis(fmt.Sprintf(errorRetrievingArtistInfo, id), NORMAL)
 				break
 			}
-			// TODO make sure the artistInfo.name+jsonExt is a valid filename!
 			// write tracker artist metadata to target folder
-			if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, artistInfo.name+jsonExt), artistInfo.fullJSON, 0666); err != nil {
+			// making sure the artistInfo.name+jsonExt is a valid filename
+			if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, norma.Sanitize(artistInfo.name)+jsonExt), artistInfo.fullJSON, 0666); err != nil {
 				logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
 			} else {
 				logThis(fmt.Sprintf(artistMetadataSaved, artistInfo.name, info.folder), VERBOSE)
