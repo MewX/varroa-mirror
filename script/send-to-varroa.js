@@ -25,12 +25,18 @@ const userid = userinfoElement.href.match(/user\.php\?id=(\d+)/)[1];
 const siteHostname = window.location.host;
 // Get domain-specific settings prefix to make this script multi-site
 const settingsNamePrefix = siteHostname + '_' + userid + '_';
-
+// Settings
 const settings = getSettings();
+// Checks for current page
 const settingsPage = window.location.href.match('user.php\\?action=edit&userid=');
 const top10Page = window.location.href.match('top10.php');
 const torrentPage = window.location.href.match('torrents.php$');
 const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
+// Misc strings
+const vmOK = 'VM is up.';
+const vmKO = 'VM is offline (click to check again).';
+const vmLinkInfo = 'Send to varroa musica';
+
 let obsElem;
 let linkLabel = 'VM';
 if (top10Page) {
@@ -48,7 +54,24 @@ if (settings.token && settings.url && settings.port) {
 	};
 	// Open the websocket to varroa
 	newSocket();
+}
 
+if (settingsPage) {
+	appendSettings();
+	document.getElementById('varroa_settings_token').addEventListener('change', saveSettings, false);
+	document.getElementById('varroa_settings_url').addEventListener('change', saveSettings, false);
+	document.getElementById('varroa_settings_port').addEventListener('change', saveSettings, false);
+}
+
+if (!settings && !settingsPage) {
+	GM_notification({
+		text: 'Missing configuration\nVisit user settings and setup',
+		title: 'Varroa Musica:',
+		timeout: 6000
+	});
+}
+
+function addLinks() {
 	const alltorrents = [];
 	for (let i = 0; i < document.links.length; i++) {
 		alltorrents.push(document.links[i]);
@@ -85,26 +108,12 @@ if (settings.token && settings.url && settings.port) {
 	}
 }
 
-if (settingsPage) {
-	appendSettings();
-	document.getElementById('varroa_settings_token').addEventListener('change', saveSettings, false);
-	document.getElementById('varroa_settings_url').addEventListener('change', saveSettings, false);
-	document.getElementById('varroa_settings_port').addEventListener('change', saveSettings, false);
-}
-
-if (!settings && !settingsPage) {
-	GM_notification({
-		text: 'Missing configuration\nVisit user settings and setup',
-		title: 'Varroa Musica:',
-		timeout: 6000
-	});
-}
-
 function newSocket() {
-	// TODO use settings.url && settings.token
-	sock = new WebSocket('ws://localhost:' + settings.port + '/ws');
+	// TODO use settings.token
+	//sock = new WebSocket(settings.url.replace(/https:|http:/gi, 'ws:') + ':' + settings.port + '/ws');
+	sock = new WebSocket('ws://localhost' + ':' + settings.port + '/ws');
 	// Add default KO indicator
-	setVMStatus('VM KO');
+	setVMStatus(vmKO);
 
 	sock.onopen = function () {
 		console.log('Connected to the server');
@@ -115,19 +124,21 @@ function newSocket() {
 	sock.onerror = function (evt) {
 		console.log('Websocket error.');
 		isWebSocketConnected = false;
-		setVMStatus('VM KO');
+		setVMStatus(vmKO);
 	};
 	sock.onmessage = function (evt) {
 		console.log(evt.data);
 		const msg = JSON.parse(evt.data);
 		if (msg.Message === 'hello') {
-			setVMStatus('VM OK');
+			setVMStatus(vmOK);
+			// Safe to add links
+			addLinks();
 		}
 	};
 	sock.onclose = function () {
 		console.log('Server connection closed.');
 		isWebSocketConnected = false;
-		setVMStatus('VM KO');
+		setVMStatus(vmKO);
 	};
 }
 
@@ -153,7 +164,7 @@ function createLink(linkelement, id) {
 	link.appendChild(document.createTextNode(divider));
 	link.firstChild.href = settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
 	link.firstChild.target = '_blank';
-	link.firstChild.title = 'Direct download to varroa musica';
+	link.firstChild.title = vmLinkInfo;
 	linkelement.parentNode.insertBefore(link, linkelement);
 }
 
@@ -189,7 +200,7 @@ function getSettings() {
 	return false;
 }
 
-function () {
+function saveSettings() {
 	const elem = document.getElementById(this.id);
 	const setting = this.id.replace('varroa_settings_', settingsNamePrefix);
 	const border = elem.style.border;
