@@ -167,6 +167,12 @@ func webServer() {
 				case downloadCommand:
 					fmt.Println("GET")
 					// TODO go snatch like from http cli (maybe even just redirect?)
+					// TODO write back status
+					success := OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent!"}
+					if err := c.WriteJSON(success); err != nil {
+						logThis(errorWritingToWebSocket+err.Error(), NORMAL)
+					}
+
 				case statsCommand:
 					fmt.Println("STATS")
 					// TODO gather stats and send text / or svgs (ie snatched today, this week, etc...)

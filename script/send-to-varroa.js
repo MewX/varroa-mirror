@@ -37,6 +37,7 @@ const vmUnknown = 'Pinging VM...';
 const vmOK = 'VM is up.';
 const vmKO = 'VM is offline (click to check again).';
 const vmNoWebSocket = 'VM can only be contacted with HTTPS.';
+const vmGet = 'VM: sent torrent with ID #';
 const vmLinkInfo = 'Send to varroa musica';
 
 let obsElem;
@@ -136,10 +137,16 @@ function newSocket() {
 	sock.onmessage = function (evt) {
 		console.log(evt.data);
 		const msg = JSON.parse(evt.data);
-		if (msg.Message === 'hello') {
-			setVMStatus(vmOK);
-			// Safe to add links
-			addLinks();
+
+		if (msg.Status === 0) {
+			if (msg.Message === 'hello') {
+				setVMStatus(vmOK);
+				// Safe to add links
+				addLinks();
+			} else {
+				setVMStatus('VM: ' + msg.Message);
+				// TODO change back after a while
+			}
 		}
 	};
 	sock.onclose = function () {
@@ -152,7 +159,9 @@ function newSocket() {
 function setVMStatus(label) {
 	const a = document.createElement('a');
 	a.innerHTML = label;
-	a.addEventListener('click', newSocket, false);
+	if (settings.https === 'true') {
+		a.addEventListener('click', newSocket, false);
+	}
 	if (vmStatusLI === null) {
 		const target = document.getElementById('userinfo_stats');
 		vmStatusLI = document.createElement('li');
@@ -165,14 +174,32 @@ function setVMStatus(label) {
 }
 
 function createLink(linkelement, id) {
-	const link = document.createElement('varroa');
+	const link = document.createElement('varroa_' + id);
 	link.appendChild(document.createElement('a'));
 	link.firstChild.appendChild(document.createTextNode(linkLabel));
 	link.appendChild(document.createTextNode(divider));
-	link.firstChild.href = settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
+	if (isWebSocketConnected) {
+		link.addEventListener('click', getTorrent, false);
+	} else {
+		link.firstChild.href = settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
+	}
 	link.firstChild.target = '_blank';
 	link.firstChild.title = vmLinkInfo;
 	linkelement.parentNode.insertBefore(link, linkelement);
+}
+
+function getTorrent() {
+	if (isWebSocketConnected) {
+		const id = this.nodeName.toLowerCase().replace('varroa_', '');
+		console.log('Getting torrent with id: ' + id);
+		const get = {
+			Command: 'get',
+			Token: settings.token,
+			ID: id
+		};
+		sock.send(JSON.stringify(get));
+		setVMStatus(vmGet + id);
+	}
 }
 
 // -- Settings -----------------------------------------------------------------
