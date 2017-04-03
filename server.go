@@ -55,9 +55,7 @@ func webServer() {
 	}
 
 	// if not there yet, generate the self-signed certificate
-	_, certificateKeyExists := FileExists(filepath.Join(certificatesDir, certificateKey))
-	_, certificateExists := FileExists(filepath.Join(certificatesDir, certificate))
-	if certificateExists == os.ErrNotExist || certificateKeyExists == os.ErrNotExist {
+	if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
 		if err := generateCertificates(); err != nil {
 			logThis(errorGeneratingCertificate+err.Error()+provideCertificate, NORMAL)
 			logThis(infoBackupScript, NORMAL)

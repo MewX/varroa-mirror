@@ -103,74 +103,68 @@ type History struct {
 
 func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 	// if upgrading from v5, trying to move the csv files to the stats folder, their new home
-	if _, oldStatsFileExists := FileExists(filepath.Base(statsFile + csvExt)); oldStatsFileExists == nil {
-		if _, newStatsFileExists := FileExists(statsFile + csvExt); newStatsFileExists == os.ErrNotExist {
-			logThis("Migrating tracker stats file to the stats folder.", NORMAL)
-			if err := os.Rename(filepath.Base(statsFile+csvExt), statsFile+csvExt); err != nil {
-				logThis(errorMovingFile, NORMAL)
-			}
+	if FileExists(filepath.Base(statsFile+csvExt)) && !FileExists(statsFile+csvExt) {
+		logThis("Migrating tracker stats file to the stats folder.", NORMAL)
+		if err := os.Rename(filepath.Base(statsFile+csvExt), statsFile+csvExt); err != nil {
+			logThis(errorMovingFile, NORMAL)
 		}
 	}
-	if _, oldSnatchesFileExists := FileExists(filepath.Base(snatchesFile + csvExt)); oldSnatchesFileExists == nil {
-		if _, newSnatchesFileExists := FileExists(snatchesFile + csvExt); newSnatchesFileExists == os.ErrNotExist {
-			logThis("Migrating sntach history file to the stats folder.", NORMAL)
-			if err := os.Rename(filepath.Base(snatchesFile+csvExt), snatchesFile+csvExt); err != nil {
-				logThis(errorMovingFile, NORMAL)
-			}
+
+	if FileExists(filepath.Base(snatchesFile+csvExt)) && !FileExists(snatchesFile+csvExt) {
+		logThis("Migrating sntach history file to the stats folder.", NORMAL)
+		if err := os.Rename(filepath.Base(snatchesFile+csvExt), snatchesFile+csvExt); err != nil {
+			logThis(errorMovingFile, NORMAL)
 		}
 	}
 
 	// if upgrading from v8, converting history.csv to history.db (msgpack)
-	if _, newSnatchesFileExists := FileExists(snatchesFile + msgpackExt); newSnatchesFileExists == os.ErrNotExist {
-		if _, oldSnatchesFileExists := FileExists(snatchesFile + csvExt); oldSnatchesFileExists == nil {
-			logThis("Migrating sntach history file to the latest format (csv -> msgpack).", NORMAL)
-			// load history file
-			f, errOpening := os.OpenFile(snatchesFile+csvExt, os.O_RDONLY, 0644)
-			if errOpening != nil {
-				logThis(errorMigratingFile+snatchesFile+csvExt, NORMAL)
-				return
-			}
+	if !FileExists(snatchesFile+msgpackExt) && FileExists(snatchesFile+csvExt) {
+		logThis("Migrating sntach history file to the latest format (csv -> msgpack).", NORMAL)
+		// load history file
+		f, errOpening := os.OpenFile(snatchesFile+csvExt, os.O_RDONLY, 0644)
+		if errOpening != nil {
+			logThis(errorMigratingFile+snatchesFile+csvExt, NORMAL)
+			return
+		}
 
-			w := csv.NewReader(f)
-			records, errReading := w.ReadAll()
-			if errReading != nil {
-				logThis("Error loading old history file: "+errReading.Error(), NORMAL)
-				return
-			}
-			if err := f.Close(); err != nil {
-				logThis("Error closing old history file: "+err.Error(), NORMAL)
-			}
+		w := csv.NewReader(f)
+		records, errReading := w.ReadAll()
+		if errReading != nil {
+			logThis("Error loading old history file: "+errReading.Error(), NORMAL)
+			return
+		}
+		if err := f.Close(); err != nil {
+			logThis("Error closing old history file: "+err.Error(), NORMAL)
+		}
 
-			releases := []Release{}
-			// load releases from history to in-memory slice
-			for i, record := range records {
-				r := &Release{}
-				if err := r.FromSlice(record); err != nil {
-					logThis(fmt.Sprintf(errorLoadingLine, i)+err.Error(), NORMAL)
-				} else {
-					releases = append(releases, *r)
-				}
-			}
-
-			// save to new file
-			b, err := msgpack.Marshal(releases)
-			if err != nil {
-				logThis(errorMigratingFile+snatchesFile+msgpackExt+" :"+err.Error(), NORMAL)
-				return
-			}
-			if err := ioutil.WriteFile(snatchesFile+msgpackExt, b, 0640); err != nil {
-				logThis(errorMigratingFile+snatchesFile+msgpackExt+" :"+err.Error(), NORMAL)
-				return
-			}
-			// renaming old file
-			if err := os.Rename(snatchesFile+csvExt, snatchesFile+".csv.migrated"); err != nil {
-				logThis("Error renaming old history.csv file, please remove or move it elsewhere.", NORMAL)
+		releases := []Release{}
+		// load releases from history to in-memory slice
+		for i, record := range records {
+			r := &Release{}
+			if err := r.FromSlice(record); err != nil {
+				logThis(fmt.Sprintf(errorLoadingLine, i)+err.Error(), NORMAL)
 			} else {
-				logThis("Old history file renamed to "+snatchesFile+".csv.migrated", NORMAL)
+				releases = append(releases, *r)
 			}
 		}
-	}
 
+		// save to new file
+		b, err := msgpack.Marshal(releases)
+		if err != nil {
+			logThis(errorMigratingFile+snatchesFile+msgpackExt+" :"+err.Error(), NORMAL)
+			return
+		}
+		if err := ioutil.WriteFile(snatchesFile+msgpackExt, b, 0640); err != nil {
+			logThis(errorMigratingFile+snatchesFile+msgpackExt+" :"+err.Error(), NORMAL)
+			return
+		}
+		// renaming old file
+		if err := os.Rename(snatchesFile+csvExt, snatchesFile+".csv.migrated"); err != nil {
+			logThis("Error renaming old history.csv file, please remove or move it elsewhere.", NORMAL)
+		} else {
+			logThis("Old history file renamed to "+snatchesFile+".csv.migrated", NORMAL)
+		}
+	}
 }
 
 func (h *History) LoadAll(statsFile, snatchesFile string) error {

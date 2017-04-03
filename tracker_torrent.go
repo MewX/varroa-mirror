@@ -39,7 +39,7 @@ func (a *TrackerTorrentInfo) DownloadCover(targetWithoutExtension string) error 
 		return errors.New("Unknown image url")
 	}
 	extension := filepath.Ext(a.coverURL)
-	if _, err := FileExists(targetWithoutExtension + extension); err == nil {
+	if FileExists(targetWithoutExtension + extension) {
 		// already downloaded, or exists in folder already: do nothing
 		return nil
 	}

@@ -119,25 +119,19 @@ func AbsoluteFileExists(path string) (res bool) {
 	return
 }
 
-// FileExists checks if a path is valid and returns its absolute path
-func FileExists(path string) (absolutePath string, err error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return
-	}
-	var candidate string
+// FileExists checks if a path is valid
+func FileExists(path string) bool {
+	var absolutePath string
 	if filepath.IsAbs(path) {
-		candidate = path
+		absolutePath = path
 	} else {
-		candidate = filepath.Join(currentDir, path)
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return false
+		}
+		absolutePath = filepath.Join(currentDir, path)
 	}
-
-	if AbsoluteFileExists(candidate) {
-		absolutePath = candidate
-	} else {
-		err = os.ErrNotExist
-	}
-	return
+	return AbsoluteFileExists(absolutePath)
 }
 
 // CopyFile copies a file from src to dst. If src and dst files exist, and are
