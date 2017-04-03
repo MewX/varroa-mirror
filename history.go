@@ -261,7 +261,7 @@ func (h *History) Deploy() error {
 		}
 	}
 	// create/update index.html
-	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), filepath.Base(statsFile), h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
+	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), filepath.Base(statsFile)+csvExt, h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
 		return err
 	}
 	// add overall stats and other files
