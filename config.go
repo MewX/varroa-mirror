@@ -66,6 +66,7 @@ type Config struct {
 	}
 	webServer struct {
 		serveStats     bool
+		statsPassword  string
 		allowDownloads bool
 		token          string
 		hostname       string
@@ -146,6 +147,7 @@ func (c *Config) load(path string) error {
 	// web server configuration
 	c.webServer.allowDownloads = conf.GetBool("webserver.allow_downloads")
 	c.webServer.serveStats = conf.GetBool("webserver.serve_stats")
+	c.webServer.statsPassword = conf.GetString("webserver.stats_password")
 	c.webServer.token = conf.GetString("webserver.token")
 	c.webServer.hostname = conf.GetString("webserver.hostname")
 	c.webServer.portHTTP = conf.GetInt("webserver.http_port")

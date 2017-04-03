@@ -30,6 +30,7 @@ format:
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
     - go get github.com/subosito/norma
+    - go get github.com/goji/httpauth
     - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
@@ -49,6 +50,7 @@ compiled_varroa_dev:
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
     - go get github.com/subosito/norma
+    - go get github.com/goji/httpauth
     - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
     paths:
@@ -74,6 +76,7 @@ compiled_varroa_released_version:
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
     - go get github.com/subosito/norma
+    - go get github.com/goji/httpauth
     - go build -o varroa
   artifacts:
     paths: 

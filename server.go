@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/goji/httpauth"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -52,17 +53,6 @@ func webServer() {
 	if !conf.webserverConfigured() {
 		logThis(webServerNotConfigured, NORMAL)
 		return
-	}
-
-	// if not there yet, generate the self-signed certificate
-	if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
-		if err := generateCertificates(); err != nil {
-			logThis(errorGeneratingCertificate+err.Error()+provideCertificate, NORMAL)
-			logThis(infoBackupScript, NORMAL)
-			return
-		}
-		// basic instruction for first connection.
-		logThis(infoAddCertificates, NORMAL)
 	}
 
 	rtr := mux.NewRouter()
@@ -197,7 +187,11 @@ func webServer() {
 	}
 	if conf.webServer.serveStats {
 		// serving static index.html in stats dir
-		rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
+		if conf.webServer.statsPassword != "" {
+			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(conf.user, conf.webServer.statsPassword)(http.FileServer(http.Dir(statsDir))))
+		} else {
+			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
+		}
 	}
 
 	// serve
@@ -215,6 +209,17 @@ func webServer() {
 		}()
 	}
 	if conf.serveHTTPS() {
+		// if not there yet, generate the self-signed certificate
+		if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
+			if err := generateCertificates(); err != nil {
+				logThis(errorGeneratingCertificate+err.Error()+provideCertificate, NORMAL)
+				logThis(infoBackupScript, NORMAL)
+				return
+			}
+			// basic instruction for first connection.
+			logThis(infoAddCertificates, NORMAL)
+		}
+
 		go func() {
 			logThis(webServerUpHTTPS, NORMAL)
 			serverHTTPS = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServer.portHTTPS), Handler: rtr}
