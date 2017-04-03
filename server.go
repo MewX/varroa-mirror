@@ -14,7 +14,9 @@ import (
 const (
 	webServerNotConfigured = "No configuration found for the web server."
 	webServerShutDown      = " - Web server has closed."
-	webServerUp            = " - Starting web server."
+	webServerUpHTTP        = " - Starting http web server."
+	webServerUpHTTPS       = " - Starting https web server."
+	webServersUp           = " - Web server(s) started."
 	errorServing           = "Error launching web interface: "
 	errorWrongToken        = "Error receiving download order from https: wrong token"
 	errorNoToken           = "Error receiving download order from https: no token"
@@ -150,6 +152,8 @@ func webServer() {
 			}
 			defer c.Close()
 			for {
+				// TODO if server is shutting down, c.Close()
+
 				incoming := IncomingJSON{}
 				if err := c.ReadJSON(&incoming); err != nil {
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
@@ -199,14 +203,31 @@ func webServer() {
 	}
 
 	// serve
-	logThis(webServerUp, NORMAL)
-	server = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServer.port), Handler: rtr}
-	if err := server.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
-		//if err := server.ListenAndServe(); err != nil {
-		if err == http.ErrServerClosed {
-			logThis(webServerShutDown, NORMAL)
-		} else {
-			logThis(errorServing+err.Error(), NORMAL)
-		}
+	if conf.serveHTTP() {
+		go func() {
+			logThis(webServerUpHTTP, NORMAL)
+			serverHTTP = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServer.portHTTP), Handler: rtr}
+			if err := serverHTTP.ListenAndServe(); err != nil {
+				if err == http.ErrServerClosed {
+					logThis(webServerShutDown, NORMAL)
+				} else {
+					logThis(errorServing+err.Error(), NORMAL)
+				}
+			}
+		}()
 	}
+	if conf.serveHTTPS() {
+		go func() {
+			logThis(webServerUpHTTPS, NORMAL)
+			serverHTTPS = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServer.portHTTPS), Handler: rtr}
+			if err := serverHTTPS.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
+				if err == http.ErrServerClosed {
+					logThis(webServerShutDown, NORMAL)
+				} else {
+					logThis(errorServing+err.Error(), NORMAL)
+				}
+			}
+		}()
+	}
+	logThis(webServersUp, NORMAL)
 }

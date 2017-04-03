@@ -65,12 +65,12 @@ type Config struct {
 		pagesURL    string
 	}
 	webServer struct {
-		port           int
 		serveStats     bool
 		allowDownloads bool
 		token          string
 		hostname       string
-		useHTTPS       bool
+		portHTTP       int
+		portHTTPS      int
 	}
 	logLevel int
 }
@@ -148,8 +148,8 @@ func (c *Config) load(path string) error {
 	c.webServer.serveStats = conf.GetBool("webserver.serve_stats")
 	c.webServer.token = conf.GetString("webserver.token")
 	c.webServer.hostname = conf.GetString("webserver.hostname")
-	c.webServer.port = conf.GetInt("webserver.port")
-	c.webServer.useHTTPS = conf.GetBool("webserver.use_https")
+	c.webServer.portHTTP = conf.GetInt("webserver.http_port")
+	c.webServer.portHTTPS = conf.GetInt("webserver.https_port")
 	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
@@ -240,8 +240,20 @@ func (c *Config) downloadFolderConfigured() bool {
 }
 
 func (c *Config) webserverConfigured() bool {
-	// valid port, and at least one feature (serving stats and allowing downloads) is enabled, and we have a token and hostname
-	if c.webServer.port > 1024 && (c.webServer.serveStats || c.webServer.allowDownloads) && c.webServer.token != "" && c.webServer.hostname != "" {
+	return c.serveHTTP() || c.serveHTTPS()
+}
+
+func (c *Config) serveHTTP() bool {
+	// valid http port, and at least one feature (serving stats and allowing downloads) is enabled, and we have a token
+	if c.webServer.portHTTP > 1024 && (c.webServer.serveStats || c.webServer.allowDownloads) && c.webServer.token != "" {
+		return true
+	}
+	return false
+}
+
+func (c *Config) serveHTTPS() bool {
+	// valid https port, and at least one feature (serving stats and allowing downloads) is enabled, and we have a token and hostname
+	if c.webServer.portHTTPS > 1024 && (c.webServer.serveStats || c.webServer.allowDownloads) && c.webServer.token != "" && c.webServer.hostname != "" {
 		return true
 	}
 	return false

@@ -1,11 +1,9 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"net"
 	"strings"
-	"time"
 )
 
 const (
@@ -82,13 +80,20 @@ func loadConfiguration() error {
 	disabledAutosnatching = false
 	logThis(" - Autosnatching enabled.", NORMAL)
 	// if server up
-	if server.Addr != "" {
-		// shut down gracefully, but wait no longer than 5 seconds before halting
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := server.Shutdown(ctx); err != nil {
+	thingsWentOK := true
+	if serverHTTP.Addr != "" {
+		if err := serverHTTP.Close(); err != nil {
 			logThis(errorShuttingDownServer+err.Error(), NORMAL)
+			thingsWentOK = false
 		}
+	}
+	if serverHTTPS.Addr != "" {
+		if err := serverHTTPS.Close(); err != nil {
+			logThis(errorShuttingDownServer+err.Error(), NORMAL)
+			thingsWentOK = false
+		}
+	}
+	if thingsWentOK {
 		// launch server again
 		go webServer()
 	}

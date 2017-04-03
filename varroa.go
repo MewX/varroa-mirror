@@ -35,7 +35,8 @@ var (
 	conf         = &Config{}
 	notification = &Notification{}
 	history      = &History{}
-	server       = &http.Server{}
+	serverHTTP   = &http.Server{}
+	serverHTTPS  = &http.Server{}
 	tracker      = &GazelleTracker{}
 
 	// disable  autosnatching
