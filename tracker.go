@@ -234,7 +234,9 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 	if gt.Response.Torrent.Remastered {
 		label = gt.Response.Torrent.RemasterRecordLabel
 	}
-	// json for metadata
+	// json for metadata, anonymized
+	gt.Response.Torrent.Username = ""
+	gt.Response.Torrent.UserID = 0
 	metadataJSON, err := json.MarshalIndent(gt.Response, "", "    ")
 	if err != nil {
 		metadataJSON = data // falling back to complete json
@@ -272,7 +274,11 @@ func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorren
 		return nil, errors.New(errorUnmarshallingJSON + unmarshalErr.Error())
 	}
 	// TODO get specific info?
-	// json for metadata
+	// json for metadata, anonymized
+	for i := range gt.Response.Torrents {
+		gt.Response.Torrents[i].UserID = 0
+		gt.Response.Torrents[i].Username = ""
+	}
 	metadataJSON, err := json.MarshalIndent(gt.Response, "", "    ")
 	if err != nil {
 		metadataJSON = data // falling back to complete json
