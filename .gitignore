@@ -4,6 +4,7 @@ img/
 watch/
 test/
 stats/
+certs/
 *.csv
 *.yaml
 *.txt

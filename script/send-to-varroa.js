@@ -33,8 +33,10 @@ const top10Page = window.location.href.match('top10.php');
 const torrentPage = window.location.href.match('torrents.php$');
 const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
 // Misc strings
+const vmUnknown = 'Pinging VM...';
 const vmOK = 'VM is up.';
 const vmKO = 'VM is offline (click to check again).';
+const vmNoWebSocket = 'VM can only be contacted with HTTPS.';
 const vmLinkInfo = 'Send to varroa musica';
 
 let obsElem;
@@ -47,13 +49,18 @@ let vmStatusLI = null;
 let sock;
 let hello;
 
-if (settings.token && settings.url && settings.port) {
-	hello = {
-		Command: 'hello',
-		Token: settings.token
-	};
-	// Open the websocket to varroa
-	newSocket();
+if (settings) {
+	if (settings.https === 'true') {
+		hello = {
+			Command: 'hello',
+			Token: settings.token
+		};
+		// Open the websocket to varroa
+		newSocket();
+	} else {
+		setVMStatus(vmNoWebSocket);
+		addLinks();
+	}
 }
 
 if (settingsPage) {
@@ -61,6 +68,7 @@ if (settingsPage) {
 	document.getElementById('varroa_settings_token').addEventListener('change', saveSettings, false);
 	document.getElementById('varroa_settings_url').addEventListener('change', saveSettings, false);
 	document.getElementById('varroa_settings_port').addEventListener('change', saveSettings, false);
+	document.getElementById('varroa_settings_https').addEventListener('change', saveSettings, false);
 }
 
 if (!settings && !settingsPage) {
@@ -110,10 +118,9 @@ function addLinks() {
 
 function newSocket() {
 	// TODO use settings.token
-	// TODO if setting.url uses http, set http links, else use the websocket!
-	sock = new WebSocket(settings.url.replace(/https:/gi, 'wss:') + ':' + settings.port + '/ws');
-	// Add default KO indicator
-	setVMStatus(vmKO);
+	sock = new WebSocket('wss://' + settings.url + ':' + settings.port + '/ws');
+	// Add unknown indicator
+	setVMStatus(vmUnknown);
 
 	sock.onopen = function () {
 		console.log('Connected to the server');
@@ -168,14 +175,17 @@ function createLink(linkelement, id) {
 	linkelement.parentNode.insertBefore(link, linkelement);
 }
 
+// -- Settings -----------------------------------------------------------------
+
 function appendSettings() {
 	const container = document.getElementsByClassName('main_column')[0];
 	const lastTable = container.lastElementChild;
 	let settingsHTML = '<a name="varroa_settings"></a>\n<table cellpadding="6" cellspacing="1" border="0" width="100%" class="layout border user_options" id="varroa_settings">\n';
 	settingsHTML += '<tbody>\n<tr class="colhead_dark"><td colspan="2"><strong>Varroa Musica Settings (autosaved)</strong></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Token set in varroa">Token</td><td><input type="text" id="varroa_settings_token" placeholder="insert_your_token" value="' + GM_getValue(settingsNamePrefix + 'token', '') + '"></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Your seedbox hostname set in varroa">Hostname</td><td><input type="text" id="varroa_settings_url" placeholder="http://hostname.com" value="' + GM_getValue(settingsNamePrefix + 'url', '') + '"></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Your seedbox port set in varroa">Port</td><td><input type="text" id="varroa_settings_port" placeholder="your_chosen_port" value="' + GM_getValue(settingsNamePrefix + 'port', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Webserver Token">Token</td><td><input type="text" id="varroa_settings_token" placeholder="insert_your_token" value="' + GM_getValue(settingsNamePrefix + 'token', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Webserver hostname (seedbox hostname)">Hostname</td><td><input type="text" id="varroa_settings_url" placeholder="hostname.com" value="' + GM_getValue(settingsNamePrefix + 'url', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Webserver port">Port</td><td><input type="text" id="varroa_settings_port" placeholder="your_chosen_port" value="' + GM_getValue(settingsNamePrefix + 'port', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Webserver HTTPS enabled">HTTPS</td><td><input type="text" id="varroa_settings_https" placeholder="true_or_false" value="' + GM_getValue(settingsNamePrefix + 'https', '') + '"></td></tr>\n';
 	settingsHTML += '</tbody>\n</table>';
 	lastTable.insertAdjacentHTML('afterend', settingsHTML);
 
@@ -190,11 +200,13 @@ function getSettings() {
 	const token = GM_getValue(settingsNamePrefix + 'token', '');
 	const url = GM_getValue(settingsNamePrefix + 'url', '');
 	const port = GM_getValue(settingsNamePrefix + 'port', '');
-	if (token && url && port) {
+	const https = GM_getValue(settingsNamePrefix + 'https', '');
+	if (token && url && port && https) {
 		return {
 			token,
 			url,
-			port
+			port,
+			https
 		};
 	}
 	return false;
