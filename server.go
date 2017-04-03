@@ -12,19 +12,13 @@ import (
 )
 
 const (
-	webServerNotConfigured     = "No configuration found for the web server."
-	webServerShutDown          = " - Web server has closed."
-	webServerUp                = " - Starting web server."
-	errorServing               = "Error launching web interface: "
-	errorWrongToken            = "Error receiving download order from https: wrong token"
-	errorNoToken               = "Error receiving download order from https: no token"
-	errorGeneratingCertificate = "Error generating self-signed certificate: "
-	errorOpenSSL               = "openssl is not available on this system. "
-	errorNoID                  = "Error retreiving torrent ID"
-
-	openssl        = "openssl"
-	certificateKey = "key.pem"
-	certificate    = "cert.pem"
+	webServerNotConfigured = "No configuration found for the web server."
+	webServerShutDown      = " - Web server has closed."
+	webServerUp            = " - Starting web server."
+	errorServing           = "Error launching web interface: "
+	errorWrongToken        = "Error receiving download order from https: wrong token"
+	errorNoToken           = "Error receiving download order from https: no token"
+	errorNoID              = "Error retreiving torrent ID"
 
 	downloadCommand  = "get"
 	handshakeCommand = "hello"
@@ -52,38 +46,24 @@ type OutgoingJSON struct {
 	Message string
 }
 
-var (
-	provideCertificate         = fmt.Sprintf("You must provide your own self-signed certificate (%s & %s).", certificate, certificateKey)
-	generateCertificateCommand = []string{"req", "-x509", "-nodes", "-days", "365", "-newkey", "rsa:2048", "-keyout", certificateKey, "-out", certificate, "-subj", "/C=IT/ST=Oregon/L=Moscow/O=varroa musica/OU=Org/CN=127.0.0.1"}
-)
-
 func webServer() {
 	if !conf.webserverConfigured() {
 		logThis(webServerNotConfigured, NORMAL)
 		return
 	}
 
-	/*
-		TODO: make this work
-		// if not there yet, generate the self-signed certificate
-		_, certificateKeyExists := FileExists(certificateKey)
-		_, certificateExists := FileExists(certificate)
-		if certificateExists == os.ErrNotExist || certificateKeyExists == os.ErrNotExist {
-			// checking openssl is available
-			_, err := exec.LookPath(openssl)
-			if err != nil {
-				logThis(errorOpenSSL+provideCertificate, NORMAL)
-				return
-			}
-			// generate certificate
-			if cmdOut, err := exec.Command(openssl, generateCertificateCommand...).Output(); err != nil {
-				logThis(errorGeneratingCertificate+err.Error()+string(cmdOut), NORMAL)
-				logThis(provideCertificate, NORMAL)
-				return
-			}
-			// first connection will require manual approval since the certificate is self-signed, then things will work smoothly afterwards
+	// if not there yet, generate the self-signed certificate
+	_, certificateKeyExists := FileExists(filepath.Join(certificatesDir, certificateKey))
+	_, certificateExists := FileExists(filepath.Join(certificatesDir, certificate))
+	if certificateExists == os.ErrNotExist || certificateKeyExists == os.ErrNotExist {
+		if err := generateCertificates(); err != nil {
+			logThis(errorGeneratingCertificate+err.Error()+provideCertificate, NORMAL)
+			logThis(infoBackupScript, NORMAL)
+			return
 		}
-	*/
+		// basic instruction for first connection.
+		logThis(infoAddCertificates, NORMAL)
+	}
 
 	rtr := mux.NewRouter()
 	if conf.webServer.allowDownloads {
@@ -178,15 +158,16 @@ func webServer() {
 					logThis(errorIncomingWebSocketJSON+err.Error(), NORMAL)
 					continue
 				}
-				log.Printf("recv: %s %s %s", incoming.Token, incoming.Command, incoming.ID)
-
 				if incoming.Token != conf.webServer.token {
 					logThis(errorIncorrectWebServerToken, NORMAL)
 					continue
 				}
+
+				// DEBUG!!
+				log.Printf("recv: %s %s", incoming.Command, incoming.ID)
+
 				switch incoming.Command {
 				case handshakeCommand:
-					fmt.Println("HELLO")
 					hello := OutgoingJSON{Status: responseInfo, Message: handshakeCommand}
 					if err := c.WriteJSON(hello); err != nil {
 						logThis(errorWritingToWebSocket+err.Error(), NORMAL)
@@ -220,8 +201,8 @@ func webServer() {
 	// serve
 	logThis(webServerUp, NORMAL)
 	server = &http.Server{Addr: fmt.Sprintf(":%d", conf.webServer.port), Handler: rtr}
-	//if err := server.ListenAndServeTLS(certificate, certificateKey); err != nil {
-	if err := server.ListenAndServe(); err != nil {
+	if err := server.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
+		//if err := server.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
 			logThis(webServerShutDown, NORMAL)
 		} else {

@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	varroaVersion = "varroa musica -- v8."
+	varroaVersion = "varroa musica -- v9dev."
 	varroaUsage   = `
 varroa musica.
 

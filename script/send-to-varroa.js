@@ -110,8 +110,8 @@ function addLinks() {
 
 function newSocket() {
 	// TODO use settings.token
-	//sock = new WebSocket(settings.url.replace(/https:|http:/gi, 'ws:') + ':' + settings.port + '/ws');
-	sock = new WebSocket('ws://localhost' + ':' + settings.port + '/ws');
+	// TODO if setting.url uses http, set http links, else use the websocket!
+	sock = new WebSocket(settings.url.replace(/https:/gi, 'wss:') + ':' + settings.port + '/ws');
 	// Add default KO indicator
 	setVMStatus(vmKO);
 

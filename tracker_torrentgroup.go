@@ -1,6 +1,5 @@
 package main
 
-
 type TrackerTorrentGroupInfo struct {
 	id       int
 	name     string

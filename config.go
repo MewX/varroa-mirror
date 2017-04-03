@@ -69,6 +69,8 @@ type Config struct {
 		serveStats     bool
 		allowDownloads bool
 		token          string
+		hostname       string
+		useHTTPS       bool
 	}
 	logLevel int
 }
@@ -142,10 +144,12 @@ func (c *Config) load(path string) error {
 		c.gitlab.pagesURL = fmt.Sprintf("https://%s.gitlab.io/%s", c.gitlab.user, strings.Replace(repoNameParts[len(repoNameParts)-1], ".git", "", -1))
 	}
 	// web server configuration
-	c.webServer.port = conf.GetInt("webserver.web_server_port")
 	c.webServer.allowDownloads = conf.GetBool("webserver.allow_downloads")
 	c.webServer.serveStats = conf.GetBool("webserver.serve_stats")
 	c.webServer.token = conf.GetString("webserver.token")
+	c.webServer.hostname = conf.GetString("webserver.hostname")
+	c.webServer.port = conf.GetInt("webserver.port")
+	c.webServer.useHTTPS = conf.GetBool("webserver.use_https")
 	// filter configuration
 	for filter, info := range conf.GetStringMap("filters") {
 		t := Filter{label: filter}
@@ -236,8 +240,8 @@ func (c *Config) downloadFolderConfigured() bool {
 }
 
 func (c *Config) webserverConfigured() bool {
-	// valid port, and at least one feature (serving stats and allowing downloads) is enabled, and we have a token
-	if c.webServer.port > 1024 && (c.webServer.serveStats || c.webServer.allowDownloads) && c.webServer.token != "" {
+	// valid port, and at least one feature (serving stats and allowing downloads) is enabled, and we have a token and hostname
+	if c.webServer.port > 1024 && (c.webServer.serveStats || c.webServer.allowDownloads) && c.webServer.token != "" && c.webServer.hostname != "" {
 		return true
 	}
 	return false
