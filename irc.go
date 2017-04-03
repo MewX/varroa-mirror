@@ -24,10 +24,9 @@ const (
 	errorDownloadingTorrent         = "Error downloading torrent: "
 	errorRemovingTempFile           = "Error removing temporary file %s"
 	errorAddingToHistory            = "Error adding release to history"
-	errorWaitingForDownload         = "Error waiting for download folder to be created"
 	errorWritingJSONMetadata        = "Error writing metadata file: "
 	errorDownloadingTrackerCover    = "Error downloading tracker cover: "
-	errorCreatingMetadataDir        = "Error creating metadata directory; "
+	errorCreatingMetadataDir        = "Error creating metadata directory: "
 	errorRetrievingArtistInfo       = "Error getting info for artist %d"
 	errorRetrievingTorrentGroupInfo = "Error getting torrent group info for %d"
 
@@ -40,30 +39,7 @@ const (
 	trackerTGroupMetadataFile = "ReleaseGroup.json"
 	trackerCoverFile          = "Cover"
 	metadataDir               = "TrackerMetadata"
-
-	timeoutDownloadFolderCreation = 100
 )
-
-func waitUntilExists(path string) error {
-	cpt := 0
-	var err error
-	keepScanning := true
-	for keepScanning {
-		if !DirectoryExists(path) {
-			if cpt < timeoutDownloadFolderCreation {
-				time.Sleep(1 * time.Second)
-				cpt++
-			} else {
-				err = errors.New(errorWaitingForDownload)
-				keepScanning = false
-			}
-		} else {
-			err = nil
-			keepScanning = false
-		}
-	}
-	return err
-}
 
 func saveTrackerMetadata(info *TrackerTorrentInfo) {
 	if !conf.downloadFolderConfigured() {
@@ -71,13 +47,9 @@ func saveTrackerMetadata(info *TrackerTorrentInfo) {
 	}
 	go func() {
 		completePath := filepath.Join(conf.downloadFolder, info.folder)
-		if err := waitUntilExists(completePath); err != nil {
-			logThis(err.Error(), VERBOSE)
-			return
-		}
 		// create metadata dir
-		if err := os.MkdirAll(filepath.Join(completePath, metadataDir), 0777); err != nil {
-			logThis(errorCreatingMetadataDir+err.Error(), VERBOSE)
+		if err := os.MkdirAll(filepath.Join(completePath, metadataDir), 0775); err != nil {
+			logThis(errorCreatingMetadataDir+err.Error(), NORMAL)
 			return
 		}
 		// write tracker metadata to target folder
