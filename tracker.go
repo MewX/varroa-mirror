@@ -14,6 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"bytes"
+	"mime/multipart"
+	"regexp"
+
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -30,6 +34,8 @@ const (
 	errorGET               = "Error calling GET on URL, got HTTP status: "
 	errorUnmarshallingJSON = "Error reading JSON: "
 	errorInvalidResponse   = "Invalid response. Maybe log in again?"
+
+	logScorePattern = `<blockquote><strong>Score:</strong> <span style="color:.*">(-?\d*)</span> \(out of 100\)</blockquote>`
 )
 
 var (
@@ -285,4 +291,69 @@ func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorren
 	}
 	info := &TrackerTorrentGroupInfo{id: gt.Response.Group.ID, name: gt.Response.Group.Name, fullJSON: metadataJSON}
 	return info, nil
+}
+
+func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req *http.Request, err error) {
+	// setting up the form
+	buffer := new(bytes.Buffer)
+	w := multipart.NewWriter(buffer)
+	// adding the torrent file
+	f, err := os.Open(logPath)
+	if err != nil {
+		return nil, errors.New("Could not open log: " + err.Error())
+	}
+	defer f.Close()
+
+	fw, err := w.CreateFormFile("log", logPath)
+	if err != nil {
+		return nil, errors.New("Could not create form for log: " + err.Error())
+	}
+	if _, err = io.Copy(fw, f); err != nil {
+		return nil, errors.New("Could not read log: " + err.Error())
+	}
+	w.WriteField("submit", "true")
+	w.WriteField("action", "takeupload")
+	w.Close()
+
+	req, err = http.NewRequest("POST", uploadURL, buffer)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	return
+}
+
+func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
+	if !FileExists(logPath) {
+		return "", errors.New("Log does not exist: " + logPath)
+	}
+	// prepare upload
+	req, err := t.prepareLogUpload(t.rootURL+"/logchecker.php", logPath)
+	if err != nil {
+		return "", errors.New("Could not prepare upload form: " + err.Error())
+	}
+	// submit the request
+	resp, err := t.client.Do(req)
+	if err != nil {
+		return "", errors.New("Could not upload log: " + err.Error())
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("Returned status: " + resp.Status)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.New("Could not read response")
+	}
+
+	// getting log score
+	returnData := string(data)
+	r := regexp.MustCompile(logScorePattern)
+	if r.MatchString(returnData) {
+		return r.FindStringSubmatch(returnData)[1], nil
+	} else {
+		return "", errors.New("Could not find score")
+	}
 }

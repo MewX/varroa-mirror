@@ -15,6 +15,7 @@ Usage:
 	varroa (start|reload|stop)
 	varroa stats
 	varroa refresh-metadata <ID>...
+	varroa check-log <LOG_FILE>
 	varroa --version
 
 Options:
@@ -30,7 +31,9 @@ type varroaArguments struct {
 	reload          bool
 	stats           bool
 	refreshMetadata bool
+	checkLog        bool
 	torrentIDs      []int
+	logFile         string
 }
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
@@ -51,6 +54,8 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.reload = args["reload"].(bool)
 	b.stats = args["stats"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
+	b.checkLog = args["check-log"].(bool)
+	// arguments
 	if b.refreshMetadata {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
@@ -60,6 +65,13 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if err != nil {
 			return errors.New("Invalid torrent IDs, must be integers.")
 		}
+	}
+	if b.checkLog {
+		logPath := args["<LOG_FILE>"].(string)
+		if !FileExists(logPath) {
+			return errors.New("Invalid log file, does not exist.")
+		}
+		b.logFile = logPath
 	}
 	return nil
 }

@@ -137,6 +137,11 @@ func main() {
 		sendCommand = true
 		command = "refresh-metadata " + IntSliceToString(cli.torrentIDs)
 	}
+	if cli.checkLog {
+		sendCommand = true
+		command = "check-log " + cli.logFile
+	}
+
 	if sendCommand {
 		conn, err := net.Dial("unix", varroaSocket)
 		if err != nil {

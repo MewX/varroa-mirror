@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 )
@@ -59,6 +60,13 @@ Loop:
 					logThis("Error refreshing metadata: "+err.Error(), NORMAL)
 				}
 			}()
+		case "check-log":
+			go func() {
+				if err := checkLog(strings.Join(fullCommand[1:], " ")); err != nil {
+					logThis("Error checking log: "+err.Error(), NORMAL)
+				}
+			}()
+
 		}
 		c.Close()
 	}
@@ -122,5 +130,14 @@ func refreshMetadata(IDStrings []string) error {
 	if !foundAtLeastOne {
 		return errors.New("Error: did not find matching ID(s) in history: " + strings.Join(IDStrings, ","))
 	}
+	return nil
+}
+
+func checkLog(logPath string) error {
+	score, err := tracker.GetLogScore(logPath)
+	if err != nil {
+		return errors.New("Error getting log score: " + err.Error())
+	}
+	logThis(fmt.Sprintf("Found score %s for log file %s.", score, logPath), NORMAL)
 	return nil
 }
