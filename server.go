@@ -1,8 +1,8 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,6 +31,9 @@ const (
 	errorIncomingWebSocketJSON   = "Error parsing websocket input: "
 	errorIncorrectWebServerToken = "Error validating token for web server, ignoring."
 	errorWritingToWebSocket      = "Error writing to websocket: "
+	errorCreatingWebSocket       = "Error creating websocket: "
+
+	autoCloseTab = "<html><head><script>t = null;function moveMe(){t = setTimeout(\"self.close()\",5000);}</script></head><body onload=\"moveMe()\">Successfully downloaded torrent: %s</body></html>"
 )
 
 const (
@@ -49,6 +52,75 @@ type OutgoingJSON struct {
 	Message string
 }
 
+// TODO: see if this could also be used by irc
+func snatchFromID(id string) (*Release, error) {
+	// get torrent info
+	info, err := tracker.GetTorrentInfo(id)
+	if err != nil {
+		logThis(errorCouldNotGetTorrentInfo, NORMAL)
+		return nil, err // probably the ID does not exist
+	}
+	release := info.Release()
+	if release == nil {
+		logThis("Error parsing Torrent Info", NORMAL)
+		release = &Release{TorrentID: id}
+	}
+	release.torrentURL = conf.url + "/torrents.php?action=download&id=" + id
+	release.TorrentFile = "remote-id" + id + ".torrent"
+
+	logThis("Web server: downloading torrent "+release.ShortString(), NORMAL)
+	if _, err := tracker.Download(release); err != nil {
+		logThis(errorDownloadingTorrent+release.torrentURL+" /  "+err.Error(), NORMAL)
+		return release, err
+	}
+	// move to relevant watch directory
+	if err := CopyFile(release.TorrentFile, filepath.Join(conf.defaultDestinationFolder, release.TorrentFile)); err != nil {
+		logThis(errorCouldNotMoveTorrent+err.Error(), NORMAL)
+		return release, err
+	}
+	if err := os.Remove(release.TorrentFile); err != nil {
+		logThis(fmt.Sprintf(errorRemovingTempFile, release.TorrentFile), VERBOSE)
+	}
+	// add to history
+	if err := history.SnatchHistory.Add(release, "remote"); err != nil {
+		logThis(errorAddingToHistory, NORMAL)
+	}
+	// send notification
+	if err := notification.Send("Snatched with web interface: " + release.ShortString()); err != nil {
+		logThis(errorNotification+err.Error(), VERBOSE)
+	}
+	// save metadata
+	saveTrackerMetadata(info)
+	return release, nil
+}
+
+func validateGet(r *http.Request) (string, error) {
+	queryParameters := r.URL.Query()
+	// get torrent ID
+	id, ok := mux.Vars(r)["id"]
+	if !ok {
+		// if it's not in URL, try to get from query parameters
+		queryID, ok2 := queryParameters["id"]
+		if !ok2 {
+			return "", errors.New(errorNoID)
+		}
+		id = queryID[0]
+	}
+	// checking token
+	token, ok := queryParameters["token"]
+	if !ok {
+		// try to get token from "pass" parameter instead
+		token, ok = queryParameters["pass"]
+		if !ok {
+			return "", errors.New(errorNoToken)
+		}
+	}
+	if token[0] != conf.webServer.token {
+		return "", errors.New(errorWrongToken)
+	}
+	return id, nil
+}
+
 func webServer() {
 	if !conf.webserverConfigured() {
 		logThis(webServerNotConfigured, NORMAL)
@@ -58,75 +130,21 @@ func webServer() {
 	rtr := mux.NewRouter()
 	if conf.webServer.allowDownloads {
 		getTorrent := func(w http.ResponseWriter, r *http.Request) {
-			queryParameters := r.URL.Query()
-			// get torrent ID
-			id, ok := mux.Vars(r)["id"]
-			if !ok {
-				// if it's not in URL, try to get from query parameters
-				queryID, ok2 := queryParameters["id"]
-				if !ok2 {
-					logThis(errorNoID, NORMAL)
-					w.WriteHeader(http.StatusUnauthorized) // TODO find better status code?
-					return
-				}
-				id = queryID[0]
-			}
-			// checking token
-			token, ok := queryParameters["token"]
-			if !ok {
-				// try to get token from "pass" parameter instead
-				token, ok = queryParameters["pass"]
-				if !ok {
-					logThis(errorNoToken, NORMAL)
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
-			}
-			if token[0] != conf.webServer.token {
-				logThis(errorWrongToken, NORMAL)
+			id, err := validateGet(r)
+			if err != nil {
+				logThis("Error parsing request: "+err.Error(), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-
-			// get torrent info
-			info, err := tracker.GetTorrentInfo(id)
+			// snatching
+			release, err := snatchFromID(id)
 			if err != nil {
-				logThis(errorCouldNotGetTorrentInfo, NORMAL)
-				return // probably the ID does not exist
-			}
-			release := info.Release()
-			if release == nil {
-				logThis("Error parsing Torrent Info", NORMAL)
-				release = &Release{TorrentID: id}
-			}
-			release.torrentURL = conf.url + "/torrents.php?action=download&id=" + id
-			release.TorrentFile = "remote-id" + id + ".torrent"
-
-			logThis("Web server: downloading torrent "+release.ShortString(), NORMAL)
-			if _, err := tracker.Download(release); err != nil {
-				logThis(errorDownloadingTorrent+release.torrentURL+" /  "+err.Error(), NORMAL)
-			}
-			// move to relevant watch directory
-			if err := CopyFile(release.TorrentFile, filepath.Join(conf.defaultDestinationFolder, release.TorrentFile)); err != nil {
-				logThis(errorCouldNotMoveTorrent+err.Error(), NORMAL)
+				logThis("Error snatching trt: "+err.Error(), NORMAL)
 				return
-			}
-			if err := os.Remove(release.TorrentFile); err != nil {
-				logThis(fmt.Sprintf(errorRemovingTempFile, release.TorrentFile), VERBOSE)
-			}
-			// add to history
-			if err := history.SnatchHistory.Add(release, "remote"); err != nil {
-				logThis(errorAddingToHistory, NORMAL)
-			}
-			// send notification
-			if err := notification.Send("Snatched with web interface: " + release.ShortString()); err != nil {
-				logThis(errorNotification+err.Error(), VERBOSE)
 			}
 			// write response
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("<html><head><script>t = null;function moveMe(){t = setTimeout(\"self.close()\",5000);}</script></head><body onload=\"moveMe()\">Successfully downloaded torrent: " + release.ShortString() + "</body></html>"))
-			// save metadata once the download folder is created
-			saveTrackerMetadata(info)
+			w.Write([]byte(fmt.Sprintf(autoCloseTab, release.ShortString())))
 		}
 		upgrader := websocket.Upgrader{
 			// allows connection to websocket from anywhere
@@ -135,7 +153,7 @@ func webServer() {
 		socket := func(w http.ResponseWriter, r *http.Request) {
 			c, err := upgrader.Upgrade(w, r, nil)
 			if err != nil {
-				log.Print("upgrade:", err)
+				logThis(errorCreatingWebSocket+err.Error(), NORMAL)
 				return
 			}
 			defer c.Close()
@@ -150,40 +168,39 @@ func webServer() {
 					logThis(errorIncomingWebSocketJSON+err.Error(), NORMAL)
 					continue
 				}
+
+				var answer OutgoingJSON
 				if incoming.Token != conf.webServer.token {
 					logThis(errorIncorrectWebServerToken, NORMAL)
-					continue
-				}
-
-				// DEBUG!!
-				log.Printf("recv: %s %s", incoming.Command, incoming.ID)
-
-				switch incoming.Command {
-				case handshakeCommand:
-					hello := OutgoingJSON{Status: responseInfo, Message: handshakeCommand}
-					if err := c.WriteJSON(hello); err != nil {
-						logThis(errorWritingToWebSocket+err.Error(), NORMAL)
-					}
-				case downloadCommand:
-					fmt.Println("GET")
-					// TODO go snatch like from http cli (maybe even just redirect?)
-					// TODO write back status
-					success := OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent!"}
-					if err := c.WriteJSON(success); err != nil {
-						logThis(errorWritingToWebSocket+err.Error(), NORMAL)
-					}
-
-				case statsCommand:
-					fmt.Println("STATS")
-					// TODO gather stats and send text / or svgs (ie snatched today, this week, etc...)
-				default:
-					fmt.Println("ERROR")
-					hello := OutgoingJSON{Status: responseError, Message: errorUnknownCommand + incoming.Command}
-					if err := c.WriteJSON(hello); err != nil {
-						logThis(errorWritingToWebSocket+err.Error(), NORMAL)
+					answer = OutgoingJSON{Status: responseError, Message: "Bad token!"}
+				} else {
+					// dealing with command
+					switch incoming.Command {
+					case handshakeCommand:
+						// say hello right back
+						answer = OutgoingJSON{Status: responseInfo, Message: handshakeCommand}
+					case downloadCommand:
+						// snatching
+						release, err := snatchFromID(incoming.ID)
+						if err != nil {
+							logThis("Error snatching torrent: "+err.Error(), NORMAL)
+							answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
+						} else {
+							answer = OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent " + release.ShortString()}
+						}
+					case statsCommand:
+						answer = OutgoingJSON{Status: responseInfo, Message: "STATS!"}
+						// TODO gather stats and send text / or svgs (ie snatched today, this week, etc...)
+					default:
+						answer = OutgoingJSON{Status: responseError, Message: errorUnknownCommand + incoming.Command}
 					}
 				}
+				// writing answer
+				if err := c.WriteJSON(answer); err != nil {
+					logThis(errorWritingToWebSocket+err.Error(), NORMAL)
+				}
 
+				// TODO: reset after a while
 			}
 		}
 		// interface for remotely ordering downloads
