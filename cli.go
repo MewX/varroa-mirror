@@ -16,6 +16,7 @@ Usage:
 	varroa stats
 	varroa refresh-metadata <ID>...
 	varroa check-log <LOG_FILE>
+	varroa snatch <ID>...
 	varroa --version
 
 Options:
@@ -32,6 +33,7 @@ type varroaArguments struct {
 	stats           bool
 	refreshMetadata bool
 	checkLog        bool
+	snatch          bool
 	torrentIDs      []int
 	logFile         string
 }
@@ -55,8 +57,9 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.stats = args["stats"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
+	b.snatch = args["snatch"].(bool)
 	// arguments
-	if b.refreshMetadata {
+	if b.refreshMetadata || b.snatch {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
 			return errors.New("Invalid torrent IDs.")

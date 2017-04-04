@@ -71,7 +71,7 @@ func IntSliceToString(in []int) string {
 	for i, v := range in {
 		b[i] = strconv.Itoa(v)
 	}
-	return strings.Join(b, ",")
+	return strings.Join(b, " ")
 }
 
 func StringSliceToIntSlice(in []string) ([]int, error) {

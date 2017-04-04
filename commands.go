@@ -60,6 +60,12 @@ Loop:
 					logThis("Error refreshing metadata: "+err.Error(), NORMAL)
 				}
 			}()
+		case "snatch":
+			go func() {
+				if err := snatchTorrents(fullCommand[1:]); err != nil {
+					logThis("Error snatching torrents: "+err.Error(), NORMAL)
+				}
+			}()
 		case "check-log":
 			go func() {
 				if err := checkLog(strings.Join(fullCommand[1:], " ")); err != nil {
@@ -129,6 +135,21 @@ func refreshMetadata(IDStrings []string) error {
 	}
 	if !foundAtLeastOne {
 		return errors.New("Error: did not find matching ID(s) in history: " + strings.Join(IDStrings, ","))
+	}
+	return nil
+}
+
+func snatchTorrents(IDStrings []string) error {
+	if len(IDStrings) == 0 {
+		return errors.New("Error: no ID provided")
+	}
+	// snatch
+	for _, id := range IDStrings {
+		if release, err := snatchFromID(id); err != nil {
+			return errors.New("Error snatching torrent with ID #" + id)
+		} else {
+			logThis("Successfully snatched torrent "+release.ShortString(), NORMAL)
+		}
 	}
 	return nil
 }

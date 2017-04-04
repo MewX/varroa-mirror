@@ -137,6 +137,10 @@ func main() {
 		sendCommand = true
 		command = "refresh-metadata " + IntSliceToString(cli.torrentIDs)
 	}
+	if cli.snatch {
+		sendCommand = true
+		command = "snatch " + IntSliceToString(cli.torrentIDs)
+	}
 	if cli.checkLog {
 		sendCommand = true
 		command = "check-log " + cli.logFile
