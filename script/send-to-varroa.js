@@ -9,6 +9,7 @@
 // @grant          GM_getValue
 // @grant          GM_setValue
 // @grant          GM_notification
+// @grant          GM_addStyle
 // ==/UserScript==
 
 // with some help from `xo --fix send_to_varroa.js`
@@ -46,7 +47,7 @@ if (top10Page) {
 	linkLabel = '[' + linkLabel + ']';
 }
 let isWebSocketConnected = false;
-let vmStatusLI = null;
+let vmStatusDiv = null;
 let sock;
 let hello;
 
@@ -59,7 +60,7 @@ if (settings) {
 		// Open the websocket to varroa
 		newSocket();
 	} else {
-		setVMStatus(vmNoWebSocket);
+		//setVMStatus(vmNoWebSocket);
 		addLinks();
 	}
 }
@@ -162,16 +163,21 @@ function setVMStatus(label) {
 	if (settings.https === 'true') {
 		a.addEventListener('click', newSocket, false);
 	}
-	if (vmStatusLI === null) {
-		const target = document.getElementById('userinfo_stats');
-		vmStatusLI = document.createElement('li');
-		vmStatusLI.id = 'nav_varroa';
-		vmStatusLI.appendChild(a);
-		target.appendChild(vmStatusLI);
+	if (vmStatusDiv === null) {
+		vmStatusDiv = document.createElement('div');
+		vmStatusDiv.id = 'varroa';
+		vmStatusDiv.appendChild(a);
+		document.body.appendChild(vmStatusDiv);
 	} else {
-		vmStatusLI.replaceChild(a, vmStatusLI.firstChild);
+		vmStatusDiv.replaceChild(a, vmStatusDiv.firstChild);
 	}
 }
+
+(function () {
+	'use strict';
+	const css = '#varroa a {margin: 3px 0 15px 0;position: fixed;bottom: 0;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; cursor: pointer;}';
+	GM_addStyle(css);
+})();
 
 function createLink(linkelement, id) {
 	const link = document.createElement('varroa_' + id);
@@ -181,7 +187,7 @@ function createLink(linkelement, id) {
 	if (settings.https === 'true' && isWebSocketConnected) {
 		link.addEventListener('click', getTorrent, false);
 	} else {
-		link.firstChild.href = "http://" + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
+		link.firstChild.href = 'http://' + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
 	}
 	link.firstChild.target = '_blank';
 	link.firstChild.title = vmLinkInfo;
