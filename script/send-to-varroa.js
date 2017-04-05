@@ -30,6 +30,7 @@ const settingsNamePrefix = siteHostname + '_' + userid + '_';
 const settings = getSettings();
 // Checks for current page
 const settingsPage = window.location.href.match('user.php\\?action=edit&userid=');
+const userPage = window.location.href.match('user.php\\?id=' + userid);
 const top10Page = window.location.href.match('top10.php');
 const torrentPage = window.location.href.match('torrents.php$');
 const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
@@ -59,11 +60,10 @@ if (settings) {
 		// Open the websocket to varroa
 		newSocket();
 	} else {
-		// add http links
+		// Add http links
 		addLinks();
 	}
 }
-
 if (settingsPage) {
 	appendSettings();
 	document.getElementById('varroa_settings_token').addEventListener('change', saveSettings, false);
@@ -71,7 +71,6 @@ if (settingsPage) {
 	document.getElementById('varroa_settings_port').addEventListener('change', saveSettings, false);
 	document.getElementById('varroa_settings_https').addEventListener('change', saveSettings, false);
 }
-
 if (!settings && !settingsPage) {
 	GM_notification({
 		text: 'Missing configuration\nVisit user settings and setup',
@@ -117,6 +116,25 @@ function addLinks() {
 	}
 }
 
+function addStatsToUserPage() {
+	if (userPage) {
+		const main = document.getElementsByClassName('main_column')[0];
+		const newBox = document.createElement('div');
+		newBox.className = 'box';
+		const newBoxHead = document.createElement('div');
+		newBoxHead.className = 'head';
+		newBoxHead.innerHTML = 'Varroa Musica Stats' + `<span style="float: right;"><a href="#" onclick="$('#varroa_stats').gtoggle(); this.innerHTML = (this.innerHTML == 'Hide' ? 'Show' : 'Hide'); return false;" class="brackets">Hide</a></span>&nbsp;`;
+		newBox.appendChild(newBoxHead);
+		const newBoxContent = document.createElement('div');
+		newBoxContent.className = 'pad profileinfo';
+		newBoxContent.id = 'varroa_stats';
+		// TODO: pass graphs through websocket? http/https link will not work if password-protected.
+		newBoxContent.innerHTML = '<p>Coming Soon: Stats.</p><img src="' + 'https://' + settings.url + ':' + settings.port + '/stats.png" alt="stats">';
+		newBox.appendChild(newBoxContent);
+		main.insertBefore(newBox, main.children[1]);
+	}
+}
+
 function newSocket() {
 	// TODO use settings.token
 	sock = new WebSocket('wss://' + settings.url + ':' + settings.port + '/ws');
@@ -143,6 +161,8 @@ function newSocket() {
 				setVMStatus(vmOK);
 				// Safe to add links
 				addLinks();
+				// Add stats if on user page
+				addStatsToUserPage();
 			} else {
 				setVMStatus('VM: ' + msg.Message);
 				// TODO change back after a while
