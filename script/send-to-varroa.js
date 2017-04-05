@@ -178,10 +178,10 @@ function createLink(linkelement, id) {
 	link.appendChild(document.createElement('a'));
 	link.firstChild.appendChild(document.createTextNode(linkLabel));
 	link.appendChild(document.createTextNode(divider));
-	if (isWebSocketConnected) {
+	if (settings.https === 'true' && isWebSocketConnected) {
 		link.addEventListener('click', getTorrent, false);
 	} else {
-		link.firstChild.href = settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
+		link.firstChild.href = "http://" + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
 	}
 	link.firstChild.target = '_blank';
 	link.firstChild.title = vmLinkInfo;

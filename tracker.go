@@ -1,22 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"bytes"
-	"mime/multipart"
-	"regexp"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -27,13 +26,18 @@ const (
 	allowedAPICallsByPeriod = 2
 	apiCallsPeriodS         = 4
 
-	unknownTorrentURL      = "Unknown torrent URL"
-	errorLogIn             = "Error logging in: "
-	errorNotLoggedIn       = "Not logged in"
-	errorJSONAPI           = "Error calling JSON API: "
-	errorGET               = "Error calling GET on URL, got HTTP status: "
-	errorUnmarshallingJSON = "Error reading JSON: "
-	errorInvalidResponse   = "Invalid response. Maybe log in again?"
+	statusSuccess = "success"
+
+	unknownTorrentURL       = "Unknown torrent URL"
+	errorLogIn              = "Error logging in: "
+	errorNotLoggedIn        = "Not logged in"
+	errorJSONAPI            = "Error calling JSON API: "
+	errorGET                = "Error calling GET on URL, got HTTP status: "
+	errorUnmarshallingJSON  = "Error reading JSON: "
+	errorInvalidResponse    = "Invalid response. Maybe log in again?"
+	errorAPIResponseStatus  = "Got JSON API status: "
+	errorCouldNotCreateForm = "Could not create form for log: "
+	errorCouldNotReadLog    = "Could not read log: "
 
 	logScorePattern = `<blockquote><strong>Score:</strong> <span style="color:.*">(-?\d*)</span> \(out of 100\)</blockquote>`
 )
@@ -85,13 +89,14 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	// check success
 	var r GazelleGenericResponse
 	if err := json.Unmarshal(data, &r); err != nil {
+		logThis("BAD JSON, Received: \n"+string(data), VERBOSEST)
 		return []byte{}, errors.New(errorUnmarshallingJSON + err.Error())
 	}
-	if r.Status != "success" {
+	if r.Status != statusSuccess {
 		if r.Status == "" {
 			return data, errors.New(errorInvalidResponse)
 		}
-		return data, errors.New("Got JSON API status: " + r.Status)
+		return data, errors.New(errorAPIResponseStatus + r.Status)
 	}
 	return data, nil
 }
@@ -147,11 +152,7 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 		logThis(errorJSONAPI+err.Error(), NORMAL)
 		// if error, try once again after logging in again
 		if loginErr := t.Login(conf.user, conf.password); loginErr == nil {
-			data2, callErr := callJSONAPI(t.client, url)
-			if callErr != nil {
-				return nil, callErr
-			}
-			return data2, callErr
+			return callJSONAPI(t.client, url)
 		}
 		return nil, errors.New("Could not log in and send get request to " + url)
 	}
@@ -300,16 +301,16 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req
 	// adding the torrent file
 	f, err := os.Open(logPath)
 	if err != nil {
-		return nil, errors.New("Could not open log: " + err.Error())
+		return nil, errors.New(errorCouldNotReadLog + err.Error())
 	}
 	defer f.Close()
 
 	fw, err := w.CreateFormFile("log", logPath)
 	if err != nil {
-		return nil, errors.New("Could not create form for log: " + err.Error())
+		return nil, errors.New(errorCouldNotCreateForm + err.Error())
 	}
 	if _, err = io.Copy(fw, f); err != nil {
-		return nil, errors.New("Could not read log: " + err.Error())
+		return nil, errors.New(errorCouldNotReadLog + err.Error())
 	}
 	w.WriteField("submit", "true")
 	w.WriteField("action", "takeupload")
