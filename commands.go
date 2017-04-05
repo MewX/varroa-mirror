@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"strings"
+	"time"
 )
 
 const (
@@ -96,13 +98,17 @@ func loadConfiguration() error {
 	// if server up
 	thingsWentOK := true
 	if serverHTTP.Addr != "" {
-		if err := serverHTTP.Close(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := serverHTTP.Shutdown(ctx); err != nil {
 			logThis(errorShuttingDownServer+err.Error(), NORMAL)
 			thingsWentOK = false
 		}
 	}
 	if serverHTTPS.Addr != "" {
-		if err := serverHTTPS.Close(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := serverHTTPS.Shutdown(ctx); err != nil {
 			logThis(errorShuttingDownServer+err.Error(), NORMAL)
 			thingsWentOK = false
 		}

@@ -128,7 +128,7 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, conf.blacklistedUploaders, info) {
 					logThis(" -> "+release.ShortString()+" triggered filter "+filter.label+", snatching.", NORMAL)
-					if _, err := tracker.Download(release); err != nil {
+					if err := tracker.Download(release); err != nil {
 						return nil, errors.New(errorDownloadingTorrent + err.Error())
 					}
 					downloadedTorrent = true

@@ -158,22 +158,22 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 	return data, err
 }
 
-func (t *GazelleTracker) Download(r *Release) (string, error) {
-	if r.torrentURL == "" {
-		return "", errors.New(unknownTorrentURL)
+func (t *GazelleTracker) Download(r *Release) error {
+	if r.torrentURL == "" || r.TorrentFile == "" {
+		return errors.New(unknownTorrentURL)
 	}
 	response, err := t.client.Get(r.torrentURL)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer response.Body.Close()
 	file, err := os.Create(r.TorrentFile)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer file.Close()
 	_, err = io.Copy(file, response.Body)
-	return r.TorrentFile, err
+	return err
 }
 
 func (t *GazelleTracker) GetStats() (*TrackerStats, error) {

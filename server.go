@@ -69,7 +69,7 @@ func snatchFromID(id string) (*Release, error) {
 	release.TorrentFile = "remote-id" + id + ".torrent"
 
 	logThis("Web server: downloading torrent "+release.ShortString(), NORMAL)
-	if _, err := tracker.Download(release); err != nil {
+	if err := tracker.Download(release); err != nil {
 		logThis(errorDownloadingTorrent+release.torrentURL+" /  "+err.Error(), NORMAL)
 		return release, err
 	}
