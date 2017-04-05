@@ -17,18 +17,19 @@ import (
 )
 
 const (
-	errorLoadingLine      = "Error loading line %d of history file"
-	errorNoHistory        = "No history yet"
-	errorInvalidTimestamp = "Error parsing timestamp"
-	errorNotEnoughDays    = "Not enough days in history to generate daily graphs"
-	errorGitInit          = "Error running git init: "
-	errorGitAdd           = "Error running git add: "
-	errorGitCommit        = "Error running git commit: "
-	errorGitAddRemote     = "Error running git remote add: "
-	errorGitPush          = "Error running git push: "
-	errorMovingFile       = "Error moving file to stats folder: "
-	errorMigratingFile    = "Error migrating file to latest format: "
-	errorCreatingGraphs   = "Could not generate any graph."
+	errorLoadingLine       = "Error loading line %d of history file"
+	errorNoHistory         = "No history yet"
+	errorInvalidTimestamp  = "Error parsing timestamp"
+	errorNoFurtherSnatches = "No additional snatches since last time, not regenerating daily graphs."
+	errorNotEnoughDays     = "Not enough days in history to generate daily graphs"
+	errorGitInit           = "Error running git init: "
+	errorGitAdd            = "Error running git add: "
+	errorGitCommit         = "Error running git commit: "
+	errorGitAddRemote      = "Error running git remote add: "
+	errorGitPush           = "Error running git push: "
+	errorMovingFile        = "Error moving file to stats folder: "
+	errorMigratingFile     = "Error migrating file to latest format: "
+	errorCreatingGraphs    = "Could not generate any graph."
 
 	statsDir   = "stats"
 	pngExt     = ".png"
@@ -195,8 +196,12 @@ func (h *History) GenerateGraphs() error {
 	}
 	// generate history graphs if necessary
 	if err := h.GenerateDailyGraphs(firstOverallTimestamp); err != nil {
-		logThis(errorGeneratingDailyGraphs+err.Error(), NORMAL)
-		dailyStatsOK = false
+		if err.Error() == errorNoFurtherSnatches {
+			logThis(errorNoFurtherSnatches, VERBOSE)
+		} else {
+			logThis(errorGeneratingDailyGraphs+err.Error(), NORMAL)
+			dailyStatsOK = false
+		}
 	}
 	if statsOK {
 		if dailyStatsOK {
@@ -375,7 +380,7 @@ func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, [
 func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) error {
 	if len(s.SnatchedReleases) == s.LastGeneratedPerDay {
 		// no additional snatch since the graphs were last generated, nothing needs to be done
-		return errors.New("Empty daily history")
+		return errors.New(errorNoFurtherSnatches)
 	}
 	// get slices of relevant data
 	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := s.SnatchedPerDay(firstOverallTimestamp)
