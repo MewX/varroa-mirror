@@ -37,7 +37,6 @@ const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
 const vmUnknown = 'Pinging VM...';
 const vmOK = 'VM is up.';
 const vmKO = 'VM is offline (click to check again).';
-const vmNoWebSocket = 'VM can only be contacted with HTTPS.';
 const vmGet = 'VM: sent torrent with ID #';
 const vmLinkInfo = 'Send to varroa musica';
 
@@ -52,7 +51,7 @@ let sock;
 let hello;
 
 if (settings) {
-	if (settings.https === 'true') {
+	if (settings.https === true) {
 		hello = {
 			Command: 'hello',
 			Token: settings.token
@@ -60,7 +59,7 @@ if (settings) {
 		// Open the websocket to varroa
 		newSocket();
 	} else {
-		//setVMStatus(vmNoWebSocket);
+		// add http links
 		addLinks();
 	}
 }
@@ -160,7 +159,7 @@ function newSocket() {
 function setVMStatus(label) {
 	const a = document.createElement('a');
 	a.innerHTML = label;
-	if (settings.https === 'true') {
+	if (settings.https === true) {
 		a.addEventListener('click', newSocket, false);
 	}
 	if (vmStatusDiv === null) {
@@ -184,7 +183,7 @@ function createLink(linkelement, id) {
 	link.appendChild(document.createElement('a'));
 	link.firstChild.appendChild(document.createTextNode(linkLabel));
 	link.appendChild(document.createTextNode(divider));
-	if (settings.https === 'true' && isWebSocketConnected) {
+	if (settings.https === true && isWebSocketConnected) {
 		link.addEventListener('click', getTorrent, false);
 	} else {
 		link.firstChild.href = 'http://' + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
@@ -218,7 +217,11 @@ function appendSettings() {
 	settingsHTML += '<tr><td class="label" title="Webserver Token">Token</td><td><input type="text" id="varroa_settings_token" placeholder="insert_your_token" value="' + GM_getValue(settingsNamePrefix + 'token', '') + '"></td></tr>\n';
 	settingsHTML += '<tr><td class="label" title="Webserver hostname (seedbox hostname)">Hostname</td><td><input type="text" id="varroa_settings_url" placeholder="hostname.com" value="' + GM_getValue(settingsNamePrefix + 'url', '') + '"></td></tr>\n';
 	settingsHTML += '<tr><td class="label" title="Webserver port">Port</td><td><input type="text" id="varroa_settings_port" placeholder="your_chosen_port" value="' + GM_getValue(settingsNamePrefix + 'port', '') + '"></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Webserver HTTPS enabled">HTTPS</td><td><input type="text" id="varroa_settings_https" placeholder="true_or_false" value="' + GM_getValue(settingsNamePrefix + 'https', '') + '"></td></tr>\n';
+	let checked = '';
+	if (GM_getValue(settingsNamePrefix + 'https', false) === true) {
+		checked = 'checked';
+	}
+	settingsHTML += '<tr><td class="label" title="Webserver HTTPS enabled">HTTPS</td><td><input type="checkbox" id="varroa_settings_https" placeholder="true_or_false" value="HTTPS" ' + checked + '></td></tr>\n';
 	settingsHTML += '</tbody>\n</table>';
 	lastTable.insertAdjacentHTML('afterend', settingsHTML);
 
@@ -233,8 +236,8 @@ function getSettings() {
 	const token = GM_getValue(settingsNamePrefix + 'token', '');
 	const url = GM_getValue(settingsNamePrefix + 'url', '');
 	const port = GM_getValue(settingsNamePrefix + 'port', '');
-	const https = GM_getValue(settingsNamePrefix + 'https', '');
-	if (token && url && port && https) {
+	const https = GM_getValue(settingsNamePrefix + 'https', false);
+	if (token && url && port) {
 		return {
 			token,
 			url,
@@ -249,13 +252,18 @@ function saveSettings() {
 	const elem = document.getElementById(this.id);
 	const setting = this.id.replace('varroa_settings_', settingsNamePrefix);
 	const border = elem.style.border;
-	GM_setValue(setting, elem.value);
-	if (GM_getValue(setting) === elem.value) {
-		elem.style.border = '1px solid green';
-		setTimeout(() => {
-			elem.style.border = border;
-		}, 2000);
-	} else {
-		elem.style.border = '1px solid red';
+	if (this.type === 'text') {
+		GM_setValue(setting, elem.value);
+		if (GM_getValue(setting) === elem.value) {
+			elem.style.border = '1px solid green';
+			setTimeout(() => {
+				elem.style.border = border;
+			}, 2000);
+		} else {
+			elem.style.border = '1px solid red';
+		}
+	}
+	if (this.type === 'checkbox') {
+		GM_setValue(setting, elem.checked);
 	}
 }
