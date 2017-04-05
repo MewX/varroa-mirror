@@ -97,7 +97,9 @@ func loadConfiguration() error {
 	logThis(" - Autosnatching enabled.", NORMAL)
 	// if server up
 	thingsWentOK := true
+	serverWasUp := false
 	if serverHTTP.Addr != "" {
+		serverWasUp = true
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := serverHTTP.Shutdown(ctx); err != nil {
@@ -106,6 +108,7 @@ func loadConfiguration() error {
 		}
 	}
 	if serverHTTPS.Addr != "" {
+		serverWasUp = true
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := serverHTTPS.Shutdown(ctx); err != nil {
@@ -113,7 +116,7 @@ func loadConfiguration() error {
 			thingsWentOK = false
 		}
 	}
-	if thingsWentOK {
+	if serverWasUp && thingsWentOK {
 		// launch server again
 		go webServer()
 	}
