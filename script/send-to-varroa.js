@@ -129,7 +129,7 @@ function addStatsToUserPage() {
 		newBoxContent.className = 'pad profileinfo';
 		newBoxContent.id = 'varroa_stats';
 		// TODO: pass graphs through websocket? http/https link will not work if password-protected.
-		newBoxContent.innerHTML = '<p>Coming Soon: Stats.</p><img src="' + 'https://' + settings.url + ':' + settings.port + '/stats.png" alt="stats">';
+		newBoxContent.innerHTML = '<p>Coming Soon: Stats.</p><img src="https://' + settings.url + ':' + settings.port + `/stats.png" alt="stats" onclick="lightbox.init('https://` + settings.url + ':' + settings.port + `/stats.png', 220);">`;
 		newBox.appendChild(newBoxContent);
 		main.insertBefore(newBox, main.children[1]);
 	}
