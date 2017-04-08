@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -46,7 +47,7 @@ func saveTrackerMetadata(info *TrackerTorrentInfo) {
 		return
 	}
 	go func() {
-		completePath := filepath.Join(conf.downloadFolder, info.folder)
+		completePath := filepath.Join(conf.downloadFolder, html.UnescapeString(info.folder))
 		// create metadata dir
 		if err := os.MkdirAll(filepath.Join(completePath, metadataDir), 0775); err != nil {
 			logThis(errorCreatingMetadataDir+err.Error(), NORMAL)
