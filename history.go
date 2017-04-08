@@ -210,6 +210,10 @@ func (h *History) GenerateGraphs() error {
 				logThis(errorGeneratingGraphs+err.Error(), NORMAL)
 			}
 		}
+		// create/update index.html
+		if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), filepath.Base(statsFile)+csvExt, h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
+			return err
+		}
 		// deploy automatically, if at least the StatsGraphs have been generated
 		return h.Deploy()
 	}
@@ -258,10 +262,6 @@ func (h *History) Deploy() error {
 		if err := ioutil.WriteFile(gitlabCIYamlFile, []byte(gitlabCI), 0666); err != nil {
 			return err
 		}
-	}
-	// create/update index.html
-	if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), filepath.Base(statsFile)+csvExt, h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
-		return err
 	}
 	// add overall stats and other files
 	if err := git.Add("*"+svgExt, filepath.Base(statsFile+csvExt), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
