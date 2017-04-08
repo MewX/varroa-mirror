@@ -109,7 +109,7 @@ func (r *Release) String() string {
 func (r *Release) ShortString() string {
 	short := fmt.Sprintf(TorrentNotification, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source)
 	if r.Size != 0 {
-		return short + fmt.Sprintf(" [%s]", humanize.IBytes(r.Size) )
+		return short + fmt.Sprintf(" [%s]", humanize.IBytes(r.Size))
 	}
 	return short
 }

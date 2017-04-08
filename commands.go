@@ -21,8 +21,46 @@ const (
 	defaultConfigurationFile   = "config.yaml"
 	unixSocketMessageSeparator = "↑" // because it looks nice
 
-	errorArchiving = "Error while archiving user files: "
+	errorArchiving         = "Error while archiving user files: "
+	errorDialingSocket     = "Error dialing to unix socket: "
+	errorWritingToSocket   = "Error writing to unix socket: "
+	errorReadingFromSocket = "Error reading from unix socket: "
 )
+
+func sendOrders(cli *varroaArguments) error {
+	conn, err := net.Dial("unix", varroaSocket)
+	if err != nil {
+		return errors.New(errorDialingSocket + err.Error())
+	}
+	// sending command
+	if _, err = conn.Write([]byte(cli.commandToDaemon())); err != nil {
+		return errors.New(errorWritingToSocket + err.Error())
+	}
+Loop:
+	for {
+		// read answer
+		buf := make([]byte, 512)
+		n, err := conn.Read(buf[:])
+		if err != nil {
+			return errors.New(errorReadingFromSocket + err.Error())
+		}
+		output := string(buf[:n])
+		if !strings.HasSuffix(output, unixSocketMessageSeparator) {
+			logThis(errorReadingFromSocket+"Malformed buffer "+string(buf[:n]), NORMAL)
+			break
+		}
+		for _, m := range strings.Split(output, unixSocketMessageSeparator) {
+			switch m {
+			case "":
+			case "stop":
+				break Loop
+			default:
+				fmt.Println(m)
+			}
+		}
+	}
+	return conn.Close()
+}
 
 func awaitOrders() {
 	conn, err := net.Listen("unix", varroaSocket)

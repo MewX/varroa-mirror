@@ -81,3 +81,26 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	return nil
 }
+
+func (b *varroaArguments) commandToDaemon() string {
+	if b.stats {
+		return "stats"
+	}
+	if b.reload {
+		return "reload"
+	}
+	if b.stop {
+		// to cleanly close the unix socket
+		return "stop"
+	}
+	if b.refreshMetadata {
+		return "refresh-metadata " + IntSliceToString(b.torrentIDs)
+	}
+	if b.snatch {
+		return "snatch " + IntSliceToString(b.torrentIDs)
+	}
+	if b.checkLog {
+		return "check-log " + b.logFile
+	}
+	return ""
+}

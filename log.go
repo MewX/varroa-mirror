@@ -12,7 +12,7 @@ const (
 )
 
 var (
-	sendBackToCLI = make(chan string, 10)
+	sendBackToCLI   = make(chan string, 10)
 	sendToWebsocket = make(chan string, 10)
 )
 

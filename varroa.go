@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"os"
-	"strings"
 	"syscall"
 
 	"github.com/gregdel/pushover"
@@ -15,14 +13,15 @@ import (
 const (
 	varroa = "varroa musica"
 
-	errorLoadingConfig        = "Error loading configuration: "
-	errorServingSignals       = "Error serving signals: "
-	errorFindingDaemon        = "Error finding daemon: "
-	errorSendingSignal        = "Error sending signal to the daemon: "
-	errorGettingDaemonContext = "Error launching daemon: "
-	errorCreatingStatsDir     = "Error creating stats directory: "
-	errorShuttingDownServer   = "Error shutting down web server: "
-	errorArguments            = "Error parsing command line arguments: "
+	errorLoadingConfig          = "Error loading configuration: "
+	errorServingSignals         = "Error serving signals: "
+	errorFindingDaemon          = "Error finding daemon: "
+	errorSendingSignal          = "Error sending signal to the daemon: "
+	errorGettingDaemonContext   = "Error launching daemon: "
+	errorCreatingStatsDir       = "Error creating stats directory: "
+	errorShuttingDownServer     = "Error shutting down web server: "
+	errorArguments              = "Error parsing command line arguments: "
+	errorSendingCommandToDaemon = "Error sending command to daemon: "
 
 	infoUserFilesArchived = "User files backed up."
 )
@@ -139,70 +138,10 @@ func main() {
 		return
 	}
 
-	// see if we want to send commands to the daemon through the unix socket
-	sendCommand := false
-	command := ""
-	if cli.stats {
-		sendCommand = true
-		command = "stats"
-	}
-	if cli.reload {
-		sendCommand = true
-		command = "reload"
-	}
-	if cli.stop {
-		// to cleanly close the unix socket
-		sendCommand = true
-		command = "stop"
-	}
-	if cli.refreshMetadata {
-		sendCommand = true
-		command = "refresh-metadata " + IntSliceToString(cli.torrentIDs)
-	}
-	if cli.snatch {
-		sendCommand = true
-		command = "snatch " + IntSliceToString(cli.torrentIDs)
-	}
-	if cli.checkLog {
-		sendCommand = true
-		command = "check-log " + cli.logFile
-	}
-
-	if sendCommand {
-		conn, err := net.Dial("unix", varroaSocket)
-		if err != nil {
-			logThis("Error dialing to unix socket: "+err.Error(), NORMAL)
-			return
-		}
-		// sending command
-		if _, err = conn.Write([]byte(command)); err != nil {
-			logThis("Error writing to unix socket: "+err.Error(), NORMAL)
-		}
-	Loop:
-		for {
-			// read answer
-			buf := make([]byte, 512)
-			n, err := conn.Read(buf[:])
-			if err != nil {
-				logThis("Error reading from unix socket: "+err.Error(), NORMAL)
-				break
-			}
-			output := string(buf[:n])
-			if !strings.HasSuffix(output, unixSocketMessageSeparator) {
-				logThis("Error reading from unix socket: "+"Malformed buffer "+string(buf[:n]), NORMAL)
-				break
-			}
-			for _, m := range strings.Split(output, unixSocketMessageSeparator) {
-				switch m {
-				case "":
-				case "stop":
-					break Loop
-				default:
-					fmt.Println(m)
-				}
-			}
-		}
-		conn.Close()
+	// sending commands to the daemon through the unix socket
+	if err := sendOrders(cli); err != nil {
+		logThis(errorSendingCommandToDaemon+err.Error(), NORMAL)
+		return
 	}
 
 	// at last, sending signals for shutdown
