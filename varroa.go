@@ -21,6 +21,8 @@ const (
 	errorCreatingStatsDir     = "Error creating stats directory: "
 	errorShuttingDownServer   = "Error shutting down web server: "
 	errorArguments            = "Error parsing command line arguments: "
+
+	infoUserFilesArchived = "User files backed up."
 )
 
 var (
@@ -57,6 +59,13 @@ func main() {
 		return
 	}
 	if cli.builtin {
+		return
+	}
+
+	if cli.backup {
+		if err := archiveUserFiles(); err == nil {
+			logThis(infoUserFilesArchived, NORMAL)
+		}
 		return
 	}
 
@@ -109,6 +118,7 @@ func main() {
 		go apiCallRateLimiter()
 		go webServer()
 		go awaitOrders()
+		go automaticBackup()
 
 		if err := daemon.ServeSignals(); err != nil {
 			logThis(errorServingSignals+err.Error(), NORMAL)

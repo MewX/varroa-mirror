@@ -5,12 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/jasonlvhit/gocron"
+	"github.com/mholt/archiver"
 )
 
 const (
-	varroaSocket = "varroa.sock"
+	varroaSocket             = "varroa.sock"
+	archivesDir              = "archives"
+	archiveNameTemplate      = "varroa_%s.zip"
+	defaultConfigurationFile = "config.yaml"
+
+	errorArchiving = "Error while archiving user files: "
 )
 
 func awaitOrders() {
@@ -87,7 +97,7 @@ func generateStats() error {
 
 func loadConfiguration() error {
 	newConf := &Config{}
-	if err := newConf.load("config.yaml"); err != nil {
+	if err := newConf.load(defaultConfigurationFile); err != nil {
 		logThis(errorLoadingConfig+err.Error(), NORMAL)
 		return err
 	}
@@ -170,4 +180,27 @@ func checkLog(logPath string) error {
 	}
 	logThis(fmt.Sprintf("Found score %s for log file %s.", score, logPath), NORMAL)
 	return nil
+}
+
+func archiveUserFiles() error {
+	// generate Timestamp
+	timestamp := time.Now().Format("2006-01-02_15h04m05s")
+	archiveName := fmt.Sprintf(archiveNameTemplate, timestamp)
+	if !DirectoryExists(archivesDir) {
+		if err := os.MkdirAll(archivesDir, 0755); err != nil {
+			logThis(errorArchiving+err.Error(), NORMAL)
+			return err
+		}
+	}
+	// generate file
+	err := archiver.Zip.Make(filepath.Join(archivesDir, archiveName), []string{statsDir, defaultConfigurationFile})
+	if err != nil {
+		logThis(errorArchiving+err.Error(), NORMAL)
+	}
+	return err
+}
+
+func automaticBackup() {
+	gocron.Every(1).Day().At("00:00").Do(archiveUserFiles)
+	<-gocron.Start()
 }

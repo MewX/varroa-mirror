@@ -5,6 +5,7 @@ watch/
 test/
 stats/
 certs/
+archives/
 *.csv
 *.yaml
 *.txt

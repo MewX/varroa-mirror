@@ -17,6 +17,7 @@ Usage:
 	varroa refresh-metadata <ID>...
 	varroa check-log <LOG_FILE>
 	varroa snatch <ID>...
+	varroa backup
 	varroa --version
 
 Options:
@@ -34,6 +35,7 @@ type varroaArguments struct {
 	refreshMetadata bool
 	checkLog        bool
 	snatch          bool
+	backup          bool
 	torrentIDs      []int
 	logFile         string
 }
@@ -58,6 +60,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
 	b.snatch = args["snatch"].(bool)
+	b.backup = args["backup"].(bool)
 	// arguments
 	if b.refreshMetadata || b.snatch {
 		IDs, ok := args["<ID>"].([]string)
