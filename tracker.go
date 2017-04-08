@@ -113,6 +113,7 @@ func (t *GazelleTracker) Login(user, password string) error {
 	form := url.Values{}
 	form.Add("username", user)
 	form.Add("password", password)
+	form.Add("keeplogged", "1")
 	req, err := http.NewRequest("POST", t.rootURL+"/login.php", strings.NewReader(form.Encode()))
 	if err != nil {
 		fmt.Println(err.Error())
