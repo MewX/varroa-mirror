@@ -30,7 +30,7 @@ const (
 	Torrent URL: %s
 	Torrent ID: %s`
 	TorrentPath         = `%s - %s (%d) [%s %s %s %s] - %s.torrent`
-	TorrentNotification = `%s - %s (%d) [%s/%s/%s/%s] [%s]`
+	TorrentNotification = `%s - %s (%d) [%s/%s/%s/%s]`
 
 	logScoreNotInAnnounce = -9999
 )
@@ -107,7 +107,11 @@ func (r *Release) String() string {
 }
 
 func (r *Release) ShortString() string {
-	return fmt.Sprintf(TorrentNotification, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, humanize.IBytes(r.Size))
+	short := fmt.Sprintf(TorrentNotification, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source)
+	if r.Size != 0 {
+		return short + fmt.Sprintf(" [%s]", humanize.IBytes(r.Size) )
+	}
+	return short
 }
 
 func (r *Release) FromSlice(slice []string) error {

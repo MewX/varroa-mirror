@@ -35,6 +35,8 @@ const (
 	errorWithOriginJSON             = "Error creating or updating origin.json: "
 	errorInfoNoMatchForOrigin       = "Error updating origin.json, no match for tracker and/or torrent ID: "
 
+	infoNotInteresting = "No filter is interested in release: %s. Ignoring."
+
 	notSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
 	metadataSaved             = "Metadata saved to: "
 	artistMetadataSaved       = "Artist Metadata for %s saved to: %s"
@@ -215,7 +217,7 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 			}
 			return release, nil
 		}
-		logThis("No filter is interested in that release. Ignoring.", VERBOSE)
+		logThis(fmt.Sprintf(infoNotInteresting, release.ShortString()), VERBOSE)
 		return nil, nil
 	}
 	return nil, errors.New("No hits!")

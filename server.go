@@ -193,6 +193,23 @@ func webServer() {
 			}
 			defer c.Close()
 			websocketOutput = true
+			// channel to know when the connection with a specific instance is over
+			endThisConnection := make(chan struct{})
+
+			// this goroutine will send messages to the remote
+			go func() {
+				for {
+					select {
+					case messageToLog := <-sendToWebsocket:
+						// TODO differentiate info / error
+						if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog}); err != nil {
+							logThis(errorWritingToWebSocket+err.Error(), NORMAL)
+						}
+					case <-endThisConnection:
+						return
+					}
+				}
+			}()
 
 			for {
 				// TODO if server is shutting down, c.Close()
@@ -200,6 +217,7 @@ func webServer() {
 				incoming := IncomingJSON{}
 				if err := c.ReadJSON(&incoming); err != nil {
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) || websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
+						endThisConnection <- struct{}{}
 						websocketOutput = false
 						break
 					}
