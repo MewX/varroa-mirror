@@ -15,10 +15,11 @@ import (
 )
 
 const (
-	varroaSocket             = "varroa.sock"
-	archivesDir              = "archives"
-	archiveNameTemplate      = "varroa_%s.zip"
-	defaultConfigurationFile = "config.yaml"
+	varroaSocket               = "varroa.sock"
+	archivesDir                = "archives"
+	archiveNameTemplate        = "varroa_%s.zip"
+	defaultConfigurationFile   = "config.yaml"
+	unixSocketMessageSeparator = "↑" // because it looks nice
 
 	errorArchiving = "Error while archiving user files: "
 )
@@ -29,14 +30,34 @@ func awaitOrders() {
 		panic(err)
 	}
 	defer conn.Close()
+	// channel to know when the connection with a specific instance is over
+	endThisConnection := make(chan struct{})
 
-Loop:
 	for {
 		c, err := conn.Accept()
 		if err != nil {
 			logThis("Error acceptin from unix socket: "+err.Error(), NORMAL)
-			continue
+			break
 		}
+		// output back things to CLI
+		expectedOutput = true
+
+		// this goroutine will send back messages to the instance that sent the command
+		go func() {
+			for {
+				messageToLog := <-sendBackToCLI
+				// writing to socket with a separator, so that the other instance, reading more slowly,
+				// can separate messages that might have been written one after the other
+				if _, err = c.Write([]byte(messageToLog + unixSocketMessageSeparator)); err != nil {
+					logThis("Error writing to unix socket: "+err.Error(), NORMAL)
+				}
+				// we've just told the other instance talking was over, ending this connection.
+				if messageToLog == "stop" {
+					endThisConnection <- struct{}{}
+					break
+				}
+			}
+		}()
 
 		buf := make([]byte, 512)
 		n, err := c.Read(buf[:])
@@ -50,43 +71,41 @@ Loop:
 			continue
 		}
 
+		stopEverything := false
 		switch fullCommand[0] {
 		case "stats":
-			go func() {
-				if err := generateStats(); err != nil {
-					logThis(errorGeneratingGraphs+err.Error(), NORMAL)
-				}
-			}()
+			if err := generateStats(); err != nil {
+				logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+			}
 		case "stop":
-			break Loop
+			logThis("Stopping daemon...", NORMAL)
+			stopEverything = true
 		case "reload":
-			go func() {
-				if err := loadConfiguration(); err != nil {
-					logThis("Error reloading", NORMAL)
-				}
-			}()
-
+			if err := loadConfiguration(); err != nil {
+				logThis("Error reloading", NORMAL)
+			}
 		case "refresh-metadata":
-			go func() {
-				if err := refreshMetadata(fullCommand[1:]); err != nil {
-					logThis("Error refreshing metadata: "+err.Error(), NORMAL)
-				}
-			}()
+			if err := refreshMetadata(fullCommand[1:]); err != nil {
+				logThis("Error refreshing metadata: "+err.Error(), NORMAL)
+			}
 		case "snatch":
-			go func() {
-				if err := snatchTorrents(fullCommand[1:]); err != nil {
-					logThis("Error snatching torrents: "+err.Error(), NORMAL)
-				}
-			}()
+			if err := snatchTorrents(fullCommand[1:]); err != nil {
+				logThis("Error snatching torrents: "+err.Error(), NORMAL)
+			}
 		case "check-log":
-			go func() {
-				if err := checkLog(strings.Join(fullCommand[1:], " ")); err != nil {
-					logThis("Error checking log: "+err.Error(), NORMAL)
-				}
-			}()
-
+			if err := checkLog(strings.Join(fullCommand[1:], " ")); err != nil {
+				logThis("Error checking log: "+err.Error(), NORMAL)
+			}
 		}
+		sendBackToCLI <- "stop"
+		// waiting for the other instance to be warned that communication is over
+		<-endThisConnection
 		c.Close()
+		expectedOutput = false
+		if stopEverything {
+			// shutting down the daemon, exiting look for socket cleanup
+			break
+		}
 	}
 }
 

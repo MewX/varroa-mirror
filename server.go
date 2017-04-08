@@ -192,12 +192,15 @@ func webServer() {
 				return
 			}
 			defer c.Close()
+			websocketOutput = true
+
 			for {
 				// TODO if server is shutting down, c.Close()
 
 				incoming := IncomingJSON{}
 				if err := c.ReadJSON(&incoming); err != nil {
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) || websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
+						websocketOutput = false
 						break
 					}
 					logThis(errorIncomingWebSocketJSON+err.Error(), NORMAL)

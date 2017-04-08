@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -11,18 +10,6 @@ import (
 	"strings"
 	"time"
 )
-
-const (
-	NORMAL = iota
-	VERBOSE
-	VERBOSEST
-)
-
-func logThis(msg string, level int) {
-	if conf.logLevel >= level {
-		log.Print(msg)
-	}
-}
 
 func startOfDay(t time.Time) time.Time {
 	return t.Truncate(24 * time.Hour)

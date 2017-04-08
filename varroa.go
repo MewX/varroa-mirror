@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/gregdel/pushover"
@@ -43,6 +45,12 @@ var (
 
 	// disable  autosnatching
 	disabledAutosnatching = false
+	// current command expects output
+	expectedOutput = false
+	// websocket is open and waiting for input
+	websocketOutput = false
+	// is only true if we're in the daemon
+	inDaemon = false
 )
 
 type boolFlag bool
@@ -55,17 +63,10 @@ func main() {
 	// parsing CLI
 	cli := &varroaArguments{}
 	if err := cli.parseCLI(os.Args[1:]); err != nil {
-		logThis(errorArguments+err.Error(), NORMAL)
+		fmt.Println(errorArguments+err.Error(), NORMAL)
 		return
 	}
 	if cli.builtin {
-		return
-	}
-
-	if cli.backup {
-		if err := archiveUserFiles(); err == nil {
-			logThis(infoUserFilesArchived, NORMAL)
-		}
 		return
 	}
 
@@ -83,6 +84,7 @@ func main() {
 		defer daemonContext.Release()
 
 		logThis("+ varroa musica started", NORMAL)
+		inDaemon = true
 		// load configuration
 		if err := loadConfiguration(); err != nil {
 			logThis(err.Error(), NORMAL)
@@ -127,6 +129,16 @@ func main() {
 		return
 	}
 
+	// here we're expecting output
+	expectedOutput = true
+
+	if cli.backup {
+		if err := archiveUserFiles(); err == nil {
+			logThis(infoUserFilesArchived, NORMAL)
+		}
+		return
+	}
+
 	// see if we want to send commands to the daemon through the unix socket
 	sendCommand := false
 	command := ""
@@ -165,6 +177,30 @@ func main() {
 		// sending command
 		if _, err = conn.Write([]byte(command)); err != nil {
 			logThis("Error writing to unix socket: "+err.Error(), NORMAL)
+		}
+	Loop:
+		for {
+			// read answer
+			buf := make([]byte, 512)
+			n, err := conn.Read(buf[:])
+			if err != nil {
+				logThis("Error reading from unix socket: "+err.Error(), NORMAL)
+				break
+			}
+			output := string(buf[:n])
+			if !strings.HasSuffix(output, unixSocketMessageSeparator) {
+				logThis("Error reading from unix socket: "+"Malformed buffer "+string(buf[:n]), NORMAL)
+				break
+			}
+			for _, m := range strings.Split(output, unixSocketMessageSeparator) {
+				switch m {
+				case "":
+				case "stop":
+					break Loop
+				default:
+					fmt.Println(m)
+				}
+			}
 		}
 		conn.Close()
 	}
