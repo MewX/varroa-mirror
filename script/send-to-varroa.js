@@ -116,6 +116,16 @@ function addLinks() {
 	}
 }
 
+function makeStatsLink(label, filename) {
+	let link = settings.url + ':' + settings.port + '/getStats/' + filename + '?token=' + settings.token;
+	if (settings.https === true) {
+		link = 'https://' + link;
+	} else {
+		link = 'http://' + link;
+	}
+	return label + `:  <a href="javascript:void(0);" onclick="BBCode.spoiler(this);">Show</a><blockquote class="hidden spoiler"><div style="text-align: center;"><img class="scale_image" onclick="lightbox.init(this, $(this).width());" alt="` + link + `" src="` + link + `" /></div></blockquote><br />`;
+}
+
 function addStatsToUserPage() {
 	if (userPage) {
 		const main = document.getElementsByClassName('main_column')[0];
@@ -123,13 +133,14 @@ function addStatsToUserPage() {
 		newBox.className = 'box';
 		const newBoxHead = document.createElement('div');
 		newBoxHead.className = 'head';
-		newBoxHead.innerHTML = 'Varroa Musica Stats' + `<span style="float: right;"><a href="#" onclick="$('#varroa_stats').gtoggle(); this.innerHTML = (this.innerHTML == 'Hide' ? 'Show' : 'Hide'); return false;" class="brackets">Hide</a></span>&nbsp;`;
+		newBoxHead.innerHTML = `Varroa Musica Stats<span style="float: right;"><a href="#" onclick="$('#varroa_stats').gtoggle(); this.innerHTML = (this.innerHTML == 'Hide' ? 'Show' : 'Hide'); return false;" class="brackets">Hide</a></span>&nbsp;`;
 		newBox.appendChild(newBoxHead);
 		const newBoxContent = document.createElement('div');
 		newBoxContent.className = 'pad profileinfo';
 		newBoxContent.id = 'varroa_stats';
-		// TODO: pass graphs through websocket? http/https link will not work if password-protected.
-		newBoxContent.innerHTML = '<p>Coming Soon: Stats.</p><img src="https://' + settings.url + ':' + settings.port + `/stats.png" alt="stats" onclick="lightbox.init('https://` + settings.url + ':' + settings.port + `/stats.png', 220);">`;
+		newBoxContent.innerHTML = makeStatsLink('Full Stats', 'stats.png') + makeStatsLink('Buffer', 'buffer.png') + makeStatsLink('Upload', 'up.png') + makeStatsLink('Download', 'down.png') + makeStatsLink('Ratio', 'ratio.png');
+		newBoxContent.innerHTML += makeStatsLink('Buffer/day', 'buffer_per_day.png') + makeStatsLink('Upload/day', 'up_per_day.png') + makeStatsLink('Download/day', 'down_per_day.png') + makeStatsLink('Ratio/day', 'ratio_per_day.png');
+		newBoxContent.innerHTML += makeStatsLink('Snatched/day', 'snatches_per_day.png') + makeStatsLink('Size snatched/day', 'size_snatched_per_day.png') + makeStatsLink('Top Tags', 'top_tags.png') + makeStatsLink('Snatched/filer', 'total_snatched_by_filter.png');
 		newBox.appendChild(newBoxContent);
 		main.insertBefore(newBox, main.children[1]);
 	}

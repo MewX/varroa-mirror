@@ -3,9 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/goji/httpauth"
 	"github.com/gorilla/mux"
@@ -22,6 +24,7 @@ const (
 	errorWrongToken        = "Error receiving download order from https: wrong token"
 	errorNoToken           = "Error receiving download order from https: no token"
 	errorNoID              = "Error retreiving torrent ID"
+	errorNoStatsFilename   = "Error retreiving stats filename "
 
 	downloadCommand  = "get"
 	handshakeCommand = "hello"
@@ -129,6 +132,38 @@ func webServer() {
 
 	rtr := mux.NewRouter()
 	if conf.webServer.allowDownloads {
+		getStats := func(w http.ResponseWriter, r *http.Request) {
+			// checking token
+			token, ok := r.URL.Query()["token"]
+			if !ok {
+				logThis(errorNoToken, NORMAL)
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			if token[0] != conf.webServer.token {
+				logThis(errorWrongToken, NORMAL)
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			filename, ok := mux.Vars(r)["name"]
+			if !ok {
+				logThis(errorNoStatsFilename, NORMAL)
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			file, err := ioutil.ReadFile(filepath.Join(statsDir, filename))
+			if err != nil {
+				logThis(errorNoStatsFilename+": "+err.Error(), NORMAL)
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			if strings.HasSuffix(filename, svgExt) {
+				w.Header().Set("Content-type", "image/svg")
+			} else {
+				w.Header().Set("Content-type", "image/png")
+			}
+			w.Write(file)
+		}
 		getTorrent := func(w http.ResponseWriter, r *http.Request) {
 			id, err := validateGet(r)
 			if err != nil {
@@ -162,7 +197,7 @@ func webServer() {
 
 				incoming := IncomingJSON{}
 				if err := c.ReadJSON(&incoming); err != nil {
-					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+					if websocket.IsCloseError(err, websocket.CloseGoingAway) || websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
 						break
 					}
 					logThis(errorIncomingWebSocketJSON+err.Error(), NORMAL)
@@ -205,6 +240,8 @@ func webServer() {
 		}
 		// interface for remotely ordering downloads
 		rtr.HandleFunc("/get/{id:[0-9]+}", getTorrent).Methods("GET")
+		rtr.HandleFunc("/getStats/{name:[\\w]+.svg}", getStats).Methods("GET")
+		rtr.HandleFunc("/getStats/{name:[\\w]+.png}", getStats).Methods("GET")
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 		rtr.HandleFunc("/ws", socket)
 	}
