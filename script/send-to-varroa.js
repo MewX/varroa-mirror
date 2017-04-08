@@ -39,6 +39,7 @@ const vmUnknown = 'Pinging VM...';
 const vmOK = 'VM is up.';
 const vmKO = 'VM is offline (click to check again).';
 const vmGet = 'VM: sent torrent with ID #';
+const vmCannotGet = 'VM is offline, cannot get torrent (click to check again).';
 const vmLinkInfo = 'Send to varroa musica';
 
 let obsElem;
@@ -63,6 +64,8 @@ if (settings) {
 		// Add http links
 		addLinks();
 	}
+	// Add stats if on user page
+	addStatsToUserPage();
 }
 if (settingsPage) {
 	appendSettings();
@@ -172,8 +175,6 @@ function newSocket() {
 				setVMStatus(vmOK);
 				// Safe to add links
 				addLinks();
-				// Add stats if on user page
-				addStatsToUserPage();
 			} else {
 				setVMStatus('VM: ' + msg.Message);
 				// TODO change back after a while
@@ -186,28 +187,6 @@ function newSocket() {
 		setVMStatus(vmKO);
 	};
 }
-
-function setVMStatus(label) {
-	const a = document.createElement('a');
-	a.innerHTML = label;
-	if (settings.https === true) {
-		a.addEventListener('click', newSocket, false);
-	}
-	if (vmStatusDiv === null) {
-		vmStatusDiv = document.createElement('div');
-		vmStatusDiv.id = 'varroa';
-		vmStatusDiv.appendChild(a);
-		document.body.appendChild(vmStatusDiv);
-	} else {
-		vmStatusDiv.replaceChild(a, vmStatusDiv.firstChild);
-	}
-}
-
-(function () {
-	'use strict';
-	const css = '#varroa a {margin: 3px 0 15px 0;position: fixed;bottom: 0;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; cursor: pointer;}';
-	GM_addStyle(css);
-})();
 
 function createLink(linkelement, id) {
 	const link = document.createElement('varroa_' + id);
@@ -235,8 +214,34 @@ function getTorrent() {
 		};
 		sock.send(JSON.stringify(get));
 		setVMStatus(vmGet + id);
+	} else {
+		setVMStatus(vmCannotGet);
 	}
 }
+
+// -- Status -------------------------------------------------------------------
+
+function setVMStatus(label) {
+	const a = document.createElement('a');
+	a.innerHTML = label;
+	if (settings.https === true) {
+		a.addEventListener('click', newSocket, false);
+	}
+	if (vmStatusDiv === null) {
+		vmStatusDiv = document.createElement('div');
+		vmStatusDiv.id = 'varroa';
+		vmStatusDiv.appendChild(a);
+		document.body.appendChild(vmStatusDiv);
+	} else {
+		vmStatusDiv.replaceChild(a, vmStatusDiv.firstChild);
+	}
+}
+
+(function () {
+	'use strict';
+	const css = '#varroa a {margin: 3px 0 15px 0;position: fixed;bottom: 0;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; cursor: pointer;}';
+	GM_addStyle(css);
+})();
 
 // -- Settings -----------------------------------------------------------------
 
