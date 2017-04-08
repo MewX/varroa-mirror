@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -17,6 +18,7 @@ import (
 
 const (
 	announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
+	originJSONFile  = "origin.json"
 
 	errorDealingWithAnnounce        = "Error dealing with announced torrent: "
 	errorConnectingToIRC            = "Error connecting to IRC: "
@@ -30,6 +32,8 @@ const (
 	errorCreatingMetadataDir        = "Error creating metadata directory: "
 	errorRetrievingArtistInfo       = "Error getting info for artist %d"
 	errorRetrievingTorrentGroupInfo = "Error getting torrent group info for %d"
+	errorWithOriginJSON             = "Error creating or updating origin.json: "
+	errorInfoNoMatchForOrigin       = "Error updating origin.json, no match for tracker and/or torrent ID: "
 
 	notSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
 	metadataSaved             = "Metadata saved to: "
@@ -42,6 +46,15 @@ const (
 	metadataDir               = "TrackerMetadata"
 )
 
+type OriginJSON struct {
+	Tracker             string
+	ID                  int
+	TimeSnatched        int64
+	LastUpdatedMetadata int64
+	IsAlive             bool
+	TimeOfDeath         int64
+}
+
 func saveTrackerMetadata(info *TrackerTorrentInfo) {
 	if !conf.downloadFolderConfigured() {
 		return
@@ -53,6 +66,45 @@ func saveTrackerMetadata(info *TrackerTorrentInfo) {
 			logThis(errorCreatingMetadataDir+err.Error(), NORMAL)
 			return
 		}
+		// creating or updating origin.json
+		origin := filepath.Join(completePath, metadataDir, originJSONFile)
+		var originJSON *OriginJSON
+		var writeOrigin bool
+		if FileExists(origin) {
+			// updating metadata
+			b, err := ioutil.ReadFile(origin)
+			if err != nil {
+				logThis(errorWithOriginJSON+err.Error(), NORMAL)
+			} else {
+				if err := json.Unmarshal(b, &originJSON); err != nil {
+					logThis(errorWithOriginJSON+err.Error(), NORMAL)
+				} else {
+					if originJSON.ID == info.id && originJSON.Tracker == conf.url {
+						originJSON.LastUpdatedMetadata = time.Now().Unix()
+						writeOrigin = true
+					} else {
+						logThis(errorInfoNoMatchForOrigin+err.Error(), NORMAL)
+					}
+					// TODO if GetTorrentInfo errors out: origin.IsAlive = false and set TimeOfDeath
+				}
+			}
+		} else {
+			// creating origin
+			originJSON = &OriginJSON{Tracker: conf.url, ID: info.id, TimeSnatched: time.Now().Unix(), LastUpdatedMetadata: time.Now().Unix(), IsAlive: true}
+			writeOrigin = true
+		}
+		// writing origin.json
+		if writeOrigin {
+			b, err := json.MarshalIndent(originJSON, "", "    ")
+			if err != nil {
+				logThis(errorWithOriginJSON+err.Error(), NORMAL)
+			} else {
+				if err := ioutil.WriteFile(origin, b, 0644); err != nil {
+					logThis(errorWithOriginJSON+err.Error(), NORMAL)
+				}
+			}
+		}
+
 		// write tracker metadata to target folder
 		if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, trackerMetadataFile), info.fullJSON, 0666); err != nil {
 			logThis(errorWritingJSONMetadata+err.Error(), NORMAL)

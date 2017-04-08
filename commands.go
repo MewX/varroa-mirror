@@ -150,6 +150,7 @@ func refreshMetadata(IDStrings []string) error {
 			} else {
 				saveTrackerMetadata(info)
 			}
+			break
 		}
 	}
 	if !foundAtLeastOne {
