@@ -37,7 +37,7 @@ type varroaArguments struct {
 	checkLog        bool
 	snatch          bool
 	backup          bool
-	showFilters	bool
+	showFilters     bool
 	torrentIDs      []int
 	logFile         string
 	requiresDaemon  bool

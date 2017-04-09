@@ -3,10 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/viper"
-	"strconv"
 )
 
 type Filter struct {

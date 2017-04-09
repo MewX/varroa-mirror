@@ -30,6 +30,7 @@ const (
 	errorMovingFile        = "Error moving file to stats folder: "
 	errorMigratingFile     = "Error migrating file to latest format: "
 	errorCreatingGraphs    = "Could not generate any graph."
+	errorGeneratingGraph   = "Error generating graph: "
 
 	statsDir   = "stats"
 	pngExt     = ".png"
@@ -649,17 +650,25 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	}
 
 	// write individual graphs
+	atLeastOneFailed := false
 	if err := writeTimeSeriesChart(upSeries, "Upload (Gb)", uploadStatsFile, false); err != nil {
-		return errors.New("Error generating chart for upload: " + err.Error())
+		logThis(errorGeneratingGraph+"for upload: "+err.Error(), NORMAL)
+		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(downSeries, "Download (Gb)", downloadStatsFile, false); err != nil {
-		return errors.New("Error generating chart for download: " + err.Error())
+		logThis(errorGeneratingGraph+"for download: "+err.Error(), NORMAL)
+		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(bufferSeries, "Buffer (Gb)", bufferStatsFile, false); err != nil {
-		return errors.New("Error generating chart for buffer: " + err.Error())
+		logThis(errorGeneratingGraph+"for buffer: "+err.Error(), NORMAL)
+		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(ratioSeries, "Ratio", ratioStatsFile, false); err != nil {
-		return errors.New("Error generating chart for ratio: " + err.Error())
+		logThis(errorGeneratingGraph+"for ratio: "+err.Error(), NORMAL)
+		atLeastOneFailed = true
+	}
+	if atLeastOneFailed {
+		return errors.New(errorGeneratingGraph)
 	}
 
 	// generating stats per day graphs
@@ -702,5 +711,6 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	if err := writeTimeSeriesChart(ratioPerDaySeries, "Ratio/day", ratioPerDayStatsFile, true); err != nil {
 		return errors.New("Error generating chart for ratio/day: " + err.Error())
 	}
+
 	return nil
 }
