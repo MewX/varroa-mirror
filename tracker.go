@@ -39,7 +39,7 @@ const (
 	errorCouldNotCreateForm = "Could not create form for log: "
 	errorCouldNotReadLog    = "Could not read log: "
 
-	logScorePattern = `<blockquote><strong>Score:</strong> <span style="color:.*">(-?\d*)</span> \(out of 100\)</blockquote>`
+	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
 )
 
 var (
@@ -299,13 +299,13 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req
 	// setting up the form
 	buffer := new(bytes.Buffer)
 	w := multipart.NewWriter(buffer)
-	// adding the torrent file
+
+	// write to "log" input
 	f, err := os.Open(logPath)
 	if err != nil {
 		return nil, errors.New(errorCouldNotReadLog + err.Error())
 	}
 	defer f.Close()
-
 	fw, err := w.CreateFormFile("log", logPath)
 	if err != nil {
 		return nil, errors.New(errorCouldNotCreateForm + err.Error())
@@ -313,6 +313,21 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req
 	if _, err = io.Copy(fw, f); err != nil {
 		return nil, errors.New(errorCouldNotReadLog + err.Error())
 	}
+	// some forms use "logfiles[]", so adding the same data to that input name
+	// both will be sent, each tracker will pick up what they want
+	f2, err := os.Open(logPath)
+	if err != nil {
+		return nil, errors.New(errorCouldNotReadLog + err.Error())
+	}
+	defer f2.Close()
+	fw2, err := w.CreateFormFile("logfiles[]", logPath)
+	if err != nil {
+		return nil, errors.New(errorCouldNotCreateForm + err.Error())
+	}
+	if _, err = io.Copy(fw2, f2); err != nil {
+		return nil, errors.New(errorCouldNotReadLog + err.Error())
+	}
+	// other inputs
 	w.WriteField("submit", "true")
 	w.WriteField("action", "takeupload")
 	w.Close()

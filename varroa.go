@@ -28,7 +28,7 @@ const (
 	errorSettingUp              = "Error setting up: "
 
 	infoUserFilesArchived = "User files backed up."
-	infoUsage = "Before running a command that requires the daemon, run 'varroa start'."
+	infoUsage             = "Before running a command that requires the daemon, run 'varroa start'."
 
 	pidFile = "varroa_pid"
 )
