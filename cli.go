@@ -85,7 +85,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
