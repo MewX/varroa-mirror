@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	varroaVersion = "varroa musica -- v9dev."
+	varroaVersion = "varroa musica -- v9."
 	varroaUsage   = `
 varroa musica.
 
@@ -18,6 +18,7 @@ Usage:
 	varroa check-log <LOG_FILE>
 	varroa snatch <ID>...
 	varroa backup
+	varroa show-filters
 	varroa --version
 
 Options:
@@ -36,6 +37,7 @@ type varroaArguments struct {
 	checkLog        bool
 	snatch          bool
 	backup          bool
+	showFilters	bool
 	torrentIDs      []int
 	logFile         string
 	requiresDaemon  bool
@@ -63,6 +65,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.checkLog = args["check-log"].(bool)
 	b.snatch = args["snatch"].(bool)
 	b.backup = args["backup"].(bool)
+	b.showFilters = args["show-filters"].(bool)
 	// arguments
 	if b.refreshMetadata || b.snatch {
 		IDs, ok := args["<ID>"].([]string)
@@ -89,7 +92,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup {
+	if b.backup || b.showFilters {
 		b.canUseDaemon = false
 	}
 	return nil

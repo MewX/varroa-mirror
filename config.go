@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"strconv"
 )
 
 type Filter struct {
@@ -32,6 +33,63 @@ type Filter struct {
 		included []string
 		excluded []string
 	}
+}
+
+func (f Filter) String() string {
+	description := f.label + ":\n"
+	if len(f.year) != 0 {
+		description += "\tYear(s): " + strings.Join(IntSliceToStringSlice(f.year), ", ") + "\n"
+	}
+	if len(f.artist) != 0 {
+		description += "\tArtist(s): " + strings.Join(f.artist, ", ") + "\n"
+	}
+	if len(f.recordLabel) != 0 {
+		description += "\tRecord Label(s): " + strings.Join(f.recordLabel, ", ") + "\n"
+	}
+	if len(f.tags.included) != 0 {
+		description += "\tRequired tags: " + strings.Join(f.tags.included, ", ") + "\n"
+	}
+	if len(f.tags.excluded) != 0 {
+		description += "\tExcluded tags: " + strings.Join(f.tags.excluded, ", ") + "\n"
+	}
+	if len(f.source) != 0 {
+		description += "\tSource(s): " + strings.Join(f.source, ", ") + "\n"
+	}
+	if len(f.format) != 0 {
+		description += "\tFormat(s): " + strings.Join(f.format, ", ") + "\n"
+	}
+	if len(f.quality) != 0 {
+		description += "\tQuality: " + strings.Join(f.quality, ", ") + "\n"
+	}
+	if len(f.releaseType) != 0 {
+		description += "\tType(s): " + strings.Join(f.releaseType, ", ") + "\n"
+	}
+	if f.hasCue {
+		description += "\tHas Cue: true\n"
+	}
+	if f.hasLog {
+		description += "\tHas Log: true\n"
+	}
+	if f.logScore != 0 {
+		description += "\tMinimum Log Score: " + strconv.Itoa(f.logScore) + "\n"
+	}
+	if f.allowScene {
+		description += "\tAllow Scene releases: true\n"
+	}
+	if f.allowDuplicate {
+		description += "\tAllow duplicates: true\n"
+	}
+	if f.size.min != 0 {
+		description += "\tMinimum Size: " + strconv.FormatUint(f.size.min, 10) + "\n"
+	}
+	if f.size.max != 0 {
+		description += "\tMaximum Size: " + strconv.FormatUint(f.size.max, 10) + "\n"
+	}
+
+	if f.destinationFolder != "" {
+		description += "\tSpecial destination folder: " + f.destinationFolder + "\n"
+	}
+	return description
 }
 
 type Config struct {

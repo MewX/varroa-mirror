@@ -120,8 +120,19 @@ func main() {
 			if err := archiveUserFiles(); err == nil {
 				logThis(infoUserFilesArchived, NORMAL)
 			}
-			return
 		}
+		if cli.showFilters {
+			// load configuration
+			if err := loadConfiguration(); err != nil {
+				logThis(errorLoadingConfig+err.Error(), NORMAL)
+				return
+			}
+			fmt.Print("Filters found in configuration file: \n\n")
+			for _, f := range conf.filters {
+				fmt.Println(f)
+			}
+		}
+		return
 	}
 
 	// assessing if daemon is running
