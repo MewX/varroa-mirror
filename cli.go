@@ -9,7 +9,59 @@ import (
 const (
 	varroaVersion = "varroa musica -- v9."
 	varroaUsage   = `
-varroa musica.
+	_  _ ____ ____ ____ ____ ____    _  _ _  _ ____ _ ____ ____
+	|  | |__| |__/ |__/ |  | |__|    |\/| |  | [__  | |    |__|
+	 \/  |  | |  \ |  \ |__| |  |    |  | |__| ___] | |___ |  |
+
+
+Description:
+
+	varroa musica is a personal assistant for your favorite tracker.
+
+	It can:
+	- snatch, and autosnatch torrents with quite thorough filters
+	- monitor your stats and generate graphs
+	- host said graphs on its embedded webserver or on Gitlab Pages
+	- save and update all snatched torrents metadata
+	- be remotely controlled from your browser with a GreaseMonkey script.
+	- send notifications to your Android device about stats and snatches.
+	- check local logs agains logchecker.php
+
+Daemon Commands:
+
+	The daemon is used for autosnatching, stats monitoring and hosting,
+	and remotely triggering snatches from the GM script or any
+	pyWhatAuto remote (including the Android App).
+
+	start:
+		starts the daemon.
+	stop:
+		stops it.
+	reload:
+		reloads the configuration file (allows updating filters without
+		restarting the daemon).
+
+Commands:
+
+	stats:
+		generates the stats immediately based on currently saved
+		history.
+	refresh-metadata:
+		retrieves all metadata for all torrents with IDs given as
+		arguments, updating the files that were downloaded when they
+		were first snatched (allows updating local metadata if a
+		torrent has been edited since upload).
+	check-log:
+		upload a given log file to the tracker's logchecker.php and
+		returns its score.
+	snatch:
+		snatch all torrents with IDs given as arguments.
+	backup:
+		backup user files (stats, history, configuration file) to a
+		timestamped zip file. Automatically triggered every day.
+	show-filters:
+		displays the filters set in the configuration file (allows
+		checking the filters and good YAML formatting).
 
 Usage:
 	varroa (start|reload|stop)
