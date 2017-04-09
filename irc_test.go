@@ -26,8 +26,16 @@ var (
 	filter15 = &Filter{label: "filter15", source: []string{"CD"}, hasLog: true, logScore: 100}
 	filter16 = &Filter{label: "filter16", source: []string{"CD"}, logScore: 80} // will trigger even if hasLog == false
 	filter17 = &Filter{label: "filter17", quality: []string{"Lossless"}, allowScene: true}
+	filter18 = &Filter{label: "filter18", year: []int{2017}, format: []string{"FLAC"}, source: []string{"WEB"}, quality: []string{"Lossless"}, allowScene: true, tags: struct {
+		included []string
+		excluded []string
+	}{
+		included: []string{"abstract"},
+		excluded: []string{"korean"},
+	},
+	}
 
-	allFilters = []*Filter{filter1, filter2, filter3, filter4, filter5, filter6, filter7, filter8, filter9, filter10, filter11, filter12, filter13, filter14, filter15, filter16, filter17}
+	allFilters = []*Filter{filter1, filter2, filter3, filter4, filter5, filter6, filter7, filter8, filter9, filter10, filter11, filter12, filter13, filter14, filter15, filter16, filter17, filter18}
 )
 
 var announces = []struct {
@@ -95,6 +103,24 @@ var announces = []struct {
 		true,
 		"Release info:\n\tArtist: Some fellow & Aníkúlápó,Some fellow,Aníkúlápó\n\tTitle: first / second\n\tYear: 1999\n\tRelease Type: Anthology\n\tFormat: FLAC\n\tQuality: Lossless\n\tHasLog: true\n\tLog Score: -75\n\tHas Cue: true\n\tScene: false\n\tSource: CD\n\tTags: [soul funk afrobeat world.music]\n\tURL: https://mysterious.address/torrents.php?id=271487\n\tTorrent URL: https://mysterious.address/torrents.php?action=download&id=923266\n\tTorrent ID: 923266",
 		[]*Filter{filter3, filter8, filter9, filter10, filter12, filter13, filter17},
+	},
+	{
+		"Tobias Tobias - That Thing [2017] [Album] - FLAC / 24bit Lossless / WEB - https://mysterious.address/torrents.php?id=493677 / https://mysterious.address/torrents.php?action=download&id=1030280 - abstract,ambient,drone",
+		true,
+		"Release info:\n\tArtist: Tobias Tobias\n\tTitle: That Thing\n\tYear: 2017\n\tRelease Type: Album\n\tFormat: FLAC\n\tQuality: 24bit Lossless\n\tHasLog: false\n\tLog Score: -9999\n\tHas Cue: false\n\tScene: false\n\tSource: WEB\n\tTags: [abstract ambient drone]\n\tURL: https://mysterious.address/torrents.php?id=493677\n\tTorrent URL: https://mysterious.address/torrents.php?action=download&id=1030280\n\tTorrent ID: 1030280",
+		[]*Filter{filter12, filter13},
+	},
+	{
+		"Tobias Tobias - That Thing [2017] [Album] - FLAC / Lossless / WEB - https://mysterious.address/torrents.php?id=493677 / https://mysterious.address/torrents.php?action=download&id=1030280 - abstract,ambient,drone",
+		true,
+		"Release info:\n\tArtist: Tobias Tobias\n\tTitle: That Thing\n\tYear: 2017\n\tRelease Type: Album\n\tFormat: FLAC\n\tQuality: Lossless\n\tHasLog: false\n\tLog Score: -9999\n\tHas Cue: false\n\tScene: false\n\tSource: WEB\n\tTags: [abstract ambient drone]\n\tURL: https://mysterious.address/torrents.php?id=493677\n\tTorrent URL: https://mysterious.address/torrents.php?action=download&id=1030280\n\tTorrent ID: 1030280",
+		[]*Filter{filter12, filter13, filter17, filter18},
+	},
+	{
+		"Tobias Tobias - That Thing [2017] [Album] - FLAC / Lossless / WEB - https://mysterious.address/torrents.php?id=493677 / https://mysterious.address/torrents.php?action=download&id=1030280 - abstract,ambient,drone,korean",
+		true,
+		"Release info:\n\tArtist: Tobias Tobias\n\tTitle: That Thing\n\tYear: 2017\n\tRelease Type: Album\n\tFormat: FLAC\n\tQuality: Lossless\n\tHasLog: false\n\tLog Score: -9999\n\tHas Cue: false\n\tScene: false\n\tSource: WEB\n\tTags: [abstract ambient drone korean]\n\tURL: https://mysterious.address/torrents.php?id=493677\n\tTorrent URL: https://mysterious.address/torrents.php?action=download&id=1030280\n\tTorrent ID: 1030280",
+		[]*Filter{filter12, filter13, filter17},
 	},
 }
 
