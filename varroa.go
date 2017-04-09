@@ -128,8 +128,8 @@ func main() {
 	var daemonIsUp bool
 	// trying to talk to existing daemon
 	daemonContext.Args = os.Args
-	d, err := daemonContext.Search()
-	if err == nil {
+	d, searchErr := daemonContext.Search()
+	if searchErr == nil {
 		daemonIsUp = true
 	}
 	// at this point commands either require the daemon or can use it
@@ -155,7 +155,7 @@ func main() {
 		}
 	} else {
 		if cli.requiresDaemon {
-			logThis(errorFindingDaemon+err.Error(), NORMAL)
+			logThis(errorFindingDaemon+searchErr.Error(), NORMAL)
 			fmt.Println(infoUsage)
 			return
 		}

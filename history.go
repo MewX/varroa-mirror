@@ -318,6 +318,8 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 }
 
 func (s *SnatchHistory) Add(r *Release, filter string) error {
+	// saving association with filter
+	r.Filter = filter
 	// add to in memory slice
 	s.SnatchedReleases = append(s.SnatchedReleases, *r)
 	// saving to msgpack
