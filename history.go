@@ -313,8 +313,6 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 	err = msgpack.Unmarshal(bytes, &s.SnatchedReleases)
 	if err != nil {
 		logThis("Error loading releases from history file", NORMAL)
-	} else {
-		logThis(fmt.Sprintf("Loaded %d snatches from history", len(s.SnatchedReleases)), VERBOSE)
 	}
 	return err
 }

@@ -38,6 +38,8 @@ type varroaArguments struct {
 	backup          bool
 	torrentIDs      []int
 	logFile         string
+	requiresDaemon  bool
+	canUseDaemon    bool
 }
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
@@ -78,6 +80,17 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 			return errors.New("Invalid log file, does not exist.")
 		}
 		b.logFile = logPath
+	}
+
+	// sorting which commands can use the daemon if it's there but should manage if it is not
+	b.requiresDaemon = true
+	b.canUseDaemon = true
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup {
+		b.requiresDaemon = false
+	}
+	// sorting which commands should not interact with the daemon in any case
+	if b.backup {
+		b.canUseDaemon = false
 	}
 	return nil
 }

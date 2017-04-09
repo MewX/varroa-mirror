@@ -148,7 +148,7 @@ func awaitOrders() {
 }
 
 func generateStats() error {
-	logThis("- generating stats", VERBOSE)
+	logThis("Generating stats", VERBOSE)
 	return history.GenerateGraphs()
 }
 
@@ -158,10 +158,15 @@ func loadConfiguration() error {
 		logThis(errorLoadingConfig+err.Error(), NORMAL)
 		return err
 	}
+	if conf.user != "" {
+		// if conf.user exists, the configuration had been loaded previously
+		logThis("Configuration reloaded.", NORMAL)
+	}
 	conf = newConf
-	logThis(" - Configuration reloaded.", NORMAL)
-	disabledAutosnatching = false
-	logThis(" - Autosnatching enabled.", NORMAL)
+	if disabledAutosnatching {
+		disabledAutosnatching = false
+		logThis("Autosnatching enabled.", NORMAL)
+	}
 	// if server up
 	thingsWentOK := true
 	serverWasUp := false

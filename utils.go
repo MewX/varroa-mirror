@@ -73,6 +73,14 @@ func StringSliceToIntSlice(in []string) ([]int, error) {
 	return b, nil
 }
 
+func IntSliceToStringSlice(in []int) []string {
+	b := make([]string, len(in))
+	for i, v := range in {
+		b[i] = strconv.Itoa(v)
+	}
+	return b
+}
+
 func checkErrors(errs ...error) error {
 	for _, err := range errs {
 		if err != nil {

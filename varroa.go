@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,19 +17,25 @@ const (
 	errorLoadingConfig          = "Error loading configuration: "
 	errorServingSignals         = "Error serving signals: "
 	errorFindingDaemon          = "Error finding daemon: "
+	errorReleasingDaemon        = "Error releasing daemon: "
 	errorSendingSignal          = "Error sending signal to the daemon: "
 	errorGettingDaemonContext   = "Error launching daemon: "
 	errorCreatingStatsDir       = "Error creating stats directory: "
 	errorShuttingDownServer     = "Error shutting down web server: "
 	errorArguments              = "Error parsing command line arguments: "
 	errorSendingCommandToDaemon = "Error sending command to daemon: "
+	errorRemovingPID            = "Error removing pid file: "
+	errorSettingUp              = "Error setting up: "
 
 	infoUserFilesArchived = "User files backed up."
+	infoUsage = "Before running a command that requires the daemon, run 'varroa start'."
+
+	pidFile = "varroa_pid"
 )
 
 var (
 	daemonContext = &daemon.Context{
-		PidFileName: "pid",
+		PidFileName: pidFile,
 		PidFilePerm: 0644,
 		LogFileName: "log",
 		LogFilePerm: 0640,
@@ -80,37 +87,14 @@ func main() {
 		if d != nil {
 			return
 		}
-		defer daemonContext.Release()
+		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
+		//defer daemonContext.Release()
 
 		logThis("+ varroa musica started", NORMAL)
 		inDaemon = true
-		// load configuration
-		if err := loadConfiguration(); err != nil {
-			logThis(err.Error(), NORMAL)
-			return
-		}
-		// prepare directory for stats if necessary
-		if !DirectoryExists(statsDir) {
-			if err := os.MkdirAll(statsDir, 0777); err != nil {
-				logThis(errorCreatingStatsDir+err.Error(), NORMAL)
-				return
-			}
-		}
-		// init notifications with pushover
-		if conf.pushoverConfigured() {
-			notification.client = pushover.New(conf.pushover.token)
-			notification.recipient = pushover.NewRecipient(conf.pushover.user)
-		}
-		// log in tracker
-		tracker = &GazelleTracker{rootURL: conf.url}
-		if err := tracker.Login(conf.user, conf.password); err != nil {
-			logThis(err.Error(), NORMAL)
-			return
-		}
-		logThis(" - Logged in tracker.", NORMAL)
-		// load history
-		if err := history.LoadAll(statsFile, historyFile); err != nil {
-			logThis(err.Error(), NORMAL)
+		// setting up for the daemon
+		if err := settingUp(); err != nil {
+			logThis(errorSettingUp+err.Error(), NORMAL)
 		}
 
 		// launch goroutines
@@ -127,37 +111,79 @@ func main() {
 		logThis("+ varroa musica stopped", NORMAL)
 		return
 	}
-
 	// here we're expecting output
 	expectedOutput = true
 
-	if cli.backup {
-		if err := archiveUserFiles(); err == nil {
-			logThis(infoUserFilesArchived, NORMAL)
-		}
-		return
-	}
-
-	// sending commands to the daemon through the unix socket
-	if err := sendOrders(cli); err != nil {
-		logThis(errorSendingCommandToDaemon+err.Error(), NORMAL)
-		return
-	}
-
-	// at last, sending signals for shutdown
-	if cli.stop {
-		daemon.AddCommand(boolFlag(cli.stop), syscall.SIGTERM, quitDaemon)
-		// trying to talk to existing daemon
-		daemonContext.Args = os.Args
-		d, err := daemonContext.Search()
-		if err != nil {
-			logThis(errorFindingDaemon+err.Error(), NORMAL)
+	// here commands that have no use for the daemon
+	if !cli.canUseDaemon {
+		if cli.backup {
+			if err := archiveUserFiles(); err == nil {
+				logThis(infoUserFilesArchived, NORMAL)
+			}
 			return
 		}
-		if err := daemon.SendCommands(d); err != nil {
-			logThis(errorSendingSignal+err.Error(), NORMAL)
+	}
+
+	// assessing if daemon is running
+	var daemonIsUp bool
+	// trying to talk to existing daemon
+	daemonContext.Args = os.Args
+	d, err := daemonContext.Search()
+	if err == nil {
+		daemonIsUp = true
+	}
+	// at this point commands either require the daemon or can use it
+	if daemonIsUp {
+		// sending commands to the daemon through the unix socket
+		if err := sendOrders(cli); err != nil {
+			logThis(errorSendingCommandToDaemon+err.Error(), NORMAL)
+			return
 		}
-		return
+		// at last, sending signals for shutdown
+		if cli.stop {
+			daemon.AddCommand(boolFlag(cli.stop), syscall.SIGTERM, quitDaemon)
+			if err := daemon.SendCommands(d); err != nil {
+				logThis(errorSendingSignal+err.Error(), NORMAL)
+			}
+			if err := daemonContext.Release(); err != nil {
+				fmt.Println(errorReleasingDaemon + err.Error())
+			}
+			if err := os.Remove(pidFile); err != nil {
+				fmt.Println(errorRemovingPID + err.Error())
+			}
+			return
+		}
+	} else {
+		if cli.requiresDaemon {
+			logThis(errorFindingDaemon+err.Error(), NORMAL)
+			fmt.Println(infoUsage)
+			return
+		}
+		// setting up since the daemon isn't running
+		if err := settingUp(); err != nil {
+			logThis(errorSettingUp+err.Error(), NORMAL)
+		}
+		// running the command
+		if cli.stats {
+			if err := generateStats(); err != nil {
+				logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+			}
+		}
+		if cli.refreshMetadata {
+			if err := refreshMetadata(IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+				logThis("Error refreshing metadata: "+err.Error(), NORMAL)
+			}
+		}
+		if cli.snatch {
+			if err := snatchTorrents(IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+				logThis("Error snatching torrents: "+err.Error(), NORMAL)
+			}
+		}
+		if cli.checkLog {
+			if err := checkLog(cli.logFile); err != nil {
+				logThis("Error checking log: "+err.Error(), NORMAL)
+			}
+		}
 	}
 	return
 }
@@ -165,4 +191,30 @@ func main() {
 func quitDaemon(sig os.Signal) error {
 	logThis("+ terminating", VERBOSE)
 	return daemon.ErrStop
+}
+
+func settingUp() error {
+	// load configuration
+	if err := loadConfiguration(); err != nil {
+		return err
+	}
+	// prepare directory for stats if necessary
+	if !DirectoryExists(statsDir) {
+		if err := os.MkdirAll(statsDir, 0777); err != nil {
+			return errors.New(errorCreatingStatsDir + err.Error())
+		}
+	}
+	// init notifications with pushover
+	if conf.pushoverConfigured() {
+		notification.client = pushover.New(conf.pushover.token)
+		notification.recipient = pushover.NewRecipient(conf.pushover.user)
+	}
+	// log in tracker
+	tracker = &GazelleTracker{rootURL: conf.url}
+	if err := tracker.Login(conf.user, conf.password); err != nil {
+		return err
+	}
+	logThis("Logged in tracker.", NORMAL)
+	// load history
+	return history.LoadAll(statsFile, historyFile)
 }

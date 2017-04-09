@@ -16,10 +16,10 @@ import (
 
 const (
 	webServerNotConfigured = "No configuration found for the web server."
-	webServerShutDown      = " - Web server has closed."
-	webServerUpHTTP        = " - Starting http web server."
-	webServerUpHTTPS       = " - Starting https web server."
-	webServersUp           = " - Web server(s) started."
+	webServerShutDown      = "Web server has closed."
+	webServerUpHTTP        = "Starting http web server."
+	webServerUpHTTPS       = "Starting https web server."
+	webServersUp           = "Web server(s) started."
 	errorServing           = "Error launching web interface: "
 	errorWrongToken        = "Error receiving download order from https: wrong token"
 	errorNoToken           = "Error receiving download order from https: no token"
