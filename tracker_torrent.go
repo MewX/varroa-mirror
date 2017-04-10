@@ -15,9 +15,10 @@ import (
 
 type TrackerTorrentInfo struct {
 	id       int
+	groupID  int
 	label    string
 	logScore int
-	artists  []string // concat artists, composers, etc
+	artists  map[string]int // concat artists, composers, etc: artist name: id
 	size     uint64
 	uploader string
 	folder   string
@@ -26,7 +27,11 @@ type TrackerTorrentInfo struct {
 }
 
 func (a *TrackerTorrentInfo) String() string {
-	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s | Size %s", a.label, a.logScore, strings.Join(a.artists, ","), humanize.IBytes(uint64(a.size)))
+	artistNames := make([]string, 0, len(a.artists))
+	for k := range a.artists {
+		artistNames = append(artistNames, k)
+	}
+	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s | Size %s", a.label, a.logScore, strings.Join(artistNames, ","), humanize.IBytes(uint64(a.size)))
 }
 
 func (a *TrackerTorrentInfo) DownloadCover(targetWithoutExtension string) error {
@@ -34,7 +39,7 @@ func (a *TrackerTorrentInfo) DownloadCover(targetWithoutExtension string) error 
 		return errors.New("Unknown image url")
 	}
 	extension := filepath.Ext(a.coverURL)
-	if _, err := FileExists(targetWithoutExtension + extension); err == nil {
+	if FileExists(targetWithoutExtension + extension) {
 		// already downloaded, or exists in folder already: do nothing
 		return nil
 	}
@@ -52,6 +57,14 @@ func (a *TrackerTorrentInfo) DownloadCover(targetWithoutExtension string) error 
 	return err
 }
 
+func (a *TrackerTorrentInfo) ArtistIDs() []int {
+	artistIDs := make([]int, 0, len(a.artists))
+	for _, v := range a.artists {
+		artistIDs = append(artistIDs, v)
+	}
+	return artistIDs
+}
+
 func (a *TrackerTorrentInfo) Release() *Release {
 	if len(a.fullJSON) == 0 {
 		return nil // nothing useful here
@@ -64,67 +77,67 @@ func (a *TrackerTorrentInfo) Release() *Release {
 	r := &Release{}
 	// for now, using artists, composers, "with" categories
 	for _, el := range gt.Response.Group.MusicInfo.Artists {
-		r.artist = append(r.artist, el.Name)
+		r.Artists = append(r.Artists, el.Name)
 	}
 	for _, el := range gt.Response.Group.MusicInfo.With {
-		r.artist = append(r.artist, el.Name)
+		r.Artists = append(r.Artists, el.Name)
 	}
 	for _, el := range gt.Response.Group.MusicInfo.Composers {
-		r.artist = append(r.artist, el.Name)
+		r.Artists = append(r.Artists, el.Name)
 	}
-	r.title = gt.Response.Group.Name
+	r.Title = gt.Response.Group.Name
 
 	if gt.Response.Torrent.Remastered {
-		r.year = gt.Response.Torrent.RemasterYear
+		r.Year = gt.Response.Torrent.RemasterYear
 	} else {
-		r.year = gt.Response.Group.Year
+		r.Year = gt.Response.Group.Year
 	}
 	switch gt.Response.Group.ReleaseType {
 	case 1:
-		r.releaseType = "Album"
+		r.ReleaseType = "Album"
 	case 3:
-		r.releaseType = "Soundtrack"
+		r.ReleaseType = "Soundtrack"
 	case 5:
-		r.releaseType = "EP"
+		r.ReleaseType = "EP"
 	case 6:
-		r.releaseType = "Anthology"
+		r.ReleaseType = "Anthology"
 	case 7:
-		r.releaseType = "Compilation"
+		r.ReleaseType = "Compilation"
 	case 9:
-		r.releaseType = "Single"
+		r.ReleaseType = "Single"
 	case 11:
-		r.releaseType = "Live album"
+		r.ReleaseType = "Live album"
 	case 13:
-		r.releaseType = "Remix"
+		r.ReleaseType = "Remix"
 	case 14:
-		r.releaseType = "Bootleg"
+		r.ReleaseType = "Bootleg"
 	case 15:
-		r.releaseType = "Interview"
+		r.ReleaseType = "Interview"
 	case 16:
-		r.releaseType = "Mixtape"
+		r.ReleaseType = "Mixtape"
 	case 17:
-		r.releaseType = "Demo"
+		r.ReleaseType = "Demo"
 	case 18:
-		r.releaseType = "Concert Recording"
+		r.ReleaseType = "Concert Recording"
 	case 19:
-		r.releaseType = "DJ Mix"
+		r.ReleaseType = "DJ Mix"
 	case 21:
-		r.releaseType = "Unknown"
+		r.ReleaseType = "Unknown"
 	}
-	r.format = gt.Response.Torrent.Format
-	r.quality = gt.Response.Torrent.Encoding
-	r.hasLog = gt.Response.Torrent.HasLog
-	r.hasCue = gt.Response.Torrent.HasCue
-	r.isScene = gt.Response.Torrent.Scene
-	r.source = gt.Response.Torrent.Media
-	// not found in Gazelle API... r.tags =
+	r.Format = gt.Response.Torrent.Format
+	r.Quality = gt.Response.Torrent.Encoding
+	r.HasLog = gt.Response.Torrent.HasLog
+	r.HasCue = gt.Response.Torrent.HasCue
+	r.IsScene = gt.Response.Torrent.Scene
+	r.Source = gt.Response.Torrent.Media
+	// found only in Artist API call... r.tags =
 	// r.url =
 	// r.torrentURL =
-	r.torrentID = fmt.Sprintf("%d", gt.Response.Torrent.ID)
-	// r.filename =
-	r.size = uint64(gt.Response.Torrent.Size)
-	r.folder = gt.Response.Torrent.FilePath
-	r.logScore = gt.Response.Torrent.LogScore
-	r.uploader = gt.Response.Torrent.Username
+	r.TorrentID = fmt.Sprintf("%d", gt.Response.Torrent.ID)
+	// r.TorrentFile =
+	r.Size = uint64(gt.Response.Torrent.Size)
+	r.Folder = gt.Response.Torrent.FilePath
+	r.LogScore = gt.Response.Torrent.LogScore
+	r.Uploader = gt.Response.Torrent.Username
 	return r
 }

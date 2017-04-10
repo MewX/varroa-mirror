@@ -3,28 +3,13 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 )
-
-const (
-	NORMAL = iota
-	VERBOSE
-	VERBOSEST
-)
-
-const (
-	errorFileDoesNotExist = "File does not exist"
-)
-
-func logThis(msg string, level int) {
-	if conf.logLevel >= level {
-		log.Print(msg)
-	}
-}
 
 func startOfDay(t time.Time) time.Time {
 	return t.Truncate(24 * time.Hour)
@@ -68,6 +53,34 @@ func IntInSlice(a int, list []int) bool {
 	return false
 }
 
+func IntSliceToString(in []int) string {
+	b := make([]string, len(in))
+	for i, v := range in {
+		b[i] = strconv.Itoa(v)
+	}
+	return strings.Join(b, " ")
+}
+
+func StringSliceToIntSlice(in []string) ([]int, error) {
+	var err error
+	b := make([]int, len(in))
+	for i, v := range in {
+		b[i], err = strconv.Atoi(v)
+		if err != nil {
+			return []int{}, err
+		}
+	}
+	return b, nil
+}
+
+func IntSliceToStringSlice(in []int) []string {
+	b := make([]string, len(in))
+	for i, v := range in {
+		b[i] = strconv.Itoa(v)
+	}
+	return b
+}
+
 func checkErrors(errs ...error) error {
 	for _, err := range errs {
 		if err != nil {
@@ -101,25 +114,19 @@ func AbsoluteFileExists(path string) (res bool) {
 	return
 }
 
-// FileExists checks if a path is valid and returns its absolute path
-func FileExists(path string) (absolutePath string, err error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return
-	}
-	var candidate string
+// FileExists checks if a path is valid
+func FileExists(path string) bool {
+	var absolutePath string
 	if filepath.IsAbs(path) {
-		candidate = path
+		absolutePath = path
 	} else {
-		candidate = filepath.Join(currentDir, path)
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return false
+		}
+		absolutePath = filepath.Join(currentDir, path)
 	}
-
-	if AbsoluteFileExists(candidate) {
-		absolutePath = candidate
-	} else {
-		err = os.ErrNotExist
-	}
-	return
+	return AbsoluteFileExists(absolutePath)
 }
 
 // CopyFile copies a file from src to dst. If src and dst files exist, and are

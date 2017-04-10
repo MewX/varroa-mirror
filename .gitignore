@@ -4,6 +4,8 @@ img/
 watch/
 test/
 stats/
+certs/
+archives/
 *.csv
 *.yaml
 *.txt
@@ -13,3 +15,4 @@ stats/
 log
 pid
 TODO
+node_modules

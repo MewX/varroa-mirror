@@ -25,8 +25,14 @@ format:
     - go get github.com/gregdel/pushover
     - go get github.com/dustin/go-humanize
     - go get github.com/gorilla/mux
+    - go get github.com/gorilla/websocket
+    - go get gopkg.in/vmihailenco/msgpack.v2
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
+    - go get github.com/subosito/norma
+    - go get github.com/goji/httpauth
+    - go get github.com/jasonlvhit/gocron
+    - go get github.com/mholt/archiver
     - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
@@ -41,8 +47,14 @@ compiled_varroa_dev:
     - go get github.com/gregdel/pushover
     - go get github.com/dustin/go-humanize
     - go get github.com/gorilla/mux
+    - go get github.com/gorilla/websocket
+    - go get gopkg.in/vmihailenco/msgpack.v2
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
+    - go get github.com/subosito/norma
+    - go get github.com/goji/httpauth
+    - go get github.com/jasonlvhit/gocron
+    - go get github.com/mholt/archiver
     - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
     paths:
@@ -63,8 +75,14 @@ compiled_varroa_released_version:
     - go get github.com/gregdel/pushover
     - go get github.com/dustin/go-humanize
     - go get github.com/gorilla/mux
+    - go get github.com/gorilla/websocket
+    - go get gopkg.in/vmihailenco/msgpack.v2
     - go get golang.org/x/net/publicsuffix
     - go get github.com/sevlyar/go-daemon
+    - go get github.com/subosito/norma
+    - go get github.com/goji/httpauth
+    - go get github.com/jasonlvhit/gocron
+    - go get github.com/mholt/archiver
     - go build -o varroa
   artifacts:
     paths: 
