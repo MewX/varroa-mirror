@@ -88,6 +88,7 @@ type GazelleTorrent struct {
 			CategoryID      int    `json:"categoryId"`
 			CategoryName    string `json:"categoryName"`
 			ID              int    `json:"id"`
+			IsBookmarked    bool   `json:"isBookmarked"`
 			MusicInfo       struct {
 				Artists []struct {
 					ID   int    `json:"id"`
@@ -118,14 +119,15 @@ type GazelleTorrent struct {
 					Name string `json:"name"`
 				} `json:"with"`
 			} `json:"musicInfo"`
-			Name        string `json:"name"`
-			RecordLabel string `json:"recordLabel"`
-			ReleaseType int    `json:"releaseType"`
-			Time        string `json:"time"`
-			VanityHouse bool   `json:"vanityHouse"`
-			WikiBody    string `json:"wikiBody"`
-			WikiImage   string `json:"wikiImage"`
-			Year        int    `json:"year"`
+			Name        string   `json:"name"`
+			RecordLabel string   `json:"recordLabel"`
+			ReleaseType int      `json:"releaseType"`
+			Tags        []string `json:"tags"`
+			Time        string   `json:"time"`
+			VanityHouse bool     `json:"vanityHouse"`
+			WikiBody    string   `json:"wikiBody"`
+			WikiImage   string   `json:"wikiImage"`
+			Year        int      `json:"year"`
 		} `json:"group"`
 		Torrent struct {
 			Description             string `json:"description"`
@@ -138,6 +140,7 @@ type GazelleTorrent struct {
 			HasCue                  bool   `json:"hasCue"`
 			HasLog                  bool   `json:"hasLog"`
 			ID                      int    `json:"id"`
+			InfoHash                string `json:"infoHash"`
 			Leechers                int    `json:"leechers"`
 			LogScore                int    `json:"logScore"`
 			Media                   string `json:"media"`
@@ -146,6 +149,7 @@ type GazelleTorrent struct {
 			RemasterTitle           string `json:"remasterTitle"`
 			RemasterYear            int    `json:"remasterYear"`
 			Remastered              bool   `json:"remastered"`
+			Reported                bool   `json:"reported"`
 			Scene                   bool   `json:"scene"`
 			Seeders                 int    `json:"seeders"`
 			Size                    int    `json:"size"`
@@ -171,12 +175,27 @@ type GazelleTorrentGroup struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`
 				} `json:"artists"`
-				Composers []interface{} `json:"composers"`
-				Conductor []interface{} `json:"conductor"`
-				Dj        []interface{} `json:"dj"`
-				Producer  []interface{} `json:"producer"`
-				RemixedBy []interface{} `json:"remixedBy"`
-				With      []struct {
+				Composers []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"composers"`
+				Conductor []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"conductor"`
+				Dj []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"dj"`
+				Producer []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"producer"`
+				RemixedBy []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"remixedBy"`
+				With []struct {
 					ID   int    `json:"id"`
 					Name string `json:"name"`
 				} `json:"with"`
@@ -269,12 +288,36 @@ type GazelleArtist struct {
 					ID      int    `json:"id"`
 					Name    string `json:"name"`
 				} `json:"1"`
-				Two   interface{} `json:"2"`
-				Three interface{} `json:"3"`
-				Four  interface{} `json:"4"`
-				Five  interface{} `json:"5"`
-				Six   interface{} `json:"6"`
-				Seven interface{} `json:"7"`
+				Two []struct {
+					Aliasid int    `json:"aliasid"`
+					ID      int    `json:"id"`
+					Name    string `json:"name"`
+				} `json:"2"`
+				Three []struct {
+					Aliasid int    `json:"aliasid"`
+					ID      int    `json:"id"`
+					Name    string `json:"name"`
+				} `json:"3"`
+				Four []struct {
+					Aliasid int    `json:"aliasid"`
+					ID      int    `json:"id"`
+					Name    string `json:"name"`
+				} `json:"4"`
+				Five []struct {
+					Aliasid int    `json:"aliasid"`
+					ID      int    `json:"id"`
+					Name    string `json:"name"`
+				} `json:"5"`
+				Six []struct {
+					Aliasid int    `json:"aliasid"`
+					ID      int    `json:"id"`
+					Name    string `json:"name"`
+				} `json:"6"`
+				Seven []struct {
+					Aliasid int    `json:"aliasid"`
+					ID      int    `json:"id"`
+					Name    string `json:"name"`
+				} `json:"7"`
 			} `json:"extendedArtists"`
 			GroupCatalogueNumber string   `json:"groupCatalogueNumber"`
 			GroupCategoryID      string   `json:"groupCategoryID"`
