@@ -36,6 +36,7 @@ const (
 	errorInfoNoMatchForOrigin       = "Error updating origin.json, no match for tracker and/or torrent ID: "
 
 	infoNotInteresting = "No filter is interested in release: %s. Ignoring."
+	infoNotMusic       = "Not a music release, ignoring."
 
 	notSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
 	metadataSaved             = "Metadata saved to: "
@@ -220,7 +221,8 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 		logThis(fmt.Sprintf(infoNotInteresting, release.ShortString()), VERBOSE)
 		return nil, nil
 	}
-	return nil, errors.New("No hits!")
+	logThis(infoNotMusic, VERBOSE)
+	return nil, nil
 }
 
 func ircHandler() {
