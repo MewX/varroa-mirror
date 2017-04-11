@@ -174,6 +174,8 @@ func main() {
 		if err := settingUp(); err != nil {
 			logThis(errorSettingUp+err.Error(), NORMAL)
 		}
+		// starting rate limiter
+		go apiCallRateLimiter()
 		// running the command
 		if cli.stats {
 			if err := generateStats(); err != nil {
