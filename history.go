@@ -315,6 +315,12 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 	if err != nil {
 		logThis("Error loading releases from history file", NORMAL)
 	}
+	// fix empty filters, if any
+	for i := range s.SnatchedReleases {
+		if s.SnatchedReleases[i].Filter == "" {
+			s.SnatchedReleases[i].Filter = "remote"
+		}
+	}
 	return err
 }
 
