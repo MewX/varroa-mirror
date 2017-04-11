@@ -315,6 +315,12 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 	if err != nil {
 		logThis("Error loading releases from history file", NORMAL)
 	}
+	// fix empty filters, if any
+	for i := range s.SnatchedReleases {
+		if s.SnatchedReleases[i].Filter == "" {
+			s.SnatchedReleases[i].Filter = "remote"
+		}
+	}
 	return err
 }
 
@@ -622,10 +628,10 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	if !firstOverallTimestamp.Equal(timestamps[0]) {
 		// if the first overall timestamp isn't in the snatch history, artificially add it
 		timestamps = append([]time.Time{firstOverallTimestamp, timestamps[0].Add(time.Duration(-conf.statsUpdatePeriod) * time.Hour)}, timestamps...)
-		ups = append([]float64{0}, ups...)
-		downs = append([]float64{0}, downs...)
-		buffers = append([]float64{0}, buffers...)
-		ratios = append([]float64{0}, ratios...)
+		ups = append([]float64{0, 0}, ups...)
+		downs = append([]float64{0, 0}, downs...)
+		buffers = append([]float64{0, 0}, buffers...)
+		ratios = append([]float64{0, 0}, ratios...)
 	}
 
 	upSeries := chart.TimeSeries{
