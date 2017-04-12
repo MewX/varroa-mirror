@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
@@ -149,69 +150,82 @@ func getStringValues(source map[string]interface{}, key string) []string {
 	return result
 }
 
-func (c *Config) load(path string) error {
-	conf := viper.New()
-	conf.SetConfigType("yaml")
-	conf.SetConfigFile(path)
+func (c *Config) loadFromBytes(b []byte) error {
+	v := viper.New()
+	v.SetConfigType("yaml")
 
-	if err := conf.ReadInConfig(); err != nil {
+	if err := v.ReadConfig(bytes.NewReader(b)); err != nil {
 		return err
 	}
+	return c.readValues(v)
+}
 
+func (c *Config) load(path string) error {
+	v := viper.New()
+	v.SetConfigType("yaml")
+	v.SetConfigFile(path)
+
+	if err := v.ReadInConfig(); err != nil {
+		return err
+	}
+	return c.readValues(v)
+}
+
+func (c *Config) readValues(v *viper.Viper) error {
 	// tracker configuration
-	c.url = conf.GetString("tracker.url")
-	c.user = conf.GetString("tracker.user")
-	c.password = conf.GetString("tracker.password")
-	c.blacklistedUploaders = conf.GetStringSlice("tracker.blacklisted_uploaders")
-	c.statsUpdatePeriod = conf.GetInt("tracker.stats_update_period_hour")
+	c.url = v.GetString("tracker.url")
+	c.user = v.GetString("tracker.user")
+	c.password = v.GetString("tracker.password")
+	c.blacklistedUploaders = v.GetStringSlice("tracker.blacklisted_uploaders")
+	c.statsUpdatePeriod = v.GetInt("tracker.stats_update_period_hour")
 	if c.statsUpdatePeriod < 1 {
 		return errors.New("Period must be at least 1 hour")
 	}
-	c.maxBufferDecreaseByPeriodMB = conf.GetInt("tracker.max_buffer_decrease_by_period_mb")
+	c.maxBufferDecreaseByPeriodMB = v.GetInt("tracker.max_buffer_decrease_by_period_mb")
 	if c.statsUpdatePeriod < 1 {
 		return errors.New("Max buffer decrease must be at least 1MB.")
 	}
 	// IRC configuration
-	c.irc.server = conf.GetString("tracker.irc_server")
-	c.irc.key = conf.GetString("tracker.irc_key")
-	c.irc.SSL = conf.GetBool("tracker.irc_ssl")
-	c.irc.SSLSkipVerify = conf.GetBool("tracker.irc_ssl_skip_verify")
-	c.irc.nickServPassword = conf.GetString("tracker.nickserv_password")
-	c.irc.botName = conf.GetString("tracker.bot_name")
-	c.irc.announcer = conf.GetString("tracker.announcer")
-	c.irc.announceChannel = conf.GetString("tracker.announce_channel")
+	c.irc.server = v.GetString("tracker.irc_server")
+	c.irc.key = v.GetString("tracker.irc_key")
+	c.irc.SSL = v.GetBool("tracker.irc_ssl")
+	c.irc.SSLSkipVerify = v.GetBool("tracker.irc_ssl_skip_verify")
+	c.irc.nickServPassword = v.GetString("tracker.nickserv_password")
+	c.irc.botName = v.GetString("tracker.bot_name")
+	c.irc.announcer = v.GetString("tracker.announcer")
+	c.irc.announceChannel = v.GetString("tracker.announce_channel")
 	// folder configuration
-	c.defaultDestinationFolder = conf.GetString("tracker.default_destination_folder")
+	c.defaultDestinationFolder = v.GetString("tracker.default_destination_folder")
 	if c.defaultDestinationFolder == "" || !DirectoryExists(c.defaultDestinationFolder) {
 		return errors.New("Default destination folder does not exist")
 	}
-	c.downloadFolder = conf.GetString("tracker.download_folder")
+	c.downloadFolder = v.GetString("tracker.download_folder")
 	if c.downloadFolder != "" && !DirectoryExists(c.downloadFolder) {
 		return errors.New("Download folder does not exist")
 	}
 	// logging configuration
-	c.logLevel = conf.GetInt("tracker.log_level")
+	c.logLevel = v.GetInt("tracker.log_level")
 	// pushover configuration
-	c.pushover.token = conf.GetString("pushover.token")
-	c.pushover.user = conf.GetString("pushover.user")
+	c.pushover.token = v.GetString("pushover.token")
+	c.pushover.user = v.GetString("pushover.user")
 	// gitlab pages configuration
-	c.gitlab.pagesGitURL = conf.GetString("gitlab.git")
-	c.gitlab.user = conf.GetString("gitlab.user")
-	c.gitlab.password = conf.GetString("gitlab.password")
+	c.gitlab.pagesGitURL = v.GetString("gitlab.git")
+	c.gitlab.user = v.GetString("gitlab.user")
+	c.gitlab.password = v.GetString("gitlab.password")
 	if c.gitlabPagesConfigured() {
 		repoNameParts := strings.Split(c.gitlab.pagesGitURL, "/")
 		c.gitlab.pagesURL = fmt.Sprintf("https://%s.gitlab.io/%s", c.gitlab.user, strings.Replace(repoNameParts[len(repoNameParts)-1], ".git", "", -1))
 	}
 	// web server configuration
-	c.webServer.allowDownloads = conf.GetBool("webserver.allow_downloads")
-	c.webServer.serveStats = conf.GetBool("webserver.serve_stats")
-	c.webServer.statsPassword = conf.GetString("webserver.stats_password")
-	c.webServer.token = conf.GetString("webserver.token")
-	c.webServer.hostname = conf.GetString("webserver.hostname")
-	c.webServer.portHTTP = conf.GetInt("webserver.http_port")
-	c.webServer.portHTTPS = conf.GetInt("webserver.https_port")
+	c.webServer.allowDownloads = v.GetBool("webserver.allow_downloads")
+	c.webServer.serveStats = v.GetBool("webserver.serve_stats")
+	c.webServer.statsPassword = v.GetString("webserver.stats_password")
+	c.webServer.token = v.GetString("webserver.token")
+	c.webServer.hostname = v.GetString("webserver.hostname")
+	c.webServer.portHTTP = v.GetInt("webserver.http_port")
+	c.webServer.portHTTPS = v.GetInt("webserver.https_port")
 	// filter configuration
-	for filter, info := range conf.GetStringMap("filters") {
+	for filter, info := range v.GetStringMap("filters") {
 		t := Filter{label: filter}
 		tinfo := info.(map[string]interface{})
 

@@ -154,9 +154,22 @@ func generateStats() error {
 
 func loadConfiguration() error {
 	newConf := &Config{}
-	if err := newConf.load(defaultConfigurationFile); err != nil {
-		logThis(errorLoadingConfig+err.Error(), NORMAL)
-		return err
+	// if this env variable is set, we're using the encrypted config file.
+	if os.Getenv(envPassphrase) != "" {
+		encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+		configBytes, err := decrypt(encryptedConfigurationFile, configPassphrase)
+		if err != nil {
+			return err
+		}
+		if err := newConf.loadFromBytes(configBytes); err != nil {
+			logThis(errorLoadingConfig+err.Error(), NORMAL)
+			return err
+		}
+	} else {
+		if err := newConf.load(defaultConfigurationFile); err != nil {
+			logThis(errorLoadingConfig+err.Error(), NORMAL)
+			return err
+		}
 	}
 	if conf.user != "" {
 		// if conf.user exists, the configuration had been loaded previously
