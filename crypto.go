@@ -112,5 +112,3 @@ type QuickCheckConfig struct {
 		Password string
 	}
 }
-
-

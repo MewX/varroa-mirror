@@ -154,9 +154,19 @@ func generateStats() error {
 
 func loadConfiguration() error {
 	newConf := &Config{}
-	// if this env variable is set, we're using the encrypted config file.
-	if os.Getenv(envPassphrase) != "" {
-		encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+
+	// if using encrypted file
+	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+	if FileExists(encryptedConfigurationFile) && !FileExists(defaultConfigurationFile) {
+		// if this env variable is set, we're using the encrypted config file and already have the passphrase
+		if !inDaemon && os.Getenv(envPassphrase) == "" {
+			// getting passphrase from user
+			passphrase, err := getPassphrase()
+			if err != nil {
+				return err
+			}
+			copy(configPassphrase[:], passphrase)
+		}
 		configBytes, err := decrypt(encryptedConfigurationFile, configPassphrase)
 		if err != nil {
 			return err

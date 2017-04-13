@@ -333,7 +333,6 @@ func (c *Config) serveHTTPS() bool {
 	return false
 }
 
-
 func (c *Config) encrypt() error {
 	passphrase, err := getPassphrase()
 	if err != nil {

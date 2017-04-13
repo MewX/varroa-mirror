@@ -59,7 +59,7 @@ Commands:
 	backup:
 		backup user files (stats, history, configuration file) to a
 		timestamped zip file. Automatically triggered every day.
-		
+
 Configuration Commands:
 
 	show-filters:

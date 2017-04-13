@@ -1,8 +1,13 @@
 package main
 
+const (
+	errorGazelleRateLimitExceeded = "rate limit exceeded"
+)
+
 type GazelleGenericResponse struct {
 	Response interface{} `json:"response"`
 	Status   string      `json:"status"`
+	Error    string      `json:"error"`
 }
 
 type GazelleIndex struct {
