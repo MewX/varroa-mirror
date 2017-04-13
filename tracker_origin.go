@@ -18,7 +18,7 @@ type TrackerOriginJSON struct {
 	TimeOfDeath         int64  `json:"time_of_death"`
 }
 
-func (toc *TrackerOriginJSON) Save(path string, info *TrackerTorrentInfo) error {
+func (toc *TrackerOriginJSON) Save(path string, info TrackerTorrentInfo) error {
 	toc.Path = path
 	if FileExists(toc.Path) {
 		if err := toc.load(); err != nil {
