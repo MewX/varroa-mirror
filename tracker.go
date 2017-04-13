@@ -99,6 +99,9 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 		if r.Error == errorGazelleRateLimitExceeded {
 			logThis(errorJSONAPI+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
 			// calling again, waiting for the rate limiter again should do the trick.
+			// that way 2 limiter slots will have passed before the next call is made,
+			// the server should allow it.
+			<-limiter
 			return callJSONAPI(client, url)
 		}
 		return data, errors.New(errorAPIResponseStatus + r.Status)
