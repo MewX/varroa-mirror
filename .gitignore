@@ -1,6 +1,5 @@
 .idea/
 backup/
-img/
 watch/
 stats/
 certs/
@@ -8,8 +7,6 @@ archives/
 *.csv
 config*.yaml
 *.txt
-*.png
-*.svg
 *.pem
 *.enc
 log

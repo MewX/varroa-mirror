@@ -113,21 +113,4 @@ type QuickCheckConfig struct {
 	}
 }
 
-func encryptConfigurationFile() error {
-	passphrase, err := getPassphrase()
-	if err != nil {
-		return err
-	}
-	copy(configPassphrase[:], passphrase)
-	return encrypt(defaultConfigurationFile, configPassphrase)
-}
 
-func decryptConfigurationFile() error {
-	passphrase, err := getPassphrase()
-	if err != nil {
-		return err
-	}
-	copy(configPassphrase[:], passphrase)
-	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
-	return decryptAndSave(encryptedConfigurationFile, configPassphrase)
-}

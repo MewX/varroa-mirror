@@ -332,3 +332,23 @@ func (c *Config) serveHTTPS() bool {
 	}
 	return false
 }
+
+
+func (c *Config) encrypt() error {
+	passphrase, err := getPassphrase()
+	if err != nil {
+		return err
+	}
+	copy(configPassphrase[:], passphrase)
+	return encrypt(defaultConfigurationFile, configPassphrase)
+}
+
+func (c *Config) decrypt() error {
+	passphrase, err := getPassphrase()
+	if err != nil {
+		return err
+	}
+	copy(configPassphrase[:], passphrase)
+	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+	return decryptAndSave(encryptedConfigurationFile, configPassphrase)
+}

@@ -32,7 +32,7 @@ const (
 
 	infoUserFilesArchived = "User files backed up."
 	infoUsage             = "Before running a command that requires the daemon, run 'varroa start'."
-	infEncrypted          = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
+	infoEncrypted         = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
 	infoDecrypted         = "Configuration file has been decrypted to a plaintext YAML file."
 
 	pidFile       = "varroa_pid"
@@ -150,14 +150,14 @@ func main() {
 			}
 		}
 		if cli.encrypt {
-			if err := encryptConfigurationFile(); err != nil {
+			if err := conf.encrypt(); err != nil {
 				logThis(err.Error(), NORMAL)
 				return
 			}
-			logThis(infEncrypted, NORMAL)
+			logThis(infoEncrypted, NORMAL)
 		}
 		if cli.decrypt {
-			if err := decryptConfigurationFile(); err != nil {
+			if err := conf.decrypt(); err != nil {
 				logThis(err.Error(), NORMAL)
 				return
 			}
