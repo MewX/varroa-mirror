@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -49,104 +48,71 @@ const (
 	metadataDir               = "TrackerMetadata"
 )
 
-type OriginJSON struct {
-	Tracker             string
-	ID                  int
-	TimeSnatched        int64
-	LastUpdatedMetadata int64
-	IsAlive             bool
-	TimeOfDeath         int64
+func saveMetadata(info *TrackerTorrentInfo) {
+	completePath := filepath.Join(conf.downloadFolder, html.UnescapeString(info.folder))
+	// create metadata dir
+	if err := os.MkdirAll(filepath.Join(completePath, metadataDir), 0775); err != nil {
+		logThis(errorCreatingMetadataDir+err.Error(), NORMAL)
+		return
+	}
+	// creating or updating origin.json
+	origin := filepath.Join(completePath, metadataDir, originJSONFile)
+	originJSON := TrackerOriginJSON{}
+	if err := originJSON.Save(origin, info); err != nil {
+		logThis(errorWithOriginJSON+err.Error(), NORMAL)
+	}
+
+	// write tracker metadata to target folder
+	if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, trackerMetadataFile), info.fullJSON, 0666); err != nil {
+		logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+	} else {
+		logThis(metadataSaved+info.folder, VERBOSE)
+	}
+	// download tracker cover to target folder
+	if err := info.DownloadCover(filepath.Join(completePath, metadataDir, trackerCoverFile)); err != nil {
+		logThis(errorDownloadingTrackerCover+err.Error(), NORMAL)
+	} else {
+		logThis(coverSaved+info.folder, VERBOSE)
+	}
+	torrentGroupInfo, err := tracker.GetTorrentGroupInfo(info.groupID)
+	if err != nil {
+		logThis(fmt.Sprintf(errorRetrievingTorrentGroupInfo, info.groupID), NORMAL)
+	} else {
+		// write tracker artist metadata to target folder
+		if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, trackerTGroupMetadataFile), torrentGroupInfo.fullJSON, 0666); err != nil {
+			logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+		} else {
+			logThis(fmt.Sprintf(torrentGroupMetadataSaved, torrentGroupInfo.name, info.folder), VERBOSE)
+		}
+	}
+	// get artist info
+	for _, id := range info.ArtistIDs() {
+		artistInfo, err := tracker.GetArtistInfo(id)
+		if err != nil {
+			logThis(fmt.Sprintf(errorRetrievingArtistInfo, id), NORMAL)
+			break
+		}
+		// write tracker artist metadata to target folder
+		// making sure the artistInfo.name+jsonExt is a valid filename
+		if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, norma.Sanitize(artistInfo.name)+jsonExt), artistInfo.fullJSON, 0666); err != nil {
+			logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+		} else {
+			logThis(fmt.Sprintf(artistMetadataSaved, artistInfo.name, info.folder), VERBOSE)
+		}
+	}
 }
 
 func saveTrackerMetadata(info *TrackerTorrentInfo) {
 	if !conf.downloadFolderConfigured() {
 		return
 	}
-	go func() {
-		completePath := filepath.Join(conf.downloadFolder, html.UnescapeString(info.folder))
-		// create metadata dir
-		if err := os.MkdirAll(filepath.Join(completePath, metadataDir), 0775); err != nil {
-			logThis(errorCreatingMetadataDir+err.Error(), NORMAL)
-			return
-		}
-		// creating or updating origin.json
-		origin := filepath.Join(completePath, metadataDir, originJSONFile)
-		var originJSON *OriginJSON
-		var writeOrigin bool
-		if FileExists(origin) {
-			// updating metadata
-			b, err := ioutil.ReadFile(origin)
-			if err != nil {
-				logThis(errorWithOriginJSON+err.Error(), NORMAL)
-			} else {
-				if err := json.Unmarshal(b, &originJSON); err != nil {
-					logThis(errorWithOriginJSON+err.Error(), NORMAL)
-				} else {
-					if originJSON.ID == info.id && originJSON.Tracker == conf.url {
-						originJSON.LastUpdatedMetadata = time.Now().Unix()
-						writeOrigin = true
-					} else {
-						logThis(errorInfoNoMatchForOrigin+err.Error(), NORMAL)
-					}
-					// TODO if GetTorrentInfo errors out: origin.IsAlive = false and set TimeOfDeath
-				}
-			}
-		} else {
-			// creating origin
-			originJSON = &OriginJSON{Tracker: conf.url, ID: info.id, TimeSnatched: time.Now().Unix(), LastUpdatedMetadata: time.Now().Unix(), IsAlive: true}
-			writeOrigin = true
-		}
-		// writing origin.json
-		if writeOrigin {
-			b, err := json.MarshalIndent(originJSON, "", "    ")
-			if err != nil {
-				logThis(errorWithOriginJSON+err.Error(), NORMAL)
-			} else {
-				if err := ioutil.WriteFile(origin, b, 0644); err != nil {
-					logThis(errorWithOriginJSON+err.Error(), NORMAL)
-				}
-			}
-		}
-
-		// write tracker metadata to target folder
-		if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, trackerMetadataFile), info.fullJSON, 0666); err != nil {
-			logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
-		} else {
-			logThis(metadataSaved+info.folder, VERBOSE)
-		}
-		// download tracker cover to target folder
-		if err := info.DownloadCover(filepath.Join(completePath, metadataDir, trackerCoverFile)); err != nil {
-			logThis(errorDownloadingTrackerCover+err.Error(), NORMAL)
-		} else {
-			logThis(coverSaved+info.folder, VERBOSE)
-		}
-		torrentGroupInfo, err := tracker.GetTorrentGroupInfo(info.groupID)
-		if err != nil {
-			logThis(fmt.Sprintf(errorRetrievingTorrentGroupInfo, info.groupID), NORMAL)
-		} else {
-			// write tracker artist metadata to target folder
-			if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, trackerTGroupMetadataFile), torrentGroupInfo.fullJSON, 0666); err != nil {
-				logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
-			} else {
-				logThis(fmt.Sprintf(torrentGroupMetadataSaved, torrentGroupInfo.name, info.folder), VERBOSE)
-			}
-		}
-		// get artist info
-		for _, id := range info.ArtistIDs() {
-			artistInfo, err := tracker.GetArtistInfo(id)
-			if err != nil {
-				logThis(fmt.Sprintf(errorRetrievingArtistInfo, id), NORMAL)
-				break
-			}
-			// write tracker artist metadata to target folder
-			// making sure the artistInfo.name+jsonExt is a valid filename
-			if err := ioutil.WriteFile(filepath.Join(completePath, metadataDir, norma.Sanitize(artistInfo.name)+jsonExt), artistInfo.fullJSON, 0666); err != nil {
-				logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
-			} else {
-				logThis(fmt.Sprintf(artistMetadataSaved, artistInfo.name, info.folder), VERBOSE)
-			}
-		}
-	}()
+	if inDaemon {
+		go func() {
+			saveMetadata(info)
+		}()
+	} else {
+		saveMetadata(info)
+	}
 }
 
 func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error) {
