@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"html"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -29,30 +28,6 @@ const (
 
 	notSnatchingDuplicate = "Similar release already downloaded, and duplicates are not allowed"
 )
-
-func saveMetadata(info *TrackerTorrentInfo) {
-	if !conf.downloadFolderConfigured() {
-		return
-	}
-	completePath := filepath.Join(conf.downloadFolder, html.UnescapeString(info.folder), metadataDir)
-
-	rm := ReleaseMetadata{}
-	if err := rm.SaveFromTracker(completePath, info); err != nil {
-		logThis(errorWithMetadata+err.Error(), NORMAL)
-	} else {
-		logThis(infoAllMetadataSaved, VERBOSE)
-	}
-}
-
-func saveTrackerMetadata(info *TrackerTorrentInfo) {
-	if inDaemon {
-		go func() {
-			saveMetadata(info)
-		}()
-	} else {
-		saveMetadata(info)
-	}
-}
 
 func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error) {
 	// getting information
@@ -110,7 +85,7 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 						logThis(errorNotification+err.Error(), VERBOSE)
 					}
 					// save metadata once the download folder is created
-					saveTrackerMetadata(info)
+					go release.Metadata.SaveFromTracker(info)
 					// no need to consider other filters
 					break
 				}

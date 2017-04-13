@@ -232,8 +232,12 @@ func refreshMetadata(IDStrings []string) error {
 			info, err := tracker.GetTorrentInfo(r.TorrentID)
 			if err != nil {
 				logThis(errorCouldNotGetTorrentInfo, NORMAL)
+				break
+			}
+			if inDaemon {
+				go r.Metadata.SaveFromTracker(info)
 			} else {
-				saveTrackerMetadata(info)
+				r.Metadata.SaveFromTracker(info)
 			}
 			break
 		}

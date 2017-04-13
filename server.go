@@ -93,7 +93,11 @@ func snatchFromID(id string) (*Release, error) {
 		logThis(errorNotification+err.Error(), VERBOSE)
 	}
 	// save metadata
-	saveTrackerMetadata(info)
+	if inDaemon {
+		go release.Metadata.SaveFromTracker(info)
+	} else {
+		release.Metadata.SaveFromTracker(info)
+	}
 	return release, nil
 }
 

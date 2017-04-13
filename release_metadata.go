@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -18,7 +19,6 @@ const (
 	errorRetrievingTorrentGroupInfo = "Error getting torrent group info for %d"
 	errorWithOriginJSON             = "Error creating or updating origin.json: "
 	errorInfoNoMatchForOrigin       = "Error updating origin.json, no match for tracker and/or torrent ID: "
-	errorWithMetadata               = "Error retrieving metadata: "
 
 	infoAllMetadataSaved          = "All metadata saved."
 	infoMetadataSaved             = "Metadata saved to: "
@@ -54,10 +54,13 @@ func (rm *ReleaseMetadata) GenerateSummary() error {
 	return nil
 }
 
-
 // SaveFromTracker all of the associated metadata.
-func (rm *ReleaseMetadata) SaveFromTracker(folder string, info *TrackerTorrentInfo) error {
-	rm.Root = folder
+func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
+	if !conf.downloadFolderConfigured() {
+		return nil
+	}
+
+	rm.Root = filepath.Join(conf.downloadFolder, html.UnescapeString(info.folder), metadataDir)
 	rm.Info = *info
 
 	// create metadata dir if necessary
@@ -112,5 +115,6 @@ func (rm *ReleaseMetadata) SaveFromTracker(folder string, info *TrackerTorrentIn
 	} else {
 		logThis(infoCoverSaved+rm.Info.folder, VERBOSE)
 	}
+	logThis(infoAllMetadataSaved, VERBOSE)
 	return nil
 }
