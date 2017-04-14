@@ -4,6 +4,44 @@ const (
 	errorGazelleRateLimitExceeded = "rate limit exceeded"
 )
 
+func getGazelleReleaseType(value int) string {
+	switch value {
+	case 1:
+		return "Album"
+	case 3:
+		return "Soundtrack"
+	case 5:
+		return "EP"
+	case 6:
+		return" Anthology"
+	case 7:
+		return "Compilation"
+	case 9:
+		return "Single"
+	case 11:
+		return"Live album"
+	case 13:
+		return "Remix"
+	case 14:
+		return "Bootleg"
+	case 15:
+		return "Interview"
+	case 16:
+		return "Mixtape"
+	case 17:
+		return "Demo"
+	case 18:
+		return "Concert Recording"
+	case 19:
+		return "DJ Mix"
+	case 21:
+		return "Unknown"
+	}
+	return "Unknown value"
+}
+
+
+
 type GazelleGenericResponse struct {
 	Response interface{} `json:"response"`
 	Status   string      `json:"status"`

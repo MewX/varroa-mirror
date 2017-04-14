@@ -86,51 +86,19 @@ func (a *TrackerTorrentInfo) Release() *Release {
 		r.Artists = append(r.Artists, el.Name)
 	}
 	r.Title = gt.Response.Group.Name
-
 	if gt.Response.Torrent.Remastered {
 		r.Year = gt.Response.Torrent.RemasterYear
 	} else {
 		r.Year = gt.Response.Group.Year
 	}
-	switch gt.Response.Group.ReleaseType {
-	case 1:
-		r.ReleaseType = "Album"
-	case 3:
-		r.ReleaseType = "Soundtrack"
-	case 5:
-		r.ReleaseType = "EP"
-	case 6:
-		r.ReleaseType = "Anthology"
-	case 7:
-		r.ReleaseType = "Compilation"
-	case 9:
-		r.ReleaseType = "Single"
-	case 11:
-		r.ReleaseType = "Live album"
-	case 13:
-		r.ReleaseType = "Remix"
-	case 14:
-		r.ReleaseType = "Bootleg"
-	case 15:
-		r.ReleaseType = "Interview"
-	case 16:
-		r.ReleaseType = "Mixtape"
-	case 17:
-		r.ReleaseType = "Demo"
-	case 18:
-		r.ReleaseType = "Concert Recording"
-	case 19:
-		r.ReleaseType = "DJ Mix"
-	case 21:
-		r.ReleaseType = "Unknown"
-	}
+	r.ReleaseType = getGazelleReleaseType(gt.Response.Group.ReleaseType)
 	r.Format = gt.Response.Torrent.Format
 	r.Quality = gt.Response.Torrent.Encoding
 	r.HasLog = gt.Response.Torrent.HasLog
 	r.HasCue = gt.Response.Torrent.HasCue
 	r.IsScene = gt.Response.Torrent.Scene
 	r.Source = gt.Response.Torrent.Media
-	// found only in Artist API call... r.tags =
+	r.Tags = gt.Response.Group.Tags
 	// r.url =
 	// r.torrentURL =
 	r.TorrentID = fmt.Sprintf("%d", gt.Response.Torrent.ID)

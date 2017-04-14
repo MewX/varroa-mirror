@@ -1,12 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 	"github.com/subosito/norma"
 )
@@ -19,6 +24,8 @@ const (
 	errorRetrievingTorrentGroupInfo = "Error getting torrent group info for %d"
 	errorWithOriginJSON             = "Error creating or updating origin.json: "
 	errorInfoNoMatchForOrigin       = "Error updating origin.json, no match for tracker and/or torrent ID: "
+	errorGeneratingUserMetadataJSON = "Error generating user metadata JSON: "
+	errorGeneratingSummary          = "Error generating metadata summary: "
 
 	infoAllMetadataSaved          = "All metadata saved."
 	infoMetadataSaved             = "Metadata saved to: "
@@ -31,6 +38,8 @@ const (
 	trackerTGroupMetadataFile = "ReleaseGroup.json"
 	trackerCoverFile          = "Cover"
 	metadataDir               = "TrackerMetadata"
+	summaryFile               = "Release.md"
+	trackPattern              = `(.*){{{(\d*)}}}`
 )
 
 type ReleaseMetadata struct {
@@ -39,19 +48,90 @@ type ReleaseMetadata struct {
 	Info    TrackerTorrentInfo
 	Group   TrackerTorrentGroupInfo
 	Origin  TrackerOriginJSON
-	// ... ?
+	Summary ReleaseInfo
 }
 
 func (rm *ReleaseMetadata) Load(folder string) error {
 	rm.Root = folder
-	// TODO load all JSON , folder == release.folder
+	// TODO load all JSON , folder == release.folder + metadataDir
 	// TODO load custom file for the user to set new information or force existing information to new values
 	return nil
 }
 
-func (rm *ReleaseMetadata) GenerateSummary() error {
-	// TODO generate Summary.md
+func (rm *ReleaseMetadata) Synthetize() error {
+	// TODO: load all JSONs or check they're loaded
+
+	// fill rm.Summary
+	var info GazelleTorrent
+	if unmarshalErr := json.Unmarshal(rm.Info.fullJSON, &info.Response); unmarshalErr != nil {
+		logThis("Error parsing torrent info JSON", NORMAL)
+		return nil
+	}
+	rm.Summary.Title = info.Response.Group.Name
+	allArtists := info.Response.Group.MusicInfo.Artists
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.Composers...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.Conductor...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.Dj...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.Producer...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.RemixedBy...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.With...)
+	for _, a := range allArtists {
+		rm.Summary.Artists = append(rm.Summary.Artists, ReleaseInfoArtist{ID: a.ID, Name:a.Name})
+	}
+	rm.Summary.CoverPath = trackerCoverFile + filepath.Ext(info.Response.Group.WikiImage)
+	rm.Summary.Tags = info.Response.Group.Tags
+	rm.Summary.ReleaseType = getGazelleReleaseType(info.Response.Group.ReleaseType)
+	rm.Summary.Format = info.Response.Torrent.Format
+	rm.Summary.Source = info.Response.Torrent.Media
+	// TODO add if cue/log/logscore + scene
+	rm.Summary.Quality = info.Response.Torrent.Encoding
+	rm.Summary.Year = info.Response.Group.Year
+	rm.Summary.RemasterYear = info.Response.Torrent.RemasterYear
+	rm.Summary.RemasterLabel = info.Response.Torrent.RemasterRecordLabel
+	rm.Summary.RemasterCatalogNumber = info.Response.Torrent.RemasterCatalogueNumber
+	rm.Summary.RecordLabel = info.Response.Group.RecordLabel
+	rm.Summary.CatalogNumber = info.Response.Group.CatalogueNumber
+	rm.Summary.EditionName = info.Response.Torrent.RemasterTitle
+
+	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
+	rm.Summary.Lineage = append(rm.Summary.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: info.Response.Torrent.Description})
+
+	r := regexp.MustCompile(trackPattern)
+	files := strings.Split(info.Response.Torrent.FileList, "|||")
+	for _, f := range files {
+		track := ReleaseInfoTrack{}
+		hits := r.FindAllStringSubmatch(f, -1)
+		if len(hits) != 0 {
+			// TODO instead of path, actually find the title
+			track.Title = hits[0][1]
+			size, _ := strconv.ParseUint(hits[0][2], 10, 64)
+			track.Size = humanize.IBytes(size)
+			rm.Summary.Tracks = append(rm.Summary.Tracks, track)
+			// TODO Duration  + Disc + number
+		} else {
+			logThis("Could not parse filelist.", NORMAL)
+		}
+
+	}
+	// TODO TotalTime
+
+	rm.Summary.TrackerURL = conf.url + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
+	// TODO de-wikify
+	rm.Summary.Description = info.Response.Group.WikiBody
+
+	// origin
+	rm.Summary.LastUpdated = rm.Origin.LastUpdatedMetadata
+	rm.Summary.IsAlive = rm.Origin.IsAlive
+
 	return nil
+}
+
+func (rm *ReleaseMetadata) GenerateSummary() error {
+	if err := rm.Synthetize(); err != nil {
+		return err
+	}
+	md := rm.Summary.toMD()
+	return ioutil.WriteFile(filepath.Join(rm.Root, summaryFile), []byte(md), 0644)
 }
 
 // SaveFromTracker all of the associated metadata.
@@ -108,6 +188,14 @@ func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
 		} else {
 			logThis(fmt.Sprintf(infoArtistMetadataSaved, artistInfo.name, rm.Info.folder), VERBOSE)
 		}
+	}
+	// generate blank user metadata json
+	if err := rm.Summary.toJSON(rm.Root); err != nil {
+		logThis(errorGeneratingUserMetadataJSON+err.Error(), NORMAL)
+	}
+	// generate summary
+	if err := rm.GenerateSummary(); err != nil {
+		logThis(errorGeneratingSummary+err.Error(), NORMAL)
 	}
 	// download tracker cover to target folder
 	if err := info.DownloadCover(filepath.Join(rm.Root, trackerCoverFile)); err != nil {
