@@ -44,9 +44,9 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 		var downloadedInfo bool
 		var downloadedTorrent bool
 		var info *TrackerTorrentInfo
-		for _, filter := range conf.filters {
+		for _, filter := range env.config.filters {
 			// checking if duplicate
-			if !filter.allowDuplicate && history.HasDupe(release) {
+			if !filter.allowDuplicate && env.history.HasDupe(release) {
 				logThis(notSnatchingDuplicate, VERBOSE)
 				continue
 			}
@@ -62,14 +62,14 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 					logThis(info.String(), VERBOSE)
 				}
 				// else check other criteria
-				if release.HasCompatibleTrackerInfo(filter, conf.blacklistedUploaders, info) {
+				if release.HasCompatibleTrackerInfo(filter, env.config.blacklistedUploaders, info) {
 					logThis(" -> "+release.ShortString()+" triggered filter "+filter.label+", snatching.", NORMAL)
 					if err := tracker.Download(release); err != nil {
 						return nil, errors.New(errorDownloadingTorrent + err.Error())
 					}
 					downloadedTorrent = true
 					// move to relevant watch directory
-					destination := conf.defaultDestinationFolder
+					destination := env.config.defaultDestinationFolder
 					if filter.destinationFolder != "" {
 						destination = filter.destinationFolder
 					}
@@ -77,11 +77,11 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 						return nil, errors.New(errorCouldNotMoveTorrent + err.Error())
 					}
 					// adding to history
-					if err := history.SnatchHistory.Add(release, filter.label); err != nil {
+					if err := env.history.SnatchHistory.Add(release, filter.label); err != nil {
 						logThis(errorAddingToHistory, NORMAL)
 					}
 					// send notification
-					if err := notification.Send(filter.label + ": Snatched " + release.ShortString()); err != nil {
+					if err := env.notification.Send(filter.label + ": Snatched " + release.ShortString()); err != nil {
 						logThis(errorNotification+err.Error(), VERBOSE)
 					}
 					// save metadata once the download folder is created
@@ -106,37 +106,37 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 }
 
 func ircHandler() {
-	IRCClient := irc.IRC(conf.irc.botName, conf.user)
-	IRCClient.UseTLS = conf.irc.SSL
-	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: conf.irc.SSLSkipVerify}
+	IRCClient := irc.IRC(env.config.irc.botName, env.config.user)
+	IRCClient.UseTLS = env.config.irc.SSL
+	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: env.config.irc.SSLSkipVerify}
 	IRCClient.AddCallback("001", func(e *irc.Event) {
-		IRCClient.Privmsg("NickServ", "IDENTIFY "+conf.irc.nickServPassword)
-		IRCClient.Privmsg(conf.irc.announcer, fmt.Sprintf("enter %s %s %s", conf.irc.announceChannel, conf.user, conf.irc.key))
+		IRCClient.Privmsg("NickServ", "IDENTIFY "+env.config.irc.nickServPassword)
+		IRCClient.Privmsg(env.config.irc.announcer, fmt.Sprintf("enter %s %s %s", env.config.irc.announceChannel, env.config.user, env.config.irc.key))
 	})
 	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
-		if e.Nick != conf.irc.announcer {
+		if e.Nick != env.config.irc.announcer {
 			return // spam
 		}
 		// e.Arguments's first element is the message's recipient, the second is the actual message
 		switch e.Arguments[0] {
-		case conf.irc.botName:
+		case env.config.irc.botName:
 			// if sent to the bot, it's now ok to join the announce channel
 			// waiting for the announcer bot to actually invite us
 			time.Sleep(100 * time.Millisecond)
-			IRCClient.Join(conf.irc.announceChannel)
-		case conf.irc.announceChannel:
+			IRCClient.Join(env.config.irc.announceChannel)
+		case env.config.irc.announceChannel:
 			// if sent to the announce channel, it's a new release
-			if !disabledAutosnatching {
+			if !env.disabledAutosnatching {
 				announced := e.Message()
 				logThis("++ Announced: "+announced, VERBOSE)
-				if _, err := analyzeAnnounce(announced, tracker); err != nil {
+				if _, err := analyzeAnnounce(announced, env.tracker); err != nil {
 					logThis(errorDealingWithAnnounce+err.Error(), VERBOSE)
 					return
 				}
 			}
 		}
 	})
-	err := IRCClient.Connect(conf.irc.server)
+	err := IRCClient.Connect(env.config.irc.server)
 	if err != nil {
 		logThis(errorConnectingToIRC+err.Error(), NORMAL)
 		return

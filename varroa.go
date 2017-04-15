@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"syscall"
@@ -40,36 +39,17 @@ const (
 )
 
 var (
-	daemonContext = &daemon.Context{
-		PidFileName: pidFile,
-		PidFilePerm: 0644,
-		LogFileName: "log",
-		LogFilePerm: 0640,
-		WorkDir:     "./",
-		Umask:       0002,
-	}
-	conf         = &Config{}
-	notification = &Notification{}
-	history      = &History{}
-	serverHTTP   = &http.Server{}
-	serverHTTPS  = &http.Server{}
-	tracker      = &GazelleTracker{}
-
-	// disable  autosnatching
-	disabledAutosnatching = false
-	// current command expects output
-	expectedOutput = false
-	// websocket is open and waiting for input
-	websocketOutput = false
-	// is only true if we're in the daemon
-	inDaemon         = false
-	configPassphrase = make([]byte, 32)
+	env *Environment
 )
 
 type boolFlag bool
 
 func (b boolFlag) IsSet() bool {
 	return bool(b)
+}
+
+func init() {
+	env = NewEnvironment()
 }
 
 func main() {
@@ -85,7 +65,7 @@ func main() {
 
 	if !daemon.WasReborn() {
 		// here we're expecting output
-		expectedOutput = true
+		env.expectedOutput = true
 	}
 
 	// launching daemon
@@ -96,8 +76,8 @@ func main() {
 			return
 		}
 		// daemonizing process
-		daemonContext.Args = os.Args
-		child, err := daemonContext.Reborn()
+		env.daemon.Args = os.Args
+		child, err := env.daemon.Reborn()
 		if err != nil {
 			logThis(errorGettingDaemonContext+err.Error(), NORMAL)
 			return
@@ -110,7 +90,7 @@ func main() {
 		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
 		//defer daemonContext.Release()
 		logThis("+ varroa musica started", NORMAL)
-		inDaemon = true
+		env.inDaemon = true
 		// setting up for the daemon
 		if err := settingUp(); err != nil {
 			logThis(errorSettingUp+err.Error(), NORMAL)
@@ -145,19 +125,19 @@ func main() {
 				return
 			}
 			fmt.Print("Filters found in configuration file: \n\n")
-			for _, f := range conf.filters {
+			for _, f := range env.config.filters {
 				fmt.Println(f)
 			}
 		}
 		if cli.encrypt {
-			if err := conf.encrypt(); err != nil {
+			if err := env.config.encrypt(); err != nil {
 				logThis(err.Error(), NORMAL)
 				return
 			}
 			logThis(infoEncrypted, NORMAL)
 		}
 		if cli.decrypt {
-			if err := conf.decrypt(); err != nil {
+			if err := env.config.decrypt(); err != nil {
 				logThis(err.Error(), NORMAL)
 				return
 			}
@@ -169,8 +149,8 @@ func main() {
 	// assessing if daemon is running
 	var daemonIsUp bool
 	// trying to talk to existing daemon
-	daemonContext.Args = os.Args
-	d, searchErr := daemonContext.Search()
+	env.daemon.Args = os.Args
+	d, searchErr := env.daemon.Search()
 	if searchErr == nil {
 		daemonIsUp = true
 	}
@@ -187,7 +167,7 @@ func main() {
 			if err := daemon.SendCommands(d); err != nil {
 				logThis(errorSendingSignal+err.Error(), NORMAL)
 			}
-			if err := daemonContext.Release(); err != nil {
+			if err := env.daemon.Release(); err != nil {
 				fmt.Println(errorReleasingDaemon + err.Error())
 			}
 			if err := os.Remove(pidFile); err != nil {
@@ -250,18 +230,18 @@ func settingUp() error {
 		}
 	}
 	// init notifications with pushover
-	if conf.pushoverConfigured() {
-		notification.client = pushover.New(conf.pushover.token)
-		notification.recipient = pushover.NewRecipient(conf.pushover.user)
+	if env.config.pushoverConfigured() {
+		env.notification.client = pushover.New(env.config.pushover.token)
+		env.notification.recipient = pushover.NewRecipient(env.config.pushover.user)
 	}
 	// log in tracker
-	tracker = &GazelleTracker{rootURL: conf.url}
-	if err := tracker.Login(conf.user, conf.password); err != nil {
+	env.tracker = &GazelleTracker{rootURL: env.config.url}
+	if err := env.tracker.Login(env.config.user, env.config.password); err != nil {
 		return err
 	}
 	logThis("Logged in tracker.", NORMAL)
 	// load history
-	return history.LoadAll(statsFile, historyFile)
+	return env.history.LoadAll(statsFile, historyFile)
 }
 
 func savePassphraseForDaemon() error {
@@ -274,8 +254,8 @@ func savePassphraseForDaemon() error {
 				return errors.New(errorGettingPassphrase + err.Error())
 			}
 			// testing
-			copy(configPassphrase[:], stringPass)
-			configBytes, err := decrypt(encryptedConfigurationFile, configPassphrase)
+			copy(env.configPassphrase[:], stringPass)
+			configBytes, err := decrypt(encryptedConfigurationFile, env.configPassphrase)
 			if err != nil {
 				return errors.New(errorLoadingConfig + err.Error())
 			}
@@ -294,7 +274,7 @@ func savePassphraseForDaemon() error {
 		// getting passphrase from env if necessary
 		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
 			passphrase := os.Getenv(envPassphrase)
-			copy(configPassphrase[:], passphrase)
+			copy(env.configPassphrase[:], passphrase)
 		}
 	}
 	return nil

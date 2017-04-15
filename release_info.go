@@ -6,11 +6,10 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"regexp"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -179,7 +178,7 @@ func (ri *ReleaseInfo) fromGazelleInfo(info GazelleTorrent) error {
 
 	}
 	// TODO TotalTime
-	ri.TrackerURL = conf.url + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
+	ri.TrackerURL = env.config.url + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
 	// TODO de-wikify
 	ri.Description = info.Response.Group.WikiBody
 	return nil
@@ -221,7 +220,7 @@ func (ri *ReleaseInfo) toMD() string {
 	// general output
 	md := fmt.Sprintf(mdTemplate, artists, ri.Title, ri.Year, ri.CoverPath, strings.Join(ri.Tags, ", "),
 		ri.ReleaseType, ri.RecordLabel, ri.CatalogNumber, ri.Source, remaster, ri.Format, ri.Quality, tracklist,
-		lineage, time.Now().Format("2006-01-02 15:04"), isAlive, conf.url, ri.TrackerURL)
+		lineage, time.Now().Format("2006-01-02 15:04"), isAlive, env.config.url, ri.TrackerURL)
 	return md
 }
 

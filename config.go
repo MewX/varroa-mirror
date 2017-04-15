@@ -338,8 +338,8 @@ func (c *Config) encrypt() error {
 	if err != nil {
 		return err
 	}
-	copy(configPassphrase[:], passphrase)
-	return encrypt(defaultConfigurationFile, configPassphrase)
+	copy(env.configPassphrase[:], passphrase)
+	return encrypt(defaultConfigurationFile, env.configPassphrase)
 }
 
 func (c *Config) decrypt() error {
@@ -347,7 +347,7 @@ func (c *Config) decrypt() error {
 	if err != nil {
 		return err
 	}
-	copy(configPassphrase[:], passphrase)
+	copy(env.configPassphrase[:], passphrase)
 	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
-	return decryptAndSave(encryptedConfigurationFile, configPassphrase)
+	return decryptAndSave(encryptedConfigurationFile, env.configPassphrase)
 }

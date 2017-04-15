@@ -22,7 +22,7 @@ func TestCrypto(t *testing.T) {
 	passphrase = make([]byte, 32)
 	copy(passphrase[:], "passphrase")
 
-	check.Nil(conf.load(testYAML))
+	check.Nil(env.config.load(testYAML))
 
 	// 1. encrypt
 

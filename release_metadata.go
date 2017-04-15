@@ -75,11 +75,11 @@ func (rm *ReleaseMetadata) GenerateSummary() error {
 
 // SaveFromTracker all of the associated metadata.
 func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
-	if !conf.downloadFolderConfigured() {
+	if !env.config.downloadFolderConfigured() {
 		return nil
 	}
 
-	rm.Root = filepath.Join(conf.downloadFolder, html.UnescapeString(info.folder), metadataDir)
+	rm.Root = filepath.Join(env.config.downloadFolder, html.UnescapeString(info.folder), metadataDir)
 	rm.Info = *info
 
 	// create metadata dir if necessary
@@ -100,7 +100,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
 		logThis(infoMetadataSaved+rm.Info.folder, VERBOSE)
 	}
 	// get torrent group info
-	torrentGroupInfo, err := tracker.GetTorrentGroupInfo(rm.Info.groupID)
+	torrentGroupInfo, err := env.tracker.GetTorrentGroupInfo(rm.Info.groupID)
 	if err != nil {
 		logThis(fmt.Sprintf(errorRetrievingTorrentGroupInfo, rm.Info.groupID), NORMAL)
 	} else {
@@ -114,7 +114,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
 	}
 	// get artist info
 	for _, id := range info.ArtistIDs() {
-		artistInfo, err := tracker.GetArtistInfo(id)
+		artistInfo, err := env.tracker.GetArtistInfo(id)
 		if err != nil {
 			logThis(fmt.Sprintf(errorRetrievingArtistInfo, id), NORMAL)
 			continue

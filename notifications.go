@@ -16,15 +16,15 @@ type Notification struct {
 }
 
 func (n *Notification) Send(message string) error {
-	if !conf.pushoverConfigured() {
+	if !env.config.pushoverConfigured() {
 		return nil
 	}
 	if n.client == nil || n.recipient == nil {
 		return errors.New("Could not send notification: " + message)
 	}
 	var pushoverMessage *pushover.Message
-	if conf.gitlabPagesConfigured() {
-		pushoverMessage = &pushover.Message{Message: message, Title: varroa, URL: conf.gitlab.pagesURL, URLTitle: "Graphs"}
+	if env.config.gitlabPagesConfigured() {
+		pushoverMessage = &pushover.Message{Message: message, Title: varroa, URL: env.config.gitlab.pagesURL, URLTitle: "Graphs"}
 	} else {
 		pushoverMessage = pushover.NewMessageWithTitle(message, varroa)
 	}

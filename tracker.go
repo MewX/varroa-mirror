@@ -42,22 +42,17 @@ const (
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
 )
 
-var (
-	// channel of allowedAPICallsByPeriod elements, which will rate-limit the requests
-	limiter = make(chan bool, allowedAPICallsByPeriod)
-)
-
 func apiCallRateLimiter() {
 	// fill the rate limiter the first time
 	for i := 0; i < allowedAPICallsByPeriod; i++ {
-		limiter <- true
+		env.limiter <- true
 	}
 	// every apiCallsPeriodS, refill the limiter channel
 	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
 	Loop:
 		for i := 0; i < allowedAPICallsByPeriod; i++ {
 			select {
-			case limiter <- true:
+			case env.limiter <- true:
 			default:
 				// if channel is full, do nothing and wait for the next tick
 				break Loop
@@ -71,7 +66,7 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 		return []byte{}, errors.New(errorNotLoggedIn)
 	}
 	// wait for rate limiter
-	<-limiter
+	<-env.limiter
 	// get request
 	resp, err := client.Get(url)
 	if err != nil {
@@ -101,7 +96,7 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 			// calling again, waiting for the rate limiter again should do the trick.
 			// that way 2 limiter slots will have passed before the next call is made,
 			// the server should allow it.
-			<-limiter
+			<-env.limiter
 			return callJSONAPI(client, url)
 		}
 		return data, errors.New(errorAPIResponseStatus + r.Status)
@@ -160,7 +155,7 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 	if err != nil {
 		logThis(errorJSONAPI+err.Error(), NORMAL)
 		// if error, try once again after logging in again
-		if loginErr := t.Login(conf.user, conf.password); loginErr == nil {
+		if loginErr := t.Login(env.config.user, env.config.password); loginErr == nil {
 			return callJSONAPI(t.client, url)
 		}
 		return nil, errors.New("Could not log in and send get request to " + url)

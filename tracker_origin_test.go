@@ -16,7 +16,7 @@ func TestTrackerOriginJSON(t *testing.T) {
 	check := assert.New(t)
 
 	testDir := "test"
-	conf.url = "http://azerty.com"
+	env.config.url = "http://azerty.com"
 	info := TrackerTorrentInfo{id: 1234}
 	destFile := filepath.Join(testDir, "test_origin.json")
 
@@ -29,7 +29,7 @@ func TestTrackerOriginJSON(t *testing.T) {
 	check.Equal(info.id, toj.ID)
 	check.NotEqual(0, toj.TimeSnatched)
 	check.NotEqual(0, toj.LastUpdatedMetadata)
-	
+
 	defer os.Remove(destFile)
 
 	// reading file that was created and comparing with expected
@@ -39,7 +39,7 @@ func TestTrackerOriginJSON(t *testing.T) {
 	err = json.Unmarshal(b, &tojCheck)
 	check.Nil(err)
 	check.Equal(toj.ID, tojCheck.ID)
-	check.Equal(conf.url, tojCheck.Tracker)
+	check.Equal(env.config.url, tojCheck.Tracker)
 	check.True(tojCheck.IsAlive)
 	check.Equal(toj.TimeSnatched, tojCheck.TimeSnatched)
 	check.Equal(toj.LastUpdatedMetadata, tojCheck.LastUpdatedMetadata)

@@ -78,12 +78,12 @@ func awaitOrders() {
 			break
 		}
 		// output back things to CLI
-		expectedOutput = true
+		env.expectedOutput = true
 
 		// this goroutine will send back messages to the instance that sent the command
 		go func() {
 			for {
-				messageToLog := <-sendBackToCLI
+				messageToLog := <-env.sendBackToCLI
 				// writing to socket with a separator, so that the other instance, reading more slowly,
 				// can separate messages that might have been written one after the other
 				if _, err = c.Write([]byte(messageToLog + unixSocketMessageSeparator)); err != nil {
@@ -135,11 +135,11 @@ func awaitOrders() {
 				logThis("Error checking log: "+err.Error(), NORMAL)
 			}
 		}
-		sendBackToCLI <- "stop"
+		env.sendBackToCLI <- "stop"
 		// waiting for the other instance to be warned that communication is over
 		<-endThisConnection
 		c.Close()
-		expectedOutput = false
+		env.expectedOutput = false
 		if stopEverything {
 			// shutting down the daemon, exiting look for socket cleanup
 			break
@@ -149,7 +149,7 @@ func awaitOrders() {
 
 func generateStats() error {
 	logThis("Generating stats", VERBOSE)
-	return history.GenerateGraphs()
+	return env.history.GenerateGraphs()
 }
 
 func loadConfiguration() error {
@@ -159,15 +159,15 @@ func loadConfiguration() error {
 	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
 	if FileExists(encryptedConfigurationFile) && !FileExists(defaultConfigurationFile) {
 		// if this env variable is set, we're using the encrypted config file and already have the passphrase
-		if !inDaemon && os.Getenv(envPassphrase) == "" {
+		if !env.inDaemon && os.Getenv(envPassphrase) == "" {
 			// getting passphrase from user
 			passphrase, err := getPassphrase()
 			if err != nil {
 				return err
 			}
-			copy(configPassphrase[:], passphrase)
+			copy(env.configPassphrase[:], passphrase)
 		}
-		configBytes, err := decrypt(encryptedConfigurationFile, configPassphrase)
+		configBytes, err := decrypt(encryptedConfigurationFile, env.configPassphrase)
 		if err != nil {
 			return err
 		}
@@ -181,32 +181,32 @@ func loadConfiguration() error {
 			return err
 		}
 	}
-	if conf.user != "" {
+	if env.config.user != "" {
 		// if conf.user exists, the configuration had been loaded previously
 		logThis("Configuration reloaded.", NORMAL)
 	}
-	conf = newConf
-	if disabledAutosnatching {
-		disabledAutosnatching = false
+	env.config = newConf
+	if env.disabledAutosnatching {
+		env.disabledAutosnatching = false
 		logThis("Autosnatching enabled.", NORMAL)
 	}
 	// if server up
 	thingsWentOK := true
 	serverWasUp := false
-	if serverHTTP.Addr != "" {
+	if env.serverHTTP.Addr != "" {
 		serverWasUp = true
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := serverHTTP.Shutdown(ctx); err != nil {
+		if err := env.serverHTTP.Shutdown(ctx); err != nil {
 			logThis(errorShuttingDownServer+err.Error(), NORMAL)
 			thingsWentOK = false
 		}
 	}
-	if serverHTTPS.Addr != "" {
+	if env.serverHTTPS.Addr != "" {
 		serverWasUp = true
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := serverHTTPS.Shutdown(ctx); err != nil {
+		if err := env.serverHTTPS.Shutdown(ctx); err != nil {
 			logThis(errorShuttingDownServer+err.Error(), NORMAL)
 			thingsWentOK = false
 		}
@@ -224,17 +224,17 @@ func refreshMetadata(IDStrings []string) error {
 	}
 	// find ids in history
 	var foundAtLeastOne bool
-	for _, r := range history.SnatchedReleases {
+	for _, r := range env.history.SnatchedReleases {
 		if StringInSlice(r.TorrentID, IDStrings) {
 			foundAtLeastOne = true
 			logThis("Found release with ID "+r.TorrentID+" in history: "+r.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from RED.
-			info, err := tracker.GetTorrentInfo(r.TorrentID)
+			info, err := env.tracker.GetTorrentInfo(r.TorrentID)
 			if err != nil {
 				logThis(errorCouldNotGetTorrentInfo, NORMAL)
 				break
 			}
-			if inDaemon {
+			if env.inDaemon {
 				go r.Metadata.SaveFromTracker(info)
 			} else {
 				r.Metadata.SaveFromTracker(info)
@@ -264,7 +264,7 @@ func snatchTorrents(IDStrings []string) error {
 }
 
 func checkLog(logPath string) error {
-	score, err := tracker.GetLogScore(logPath)
+	score, err := env.tracker.GetLogScore(logPath)
 	if err != nil {
 		return errors.New("Error getting log score: " + err.Error())
 	}
