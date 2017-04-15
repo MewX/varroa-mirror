@@ -13,13 +13,13 @@ func getGazelleReleaseType(value int) string {
 	case 5:
 		return "EP"
 	case 6:
-		return" Anthology"
+		return "Anthology"
 	case 7:
 		return "Compilation"
 	case 9:
 		return "Single"
 	case 11:
-		return"Live album"
+		return "Live album"
 	case 13:
 		return "Remix"
 	case 14:
@@ -39,8 +39,6 @@ func getGazelleReleaseType(value int) string {
 	}
 	return "Unknown value"
 }
-
-
 
 type GazelleGenericResponse struct {
 	Response interface{} `json:"response"`

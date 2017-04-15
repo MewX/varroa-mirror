@@ -5,41 +5,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"strings"
+	"time"
+
+	"github.com/pkg/errors"
 )
 
 /*
 Template:
-
-	## Release
-
-	Edition: EDITION NAME
-	Remaster: REMASTER
-	Remaster Year: XXX
-	Source: WEB/CD/...
-
-	## Audio
-
-	Format: XXX
-	Quality: XXX
-
-	## Tracklist
-
-	DISC - NUMBER - Title (Time)
-
-	Total time: XXX
-
-	## Lineage
-
-	Qobuz: xxx
-	Bandcamp: xxx
-	Discogs: xxx
-	...
-
-	## Tracker Description
-
-	xxx
-
 	## Source
 
 	Automatically generated on TIMESTAMP.
@@ -50,6 +24,9 @@ Template:
 const (
 	userMetadataJSONFile = "user_metadata.json"
 
+	// TODO: add track durations + total duration
+	// TODO: lineage: Discogs: XXX; Qobuz: XXX; etc...
+	// TODO: add last.fm/discogs/etc info too?
 	mdTemplate = `# %s - %s (%d)
 
 **Cover:** %s
@@ -64,10 +41,39 @@ const (
 
 **Catalog Number:** %s
 
+**Source:** %s
+%s
+## Audio
+
+**Format:** %s
+
+**Quality:** %s
+
 ## Tracklist
 
 %s
 
+## Lineage
+
+%s
+
+## Origin
+
+Automatically generated on %s.
+
+Torrent is %s on %s.
+
+Direct link: %s
+
+`
+	remasterTemplate = `
+**Remaster Label**: %s
+
+**Remaster Catalog Number:** %s
+
+**Remaster Year:** %d
+
+**Edition name:** %s
 
 `
 )
@@ -119,12 +125,12 @@ type ReleaseInfo struct {
 	IsAlive               bool
 }
 
-// TODO new command varroa info ID/InfoHash/folder outputs this.
 func (ri *ReleaseInfo) toMD() string {
 	if ri.Title == "" {
 		return "No metadata found"
 	}
-
+	// artists
+	// TODO separate main from guests
 	artists := ""
 	for i, a := range ri.Artists {
 		artists += a.Name
@@ -132,27 +138,40 @@ func (ri *ReleaseInfo) toMD() string {
 			artists += ", "
 		}
 	}
+	// tracklist
 	tracklist := ""
 	for _, t := range ri.Tracks {
 		tracklist += t.String() + "\n"
 	}
-
+	// compile remaster info
+	remaster := ""
+	if ri.EditionName != "" || ri.RemasterYear != 0 {
+		remaster = fmt.Sprintf(remasterTemplate, ri.RemasterLabel, ri.RemasterCatalogNumber, ri.RemasterYear, ri.EditionName)
+	}
+	// lineage
+	lineage := ""
+	for _, l := range ri.Lineage {
+		lineage += fmt.Sprintf("**%s**: %s\n", l.Source, l.LinkOrDescription)
+	}
+	// alive
+	isAlive := "still registered"
+	if !ri.IsAlive {
+		isAlive = "unregistered"
+	}
+	// general output
 	md := fmt.Sprintf(mdTemplate, artists, ri.Title, ri.Year, ri.CoverPath, strings.Join(ri.Tags, ", "),
-		ri.ReleaseType, ri.RecordLabel, ri.CatalogNumber, tracklist)
-
-	// TODO return template
-
+		ri.ReleaseType, ri.RecordLabel, ri.CatalogNumber, ri.Source, remaster, ri.Format, ri.Quality, tracklist,
+		lineage, time.Now().Format("2006-01-02 15:04"), isAlive, conf.url, ri.TrackerURL)
 	return md
 }
 
-func (ri *ReleaseInfo) toJSON(folder string) error {
+func (ri *ReleaseInfo) writeUserJSON(folder string) error {
 	userJSON := filepath.Join(folder, userMetadataJSONFile)
 	if FileExists(userJSON) {
 		logThis("User metadata JSON already exists.", VERBOSE)
 		return nil
 	}
-
-	// TODO save as blank JSON, with no values. call it user_metadata.json
+	// save as blank JSON, with no values, for the user to force metadata values if needed.
 	blank := ReleaseInfo{}
 	blank.Artists = append(blank.Artists, ReleaseInfoArtist{})
 	blank.Tracks = append(blank.Tracks, ReleaseInfoTrack{})
@@ -164,8 +183,55 @@ func (ri *ReleaseInfo) toJSON(folder string) error {
 	return ioutil.WriteFile(userJSON, metadataJSON, 0644)
 }
 
-func (ri *ReleaseInfo) fromJSON() error {
-	// TODO load as JSON, to overwrite tracker value!
-
+func (ri *ReleaseInfo) loadUserJSON(folder string) error {
+	userJSON := filepath.Join(folder, userMetadataJSONFile)
+	if !FileExists(userJSON) {
+		logThis("User metadata JSON does not exist.", VERBOSE)
+		return nil
+	}
+	// loading user metadata file
+	userJSONBytes, err := ioutil.ReadFile(userJSON)
+	if err != nil {
+		return errors.New("Could not read user JSON.")
+	}
+	var userInfo *ReleaseInfo
+	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
+		logThis("Error parsing torrent info JSON", NORMAL)
+		return nil
+	}
+	//  overwrite tracker values if non-zero value found
+	s := reflect.ValueOf(ri).Elem()
+	s2 := reflect.ValueOf(userInfo).Elem()
+	for i := 0; i < s.NumField(); i++ {
+		f := s.Field(i)
+		f2 := s2.Field(i)
+		if f.Type().String() == "string" && f2.String() != "" {
+			f.Set(reflect.Value(f2))
+		}
+		if (f.Type().String() == "int" || f.Type().String() == "int64") && f2.Int() != 0 {
+			f.Set(reflect.Value(f2))
+		}
+	}
+	// more complicated types
+	if len(userInfo.Tags) != 0 {
+		ri.Tags = userInfo.Tags
+	}
+	// if artists are defined which are not blank
+	if len(userInfo.Artists) != 0 {
+		if userInfo.Artists[0].Name != "" {
+			ri.Artists = userInfo.Artists
+		}
+	}
+	if len(userInfo.Tracks) != 0 {
+		if userInfo.Tracks[0].Title != "" {
+			ri.Tracks = userInfo.Tracks
+		}
+	}
+	if len(userInfo.Lineage) != 0 {
+		if userInfo.Lineage[0].Source != "" {
+			ri.Lineage = userInfo.Lineage
+		}
+	}
+	// TODO: what to do with isAlive...
 	return nil
 }

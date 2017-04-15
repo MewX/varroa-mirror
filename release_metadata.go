@@ -76,7 +76,7 @@ func (rm *ReleaseMetadata) Synthetize() error {
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.RemixedBy...)
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.With...)
 	for _, a := range allArtists {
-		rm.Summary.Artists = append(rm.Summary.Artists, ReleaseInfoArtist{ID: a.ID, Name:a.Name})
+		rm.Summary.Artists = append(rm.Summary.Artists, ReleaseInfoArtist{ID: a.ID, Name: a.Name})
 	}
 	rm.Summary.CoverPath = trackerCoverFile + filepath.Ext(info.Response.Group.WikiImage)
 	rm.Summary.Tags = info.Response.Group.Tags
@@ -94,7 +94,9 @@ func (rm *ReleaseMetadata) Synthetize() error {
 	rm.Summary.EditionName = info.Response.Torrent.RemasterTitle
 
 	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
-	rm.Summary.Lineage = append(rm.Summary.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: info.Response.Torrent.Description})
+	if info.Response.Torrent.Description != "" {
+		rm.Summary.Lineage = append(rm.Summary.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: info.Response.Torrent.Description})
+	}
 
 	r := regexp.MustCompile(trackPattern)
 	files := strings.Split(info.Response.Torrent.FileList, "|||")
@@ -114,7 +116,6 @@ func (rm *ReleaseMetadata) Synthetize() error {
 
 	}
 	// TODO TotalTime
-
 	rm.Summary.TrackerURL = conf.url + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
 	// TODO de-wikify
 	rm.Summary.Description = info.Response.Group.WikiBody
@@ -123,7 +124,8 @@ func (rm *ReleaseMetadata) Synthetize() error {
 	rm.Summary.LastUpdated = rm.Origin.LastUpdatedMetadata
 	rm.Summary.IsAlive = rm.Origin.IsAlive
 
-	return nil
+	// load user info
+	return rm.Summary.loadUserJSON(rm.Root)
 }
 
 func (rm *ReleaseMetadata) GenerateSummary() error {
@@ -178,7 +180,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
 		artistInfo, err := tracker.GetArtistInfo(id)
 		if err != nil {
 			logThis(fmt.Sprintf(errorRetrievingArtistInfo, id), NORMAL)
-			break
+			continue
 		}
 		rm.Artists = append(rm.Artists, *artistInfo)
 		// write tracker artist metadata to target folder
@@ -190,7 +192,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
 		}
 	}
 	// generate blank user metadata json
-	if err := rm.Summary.toJSON(rm.Root); err != nil {
+	if err := rm.Summary.writeUserJSON(rm.Root); err != nil {
 		logThis(errorGeneratingUserMetadataJSON+err.Error(), NORMAL)
 	}
 	// generate summary

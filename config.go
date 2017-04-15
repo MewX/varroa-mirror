@@ -327,7 +327,7 @@ func (c *Config) serveHTTP() bool {
 
 func (c *Config) serveHTTPS() bool {
 	// valid https port, and at least one feature (serving stats and allowing downloads) is enabled, and we have a token and hostname
-	if c.webServer.portHTTPS > 1024 && c.webServer.hostname != "" && (c.webServer.serveStats || c.webServer.allowDownloads && c.webServer.token != "")   {
+	if c.webServer.portHTTPS > 1024 && c.webServer.hostname != "" && (c.webServer.serveStats || c.webServer.allowDownloads && c.webServer.token != "") {
 		return true
 	}
 	return false
