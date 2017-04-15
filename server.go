@@ -90,9 +90,7 @@ func snatchFromID(id string) (*Release, error) {
 		logThis(errorAddingToHistory, NORMAL)
 	}
 	// send notification
-	if err := env.notification.Send("Snatched with web interface: " + release.ShortString()); err != nil {
-		logThis(errorNotification+err.Error(), VERBOSE)
-	}
+	env.Notify("Snatched with web interface: " + release.ShortString())
 	// save metadata
 	if env.inDaemon {
 		go release.Metadata.SaveFromTracker(info)

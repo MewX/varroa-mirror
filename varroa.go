@@ -85,6 +85,7 @@ func main() {
 		go webServer(env.config, env.serverHTTP, env.serverHTTPS)
 		go awaitOrders()
 		go automaticBackup()
+
 		// wait until daemon is stopped.
 		env.WaitForDaemonStop()
 		return

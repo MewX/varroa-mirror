@@ -29,16 +29,12 @@ func manageStats(config *Config, tracker *GazelleTracker, previousStats *Tracker
 		logThis(errorGeneratingGraphs+err.Error(), NORMAL)
 	}
 	// send notification
-	if err := env.notification.Send("Current stats: " + stats.Progress(previousStats)); err != nil {
-		logThis(errorNotification+err.Error(), VERBOSE)
-	}
+	env.Notify("Current stats: " + stats.Progress(previousStats))
 	// if something is wrong, send notification and stop
 	if !stats.IsProgressAcceptable(previousStats, config.maxBufferDecreaseByPeriodMB) {
 		logThis(errorBufferDrop, NORMAL)
 		// sending notification
-		if err := env.notification.Send(errorBufferDrop); err != nil {
-			logThis(errorNotification+err.Error(), VERBOSE)
-		}
+		env.Notify(errorBufferDrop)
 		// stopping things
 		config.disabledAutosnatching = true
 	}

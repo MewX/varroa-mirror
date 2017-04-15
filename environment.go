@@ -130,6 +130,44 @@ func (e *Environment) StopDaemon(daemonProcess *os.Process) {
 	}
 }
 
+// SavePassphraseForDaemon save the encrypted configuration file passphrase to env if necessary.
+// In the daemon, retrieve that passphrase.
+func (e *Environment) SavePassphraseForDaemon() error {
+	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+	if !daemon.WasReborn() {
+		// if necessary, ask for passphrase and add to env
+		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
+			stringPass, err := getPassphrase()
+			if err != nil {
+				return errors.New(errorGettingPassphrase + err.Error())
+			}
+			// testing
+			copy(e.configPassphrase[:], stringPass)
+			configBytes, err := decrypt(encryptedConfigurationFile, e.configPassphrase)
+			if err != nil {
+				return errors.New(errorLoadingConfig + err.Error())
+			}
+			newConf := &Config{}
+			if err := newConf.loadFromBytes(configBytes); err != nil {
+				return errors.New(errorLoadingConfig + err.Error())
+
+			}
+			// saving to env for the daemon to pick up later
+			if err := os.Setenv(envPassphrase, stringPass); err != nil {
+				return errors.New(errorSettingEnv + err.Error())
+
+			}
+		}
+	} else {
+		// getting passphrase from env if necessary
+		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
+			passphrase := os.Getenv(envPassphrase)
+			copy(e.configPassphrase[:], passphrase)
+		}
+	}
+	return nil
+}
+
 // SetUp the Environment
 func (e *Environment) SetUp() error {
 	// load configuration
@@ -224,40 +262,23 @@ func (e *Environment) Reload() error {
 	return nil
 }
 
-// SavePassphraseForDaemon save the encrypted configuration file passphrase to env if necessary.
-// In the daemon, retrieve that passphrase.
-func (e *Environment) SavePassphraseForDaemon() error {
-	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
-	if !daemon.WasReborn() {
-		// if necessary, ask for passphrase and add to env
-		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
-			stringPass, err := getPassphrase()
-			if err != nil {
-				return errors.New(errorGettingPassphrase + err.Error())
-			}
-			// testing
-			copy(e.configPassphrase[:], stringPass)
-			configBytes, err := decrypt(encryptedConfigurationFile, e.configPassphrase)
-			if err != nil {
-				return errors.New(errorLoadingConfig + err.Error())
-			}
-			newConf := &Config{}
-			if err := newConf.loadFromBytes(configBytes); err != nil {
-				return errors.New(errorLoadingConfig + err.Error())
-
-			}
-			// saving to env for the daemon to pick up later
-			if err := os.Setenv(envPassphrase, stringPass); err != nil {
-				return errors.New(errorSettingEnv + err.Error())
-
+func (e *Environment) Notify(msg string) error {
+	notity := func() error {
+		if e.config.pushoverConfigured() {
+			if err := env.notification.Send(msg); err != nil {
+				logThis(errorNotification+err.Error(), VERBOSE)
+				return err
 			}
 		}
-	} else {
-		// getting passphrase from env if necessary
-		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
-			passphrase := os.Getenv(envPassphrase)
-			copy(e.configPassphrase[:], passphrase)
-		}
+		return nil
 	}
-	return nil
+	return e.runOrGo(notity)
+}
+
+func (e *Environment) runOrGo(f func() error) error {
+	if e.inDaemon {
+		go f()
+		return nil
+	}
+	return f()
 }
