@@ -29,7 +29,7 @@ const (
 	notSnatchingDuplicate = "Similar release already downloaded, and duplicates are not allowed"
 )
 
-func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error) {
+func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
 	hits := r.FindAllStringSubmatch(announced, -1)
@@ -44,7 +44,7 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 		var downloadedInfo bool
 		var downloadedTorrent bool
 		var info *TrackerTorrentInfo
-		for _, filter := range env.config.filters {
+		for _, filter := range config.filters {
 			// checking if duplicate
 			if !filter.allowDuplicate && env.history.HasDupe(release) {
 				logThis(notSnatchingDuplicate, VERBOSE)
@@ -62,7 +62,7 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 					logThis(info.String(), VERBOSE)
 				}
 				// else check other criteria
-				if release.HasCompatibleTrackerInfo(filter, env.config.blacklistedUploaders, info) {
+				if release.HasCompatibleTrackerInfo(filter, config.blacklistedUploaders, info) {
 					logThis(" -> "+release.ShortString()+" triggered filter "+filter.label+", snatching.", NORMAL)
 					if err := tracker.Download(release); err != nil {
 						return nil, errors.New(errorDownloadingTorrent + err.Error())
@@ -105,38 +105,38 @@ func analyzeAnnounce(announced string, tracker *GazelleTracker) (*Release, error
 	return nil, nil
 }
 
-func ircHandler() {
-	IRCClient := irc.IRC(env.config.irc.botName, env.config.user)
-	IRCClient.UseTLS = env.config.irc.SSL
-	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: env.config.irc.SSLSkipVerify}
+func ircHandler(config *Config, tracker *GazelleTracker) {
+	IRCClient := irc.IRC(config.irc.botName, config.user)
+	IRCClient.UseTLS = config.irc.SSL
+	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: config.irc.SSLSkipVerify}
 	IRCClient.AddCallback("001", func(e *irc.Event) {
-		IRCClient.Privmsg("NickServ", "IDENTIFY "+env.config.irc.nickServPassword)
-		IRCClient.Privmsg(env.config.irc.announcer, fmt.Sprintf("enter %s %s %s", env.config.irc.announceChannel, env.config.user, env.config.irc.key))
+		IRCClient.Privmsg("NickServ", "IDENTIFY "+config.irc.nickServPassword)
+		IRCClient.Privmsg(config.irc.announcer, fmt.Sprintf("enter %s %s %s", config.irc.announceChannel, config.user, config.irc.key))
 	})
 	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
-		if e.Nick != env.config.irc.announcer {
+		if e.Nick != config.irc.announcer {
 			return // spam
 		}
 		// e.Arguments's first element is the message's recipient, the second is the actual message
 		switch e.Arguments[0] {
-		case env.config.irc.botName:
+		case config.irc.botName:
 			// if sent to the bot, it's now ok to join the announce channel
 			// waiting for the announcer bot to actually invite us
 			time.Sleep(100 * time.Millisecond)
-			IRCClient.Join(env.config.irc.announceChannel)
-		case env.config.irc.announceChannel:
+			IRCClient.Join(config.irc.announceChannel)
+		case config.irc.announceChannel:
 			// if sent to the announce channel, it's a new release
-			if !env.disabledAutosnatching {
+			if !config.disabledAutosnatching {
 				announced := e.Message()
 				logThis("++ Announced: "+announced, VERBOSE)
-				if _, err := analyzeAnnounce(announced, env.tracker); err != nil {
+				if _, err := analyzeAnnounce(announced, config, tracker); err != nil {
 					logThis(errorDealingWithAnnounce+err.Error(), VERBOSE)
 					return
 				}
 			}
 		}
 	})
-	err := IRCClient.Connect(env.config.irc.server)
+	err := IRCClient.Connect(config.irc.server)
 	if err != nil {
 		logThis(errorConnectingToIRC+err.Error(), NORMAL)
 		return

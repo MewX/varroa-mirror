@@ -13,7 +13,7 @@ const (
 	errorBufferDrop            = "Buffer drop too important, stopping autosnatching. Reload to start again."
 )
 
-func manageStats(tracker *GazelleTracker, previousStats *TrackerStats) *TrackerStats {
+func manageStats(config *Config, tracker *GazelleTracker, previousStats *TrackerStats) *TrackerStats {
 	stats, err := tracker.GetStats()
 	if err != nil {
 		logThis(errorGettingStats+err.Error(), NORMAL)
@@ -33,26 +33,26 @@ func manageStats(tracker *GazelleTracker, previousStats *TrackerStats) *TrackerS
 		logThis(errorNotification+err.Error(), VERBOSE)
 	}
 	// if something is wrong, send notification and stop
-	if !stats.IsProgressAcceptable(previousStats, env.config.maxBufferDecreaseByPeriodMB) {
+	if !stats.IsProgressAcceptable(previousStats, config.maxBufferDecreaseByPeriodMB) {
 		logThis(errorBufferDrop, NORMAL)
 		// sending notification
 		if err := env.notification.Send(errorBufferDrop); err != nil {
 			logThis(errorNotification+err.Error(), VERBOSE)
 		}
 		// stopping things
-		env.disabledAutosnatching = true
+		config.disabledAutosnatching = true
 	}
 	return stats
 }
 
-func monitorStats() {
+func monitorStats(config *Config, tracker *GazelleTracker) {
 	// initial stats
 	previousStats := &TrackerStats{}
-	previousStats = manageStats(env.tracker, previousStats)
+	previousStats = manageStats(config, tracker, previousStats)
 	// periodic check
-	period := time.NewTicker(time.Hour * time.Duration(env.config.statsUpdatePeriod)).C
+	period := time.NewTicker(time.Hour * time.Duration(config.statsUpdatePeriod)).C
 	for {
 		<-period
-		previousStats = manageStats(env.tracker, previousStats)
+		previousStats = manageStats(config, tracker, previousStats)
 	}
 }

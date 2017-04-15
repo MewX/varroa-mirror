@@ -15,26 +15,25 @@ import (
 )
 
 const (
-	webServerNotConfigured = "No configuration found for the web server."
-	webServerShutDown      = "Web server has closed."
-	webServerUpHTTP        = "Starting http web server."
-	webServerUpHTTPS       = "Starting https web server."
-	webServersUp           = "Web server(s) started."
-	errorServing           = "Error launching web interface: "
-	errorWrongToken        = "Error receiving download order from https: wrong token"
-	errorNoToken           = "Error receiving download order from https: no token"
-	errorNoID              = "Error retreiving torrent ID"
-	errorNoStatsFilename   = "Error retreiving stats filename "
-
-	downloadCommand  = "get"
-	handshakeCommand = "hello"
-	statsCommand     = "stats"
-
+	webServerNotConfigured       = "No configuration found for the web server."
+	webServerShutDown            = "Web server has closed."
+	webServerUpHTTP              = "Starting http web server."
+	webServerUpHTTPS             = "Starting https web server."
+	webServersUp                 = "Web server(s) started."
+	errorServing                 = "Error launching web interface: "
+	errorWrongToken              = "Error receiving download order from https: wrong token"
+	errorNoToken                 = "Error receiving download order from https: no token"
+	errorNoID                    = "Error retreiving torrent ID"
+	errorNoStatsFilename         = "Error retreiving stats filename "
 	errorUnknownCommand          = "Error: unknown websocket command: "
 	errorIncomingWebSocketJSON   = "Error parsing websocket input: "
 	errorIncorrectWebServerToken = "Error validating token for web server, ignoring."
 	errorWritingToWebSocket      = "Error writing to websocket: "
 	errorCreatingWebSocket       = "Error creating websocket: "
+
+	downloadCommand  = "get"
+	handshakeCommand = "hello"
+	statsCommand     = "stats"
 
 	autoCloseTab = "<html><head><script>t = null;function moveMe(){t = setTimeout(\"self.close()\",5000);}</script></head><body onload=\"moveMe()\">Successfully downloaded torrent: %s</body></html>"
 )
@@ -44,12 +43,14 @@ const (
 	responseError
 )
 
+// IncomingJSON from the websocket created by the GM script.
 type IncomingJSON struct {
 	Token   string
 	Command string
 	ID      string
 }
 
+// OutgoingJSON to the websocket created by the GM script.
 type OutgoingJSON struct {
 	Status  int
 	Message string
@@ -101,7 +102,7 @@ func snatchFromID(id string) (*Release, error) {
 	return release, nil
 }
 
-func validateGet(r *http.Request) (string, error) {
+func validateGet(r *http.Request, config *Config) (string, error) {
 	queryParameters := r.URL.Query()
 	// get torrent ID
 	id, ok := mux.Vars(r)["id"]
@@ -122,20 +123,20 @@ func validateGet(r *http.Request) (string, error) {
 			return "", errors.New(errorNoToken)
 		}
 	}
-	if token[0] != env.config.webServer.token {
+	if token[0] != config.webServer.token {
 		return "", errors.New(errorWrongToken)
 	}
 	return id, nil
 }
 
-func webServer() {
-	if !env.config.webserverConfigured() {
+func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server) {
+	if !config.webserverConfigured() {
 		logThis(webServerNotConfigured, NORMAL)
 		return
 	}
 
 	rtr := mux.NewRouter()
-	if env.config.webServer.allowDownloads {
+	if config.webServer.allowDownloads {
 		getStats := func(w http.ResponseWriter, r *http.Request) {
 			// checking token
 			token, ok := r.URL.Query()["token"]
@@ -144,7 +145,7 @@ func webServer() {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			if token[0] != env.config.webServer.token {
+			if token[0] != config.webServer.token {
 				logThis(errorWrongToken, NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -169,7 +170,7 @@ func webServer() {
 			w.Write(file)
 		}
 		getTorrent := func(w http.ResponseWriter, r *http.Request) {
-			id, err := validateGet(r)
+			id, err := validateGet(r, config)
 			if err != nil {
 				logThis("Error parsing request: "+err.Error(), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
@@ -217,7 +218,6 @@ func webServer() {
 
 			for {
 				// TODO if server is shutting down, c.Close()
-
 				incoming := IncomingJSON{}
 				if err := c.ReadJSON(&incoming); err != nil {
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) || websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
@@ -270,21 +270,21 @@ func webServer() {
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 		rtr.HandleFunc("/ws", socket)
 	}
-	if env.config.webServer.serveStats {
+	if config.webServer.serveStats {
 		// serving static index.html in stats dir
-		if env.config.webServer.statsPassword != "" {
-			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(env.config.user, env.config.webServer.statsPassword)(http.FileServer(http.Dir(statsDir))))
+		if config.webServer.statsPassword != "" {
+			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(config.user, config.webServer.statsPassword)(http.FileServer(http.Dir(statsDir))))
 		} else {
 			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
 		}
 	}
 
 	// serve
-	if env.config.serveHTTP() {
+	if config.serveHTTP() {
 		go func() {
 			logThis(webServerUpHTTP, NORMAL)
-			env.serverHTTP = &http.Server{Addr: fmt.Sprintf(":%d", env.config.webServer.portHTTP), Handler: rtr}
-			if err := env.serverHTTP.ListenAndServe(); err != nil {
+			httpServer = &http.Server{Addr: fmt.Sprintf(":%d", config.webServer.portHTTP), Handler: rtr}
+			if err := httpServer.ListenAndServe(); err != nil {
 				if err == http.ErrServerClosed {
 					logThis(webServerShutDown, NORMAL)
 				} else {
@@ -293,7 +293,7 @@ func webServer() {
 			}
 		}()
 	}
-	if env.config.serveHTTPS() {
+	if config.serveHTTPS() {
 		// if not there yet, generate the self-signed certificate
 		if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
 			if err := generateCertificates(); err != nil {
@@ -307,8 +307,8 @@ func webServer() {
 
 		go func() {
 			logThis(webServerUpHTTPS, NORMAL)
-			env.serverHTTPS = &http.Server{Addr: fmt.Sprintf(":%d", env.config.webServer.portHTTPS), Handler: rtr}
-			if err := env.serverHTTPS.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
+			httpsServer = &http.Server{Addr: fmt.Sprintf(":%d", config.webServer.portHTTPS), Handler: rtr}
+			if err := httpsServer.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
 				if err == http.ErrServerClosed {
 					logThis(webServerShutDown, NORMAL)
 				} else {

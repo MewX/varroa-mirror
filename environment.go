@@ -6,30 +6,37 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gregdel/pushover"
 	daemon "github.com/sevlyar/go-daemon"
 )
 
+const (
+	envPassphrase = "_VARROA_PASSPHRASE"
+)
+
+// Environment keeps track of all the context varroa needs.
 type Environment struct {
-	config                *Config
-	configPassphrase      []byte
-	daemon                *daemon.Context
-	inDaemon              bool // <- == daemon.WasReborn()
-	notification          *Notification
-	history               *History
-	serverHTTP            *http.Server
-	serverHTTPS           *http.Server
-	tracker               *GazelleTracker
-	limiter               chan bool //  <- 1/tracker
-	disabledAutosnatching bool
-	expectedOutput        bool
-	websocketOutput       bool
-	sendBackToCLI         chan string
-	sendToWebsocket       chan string
+	config           *Config
+	configPassphrase []byte
+	daemon           *daemon.Context
+	inDaemon         bool // <- == daemon.WasReborn()
+	notification     *Notification
+	history          *History
+	serverHTTP       *http.Server
+	serverHTTPS      *http.Server
+	tracker          *GazelleTracker
+	limiter          chan bool //  <- 1/tracker
+
+	expectedOutput  bool
+	websocketOutput bool
+	sendBackToCLI   chan string
+	sendToWebsocket chan string
 }
 
+// NewEnvironment prepares a new Environment.
 func NewEnvironment() *Environment {
 	env := &Environment{}
 
@@ -49,7 +56,7 @@ func NewEnvironment() *Environment {
 	env.tracker = &GazelleTracker{}
 
 	// disable  autosnatching
-	env.disabledAutosnatching = false
+	env.config.disabledAutosnatching = false
 
 	// is only true if we're in the daemon
 	env.inDaemon = false
@@ -59,6 +66,10 @@ func NewEnvironment() *Environment {
 
 	// current command expects output
 	env.expectedOutput = false
+	if !daemon.WasReborn() {
+		// here we're expecting output
+		env.expectedOutput = true
+	}
 	// websocket is open and waiting for input
 	env.websocketOutput = false
 	env.sendBackToCLI = make(chan string, 10)
@@ -66,6 +77,60 @@ func NewEnvironment() *Environment {
 	return env
 }
 
+// Daemonize the process and return true if in child process.
+func (e *Environment) Daemonize(args []string) error {
+	e.inDaemon = false
+	e.daemon.Args = os.Args
+	child, err := e.daemon.Reborn()
+	if err != nil {
+		logThis(errorGettingDaemonContext+err.Error(), NORMAL)
+		return err
+	}
+	if child != nil {
+		logThis("Starting daemon...", NORMAL)
+	} else {
+		logThis("+ varroa musica daemon started", NORMAL)
+		// now in the daemon
+		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
+		e.inDaemon = true
+	}
+	return nil
+}
+
+func quitDaemon(sig os.Signal) error {
+	logThis("+ terminating", VERBOSE)
+	return daemon.ErrStop
+}
+
+// Wait for the daemon to stop.
+func (e *Environment) WaitForDaemonStop() {
+	if err := daemon.ServeSignals(); err != nil {
+		logThis(errorServingSignals+err.Error(), NORMAL)
+	}
+	logThis("+ varroa musica stopped", NORMAL)
+}
+
+// FindDaemon if it is running.
+func (e *Environment) FindDaemon() (*os.Process, error) {
+	// trying to talk to existing daemon
+	return e.daemon.Search()
+}
+
+// StopDaemon if running
+func (e *Environment) StopDaemon(daemonProcess *os.Process) {
+	daemon.AddCommand(boolFlag(true), syscall.SIGTERM, quitDaemon)
+	if err := daemon.SendCommands(daemonProcess); err != nil {
+		logThis(errorSendingSignal+err.Error(), NORMAL)
+	}
+	if err := e.daemon.Release(); err != nil {
+		logThis(errorReleasingDaemon+err.Error(), NORMAL)
+	}
+	if err := os.Remove(pidFile); err != nil {
+		logThis(errorRemovingPID+err.Error(), NORMAL)
+	}
+}
+
+// SetUp the Environment
 func (e *Environment) SetUp() error {
 	// load configuration
 	if err := e.Reload(); err != nil {
@@ -92,6 +157,7 @@ func (e *Environment) SetUp() error {
 	return e.history.LoadAll(statsFile, historyFile)
 }
 
+// Reload the configuration file, restart autosnatching, and try to restart the web server
 func (e *Environment) Reload() error {
 	newConf := &Config{}
 
@@ -126,8 +192,8 @@ func (e *Environment) Reload() error {
 		logThis("Configuration reloaded.", NORMAL)
 	}
 	e.config = newConf
-	if e.disabledAutosnatching {
-		e.disabledAutosnatching = false
+	if e.config.disabledAutosnatching {
+		e.config.disabledAutosnatching = false
 		logThis("Autosnatching enabled.", NORMAL)
 	}
 	// if server up
@@ -153,11 +219,13 @@ func (e *Environment) Reload() error {
 	}
 	if serverWasUp && thingsWentOK {
 		// launch server again
-		go webServer()
+		go webServer(e.config, e.serverHTTP, e.serverHTTPS)
 	}
 	return nil
 }
 
+// SavePassphraseForDaemon save the encrypted configuration file passphrase to env if necessary.
+// In the daemon, retrieve that passphrase.
 func (e *Environment) SavePassphraseForDaemon() error {
 	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
 	if !daemon.WasReborn() {

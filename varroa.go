@@ -3,9 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"syscall"
-
-	daemon "github.com/sevlyar/go-daemon"
 )
 
 const (
@@ -31,8 +28,7 @@ const (
 	infoEncrypted         = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
 	infoDecrypted         = "Configuration file has been decrypted to a plaintext YAML file."
 
-	pidFile       = "varroa_pid"
-	envPassphrase = "_VARROA_PASSPHRASE"
+	pidFile = "varroa_pid"
 )
 
 var (
@@ -60,11 +56,6 @@ func main() {
 		return
 	}
 
-	if !daemon.WasReborn() {
-		// here we're expecting output
-		env.expectedOutput = true
-	}
-
 	// launching daemon
 	if cli.start {
 		// if using encrypted config file, ask for the passphrase and retrieve it from the daemon side
@@ -73,38 +64,29 @@ func main() {
 			return
 		}
 		// daemonizing process
-		env.daemon.Args = os.Args
-		child, err := env.daemon.Reborn()
-		if err != nil {
+		if err := env.Daemonize(os.Args); err != nil {
 			logThis(errorGettingDaemonContext+err.Error(), NORMAL)
 			return
 		}
-		if child != nil {
-			logThis("Starting daemon...", NORMAL)
+		// if not in daemon, job is over; exiting.
+		// the spawned daemon will continue.
+		if !env.inDaemon {
 			return
 		}
-		// now in the daemon
-		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
-		//defer daemonContext.Release()
-		logThis("+ varroa musica started", NORMAL)
-		env.inDaemon = true
 		// setting up for the daemon
 		if err := env.SetUp(); err != nil {
 			logThis(errorSettingUp+err.Error(), NORMAL)
 			return
 		}
 		// launch goroutines
-		go ircHandler()
-		go monitorStats()
+		go ircHandler(env.config, env.tracker)
+		go monitorStats(env.config, env.tracker)
 		go apiCallRateLimiter(env.limiter)
-		go webServer()
+		go webServer(env.config, env.serverHTTP, env.serverHTTPS)
 		go awaitOrders()
 		go automaticBackup()
-
-		if err := daemon.ServeSignals(); err != nil {
-			logThis(errorServingSignals+err.Error(), NORMAL)
-		}
-		logThis("+ varroa musica stopped", NORMAL)
+		// wait until daemon is stopped.
+		env.WaitForDaemonStop()
 		return
 	}
 
@@ -143,38 +125,13 @@ func main() {
 		return
 	}
 
-	// assessing if daemon is running
-	var daemonIsUp bool
-	// trying to talk to existing daemon
-	env.daemon.Args = os.Args
-	d, searchErr := env.daemon.Search()
-	if searchErr == nil {
-		daemonIsUp = true
-	}
 	// at this point commands either require the daemon or can use it
-	if daemonIsUp {
-		// sending commands to the daemon through the unix socket
-		if err := sendOrders(cli); err != nil {
-			logThis(errorSendingCommandToDaemon+err.Error(), NORMAL)
-			return
-		}
-		// at last, sending signals for shutdown
-		if cli.stop {
-			daemon.AddCommand(boolFlag(cli.stop), syscall.SIGTERM, quitDaemon)
-			if err := daemon.SendCommands(d); err != nil {
-				logThis(errorSendingSignal+err.Error(), NORMAL)
-			}
-			if err := env.daemon.Release(); err != nil {
-				fmt.Println(errorReleasingDaemon + err.Error())
-			}
-			if err := os.Remove(pidFile); err != nil {
-				fmt.Println(errorRemovingPID + err.Error())
-			}
-			return
-		}
-	} else {
+	// assessing if daemon is running
+	daemonProcess, err := env.FindDaemon()
+	if err != nil {
+		// no daemon found, running commands directly.
 		if cli.requiresDaemon {
-			logThis(errorFindingDaemon+searchErr.Error(), NORMAL)
+			logThis(errorFindingDaemon+err.Error(), NORMAL)
 			fmt.Println(infoUsage)
 			return
 		}
@@ -202,15 +159,21 @@ func main() {
 			}
 		}
 		if cli.checkLog {
-			if err := checkLog(cli.logFile); err != nil {
+			if err := checkLog(cli.logFile, env.tracker); err != nil {
 				logThis("Error checking log: "+err.Error(), NORMAL)
 			}
 		}
+	} else {
+		// daemon is up, sending commands to the daemon through the unix socket
+		if err := sendOrders(cli); err != nil {
+			logThis(errorSendingCommandToDaemon+err.Error(), NORMAL)
+			return
+		}
+		// at last, sending signals for shutdown
+		if cli.stop {
+			env.StopDaemon(daemonProcess)
+			return
+		}
 	}
 	return
-}
-
-func quitDaemon(sig os.Signal) error {
-	logThis("+ terminating", VERBOSE)
-	return daemon.ErrStop
 }

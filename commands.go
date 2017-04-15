@@ -130,7 +130,7 @@ func awaitOrders() {
 				logThis("Error snatching torrents: "+err.Error(), NORMAL)
 			}
 		case "check-log":
-			if err := checkLog(strings.Join(fullCommand[1:], " ")); err != nil {
+			if err := checkLog(strings.Join(fullCommand[1:], " "), env.tracker); err != nil {
 				logThis("Error checking log: "+err.Error(), NORMAL)
 			}
 		}
@@ -196,8 +196,8 @@ func snatchTorrents(IDStrings []string) error {
 	return nil
 }
 
-func checkLog(logPath string) error {
-	score, err := env.tracker.GetLogScore(logPath)
+func checkLog(logPath string, tracker *GazelleTracker) error {
+	score, err := tracker.GetLogScore(logPath)
 	if err != nil {
 		return errors.New("Error getting log score: " + err.Error())
 	}

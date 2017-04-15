@@ -132,7 +132,8 @@ type Config struct {
 		portHTTP       int
 		portHTTPS      int
 	}
-	logLevel int
+	logLevel              int
+	disabledAutosnatching bool
 }
 
 func getStringValues(source map[string]interface{}, key string) []string {
