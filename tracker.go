@@ -250,6 +250,8 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 	if gt.Response.Torrent.Remastered {
 		label = gt.Response.Torrent.RemasterRecordLabel
 	}
+	// keeping a copy of uploader before anonymizing
+	uploader := gt.Response.Torrent.Username
 	// json for metadata, anonymized
 	gt.Response.Torrent.Username = ""
 	gt.Response.Torrent.UserID = 0
@@ -257,7 +259,7 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 	if err != nil {
 		metadataJSON = data // falling back to complete json
 	}
-	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, groupID: gt.Response.Group.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: gt.Response.Torrent.Username, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
+	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, groupID: gt.Response.Group.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: uploader, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
 	return info, nil
 }
 
