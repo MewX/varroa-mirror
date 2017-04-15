@@ -1,13 +1,10 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"syscall"
 
-	"github.com/gregdel/pushover"
 	daemon "github.com/sevlyar/go-daemon"
 )
 
@@ -71,7 +68,7 @@ func main() {
 	// launching daemon
 	if cli.start {
 		// if using encrypted config file, ask for the passphrase and retrieve it from the daemon side
-		if err := savePassphraseForDaemon(); err != nil {
+		if err := env.SavePassphraseForDaemon(); err != nil {
 			logThis(err.Error(), NORMAL)
 			return
 		}
@@ -92,14 +89,14 @@ func main() {
 		logThis("+ varroa musica started", NORMAL)
 		env.inDaemon = true
 		// setting up for the daemon
-		if err := settingUp(); err != nil {
+		if err := env.SetUp(); err != nil {
 			logThis(errorSettingUp+err.Error(), NORMAL)
 			return
 		}
 		// launch goroutines
 		go ircHandler()
 		go monitorStats()
-		go apiCallRateLimiter()
+		go apiCallRateLimiter(env.limiter)
 		go webServer()
 		go awaitOrders()
 		go automaticBackup()
@@ -120,7 +117,7 @@ func main() {
 		}
 		if cli.showFilters {
 			// load configuration
-			if err := loadConfiguration(); err != nil {
+			if err := env.Reload(); err != nil {
 				logThis(errorLoadingConfig+err.Error(), NORMAL)
 				return
 			}
@@ -182,12 +179,12 @@ func main() {
 			return
 		}
 		// setting up since the daemon isn't running
-		if err := settingUp(); err != nil {
+		if err := env.SetUp(); err != nil {
 			logThis(errorSettingUp+err.Error(), NORMAL)
 			return
 		}
 		// starting rate limiter
-		go apiCallRateLimiter()
+		go apiCallRateLimiter(env.limiter)
 		// running the command
 		if cli.stats {
 			if err := generateStats(); err != nil {
@@ -216,66 +213,4 @@ func main() {
 func quitDaemon(sig os.Signal) error {
 	logThis("+ terminating", VERBOSE)
 	return daemon.ErrStop
-}
-
-func settingUp() error {
-	// load configuration
-	if err := loadConfiguration(); err != nil {
-		return errors.New(errorLoadingConfig + err.Error())
-	}
-	// prepare directory for stats if necessary
-	if !DirectoryExists(statsDir) {
-		if err := os.MkdirAll(statsDir, 0777); err != nil {
-			return errors.New(errorCreatingStatsDir + err.Error())
-		}
-	}
-	// init notifications with pushover
-	if env.config.pushoverConfigured() {
-		env.notification.client = pushover.New(env.config.pushover.token)
-		env.notification.recipient = pushover.NewRecipient(env.config.pushover.user)
-	}
-	// log in tracker
-	env.tracker = &GazelleTracker{rootURL: env.config.url}
-	if err := env.tracker.Login(env.config.user, env.config.password); err != nil {
-		return err
-	}
-	logThis("Logged in tracker.", NORMAL)
-	// load history
-	return env.history.LoadAll(statsFile, historyFile)
-}
-
-func savePassphraseForDaemon() error {
-	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
-	if !daemon.WasReborn() {
-		// if necessary, ask for passphrase and add to env
-		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
-			stringPass, err := getPassphrase()
-			if err != nil {
-				return errors.New(errorGettingPassphrase + err.Error())
-			}
-			// testing
-			copy(env.configPassphrase[:], stringPass)
-			configBytes, err := decrypt(encryptedConfigurationFile, env.configPassphrase)
-			if err != nil {
-				return errors.New(errorLoadingConfig + err.Error())
-			}
-			newConf := &Config{}
-			if err := newConf.loadFromBytes(configBytes); err != nil {
-				return errors.New(errorLoadingConfig + err.Error())
-
-			}
-			// saving to env for the daemon to pick up later
-			if err := os.Setenv(envPassphrase, stringPass); err != nil {
-				return errors.New(errorSettingEnv + err.Error())
-
-			}
-		}
-	} else {
-		// getting passphrase from env if necessary
-		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
-			passphrase := os.Getenv(envPassphrase)
-			copy(env.configPassphrase[:], passphrase)
-		}
-	}
-	return nil
 }

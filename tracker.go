@@ -42,17 +42,17 @@ const (
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
 )
 
-func apiCallRateLimiter() {
+func apiCallRateLimiter(limiter chan bool) {
 	// fill the rate limiter the first time
 	for i := 0; i < allowedAPICallsByPeriod; i++ {
-		env.limiter <- true
+		limiter <- true
 	}
 	// every apiCallsPeriodS, refill the limiter channel
 	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
 	Loop:
 		for i := 0; i < allowedAPICallsByPeriod; i++ {
 			select {
-			case env.limiter <- true:
+			case limiter <- true:
 			default:
 				// if channel is full, do nothing and wait for the next tick
 				break Loop

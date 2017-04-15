@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -119,7 +118,7 @@ func awaitOrders() {
 			logThis("Stopping daemon...", NORMAL)
 			stopEverything = true
 		case "reload":
-			if err := loadConfiguration(); err != nil {
+			if err := env.Reload(); err != nil {
 				logThis("Error reloading", NORMAL)
 			}
 		case "refresh-metadata":
@@ -150,72 +149,6 @@ func awaitOrders() {
 func generateStats() error {
 	logThis("Generating stats", VERBOSE)
 	return env.history.GenerateGraphs()
-}
-
-func loadConfiguration() error {
-	newConf := &Config{}
-
-	// if using encrypted file
-	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
-	if FileExists(encryptedConfigurationFile) && !FileExists(defaultConfigurationFile) {
-		// if this env variable is set, we're using the encrypted config file and already have the passphrase
-		if !env.inDaemon && os.Getenv(envPassphrase) == "" {
-			// getting passphrase from user
-			passphrase, err := getPassphrase()
-			if err != nil {
-				return err
-			}
-			copy(env.configPassphrase[:], passphrase)
-		}
-		configBytes, err := decrypt(encryptedConfigurationFile, env.configPassphrase)
-		if err != nil {
-			return err
-		}
-		if err := newConf.loadFromBytes(configBytes); err != nil {
-			logThis(errorLoadingConfig+err.Error(), NORMAL)
-			return err
-		}
-	} else {
-		if err := newConf.load(defaultConfigurationFile); err != nil {
-			logThis(errorLoadingConfig+err.Error(), NORMAL)
-			return err
-		}
-	}
-	if env.config.user != "" {
-		// if conf.user exists, the configuration had been loaded previously
-		logThis("Configuration reloaded.", NORMAL)
-	}
-	env.config = newConf
-	if env.disabledAutosnatching {
-		env.disabledAutosnatching = false
-		logThis("Autosnatching enabled.", NORMAL)
-	}
-	// if server up
-	thingsWentOK := true
-	serverWasUp := false
-	if env.serverHTTP.Addr != "" {
-		serverWasUp = true
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := env.serverHTTP.Shutdown(ctx); err != nil {
-			logThis(errorShuttingDownServer+err.Error(), NORMAL)
-			thingsWentOK = false
-		}
-	}
-	if env.serverHTTPS.Addr != "" {
-		serverWasUp = true
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := env.serverHTTPS.Shutdown(ctx); err != nil {
-			logThis(errorShuttingDownServer+err.Error(), NORMAL)
-			thingsWentOK = false
-		}
-	}
-	if serverWasUp && thingsWentOK {
-		// launch server again
-		go webServer()
-	}
-	return nil
 }
 
 func refreshMetadata(IDStrings []string) error {
