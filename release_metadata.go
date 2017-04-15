@@ -7,11 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
 
-	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 	"github.com/subosito/norma"
 )
@@ -51,75 +47,16 @@ type ReleaseMetadata struct {
 	Summary ReleaseInfo
 }
 
-func (rm *ReleaseMetadata) Load(folder string) error {
-	rm.Root = folder
-	// TODO load all JSON , folder == release.folder + metadataDir
-	// TODO load custom file for the user to set new information or force existing information to new values
-	return nil
-}
-
 func (rm *ReleaseMetadata) Synthetize() error {
-	// TODO: load all JSONs or check they're loaded
-
 	// fill rm.Summary
 	var info GazelleTorrent
 	if unmarshalErr := json.Unmarshal(rm.Info.fullJSON, &info.Response); unmarshalErr != nil {
 		logThis("Error parsing torrent info JSON", NORMAL)
 		return nil
 	}
-	rm.Summary.Title = info.Response.Group.Name
-	allArtists := info.Response.Group.MusicInfo.Artists
-	allArtists = append(allArtists, info.Response.Group.MusicInfo.Composers...)
-	allArtists = append(allArtists, info.Response.Group.MusicInfo.Conductor...)
-	allArtists = append(allArtists, info.Response.Group.MusicInfo.Dj...)
-	allArtists = append(allArtists, info.Response.Group.MusicInfo.Producer...)
-	allArtists = append(allArtists, info.Response.Group.MusicInfo.RemixedBy...)
-	allArtists = append(allArtists, info.Response.Group.MusicInfo.With...)
-	for _, a := range allArtists {
-		rm.Summary.Artists = append(rm.Summary.Artists, ReleaseInfoArtist{ID: a.ID, Name: a.Name})
+	if err := rm.Summary.fromGazelleInfo(info); err != nil {
+		return err
 	}
-	rm.Summary.CoverPath = trackerCoverFile + filepath.Ext(info.Response.Group.WikiImage)
-	rm.Summary.Tags = info.Response.Group.Tags
-	rm.Summary.ReleaseType = getGazelleReleaseType(info.Response.Group.ReleaseType)
-	rm.Summary.Format = info.Response.Torrent.Format
-	rm.Summary.Source = info.Response.Torrent.Media
-	// TODO add if cue/log/logscore + scene
-	rm.Summary.Quality = info.Response.Torrent.Encoding
-	rm.Summary.Year = info.Response.Group.Year
-	rm.Summary.RemasterYear = info.Response.Torrent.RemasterYear
-	rm.Summary.RemasterLabel = info.Response.Torrent.RemasterRecordLabel
-	rm.Summary.RemasterCatalogNumber = info.Response.Torrent.RemasterCatalogueNumber
-	rm.Summary.RecordLabel = info.Response.Group.RecordLabel
-	rm.Summary.CatalogNumber = info.Response.Group.CatalogueNumber
-	rm.Summary.EditionName = info.Response.Torrent.RemasterTitle
-
-	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
-	if info.Response.Torrent.Description != "" {
-		rm.Summary.Lineage = append(rm.Summary.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: info.Response.Torrent.Description})
-	}
-
-	r := regexp.MustCompile(trackPattern)
-	files := strings.Split(info.Response.Torrent.FileList, "|||")
-	for _, f := range files {
-		track := ReleaseInfoTrack{}
-		hits := r.FindAllStringSubmatch(f, -1)
-		if len(hits) != 0 {
-			// TODO instead of path, actually find the title
-			track.Title = hits[0][1]
-			size, _ := strconv.ParseUint(hits[0][2], 10, 64)
-			track.Size = humanize.IBytes(size)
-			rm.Summary.Tracks = append(rm.Summary.Tracks, track)
-			// TODO Duration  + Disc + number
-		} else {
-			logThis("Could not parse filelist.", NORMAL)
-		}
-
-	}
-	// TODO TotalTime
-	rm.Summary.TrackerURL = conf.url + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
-	// TODO de-wikify
-	rm.Summary.Description = info.Response.Group.WikiBody
-
 	// origin
 	rm.Summary.LastUpdated = rm.Origin.LastUpdatedMetadata
 	rm.Summary.IsAlive = rm.Origin.IsAlive

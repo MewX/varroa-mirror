@@ -6,9 +6,13 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
+	"regexp"
+
+	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 )
 
@@ -123,6 +127,62 @@ type ReleaseInfo struct {
 	TrackerURL            string
 	LastUpdated           int64
 	IsAlive               bool
+}
+
+func (ri *ReleaseInfo) fromGazelleInfo(info GazelleTorrent) error {
+	ri.Title = info.Response.Group.Name
+	allArtists := info.Response.Group.MusicInfo.Artists
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.Composers...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.Conductor...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.Dj...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.Producer...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.RemixedBy...)
+	allArtists = append(allArtists, info.Response.Group.MusicInfo.With...)
+	for _, a := range allArtists {
+		ri.Artists = append(ri.Artists, ReleaseInfoArtist{ID: a.ID, Name: a.Name})
+	}
+	ri.CoverPath = trackerCoverFile + filepath.Ext(info.Response.Group.WikiImage)
+	ri.Tags = info.Response.Group.Tags
+	ri.ReleaseType = getGazelleReleaseType(info.Response.Group.ReleaseType)
+	ri.Format = info.Response.Torrent.Format
+	ri.Source = info.Response.Torrent.Media
+	// TODO add if cue/log/logscore + scene
+	ri.Quality = info.Response.Torrent.Encoding
+	ri.Year = info.Response.Group.Year
+	ri.RemasterYear = info.Response.Torrent.RemasterYear
+	ri.RemasterLabel = info.Response.Torrent.RemasterRecordLabel
+	ri.RemasterCatalogNumber = info.Response.Torrent.RemasterCatalogueNumber
+	ri.RecordLabel = info.Response.Group.RecordLabel
+	ri.CatalogNumber = info.Response.Group.CatalogueNumber
+	ri.EditionName = info.Response.Torrent.RemasterTitle
+
+	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
+	if info.Response.Torrent.Description != "" {
+		ri.Lineage = append(ri.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: info.Response.Torrent.Description})
+	}
+	// parsing track list
+	r := regexp.MustCompile(trackPattern)
+	files := strings.Split(info.Response.Torrent.FileList, "|||")
+	for _, f := range files {
+		track := ReleaseInfoTrack{}
+		hits := r.FindAllStringSubmatch(f, -1)
+		if len(hits) != 0 {
+			// TODO instead of path, actually find the title
+			track.Title = hits[0][1]
+			size, _ := strconv.ParseUint(hits[0][2], 10, 64)
+			track.Size = humanize.IBytes(size)
+			ri.Tracks = append(ri.Tracks, track)
+			// TODO Duration  + Disc + number
+		} else {
+			logThis("Could not parse filelist.", NORMAL)
+		}
+
+	}
+	// TODO TotalTime
+	ri.TrackerURL = conf.url + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
+	// TODO de-wikify
+	ri.Description = info.Response.Group.WikiBody
+	return nil
 }
 
 func (ri *ReleaseInfo) toMD() string {
