@@ -12,6 +12,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -163,7 +164,7 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 	return data, err
 }
 
-func (t *GazelleTracker) Download(r *Release) error {
+func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) error {
 	if r.torrentURL == "" || r.TorrentFile == "" {
 		return errors.New(unknownTorrentURL)
 	}
@@ -178,7 +179,18 @@ func (t *GazelleTracker) Download(r *Release) error {
 	}
 	defer file.Close()
 	_, err = io.Copy(file, response.Body)
-	return err
+	if err != nil {
+		return err
+	}
+	// move to relevant directory
+	if err := CopyFile(r.TorrentFile, filepath.Join(destinationFolder, r.TorrentFile)); err != nil {
+		return errors.New(errorCouldNotMoveTorrent + err.Error())
+	}
+	// cleaning up
+	if err := os.Remove(r.TorrentFile); err != nil {
+		logThis(fmt.Sprintf(errorRemovingTempFile, r.TorrentFile), VERBOSE)
+	}
+	return nil
 }
 
 func (t *GazelleTracker) GetStats() (*TrackerStats, error) {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -73,20 +72,12 @@ func snatchFromID(id string) (*Release, error) {
 	release.TorrentFile = "remote-id" + id + ".torrent"
 
 	logThis("Web server: downloading torrent "+release.ShortString(), NORMAL)
-	if err := env.tracker.Download(release); err != nil {
+	if err := env.tracker.DownloadTorrent(release, env.config.defaultDestinationFolder); err != nil {
 		logThis(errorDownloadingTorrent+release.torrentURL+" /  "+err.Error(), NORMAL)
 		return release, err
 	}
-	// move to relevant watch directory
-	if err := CopyFile(release.TorrentFile, filepath.Join(env.config.defaultDestinationFolder, release.TorrentFile)); err != nil {
-		logThis(errorCouldNotMoveTorrent+err.Error(), NORMAL)
-		return release, err
-	}
-	if err := os.Remove(release.TorrentFile); err != nil {
-		logThis(fmt.Sprintf(errorRemovingTempFile, release.TorrentFile), VERBOSE)
-	}
 	// add to history
-	if err := env.history.SnatchHistory.Add(release, "remote"); err != nil {
+	if err := env.history.AddSnatch(release, "remote"); err != nil {
 		logThis(errorAddingToHistory, NORMAL)
 	}
 	// send notification

@@ -4,8 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"time"
 
@@ -64,20 +62,17 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, config.blacklistedUploaders, info) {
 					logThis(" -> "+release.ShortString()+" triggered filter "+filter.label+", snatching.", NORMAL)
-					if err := tracker.Download(release); err != nil {
-						return nil, errors.New(errorDownloadingTorrent + err.Error())
-					}
-					downloadedTorrent = true
 					// move to relevant watch directory
-					destination := env.config.defaultDestinationFolder
+					destination := config.defaultDestinationFolder
 					if filter.destinationFolder != "" {
 						destination = filter.destinationFolder
 					}
-					if err := CopyFile(release.TorrentFile, filepath.Join(destination, release.TorrentFile)); err != nil {
-						return nil, errors.New(errorCouldNotMoveTorrent + err.Error())
+					if err := tracker.DownloadTorrent(release, destination); err != nil {
+						return nil, errors.New(errorDownloadingTorrent + err.Error())
 					}
+					downloadedTorrent = true
 					// adding to history
-					if err := env.history.SnatchHistory.Add(release, filter.label); err != nil {
+					if err := env.history.AddSnatch(release, filter.label); err != nil {
 						logThis(errorAddingToHistory, NORMAL)
 					}
 					// send notification
@@ -91,9 +86,6 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 		}
 		// if torrent was downloaded, remove temp copy
 		if downloadedTorrent {
-			if err := os.Remove(release.TorrentFile); err != nil {
-				logThis(fmt.Sprintf(errorRemovingTempFile, release.TorrentFile), VERBOSE)
-			}
 			return release, nil
 		}
 		logThis(fmt.Sprintf(infoNotInteresting, release.ShortString()), VERBOSE)

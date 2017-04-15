@@ -272,10 +272,10 @@ func (e *Environment) Notify(msg string) error {
 		}
 		return nil
 	}
-	return e.runOrGo(notity)
+	return e.RunOrGo(notity)
 }
 
-func (e *Environment) runOrGo(f func() error) error {
+func (e *Environment) RunOrGo(f func() error) error {
 	if e.inDaemon {
 		go f()
 		return nil

@@ -324,7 +324,7 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 	return err
 }
 
-func (s *SnatchHistory) Add(r *Release, filter string) error {
+func (s *SnatchHistory) AddSnatch(r *Release, filter string) error {
 	// saving association with filter
 	r.Filter = filter
 	// add to in memory slice
