@@ -1,9 +1,8 @@
 package main
 
 import (
-	"errors"
-
 	docopt "github.com/docopt/docopt-go"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -116,7 +115,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// parse arguments and options
 	args, err := docopt.Parse(varroaUsage, osArgs, true, varroaVersion, false, false)
 	if err != nil {
-		return err
+		return errors.Wrap(err, errorInfoBadArguments)
 	}
 	if len(args) == 0 {
 		// builtin command, nothing to do.

@@ -16,6 +16,10 @@ type logMessage struct {
 	message string
 }
 
+func logThisError(err error, level int) {
+	logThis(err.Error(), level)
+}
+
 func logThis(msg string, level int) {
 	if env.config.logLevel >= level {
 		if env.expectedOutput {

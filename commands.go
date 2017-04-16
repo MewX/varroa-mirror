@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/jasonlvhit/gocron"
 	"github.com/mholt/archiver"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -20,20 +20,26 @@ const (
 	defaultConfigurationFile   = "config.yaml"
 	unixSocketMessageSeparator = "↑" // because it looks nice
 
-	errorArchiving         = "Error while archiving user files: "
-	errorDialingSocket     = "Error dialing to unix socket: "
-	errorWritingToSocket   = "Error writing to unix socket: "
-	errorReadingFromSocket = "Error reading from unix socket: "
+	errorArchiving          = "Error while archiving user files"
+	errorDialingSocket      = "Error dialing to unix socket"
+	errorWritingToSocket    = "Error writing to unix socket"
+	errorReadingFromSocket  = "Error reading from unix socket"
+	errorCreatingSocket     = "Error creating unix socket"
+	errorReloading          = "Error reloading"
+	errorCheckingLog        = "Error checking log"
+	errorSnatchingTorrent   = "Error snatching torrents"
+	errorRefreshingMetadata = "Error refreshing metadata"
+	errorGettingLogScore    = "Error getting log score"
 )
 
 func sendOrders(cli *varroaArguments) error {
 	conn, err := net.Dial("unix", varroaSocket)
 	if err != nil {
-		return errors.New(errorDialingSocket + err.Error())
+		return errors.Wrap(err, errorDialingSocket)
 	}
 	// sending command
 	if _, err = conn.Write([]byte(cli.commandToDaemon())); err != nil {
-		return errors.New(errorWritingToSocket + err.Error())
+		return errors.Wrap(err, errorWritingToSocket)
 	}
 Loop:
 	for {
@@ -41,7 +47,7 @@ Loop:
 		buf := make([]byte, 512)
 		n, err := conn.Read(buf[:])
 		if err != nil {
-			return errors.New(errorReadingFromSocket + err.Error())
+			return errors.Wrap(err, errorReadingFromSocket)
 		}
 		output := string(buf[:n])
 		if !strings.HasSuffix(output, unixSocketMessageSeparator) {
@@ -64,7 +70,8 @@ Loop:
 func awaitOrders() {
 	conn, err := net.Listen("unix", varroaSocket)
 	if err != nil {
-		panic(err)
+		logThisError(errors.Wrap(err, errorCreatingSocket), NORMAL)
+		return
 	}
 	defer conn.Close()
 	// channel to know when the connection with a specific instance is over
@@ -86,7 +93,7 @@ func awaitOrders() {
 				// writing to socket with a separator, so that the other instance, reading more slowly,
 				// can separate messages that might have been written one after the other
 				if _, err = c.Write([]byte(messageToLog + unixSocketMessageSeparator)); err != nil {
-					logThis("Error writing to unix socket: "+err.Error(), NORMAL)
+					logThisError(errors.Wrap(err, errorWritingToSocket), NORMAL)
 				}
 				// we've just told the other instance talking was over, ending this connection.
 				if messageToLog == "stop" {
@@ -99,7 +106,7 @@ func awaitOrders() {
 		buf := make([]byte, 512)
 		n, err := c.Read(buf[:])
 		if err != nil {
-			logThis("Error reading from unix socket: "+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorReadingFromSocket), NORMAL)
 			continue
 		}
 		// NOTE: simple split, do something better if necessary
@@ -112,26 +119,26 @@ func awaitOrders() {
 		switch fullCommand[0] {
 		case "stats":
 			if err := generateStats(); err != nil {
-				logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 			}
 		case "stop":
 			logThis("Stopping daemon...", NORMAL)
 			stopEverything = true
 		case "reload":
 			if err := env.Reload(); err != nil {
-				logThis("Error reloading", NORMAL)
+				logThisError(errors.Wrap(err, errorReloading), NORMAL)
 			}
 		case "refresh-metadata":
 			if err := refreshMetadata(fullCommand[1:]); err != nil {
-				logThis("Error refreshing metadata: "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		case "snatch":
 			if err := snatchTorrents(fullCommand[1:]); err != nil {
-				logThis("Error snatching torrents: "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		case "check-log":
 			if err := checkLog(strings.Join(fullCommand[1:], " "), env.tracker); err != nil {
-				logThis("Error checking log: "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorCheckingLog), NORMAL)
 			}
 		}
 		env.sendBackToCLI <- "stop"
@@ -164,7 +171,7 @@ func refreshMetadata(IDStrings []string) error {
 			// get data from RED.
 			info, err := env.tracker.GetTorrentInfo(r.TorrentID)
 			if err != nil {
-				logThis(errorCouldNotGetTorrentInfo, NORMAL)
+				logThisError(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 				break
 			}
 			if env.inDaemon {
@@ -199,7 +206,7 @@ func snatchTorrents(IDStrings []string) error {
 func checkLog(logPath string, tracker *GazelleTracker) error {
 	score, err := tracker.GetLogScore(logPath)
 	if err != nil {
-		return errors.New("Error getting log score: " + err.Error())
+		return errors.Wrap(err, errorGettingLogScore)
 	}
 	logThis(fmt.Sprintf("Found score %s for log file %s.", score, logPath), NORMAL)
 	return nil
@@ -211,14 +218,14 @@ func archiveUserFiles() error {
 	archiveName := fmt.Sprintf(archiveNameTemplate, timestamp)
 	if !DirectoryExists(archivesDir) {
 		if err := os.MkdirAll(archivesDir, 0755); err != nil {
-			logThis(errorArchiving+err.Error(), NORMAL)
-			return err
+			logThisError(errors.Wrap(err, errorArchiving), NORMAL)
+			return errors.Wrap(err, errorArchiving)
 		}
 	}
 	// generate file
 	err := archiver.Zip.Make(filepath.Join(archivesDir, archiveName), []string{statsDir, defaultConfigurationFile})
 	if err != nil {
-		logThis(errorArchiving+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorArchiving), NORMAL)
 	}
 	return err
 }

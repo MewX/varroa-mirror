@@ -3,20 +3,22 @@ package main
 import (
 	"fmt"
 	"os"
+	"github.com/pkg/errors"
 )
 
 const (
 	varroa = "varroa musica"
 
-	errorLoadingConfig          = "Error loading configuration: "
+	errorLoadingConfig          = "Error loading configuration"
 	errorServingSignals         = "Error serving signals: "
-	errorFindingDaemon          = "Error finding daemon: "
+	errorFindingDaemon          = "Error finding daemon"
 	errorReleasingDaemon        = "Error releasing daemon: "
 	errorSendingSignal          = "Error sending signal to the daemon: "
 	errorGettingDaemonContext   = "Error launching daemon: "
 	errorCreatingStatsDir       = "Error creating stats directory: "
 	errorShuttingDownServer     = "Error shutting down web server: "
-	errorArguments              = "Error parsing command line arguments: "
+	errorArguments              = "Error parsing command line arguments"
+	errorInfoBadArguments       = "Bad arguments"
 	errorSendingCommandToDaemon = "Error sending command to daemon: "
 	errorRemovingPID            = "Error removing pid file: "
 	errorSettingUp              = "Error setting up: "
@@ -49,7 +51,7 @@ func main() {
 	// parsing CLI
 	cli := &varroaArguments{}
 	if err := cli.parseCLI(os.Args[1:]); err != nil {
-		fmt.Println(errorArguments+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorArguments), NORMAL)
 		return
 	}
 	if cli.builtin {
@@ -66,7 +68,7 @@ func main() {
 		if cli.showFilters {
 			// loading configuration
 			if err := env.LoadConfiguration(); err != nil {
-				logThis(errorLoadingConfig+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorLoadingConfig), NORMAL)
 				return
 			}
 			fmt.Print("Filters found in configuration file: \n\n")
@@ -93,7 +95,7 @@ func main() {
 
 	// loading configuration
 	if err := env.LoadConfiguration(); err != nil {
-		logThis(errorLoadingConfig+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorLoadingConfig), NORMAL)
 		return
 	}
 
@@ -133,7 +135,7 @@ func main() {
 	if err != nil {
 		// no daemon found, running commands directly.
 		if cli.requiresDaemon {
-			logThis(errorFindingDaemon+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorFindingDaemon), NORMAL)
 			fmt.Println(infoUsage)
 			return
 		}
@@ -152,17 +154,17 @@ func main() {
 		}
 		if cli.refreshMetadata {
 			if err := refreshMetadata(IntSliceToStringSlice(cli.torrentIDs)); err != nil {
-				logThis("Error refreshing metadata: "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		}
 		if cli.snatch {
 			if err := snatchTorrents(IntSliceToStringSlice(cli.torrentIDs)); err != nil {
-				logThis("Error snatching torrents: "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		}
 		if cli.checkLog {
 			if err := checkLog(cli.logFile, env.tracker); err != nil {
-				logThis("Error checking log: "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorCheckingLog), NORMAL)
 			}
 		}
 	} else {

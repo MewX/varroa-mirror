@@ -40,9 +40,8 @@ type Environment struct {
 
 // NewEnvironment prepares a new Environment.
 func NewEnvironment() *Environment {
-	env := &Environment{}
-
-	env.daemon = &daemon.Context{
+	e := &Environment{}
+	e.daemon = &daemon.Context{
 		PidFileName: pidFile,
 		PidFilePerm: 0644,
 		LogFileName: "log",
@@ -50,33 +49,29 @@ func NewEnvironment() *Environment {
 		WorkDir:     "./",
 		Umask:       0002,
 	}
-	env.config = &Config{}
-	env.notification = &Notification{}
-	env.history = &History{}
-	env.serverHTTP = &http.Server{}
-	env.serverHTTPS = &http.Server{}
-	env.tracker = &GazelleTracker{}
-
+	e.config = &Config{}
+	e.notification = &Notification{}
+	e.history = &History{}
+	e.serverHTTP = &http.Server{}
+	e.serverHTTPS = &http.Server{}
+	e.tracker = &GazelleTracker{}
 	// disable  autosnatching
-	env.config.disabledAutosnatching = false
-
+	e.config.disabledAutosnatching = false
 	// is only true if we're in the daemon
-	env.inDaemon = false
-	env.configPassphrase = make([]byte, 32)
-
-	env.limiter = make(chan bool, allowedAPICallsByPeriod)
-
+	e.inDaemon = false
+	e.configPassphrase = make([]byte, 32)
+	e.limiter = make(chan bool, allowedAPICallsByPeriod)
 	// current command expects output
-	env.expectedOutput = false
+	e.expectedOutput = false
 	if !daemon.WasReborn() {
 		// here we're expecting output
-		env.expectedOutput = true
+		e.expectedOutput = true
 	}
 	// websocket is open and waiting for input
-	env.websocketOutput = false
-	env.sendBackToCLI = make(chan string, 10)
-	env.sendToWebsocket = make(chan string, 10)
-	return env
+	e.websocketOutput = false
+	e.sendBackToCLI = make(chan string, 10)
+	e.sendToWebsocket = make(chan string, 10)
+	return e
 }
 
 // Daemonize the process and return true if in child process.
@@ -172,12 +167,10 @@ func (e *Environment) LoadConfiguration() error {
 			return err
 		}
 		if err := newConf.loadFromBytes(configBytes); err != nil {
-			logThis(errorLoadingConfig+err.Error(), NORMAL)
 			return err
 		}
 	} else {
 		if err := newConf.load(defaultConfigurationFile); err != nil {
-			logThis(errorLoadingConfig+err.Error(), NORMAL)
 			return err
 		}
 	}
