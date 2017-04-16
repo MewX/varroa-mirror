@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"net"
 	"os"
 	"path/filepath"
@@ -152,10 +153,9 @@ func refreshMetadata(IDStrings []string) error {
 		return errors.New("Error: no ID provided")
 	}
 	// find ids in history
-	var foundAtLeastOne bool
+	var found []string
 	for _, r := range env.history.SnatchedReleases {
 		if StringInSlice(r.TorrentID, IDStrings) {
-			foundAtLeastOne = true
 			logThis("Found release with ID "+r.TorrentID+" in history: "+r.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from RED.
 			info, err := env.tracker.GetTorrentInfo(r.TorrentID)
@@ -168,11 +168,42 @@ func refreshMetadata(IDStrings []string) error {
 			} else {
 				r.Metadata.SaveFromTracker(info)
 			}
+			found = append(found, r.TorrentID)
 			break
 		}
 	}
-	if !foundAtLeastOne {
-		return errors.New("Error: did not find matching ID(s) in history: " + strings.Join(IDStrings, ","))
+	if len(found) != len(IDStrings) {
+		// find the missing IDs
+		missing := []string{}
+		for _, id := range IDStrings {
+			if !StringInSlice(id, found) {
+				missing = append(missing, id)
+			}
+		}
+		// try to find even if not in history
+		if env.config.downloadFolderConfigured() {
+			for _, m := range missing {
+				// get data from RED.
+				info, err := env.tracker.GetTorrentInfo(m)
+				if err != nil {
+					logThisError(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
+					break
+				}
+				fullFolder := filepath.Join(env.config.downloadFolder, html.UnescapeString(info.folder))
+				if DirectoryExists(fullFolder) {
+					r := info.Release()
+					if env.inDaemon {
+						go r.Metadata.SaveFromTracker(info)
+					} else {
+						r.Metadata.SaveFromTracker(info)
+					}
+				} else {
+					logThis(fmt.Sprintf(errorCannotFindID, m), NORMAL)
+				}
+			}
+		} else {
+			return fmt.Errorf(errorCannotFindID, strings.Join(missing, ","))
+		}
 	}
 	return nil
 }
