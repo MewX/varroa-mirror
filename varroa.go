@@ -56,13 +56,49 @@ func main() {
 		return
 	}
 
+	// here commands that have no use for the daemon
+	if !cli.canUseDaemon {
+		if cli.backup {
+			if err := archiveUserFiles(); err == nil {
+				logThis(infoUserFilesArchived, NORMAL)
+			}
+		}
+		if cli.showFilters {
+			// loading configuration
+			if err := env.LoadConfiguration(); err != nil {
+				logThis(errorLoadingConfig+err.Error(), NORMAL)
+				return
+			}
+			fmt.Print("Filters found in configuration file: \n\n")
+			for _, f := range env.config.filters {
+				fmt.Println(f)
+			}
+		}
+		if cli.encrypt {
+			if err := env.config.encrypt(); err != nil {
+				logThis(err.Error(), NORMAL)
+				return
+			}
+			logThis(infoEncrypted, NORMAL)
+		}
+		if cli.decrypt {
+			if err := env.config.decrypt(); err != nil {
+				logThis(err.Error(), NORMAL)
+				return
+			}
+			logThis(infoDecrypted, NORMAL)
+		}
+		return
+	}
+
+	// loading configuration
+	if err := env.LoadConfiguration(); err != nil {
+		logThis(errorLoadingConfig+err.Error(), NORMAL)
+		return
+	}
+
 	// launching daemon
 	if cli.start {
-		// if using encrypted config file, ask for the passphrase and retrieve it from the daemon side
-		if err := env.SavePassphraseForDaemon(); err != nil {
-			logThis(err.Error(), NORMAL)
-			return
-		}
 		// daemonizing process
 		if err := env.Daemonize(os.Args); err != nil {
 			logThis(errorGettingDaemonContext+err.Error(), NORMAL)
@@ -88,41 +124,6 @@ func main() {
 
 		// wait until daemon is stopped.
 		env.WaitForDaemonStop()
-		return
-	}
-
-	// here commands that have no use for the daemon
-	if !cli.canUseDaemon {
-		if cli.backup {
-			if err := archiveUserFiles(); err == nil {
-				logThis(infoUserFilesArchived, NORMAL)
-			}
-		}
-		if cli.showFilters {
-			// load configuration
-			if err := env.Reload(); err != nil {
-				logThis(errorLoadingConfig+err.Error(), NORMAL)
-				return
-			}
-			fmt.Print("Filters found in configuration file: \n\n")
-			for _, f := range env.config.filters {
-				fmt.Println(f)
-			}
-		}
-		if cli.encrypt {
-			if err := env.config.encrypt(); err != nil {
-				logThis(err.Error(), NORMAL)
-				return
-			}
-			logThis(infoEncrypted, NORMAL)
-		}
-		if cli.decrypt {
-			if err := env.config.decrypt(); err != nil {
-				logThis(err.Error(), NORMAL)
-				return
-			}
-			logThis(infoDecrypted, NORMAL)
-		}
 		return
 	}
 

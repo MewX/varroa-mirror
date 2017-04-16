@@ -15,6 +15,8 @@ import (
 
 const (
 	envPassphrase = "_VARROA_PASSPHRASE"
+
+	errorPassphraseNotFound = "Error retrieving passphrase for daemon"
 )
 
 // Environment keeps track of all the context varroa needs.
@@ -133,47 +135,64 @@ func (e *Environment) StopDaemon(daemonProcess *os.Process) {
 // SavePassphraseForDaemon save the encrypted configuration file passphrase to env if necessary.
 // In the daemon, retrieve that passphrase.
 func (e *Environment) SavePassphraseForDaemon() error {
-	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+	var passphrase string
+	var err error
 	if !daemon.WasReborn() {
 		// if necessary, ask for passphrase and add to env
-		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
-			stringPass, err := getPassphrase()
-			if err != nil {
-				return errors.New(errorGettingPassphrase + err.Error())
-			}
-			// testing
-			copy(e.configPassphrase[:], stringPass)
-			configBytes, err := decrypt(encryptedConfigurationFile, e.configPassphrase)
-			if err != nil {
-				return errors.New(errorLoadingConfig + err.Error())
-			}
-			newConf := &Config{}
-			if err := newConf.loadFromBytes(configBytes); err != nil {
-				return errors.New(errorLoadingConfig + err.Error())
-
-			}
-			// saving to env for the daemon to pick up later
-			if err := os.Setenv(envPassphrase, stringPass); err != nil {
-				return errors.New(errorSettingEnv + err.Error())
-
-			}
+		passphrase, err = getPassphrase()
+		if err != nil {
+			return errors.New(errorGettingPassphrase + err.Error())
+		}
+		// saving to env for the daemon to pick up later
+		if err := os.Setenv(envPassphrase, passphrase); err != nil {
+			return errors.New(errorSettingEnv + err.Error())
 		}
 	} else {
 		// getting passphrase from env if necessary
-		if !FileExists(defaultConfigurationFile) && FileExists(encryptedConfigurationFile) {
-			passphrase := os.Getenv(envPassphrase)
-			copy(e.configPassphrase[:], passphrase)
+		passphrase = os.Getenv(envPassphrase)
+	}
+	if passphrase == "" {
+		return errors.New(errorPassphraseNotFound)
+	}
+	copy(e.configPassphrase[:], passphrase)
+	return nil
+}
+
+// LoadConfiguration whether the configuration file is encrypted or not.
+func (e *Environment) LoadConfiguration() error {
+	newConf := &Config{}
+	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+	if FileExists(encryptedConfigurationFile) && !FileExists(defaultConfigurationFile) {
+		// if using encrypted config file, ask for the passphrase and retrieve it from the daemon side
+		if err := e.SavePassphraseForDaemon(); err != nil {
+			return err
+		}
+		configBytes, err := decrypt(encryptedConfigurationFile, e.configPassphrase)
+		if err != nil {
+			return err
+		}
+		if err := newConf.loadFromBytes(configBytes); err != nil {
+			logThis(errorLoadingConfig+err.Error(), NORMAL)
+			return err
+		}
+	} else {
+		if err := newConf.load(defaultConfigurationFile); err != nil {
+			logThis(errorLoadingConfig+err.Error(), NORMAL)
+			return err
 		}
 	}
+	if e.config.user != "" {
+		// if conf.user exists, the configuration had been loaded previously
+		logThis("Configuration reloaded.", NORMAL)
+	} else {
+		logThis("Configuration loaded.", VERBOSE)
+	}
+	e.config = newConf
 	return nil
 }
 
 // SetUp the Environment
 func (e *Environment) SetUp() error {
-	// load configuration
-	if err := e.Reload(); err != nil {
-		return errors.New(errorLoadingConfig + err.Error())
-	}
 	// prepare directory for stats if necessary
 	if !DirectoryExists(statsDir) {
 		if err := os.MkdirAll(statsDir, 0777); err != nil {
@@ -197,39 +216,9 @@ func (e *Environment) SetUp() error {
 
 // Reload the configuration file, restart autosnatching, and try to restart the web server
 func (e *Environment) Reload() error {
-	newConf := &Config{}
-
-	// if using encrypted file
-	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
-	if FileExists(encryptedConfigurationFile) && !FileExists(defaultConfigurationFile) {
-		// if this env variable is set, we're using the encrypted config file and already have the passphrase
-		if !e.inDaemon && os.Getenv(envPassphrase) == "" {
-			// getting passphrase from user
-			passphrase, err := getPassphrase()
-			if err != nil {
-				return err
-			}
-			copy(e.configPassphrase[:], passphrase)
-		}
-		configBytes, err := decrypt(encryptedConfigurationFile, e.configPassphrase)
-		if err != nil {
-			return err
-		}
-		if err := newConf.loadFromBytes(configBytes); err != nil {
-			logThis(errorLoadingConfig+err.Error(), NORMAL)
-			return err
-		}
-	} else {
-		if err := newConf.load(defaultConfigurationFile); err != nil {
-			logThis(errorLoadingConfig+err.Error(), NORMAL)
-			return err
-		}
+	if err := env.LoadConfiguration(); err != nil {
+		return errors.New(errorLoadingConfig + err.Error())
 	}
-	if e.config.user != "" {
-		// if conf.user exists, the configuration had been loaded previously
-		logThis("Configuration reloaded.", NORMAL)
-	}
-	e.config = newConf
 	if e.config.disabledAutosnatching {
 		e.config.disabledAutosnatching = false
 		logThis("Autosnatching enabled.", NORMAL)
@@ -262,6 +251,7 @@ func (e *Environment) Reload() error {
 	return nil
 }
 
+// Notify in a goroutine, or directly.
 func (e *Environment) Notify(msg string) error {
 	notity := func() error {
 		if e.config.pushoverConfigured() {
@@ -275,6 +265,7 @@ func (e *Environment) Notify(msg string) error {
 	return e.RunOrGo(notity)
 }
 
+// RunOrGo depending on whether we're in the daemon or not.
 func (e *Environment) RunOrGo(f func() error) error {
 	if e.inDaemon {
 		go f()
