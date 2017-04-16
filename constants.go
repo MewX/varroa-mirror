@@ -1,6 +1,49 @@
 package main
 
 const (
+	varroa        = "varroa musica"
+	varroaVersion = "varroa musica -- v11dev."
+	pidFile       = "varroa_pid"
+	envPassphrase = "_VARROA_PASSPHRASE"
+
+	// directories & files
+	statsDir                  = "stats"
+	metadataDir               = "TrackerMetadata"
+	userMetadataJSONFile      = "user_metadata.json"
+	originJSONFile            = "origin.json"
+	trackerMetadataFile       = "Release.json"
+	trackerTGroupMetadataFile = "ReleaseGroup.json"
+	trackerCoverFile          = "Cover"
+	summaryFile               = "Release.md"
+
+	// file extensions
+	yamlExt      = ".yaml"
+	encryptedExt = ".enc"
+	pngExt       = ".png"
+	svgExt       = ".svg"
+	csvExt       = ".csv"
+	msgpackExt   = ".db"
+	jsonExt      = ".json"
+
+	// information
+	infoUserFilesArchived         = "User files backed up."
+	infoUsage                     = "Before running a command that requires the daemon, run 'varroa start'."
+	infoEncrypted                 = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
+	infoDecrypted                 = "Configuration file has been decrypted to a plaintext YAML file."
+	infoNotInteresting            = "No filter is interested in release: %s. Ignoring."
+	infoNotMusic                  = "Not a music release, ignoring."
+	infoNotSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
+	infoAllMetadataSaved          = "All metadata saved."
+	infoMetadataSaved             = "Metadata saved to: "
+	infoArtistMetadataSaved       = "Artist Metadata for %s saved to: %s"
+	infoTorrentGroupMetadataSaved = "Torrent Group Metadata for %s saved to: %s"
+	infoCoverSaved                = "Cover saved to: "
+	webServerNotConfigured        = "No configuration found for the web server."
+	webServerShutDown             = "Web server has closed."
+	webServerUpHTTP               = "Starting http web server."
+	webServerUpHTTPS              = "Starting https web server."
+	webServersUp                  = "Web server(s) started."
+
 	// cli errors
 	errorArguments        = "Error parsing command line arguments"
 	errorInfoBadArguments = "Bad arguments"

@@ -10,14 +10,7 @@ import (
 	"github.com/thoj/go-ircevent"
 )
 
-const (
-	announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
-
-	infoNotInteresting = "No filter is interested in release: %s. Ignoring."
-	infoNotMusic       = "Not a music release, ignoring."
-
-	notSnatchingDuplicate = "Similar release already downloaded, and duplicates are not allowed"
-)
+const announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
 
 func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) (*Release, error) {
 	// getting information
@@ -37,7 +30,7 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 		for _, filter := range config.filters {
 			// checking if duplicate
 			if !filter.allowDuplicate && env.history.HasDupe(release) {
-				logThis(notSnatchingDuplicate, VERBOSE)
+				logThis(infoNotSnatchingDuplicate, VERBOSE)
 				continue
 			}
 			// checking if a filter is triggered

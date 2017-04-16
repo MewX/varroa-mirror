@@ -13,9 +13,11 @@ import (
 	daemon "github.com/sevlyar/go-daemon"
 )
 
-const (
-	envPassphrase = "_VARROA_PASSPHRASE"
-)
+type boolFlag bool
+
+func (b boolFlag) IsSet() bool {
+	return bool(b)
+}
 
 // Environment keeps track of all the context varroa needs.
 type Environment struct {

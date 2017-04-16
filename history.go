@@ -17,13 +17,7 @@ import (
 )
 
 const (
-	statsDir   = "stats"
-	pngExt     = ".png"
-	svgExt     = ".svg"
-	csvExt     = ".csv"
-	msgpackExt = ".db"
-	jsonExt    = ".json"
-	gitlabCI   = `# plain-htlm CI
+	gitlabCI = `# plain-htlm CI
 pages:
   stage: deploy
   script:

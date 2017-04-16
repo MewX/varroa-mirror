@@ -6,8 +6,7 @@ import (
 )
 
 const (
-	varroaVersion = "varroa musica -- v11dev."
-	varroaUsage   = `
+	varroaUsage = `
 	_  _ ____ ____ ____ ____ ____    _  _ _  _ ____ _ ____ ____
 	|  | |__| |__/ |__/ |  | |__|    |\/| |  | [__  | |    |__|
 	 \/  |  | |  \ |  \ |__| |  |    |  | |__| ___] | |___ |  |

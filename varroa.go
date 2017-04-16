@@ -7,26 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	varroa = "varroa musica"
-
-	infoUserFilesArchived = "User files backed up."
-	infoUsage             = "Before running a command that requires the daemon, run 'varroa start'."
-	infoEncrypted         = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
-	infoDecrypted         = "Configuration file has been decrypted to a plaintext YAML file."
-
-	pidFile = "varroa_pid"
-)
-
-var (
-	env *Environment
-)
-
-type boolFlag bool
-
-func (b boolFlag) IsSet() bool {
-	return bool(b)
-}
+var env *Environment
 
 func init() {
 	env = NewEnvironment()

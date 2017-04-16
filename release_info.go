@@ -25,8 +25,6 @@ Template:
 */
 
 const (
-	userMetadataJSONFile = "user_metadata.json"
-
 	// TODO: add track durations + total duration
 	// TODO: lineage: Discogs: XXX; Qobuz: XXX; etc...
 	// TODO: add last.fm/discogs/etc info too?

@@ -14,17 +14,10 @@ import (
 )
 
 const (
-	webServerNotConfigured = "No configuration found for the web server."
-	webServerShutDown      = "Web server has closed."
-	webServerUpHTTP        = "Starting http web server."
-	webServerUpHTTPS       = "Starting https web server."
-	webServersUp           = "Web server(s) started."
-
 	downloadCommand  = "get"
 	handshakeCommand = "hello"
 	statsCommand     = "stats"
-
-	autoCloseTab = "<html><head><script>t = null;function moveMe(){t = setTimeout(\"self.close()\",5000);}</script></head><body onload=\"moveMe()\">Successfully downloaded torrent: %s</body></html>"
+	autoCloseTab     = "<html><head><script>t = null;function moveMe(){t = setTimeout(\"self.close()\",5000);}</script></head><body onload=\"moveMe()\">Successfully downloaded torrent: %s</body></html>"
 )
 
 const (

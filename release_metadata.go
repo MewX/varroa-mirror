@@ -12,21 +12,7 @@ import (
 	"github.com/subosito/norma"
 )
 
-const (
-	infoAllMetadataSaved          = "All metadata saved."
-	infoMetadataSaved             = "Metadata saved to: "
-	infoArtistMetadataSaved       = "Artist Metadata for %s saved to: %s"
-	infoTorrentGroupMetadataSaved = "Torrent Group Metadata for %s saved to: %s"
-	infoCoverSaved                = "Cover saved to: "
-
-	originJSONFile            = "origin.json"
-	trackerMetadataFile       = "Release.json"
-	trackerTGroupMetadataFile = "ReleaseGroup.json"
-	trackerCoverFile          = "Cover"
-	metadataDir               = "TrackerMetadata"
-	summaryFile               = "Release.md"
-	trackPattern              = `(.*){{{(\d*)}}}`
-)
+const trackPattern = `(.*){{{(\d*)}}}`
 
 type ReleaseMetadata struct {
 	Root    string
