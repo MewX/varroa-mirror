@@ -1,25 +1,22 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 )
 
 // Source: http://stackoverflow.com/questions/21297139/how-do-you-sign-certificate-signing-request-with-your-certification-authority/21340898#21340898
 
 const (
-	openssl                    = "openssl"
-	certificateKey             = "varroa_key.pem"
-	certificate                = "varroa_cert.pem"
-	certificatesDir            = "certs"
-	errorOpenSSL               = "openssl is not available on this system. "
-	errorGeneratingCertificate = "Error generating self-signed certificate: "
-	errorCreatingCertDir       = "Error creating certificates directory: "
-	errorCreatingFile          = "Error creating file in certificates directory: "
+	openssl         = "openssl"
+	certificateKey  = "varroa_key.pem"
+	certificate     = "varroa_cert.pem"
+	certificatesDir = "certs"
 
 	infoBackupScript    = "Generating certificates has failed. You can try to copy the certs directory and run generate_certificates.sh on your machine (requires openssl)."
 	infoAddCertificates = "Certificates have been generated. If using Firefox, accept as security exception during the first connection. If using Chrome/Vivaldi on linux, close your browser, retrieve varroa_key.pem & varroa_cert.pem and run: certutil -d sql:$HOME/.pki/nssdb -A -t P -n varroa -i varroa_cert.pem"
@@ -139,24 +136,24 @@ func generateCertificates() error {
 	}
 
 	if err := os.MkdirAll(certificatesDir, 0777); err != nil {
-		return errors.New(errorCreatingCertDir + err.Error())
+		return errors.Wrap(err, errorCreatingCertDir)
 	}
 	// create the necessary files
 	subj := fmt.Sprintf(subjTemplate, env.config.webServer.hostname)
 	if err := ioutil.WriteFile(filepath.Join(certificatesDir, "index.txt"), []byte(""), 0644); err != nil {
-		return errors.New(errorCreatingFile + err.Error())
+		return errors.Wrap(err, errorCreatingFile)
 	}
 	if err := ioutil.WriteFile(filepath.Join(certificatesDir, "serial.txt"), []byte("01"), 0644); err != nil {
-		return errors.New(errorCreatingFile + err.Error())
+		return errors.Wrap(err, errorCreatingFile)
 	}
 	if err := ioutil.WriteFile(filepath.Join(certificatesDir, openSSLCAConfFile), []byte(fmt.Sprintf(openSSLCA, env.config.webServer.hostname)), 0644); err != nil {
-		return errors.New(errorCreatingFile + err.Error())
+		return errors.Wrap(err, errorCreatingFile)
 	}
 	if err := ioutil.WriteFile(filepath.Join(certificatesDir, openSSLServerConfFile), []byte(fmt.Sprintf(openSSLServer, certificateKey, env.config.webServer.hostname, env.config.webServer.hostname)), 0644); err != nil {
-		return errors.New(errorCreatingFile + err.Error())
+		return errors.Wrap(err, errorCreatingFile)
 	}
 	if err := ioutil.WriteFile(filepath.Join(certificatesDir, opensSLBackupScriptFile), []byte(fmt.Sprintf(openSSLshTemplate, openSSLCAConfFile, subj, openSSLServerConfFile, subj, openSSLCAConfFile, certificate)), 0644); err != nil {
-		return errors.New(errorCreatingFile + err.Error())
+		return errors.Wrap(err, errorCreatingFile)
 	}
 
 	// checking openssl is available
@@ -169,20 +166,20 @@ func generateCertificates() error {
 	cmdCA := exec.Command(openssl, generateCACommand...)
 	cmdCA.Dir = certificatesDir
 	if cmdOut, err := cmdCA.Output(); err != nil {
-		return errors.New(err.Error() + string(cmdOut))
+		return errors.Wrap(err, string(cmdOut))
 	}
 	// generate server certificate
 	generateServerCommand = append(generateServerCommand, subj)
 	cmdServer := exec.Command(openssl, generateServerCommand...)
 	cmdServer.Dir = certificatesDir
 	if cmdOut, err := cmdServer.Output(); err != nil {
-		return errors.New(err.Error() + string(cmdOut))
+		return errors.Wrap(err, string(cmdOut))
 	}
 	// signing server certificate
 	cmdSign := exec.Command(openssl, generateSignCommand...)
 	cmdSign.Dir = certificatesDir
 	if cmdOut, err := cmdSign.Output(); err != nil {
-		return errors.New(err.Error() + string(cmdOut))
+		return errors.Wrap(err, string(cmdOut))
 	}
 	return nil
 }

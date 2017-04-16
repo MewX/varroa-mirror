@@ -19,17 +19,6 @@ const (
 	archiveNameTemplate        = "varroa_%s.zip"
 	defaultConfigurationFile   = "config.yaml"
 	unixSocketMessageSeparator = "↑" // because it looks nice
-
-	errorArchiving          = "Error while archiving user files"
-	errorDialingSocket      = "Error dialing to unix socket"
-	errorWritingToSocket    = "Error writing to unix socket"
-	errorReadingFromSocket  = "Error reading from unix socket"
-	errorCreatingSocket     = "Error creating unix socket"
-	errorReloading          = "Error reloading"
-	errorCheckingLog        = "Error checking log"
-	errorSnatchingTorrent   = "Error snatching torrents"
-	errorRefreshingMetadata = "Error refreshing metadata"
-	errorGettingLogScore    = "Error getting log score"
 )
 
 func sendOrders(cli *varroaArguments) error {

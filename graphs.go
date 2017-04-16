@@ -2,19 +2,14 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"image"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
-)
-
-const (
-	errorImageNotFound = "Error opening png: "
-	errorNoImageFound  = "Error: no image found"
 )
 
 var (
@@ -115,12 +110,12 @@ func combineAllPNGs(combined string, graphs ...string) error {
 	for _, graph := range graphs {
 		imgFile, err := os.Open(graph + pngExt)
 		if err != nil {
-			logThis(errorImageNotFound+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorImageNotFound), NORMAL)
 			continue
 		}
 		img, _, err := image.Decode(imgFile)
 		if err != nil {
-			logThis(errorImageNotFound+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorImageNotFound), NORMAL)
 			continue
 		}
 		images = append(images, img)

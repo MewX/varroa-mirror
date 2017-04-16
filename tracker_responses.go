@@ -1,9 +1,5 @@
 package main
 
-const (
-	errorGazelleRateLimitExceeded = "rate limit exceeded"
-)
-
 func getGazelleReleaseType(value int) string {
 	switch value {
 	case 1:

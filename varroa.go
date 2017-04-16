@@ -3,27 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+
 	"github.com/pkg/errors"
 )
 
 const (
 	varroa = "varroa musica"
-
-	errorLoadingConfig          = "Error loading configuration"
-	errorServingSignals         = "Error serving signals: "
-	errorFindingDaemon          = "Error finding daemon"
-	errorReleasingDaemon        = "Error releasing daemon: "
-	errorSendingSignal          = "Error sending signal to the daemon: "
-	errorGettingDaemonContext   = "Error launching daemon: "
-	errorCreatingStatsDir       = "Error creating stats directory: "
-	errorShuttingDownServer     = "Error shutting down web server: "
-	errorArguments              = "Error parsing command line arguments"
-	errorInfoBadArguments       = "Bad arguments"
-	errorSendingCommandToDaemon = "Error sending command to daemon: "
-	errorRemovingPID            = "Error removing pid file: "
-	errorSettingUp              = "Error setting up: "
-	errorGettingPassphrase      = "Error getting passphrase: "
-	errorSettingEnv             = "Could not set env variable: "
 
 	infoUserFilesArchived = "User files backed up."
 	infoUsage             = "Before running a command that requires the daemon, run 'varroa start'."
@@ -103,7 +88,7 @@ func main() {
 	if cli.start {
 		// daemonizing process
 		if err := env.Daemonize(os.Args); err != nil {
-			logThis(errorGettingDaemonContext+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorGettingDaemonContext), NORMAL)
 			return
 		}
 		// if not in daemon, job is over; exiting.
@@ -113,7 +98,7 @@ func main() {
 		}
 		// setting up for the daemon
 		if err := env.SetUp(); err != nil {
-			logThis(errorSettingUp+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
 		// launch goroutines
@@ -141,7 +126,7 @@ func main() {
 		}
 		// setting up since the daemon isn't running
 		if err := env.SetUp(); err != nil {
-			logThis(errorSettingUp+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
 		// starting rate limiter
@@ -149,7 +134,7 @@ func main() {
 		// running the command
 		if cli.stats {
 			if err := generateStats(); err != nil {
-				logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 			}
 		}
 		if cli.refreshMetadata {
@@ -170,7 +155,7 @@ func main() {
 	} else {
 		// daemon is up, sending commands to the daemon through the unix socket
 		if err := sendOrders(cli); err != nil {
-			logThis(errorSendingCommandToDaemon+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorSendingCommandToDaemon), NORMAL)
 			return
 		}
 		// at last, sending signals for shutdown

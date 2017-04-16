@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,24 +10,15 @@ import (
 	"github.com/goji/httpauth"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 )
 
 const (
-	webServerNotConfigured       = "No configuration found for the web server."
-	webServerShutDown            = "Web server has closed."
-	webServerUpHTTP              = "Starting http web server."
-	webServerUpHTTPS             = "Starting https web server."
-	webServersUp                 = "Web server(s) started."
-	errorServing                 = "Error launching web interface: "
-	errorWrongToken              = "Error receiving download order from https: wrong token"
-	errorNoToken                 = "Error receiving download order from https: no token"
-	errorNoID                    = "Error retreiving torrent ID"
-	errorNoStatsFilename         = "Error retreiving stats filename "
-	errorUnknownCommand          = "Error: unknown websocket command: "
-	errorIncomingWebSocketJSON   = "Error parsing websocket input: "
-	errorIncorrectWebServerToken = "Error validating token for web server, ignoring."
-	errorWritingToWebSocket      = "Error writing to websocket: "
-	errorCreatingWebSocket       = "Error creating websocket: "
+	webServerNotConfigured = "No configuration found for the web server."
+	webServerShutDown      = "Web server has closed."
+	webServerUpHTTP        = "Starting http web server."
+	webServerUpHTTPS       = "Starting https web server."
+	webServersUp           = "Web server(s) started."
 
 	downloadCommand  = "get"
 	handshakeCommand = "hello"
@@ -73,7 +63,7 @@ func snatchFromID(id string) (*Release, error) {
 
 	logThis("Web server: downloading torrent "+release.ShortString(), NORMAL)
 	if err := env.tracker.DownloadTorrent(release, env.config.defaultDestinationFolder); err != nil {
-		logThis(errorDownloadingTorrent+release.torrentURL+" /  "+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err
 	}
 	// add to history
@@ -147,7 +137,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 			}
 			file, err := ioutil.ReadFile(filepath.Join(statsDir, filename))
 			if err != nil {
-				logThis(errorNoStatsFilename+": "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorNoStatsFilename), NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
@@ -161,14 +151,14 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 		getTorrent := func(w http.ResponseWriter, r *http.Request) {
 			id, err := validateGet(r, config)
 			if err != nil {
-				logThis("Error parsing request: "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, "Error parsing request"), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 			// snatching
 			release, err := snatchFromID(id)
 			if err != nil {
-				logThis("Error snatching trt: "+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 				return
 			}
 			// write response
@@ -182,7 +172,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 		socket := func(w http.ResponseWriter, r *http.Request) {
 			c, err := upgrader.Upgrade(w, r, nil)
 			if err != nil {
-				logThis(errorCreatingWebSocket+err.Error(), NORMAL)
+				logThisError(errors.Wrap(err, errorCreatingWebSocket), NORMAL)
 				return
 			}
 			defer c.Close()
@@ -197,7 +187,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 					case messageToLog := <-env.sendToWebsocket:
 						// TODO differentiate info / error
 						if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog}); err != nil {
-							logThis(errorWritingToWebSocket+err.Error(), NORMAL)
+							logThisError(errors.Wrap(err, errorWritingToWebSocket), NORMAL)
 						}
 					case <-endThisConnection:
 						return
@@ -214,7 +204,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 						env.websocketOutput = false
 						break
 					}
-					logThis(errorIncomingWebSocketJSON+err.Error(), NORMAL)
+					logThisError(errors.Wrap(err, errorIncomingWebSocketJSON), NORMAL)
 					continue
 				}
 
@@ -246,7 +236,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 				}
 				// writing answer
 				if err := c.WriteJSON(answer); err != nil {
-					logThis(errorWritingToWebSocket+err.Error(), NORMAL)
+					logThisError(errors.Wrap(err, errorWritingToWebSocket), NORMAL)
 				}
 
 				// TODO: reset after a while
@@ -277,7 +267,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 				if err == http.ErrServerClosed {
 					logThis(webServerShutDown, NORMAL)
 				} else {
-					logThis(errorServing+err.Error(), NORMAL)
+					logThisError(errors.Wrap(err, errorServing), NORMAL)
 				}
 			}
 		}()
@@ -286,7 +276,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 		// if not there yet, generate the self-signed certificate
 		if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
 			if err := generateCertificates(); err != nil {
-				logThis(errorGeneratingCertificate+err.Error()+provideCertificate, NORMAL)
+				logThisError(errors.Wrap(err, errorGeneratingCertificate+provideCertificate), NORMAL)
 				logThis(infoBackupScript, NORMAL)
 				return
 			}
@@ -301,7 +291,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 				if err == http.ErrServerClosed {
 					logThis(webServerShutDown, NORMAL)
 				} else {
-					logThis(errorServing+err.Error(), NORMAL)
+					logThisError(errors.Wrap(err, errorServing), NORMAL)
 				}
 			}
 		}()

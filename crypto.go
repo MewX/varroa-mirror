@@ -3,22 +3,16 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
 	"github.com/howeyc/gopass"
+	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
 
 const (
-	errorBadPassphrase        = "Error, passphrase must be 32bytes long."
-	errorCanOnlyEncryptYAML   = "Error encrypting, input is not a .yaml file."
-	errorCanOnlyDencryptENC   = "Error decrypting, input is not a .enc file."
-	errorBadDecryptedFile     = "Decrypted file is not a valid YAML file (bad passphrase?): "
-	errorReadingDecryptedFile = "Decrypted configuration file makes no sense."
-
 	yamlExt      = ".yaml"
 	encryptedExt = ".enc"
 )
@@ -87,7 +81,7 @@ func decrypt(path string, passphrase []byte) ([]byte, error) {
 	// check it's valid YAML?
 	var config QuickCheckConfig
 	if err := yaml.Unmarshal(decoded, &config); err != nil {
-		return []byte{}, errors.New(errorBadDecryptedFile + err.Error())
+		return []byte{}, errors.Wrap(err, errorBadDecryptedFile)
 	}
 	if config.Tracker.Password == "" || config.Tracker.User == "" || config.Tracker.URL == "" {
 		return []byte{}, errors.New(errorReadingDecryptedFile)

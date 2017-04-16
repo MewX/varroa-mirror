@@ -13,16 +13,6 @@ import (
 )
 
 const (
-	errorWritingJSONMetadata        = "Error writing metadata file: "
-	errorDownloadingTrackerCover    = "Error downloading tracker cover: "
-	errorCreatingMetadataDir        = "Error creating metadata directory: "
-	errorRetrievingArtistInfo       = "Error getting info for artist %d"
-	errorRetrievingTorrentGroupInfo = "Error getting torrent group info for %d"
-	errorWithOriginJSON             = "Error creating or updating origin.json: "
-	errorInfoNoMatchForOrigin       = "Error updating origin.json, no match for tracker and/or torrent ID: "
-	errorGeneratingUserMetadataJSON = "Error generating user metadata JSON: "
-	errorGeneratingSummary          = "Error generating metadata summary: "
-
 	infoAllMetadataSaved          = "All metadata saved."
 	infoMetadataSaved             = "Metadata saved to: "
 	infoArtistMetadataSaved       = "Artist Metadata for %s saved to: %s"
@@ -84,18 +74,18 @@ func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
 
 	// create metadata dir if necessary
 	if err := os.MkdirAll(filepath.Join(rm.Root), 0775); err != nil {
-		return errors.New(errorCreatingMetadataDir + err.Error())
+		return errors.Wrap(err, errorCreatingMetadataDir)
 	}
 	// creating or updating origin.json
 	if err := rm.Origin.Save(filepath.Join(rm.Root, originJSONFile), rm.Info); err != nil {
-		return errors.New(errorWithOriginJSON + err.Error())
+		return errors.Wrap(err, errorWithOriginJSON)
 	}
 
 	// NOTE: errors are not returned (for now) in case the following things can be retrieved
 
 	// write tracker metadata to target folder
 	if err := ioutil.WriteFile(filepath.Join(rm.Root, trackerMetadataFile), rm.Info.fullJSON, 0666); err != nil {
-		logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 	} else {
 		logThis(infoMetadataSaved+rm.Info.folder, VERBOSE)
 	}
@@ -107,7 +97,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
 		rm.Group = *torrentGroupInfo
 		// write tracker artist metadata to target folder
 		if err := ioutil.WriteFile(filepath.Join(rm.Root, trackerTGroupMetadataFile), rm.Group.fullJSON, 0666); err != nil {
-			logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
 			logThis(fmt.Sprintf(infoTorrentGroupMetadataSaved, rm.Group.name, rm.Info.folder), VERBOSE)
 		}
@@ -123,22 +113,22 @@ func (rm *ReleaseMetadata) SaveFromTracker(info *TrackerTorrentInfo) error {
 		// write tracker artist metadata to target folder
 		// making sure the artistInfo.name+jsonExt is a valid filename
 		if err := ioutil.WriteFile(filepath.Join(rm.Root, norma.Sanitize(artistInfo.name)+jsonExt), artistInfo.fullJSON, 0666); err != nil {
-			logThis(errorWritingJSONMetadata+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
 			logThis(fmt.Sprintf(infoArtistMetadataSaved, artistInfo.name, rm.Info.folder), VERBOSE)
 		}
 	}
 	// generate blank user metadata json
 	if err := rm.Summary.writeUserJSON(rm.Root); err != nil {
-		logThis(errorGeneratingUserMetadataJSON+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorGeneratingUserMetadataJSON), NORMAL)
 	}
 	// generate summary
 	if err := rm.GenerateSummary(); err != nil {
-		logThis(errorGeneratingSummary+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorGeneratingSummary), NORMAL)
 	}
 	// download tracker cover to target folder
 	if err := info.DownloadCover(filepath.Join(rm.Root, trackerCoverFile)); err != nil {
-		logThis(errorDownloadingTrackerCover+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorDownloadingTrackerCover), NORMAL)
 	} else {
 		logThis(infoCoverSaved+rm.Info.folder, VERBOSE)
 	}

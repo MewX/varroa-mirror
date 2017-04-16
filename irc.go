@@ -2,24 +2,16 @@ package main
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"regexp"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/thoj/go-ircevent"
 )
 
 const (
 	announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
-
-	errorDealingWithAnnounce    = "Error dealing with announced torrent: "
-	errorConnectingToIRC        = "Error connecting to IRC: "
-	errorCouldNotGetTorrentInfo = "Error retreiving torrent info from tracker"
-	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder: "
-	errorDownloadingTorrent     = "Error downloading torrent: "
-	errorRemovingTempFile       = "Error removing temporary file %s"
-	errorAddingToHistory        = "Error adding release to history"
 
 	infoNotInteresting = "No filter is interested in release: %s. Ignoring."
 	infoNotMusic       = "Not a music release, ignoring."
@@ -68,7 +60,7 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 						destination = filter.destinationFolder
 					}
 					if err := tracker.DownloadTorrent(release, destination); err != nil {
-						return nil, errors.New(errorDownloadingTorrent + err.Error())
+						return nil, errors.Wrap(err, errorDownloadingTorrent)
 					}
 					downloadedTorrent = true
 					// adding to history
@@ -120,7 +112,7 @@ func ircHandler(config *Config, tracker *GazelleTracker) {
 				announced := e.Message()
 				logThis("++ Announced: "+announced, VERBOSE)
 				if _, err := analyzeAnnounce(announced, config, tracker); err != nil {
-					logThis(errorDealingWithAnnounce+err.Error(), VERBOSE)
+					logThisError(errors.Wrap(err, errorDealingWithAnnounce), VERBOSE)
 					return
 				}
 			}
@@ -128,7 +120,7 @@ func ircHandler(config *Config, tracker *GazelleTracker) {
 	})
 	err := IRCClient.Connect(config.irc.server)
 	if err != nil {
-		logThis(errorConnectingToIRC+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorConnectingToIRC), NORMAL)
 		return
 	}
 	IRCClient.Loop()

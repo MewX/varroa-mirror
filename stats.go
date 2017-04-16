@@ -2,31 +2,24 @@ package main
 
 import (
 	"time"
-)
 
-const (
-	errorGettingStats          = "Error getting stats: "
-	errorWritingCSV            = "Error writing stats to CSV file: "
-	errorGeneratingGraphs      = "Error generating graphs (may require more data): "
-	errorGeneratingDailyGraphs = "Error generating daily graphs (at least 24h worth of data required): "
-	errorNotEnoughDataPoints   = "Not enough data points (yet) to generate graph"
-	errorBufferDrop            = "Buffer drop too important, stopping autosnatching. Reload to start again."
+	"github.com/pkg/errors"
 )
 
 func manageStats(config *Config, tracker *GazelleTracker, previousStats *TrackerStats) *TrackerStats {
 	stats, err := tracker.GetStats()
 	if err != nil {
-		logThis(errorGettingStats+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorGettingStats), NORMAL)
 		return &TrackerStats{}
 	}
 	logThis(stats.Progress(previousStats), NORMAL)
 	// save to CSV
 	if err := env.history.TrackerStatsHistory.Add(stats); err != nil {
-		logThis(errorWritingCSV+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorWritingCSV), NORMAL)
 	}
 	// generate graphs
 	if err := env.history.GenerateGraphs(); err != nil {
-		logThis(errorGeneratingGraphs+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 	}
 	// send notification
 	env.Notify("Current stats: " + stats.Progress(previousStats))

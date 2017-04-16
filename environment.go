@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"os"
 	"strings"
@@ -10,13 +9,12 @@ import (
 	"time"
 
 	"github.com/gregdel/pushover"
+	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
 )
 
 const (
 	envPassphrase = "_VARROA_PASSPHRASE"
-
-	errorPassphraseNotFound = "Error retrieving passphrase for daemon"
 )
 
 // Environment keeps track of all the context varroa needs.
@@ -80,7 +78,6 @@ func (e *Environment) Daemonize(args []string) error {
 	e.daemon.Args = os.Args
 	child, err := e.daemon.Reborn()
 	if err != nil {
-		logThis(errorGettingDaemonContext+err.Error(), NORMAL)
 		return err
 	}
 	if child != nil {
@@ -102,7 +99,7 @@ func quitDaemon(sig os.Signal) error {
 // Wait for the daemon to stop.
 func (e *Environment) WaitForDaemonStop() {
 	if err := daemon.ServeSignals(); err != nil {
-		logThis(errorServingSignals+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorServingSignals), NORMAL)
 	}
 	logThis("+ varroa musica stopped", NORMAL)
 }
@@ -117,13 +114,13 @@ func (e *Environment) FindDaemon() (*os.Process, error) {
 func (e *Environment) StopDaemon(daemonProcess *os.Process) {
 	daemon.AddCommand(boolFlag(true), syscall.SIGTERM, quitDaemon)
 	if err := daemon.SendCommands(daemonProcess); err != nil {
-		logThis(errorSendingSignal+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorSendingSignal), NORMAL)
 	}
 	if err := e.daemon.Release(); err != nil {
-		logThis(errorReleasingDaemon+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorReleasingDaemon), NORMAL)
 	}
 	if err := os.Remove(pidFile); err != nil {
-		logThis(errorRemovingPID+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorRemovingPID), NORMAL)
 	}
 }
 
@@ -136,11 +133,11 @@ func (e *Environment) SavePassphraseForDaemon() error {
 		// if necessary, ask for passphrase and add to env
 		passphrase, err = getPassphrase()
 		if err != nil {
-			return errors.New(errorGettingPassphrase + err.Error())
+			return errors.Wrap(err, errorGettingPassphrase)
 		}
 		// saving to env for the daemon to pick up later
 		if err := os.Setenv(envPassphrase, passphrase); err != nil {
-			return errors.New(errorSettingEnv + err.Error())
+			return errors.Wrap(err, errorSettingEnv)
 		}
 	} else {
 		// getting passphrase from env if necessary
@@ -189,7 +186,7 @@ func (e *Environment) SetUp() error {
 	// prepare directory for stats if necessary
 	if !DirectoryExists(statsDir) {
 		if err := os.MkdirAll(statsDir, 0777); err != nil {
-			return errors.New(errorCreatingStatsDir + err.Error())
+			return errors.Wrap(err, errorCreatingStatsDir)
 		}
 	}
 	// init notifications with pushover
@@ -210,7 +207,7 @@ func (e *Environment) SetUp() error {
 // Reload the configuration file, restart autosnatching, and try to restart the web server
 func (e *Environment) Reload() error {
 	if err := env.LoadConfiguration(); err != nil {
-		return errors.New(errorLoadingConfig + err.Error())
+		return errors.Wrap(err, errorLoadingConfig)
 	}
 	if e.config.disabledAutosnatching {
 		e.config.disabledAutosnatching = false
@@ -224,7 +221,7 @@ func (e *Environment) Reload() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := e.serverHTTP.Shutdown(ctx); err != nil {
-			logThis(errorShuttingDownServer+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorShuttingDownServer), NORMAL)
 			thingsWentOK = false
 		}
 	}
@@ -233,7 +230,7 @@ func (e *Environment) Reload() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := e.serverHTTPS.Shutdown(ctx); err != nil {
-			logThis(errorShuttingDownServer+err.Error(), NORMAL)
+			logThisError(errors.Wrap(err, errorShuttingDownServer), NORMAL)
 			thingsWentOK = false
 		}
 	}
@@ -249,7 +246,7 @@ func (e *Environment) Notify(msg string) error {
 	notity := func() error {
 		if e.config.pushoverConfigured() {
 			if err := env.notification.Send(msg); err != nil {
-				logThis(errorNotification+err.Error(), VERBOSE)
+				logThisError(errors.Wrap(err, errorNotification), VERBOSE)
 				return err
 			}
 		}
