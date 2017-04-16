@@ -14,11 +14,6 @@ const (
 	git = "git"
 )
 
-var (
-	existsCommand = []string{"rev-parse", "--is-inside-work-tree"}
-	initCommand   = []string{"init", "--quiet"}
-)
-
 // Git is a very basic wrapper around git
 // Using git2go would be better but requires libgit2 to be installed, which may not be an option on seedboxes
 // This assumes git, however, is available. If not, NewGit will return nil.
@@ -62,7 +57,7 @@ func (g *Git) Exists() bool {
 	g.goToRepositoryRoot()
 	defer g.getBack()
 
-	cmdOut, err := exec.Command(git, existsCommand...).Output()
+	cmdOut, err := exec.Command(git, "rev-parse", "--is-inside-work-tree").Output()
 	if err != nil {
 		return false
 	}
@@ -75,7 +70,7 @@ func (g *Git) Exists() bool {
 func (g *Git) Init() error {
 	g.goToRepositoryRoot()
 	defer g.getBack()
-	_, err := exec.Command(git, initCommand...).Output()
+	_, err := exec.Command(git, "init", "--quiet").Output()
 	if err != nil {
 		return err
 	}

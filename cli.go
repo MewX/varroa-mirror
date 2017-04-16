@@ -1,14 +1,12 @@
 package main
 
 import (
-	"errors"
-
 	docopt "github.com/docopt/docopt-go"
+	"github.com/pkg/errors"
 )
 
 const (
-	varroaVersion = "varroa musica -- v10."
-	varroaUsage   = `
+	varroaUsage = `
 	_  _ ____ ____ ____ ____ ____    _  _ _  _ ____ _ ____ ____
 	|  | |__| |__/ |__/ |  | |__|    |\/| |  | [__  | |    |__|
 	 \/  |  | |  \ |  \ |__| |  |    |  | |__| ___] | |___ |  |
@@ -59,9 +57,22 @@ Commands:
 	backup:
 		backup user files (stats, history, configuration file) to a
 		timestamped zip file. Automatically triggered every day.
+
+Configuration Commands:
+
 	show-filters:
 		displays the filters set in the configuration file (allows
 		checking the filters and good YAML formatting).
+	encrypt:
+		encrypts your configuration file. The encrypted version can
+		be used in place of the plaintext version, if you're
+		uncomfortable having passwords lying around in an simple text
+		file. You will be prompted for a passphrase which you will
+		have to enter again every time you run varroa. Your passwords
+		will still be decoded in memory while varroa is up. This
+		command does not remove the plaintext version.
+	decrypt:
+		decrypts your encrypted configuration file.
 
 Usage:
 	varroa (start|reload|stop)
@@ -71,6 +82,7 @@ Usage:
 	varroa snatch <ID>...
 	varroa backup
 	varroa show-filters
+	varroa (encrypt|decrypt)
 	varroa --version
 
 Options:
@@ -90,6 +102,8 @@ type varroaArguments struct {
 	snatch          bool
 	backup          bool
 	showFilters     bool
+	encrypt         bool
+	decrypt         bool
 	torrentIDs      []int
 	logFile         string
 	requiresDaemon  bool
@@ -100,7 +114,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// parse arguments and options
 	args, err := docopt.Parse(varroaUsage, osArgs, true, varroaVersion, false, false)
 	if err != nil {
-		return err
+		return errors.Wrap(err, errorInfoBadArguments)
 	}
 	if len(args) == 0 {
 		// builtin command, nothing to do.
@@ -118,6 +132,8 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.snatch = args["snatch"].(bool)
 	b.backup = args["backup"].(bool)
 	b.showFilters = args["show-filters"].(bool)
+	b.encrypt = args["encrypt"].(bool)
+	b.decrypt = args["decrypt"].(bool)
 	// arguments
 	if b.refreshMetadata || b.snatch {
 		IDs, ok := args["<ID>"].([]string)
@@ -144,7 +160,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showFilters {
+	if b.backup || b.showFilters || b.decrypt || b.encrypt {
 		b.canUseDaemon = false
 	}
 	return nil

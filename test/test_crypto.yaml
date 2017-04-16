@@ -1,0 +1,12 @@
+tracker:
+  user: i_am
+  password: a_test
+  url: https://something.com
+  stats_update_period_hour: 1
+  default_destination_folder: .
+
+
+filters:
+  everything:
+    allow_scene: true
+

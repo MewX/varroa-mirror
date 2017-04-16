@@ -11,23 +11,22 @@ const (
 	VERBOSEST
 )
 
-var (
-	sendBackToCLI   = make(chan string, 10)
-	sendToWebsocket = make(chan string, 10)
-)
-
 type logMessage struct {
 	level   int
 	message string
 }
 
+func logThisError(err error, level int) {
+	logThis(err.Error(), level)
+}
+
 func logThis(msg string, level int) {
-	if conf.logLevel >= level {
-		if expectedOutput {
+	if env.config.logLevel >= level {
+		if env.expectedOutput {
 			// only is daemon is up...
-			if inDaemon {
+			if env.inDaemon {
 				log.Println(msg)
-				sendBackToCLI <- msg
+				env.sendBackToCLI <- msg
 			} else {
 				fmt.Println(msg)
 			}
@@ -35,8 +34,8 @@ func logThis(msg string, level int) {
 			log.Println(msg)
 		}
 		// write to socket
-		if websocketOutput {
-			sendToWebsocket <- msg
+		if env.websocketOutput {
+			env.sendToWebsocket <- msg
 		}
 	}
 }

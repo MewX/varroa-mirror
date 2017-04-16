@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,11 +11,13 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -28,26 +29,10 @@ const (
 
 	statusSuccess = "success"
 
-	unknownTorrentURL       = "Unknown torrent URL"
-	errorLogIn              = "Error logging in: "
-	errorNotLoggedIn        = "Not logged in"
-	errorJSONAPI            = "Error calling JSON API: "
-	errorGET                = "Error calling GET on URL, got HTTP status: "
-	errorUnmarshallingJSON  = "Error reading JSON: "
-	errorInvalidResponse    = "Invalid response. Maybe log in again?"
-	errorAPIResponseStatus  = "Got JSON API status: "
-	errorCouldNotCreateForm = "Could not create form for log: "
-	errorCouldNotReadLog    = "Could not read log: "
-
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
 )
 
-var (
-	// channel of allowedAPICallsByPeriod elements, which will rate-limit the requests
-	limiter = make(chan bool, allowedAPICallsByPeriod)
-)
-
-func apiCallRateLimiter() {
+func apiCallRateLimiter(limiter chan bool) {
 	// fill the rate limiter the first time
 	for i := 0; i < allowedAPICallsByPeriod; i++ {
 		limiter <- true
@@ -71,7 +56,7 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 		return []byte{}, errors.New(errorNotLoggedIn)
 	}
 	// wait for rate limiter
-	<-limiter
+	<-env.limiter
 	// get request
 	resp, err := client.Get(url)
 	if err != nil {
@@ -90,11 +75,19 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	var r GazelleGenericResponse
 	if err := json.Unmarshal(data, &r); err != nil {
 		logThis("BAD JSON, Received: \n"+string(data), VERBOSEST)
-		return []byte{}, errors.New(errorUnmarshallingJSON + err.Error())
+		return []byte{}, errors.Wrap(err, errorUnmarshallingJSON)
 	}
 	if r.Status != statusSuccess {
 		if r.Status == "" {
 			return data, errors.New(errorInvalidResponse)
+		}
+		if r.Error == errorGazelleRateLimitExceeded {
+			logThis(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
+			// calling again, waiting for the rate limiter again should do the trick.
+			// that way 2 limiter slots will have passed before the next call is made,
+			// the server should allow it.
+			<-env.limiter
+			return callJSONAPI(client, url)
 		}
 		return data, errors.New(errorAPIResponseStatus + r.Status)
 	}
@@ -126,23 +119,23 @@ func (t *GazelleTracker) Login(user, password string) error {
 	}
 	jar, err := cookiejar.New(&options)
 	if err != nil {
-		logThis(errorLogIn+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorLogIn), NORMAL)
 		return err
 	}
 	t.client = &http.Client{Jar: jar}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		logThis(errorLogIn+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorLogIn), NORMAL)
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(errorLogIn + "Returned status: " + resp.Status)
+		return errors.New(errorLogIn + ": Returned status: " + resp.Status)
 	}
 	if resp.Request.URL.String() == t.rootURL+"/login.php" {
 		// if after sending the request we're still redirected to the login page, something went wrong.
-		return errors.New(errorLogIn + "login page returned")
+		return errors.New(errorLogIn + ": Login page returned")
 	}
 	return nil
 }
@@ -150,9 +143,9 @@ func (t *GazelleTracker) Login(user, password string) error {
 func (t *GazelleTracker) get(url string) ([]byte, error) {
 	data, err := callJSONAPI(t.client, url)
 	if err != nil {
-		logThis(errorJSONAPI+err.Error(), NORMAL)
+		logThisError(errors.Wrap(err, errorJSONAPI), NORMAL)
 		// if error, try once again after logging in again
-		if loginErr := t.Login(conf.user, conf.password); loginErr == nil {
+		if loginErr := t.Login(env.config.user, env.config.password); loginErr == nil {
 			return callJSONAPI(t.client, url)
 		}
 		return nil, errors.New("Could not log in and send get request to " + url)
@@ -160,9 +153,9 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 	return data, err
 }
 
-func (t *GazelleTracker) Download(r *Release) error {
+func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) error {
 	if r.torrentURL == "" || r.TorrentFile == "" {
-		return errors.New(unknownTorrentURL)
+		return errors.New(errorUnknownTorrentURL)
 	}
 	response, err := t.client.Get(r.torrentURL)
 	if err != nil {
@@ -175,29 +168,40 @@ func (t *GazelleTracker) Download(r *Release) error {
 	}
 	defer file.Close()
 	_, err = io.Copy(file, response.Body)
-	return err
+	if err != nil {
+		return err
+	}
+	// move to relevant directory
+	if err := CopyFile(r.TorrentFile, filepath.Join(destinationFolder, r.TorrentFile)); err != nil {
+		return errors.Wrap(err, errorCouldNotMoveTorrent)
+	}
+	// cleaning up
+	if err := os.Remove(r.TorrentFile); err != nil {
+		logThis(fmt.Sprintf(errorRemovingTempFile, r.TorrentFile), VERBOSE)
+	}
+	return nil
 }
 
 func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 	if t.userID == 0 {
 		data, err := t.get(t.rootURL + "/ajax.php?action=index")
 		if err != nil {
-			return nil, errors.New(errorJSONAPI + err.Error())
+			return nil, errors.Wrap(err, errorJSONAPI)
 		}
 		var i GazelleIndex
 		if err := json.Unmarshal(data, &i); err != nil {
-			return nil, errors.New(errorUnmarshallingJSON + err.Error())
+			return nil, errors.Wrap(err, errorUnmarshallingJSON)
 		}
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
 	data, err := t.get(t.rootURL + "/ajax.php?action=user&id=" + strconv.Itoa(t.userID))
 	if err != nil {
-		return nil, errors.New(errorJSONAPI + err.Error())
+		return nil, errors.Wrap(err, errorJSONAPI)
 	}
 	var s GazelleUserStats
 	if unmarshalErr := json.Unmarshal(data, &s); unmarshalErr != nil {
-		return nil, errors.New(errorUnmarshallingJSON + unmarshalErr.Error())
+		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
@@ -220,11 +224,11 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) {
 	data, err := t.get(t.rootURL + "/ajax.php?action=torrent&id=" + id)
 	if err != nil {
-		return nil, errors.New(errorJSONAPI + err.Error())
+		return nil, errors.Wrap(err, errorJSONAPI)
 	}
 	var gt GazelleTorrent
 	if unmarshalErr := json.Unmarshal(data, &gt); unmarshalErr != nil {
-		return nil, errors.New(errorUnmarshallingJSON + unmarshalErr.Error())
+		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
 
 	artists := map[string]int{}
@@ -242,6 +246,8 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 	if gt.Response.Torrent.Remastered {
 		label = gt.Response.Torrent.RemasterRecordLabel
 	}
+	// keeping a copy of uploader before anonymizing
+	uploader := gt.Response.Torrent.Username
 	// json for metadata, anonymized
 	gt.Response.Torrent.Username = ""
 	gt.Response.Torrent.UserID = 0
@@ -249,18 +255,18 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 	if err != nil {
 		metadataJSON = data // falling back to complete json
 	}
-	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, groupID: gt.Response.Group.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: gt.Response.Torrent.Username, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
+	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, groupID: gt.Response.Group.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: uploader, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
 	return info, nil
 }
 
 func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error) {
 	data, err := t.get(t.rootURL + "/ajax.php?action=artist&id=" + strconv.Itoa(artistID))
 	if err != nil {
-		return nil, errors.New(errorJSONAPI + err.Error())
+		return nil, errors.Wrap(err, errorJSONAPI)
 	}
 	var gt GazelleArtist
 	if unmarshalErr := json.Unmarshal(data, &gt); unmarshalErr != nil {
-		return nil, errors.New(errorUnmarshallingJSON + unmarshalErr.Error())
+		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
 	// TODO get specific info?
 	// json for metadata
@@ -275,11 +281,11 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error)
 func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorrentGroupInfo, error) {
 	data, err := t.get(t.rootURL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
 	if err != nil {
-		return nil, errors.New(errorJSONAPI + err.Error())
+		return nil, errors.Wrap(err, errorJSONAPI)
 	}
 	var gt GazelleTorrentGroup
 	if unmarshalErr := json.Unmarshal(data, &gt); unmarshalErr != nil {
-		return nil, errors.New(errorUnmarshallingJSON + unmarshalErr.Error())
+		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
 	// TODO get specific info?
 	// json for metadata, anonymized
@@ -303,29 +309,29 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req
 	// write to "log" input
 	f, err := os.Open(logPath)
 	if err != nil {
-		return nil, errors.New(errorCouldNotReadLog + err.Error())
+		return nil, errors.Wrap(err, errorCouldNotReadLog)
 	}
 	defer f.Close()
 	fw, err := w.CreateFormFile("log", logPath)
 	if err != nil {
-		return nil, errors.New(errorCouldNotCreateForm + err.Error())
+		return nil, errors.Wrap(err, errorCouldNotCreateForm)
 	}
 	if _, err = io.Copy(fw, f); err != nil {
-		return nil, errors.New(errorCouldNotReadLog + err.Error())
+		return nil, errors.Wrap(err, errorCouldNotReadLog)
 	}
 	// some forms use "logfiles[]", so adding the same data to that input name
 	// both will be sent, each tracker will pick up what they want
 	f2, err := os.Open(logPath)
 	if err != nil {
-		return nil, errors.New(errorCouldNotReadLog + err.Error())
+		return nil, errors.Wrap(err, errorCouldNotReadLog)
 	}
 	defer f2.Close()
 	fw2, err := w.CreateFormFile("logfiles[]", logPath)
 	if err != nil {
-		return nil, errors.New(errorCouldNotCreateForm + err.Error())
+		return nil, errors.Wrap(err, errorCouldNotCreateForm)
 	}
 	if _, err = io.Copy(fw2, f2); err != nil {
-		return nil, errors.New(errorCouldNotReadLog + err.Error())
+		return nil, errors.Wrap(err, errorCouldNotReadLog)
 	}
 	// other inputs
 	w.WriteField("submit", "true")
