@@ -18,7 +18,6 @@ format:
   stage: test
   script:
     - go get github.com/docopt/docopt-go
-    - go get github.com/spf13/viper
     - go get github.com/wcharczuk/go-chart
     - go get github.com/thoj/go-ircevent
     - go get github.com/stretchr/testify/assert
@@ -43,7 +42,6 @@ compiled_varroa_dev:
   stage: build
   script:
     - go get github.com/docopt/docopt-go
-    - go get github.com/spf13/viper
     - go get github.com/wcharczuk/go-chart
     - go get github.com/thoj/go-ircevent
     - go get github.com/stretchr/testify/assert
@@ -74,7 +72,6 @@ compiled_varroa_released_version:
   stage: build
   script:
     - go get github.com/docopt/docopt-go
-    - go get github.com/spf13/viper
     - go get github.com/wcharczuk/go-chart
     - go get github.com/thoj/go-ircevent
     - go get github.com/stretchr/testify/assert

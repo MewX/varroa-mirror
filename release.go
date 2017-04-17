@@ -179,114 +179,114 @@ func (r *Release) IsDupe(o Release) bool {
 	return false
 }
 
-func (r *Release) Satisfies(filter Filter) bool {
-	if len(filter.year) != 0 && !IntInSlice(r.Year, filter.year) {
-		logThis(filter.label+": Wrong year", VERBOSE)
+func (r *Release) Satisfies(filter *ConfigFilter) bool {
+	if len(filter.Year) != 0 && !IntInSlice(r.Year, filter.Year) {
+		logThis(filter.Name+": Wrong year", VERBOSE)
 		return false
 	}
-	if len(filter.format) != 0 && !StringInSlice(r.Format, filter.format) {
-		logThis(filter.label+": Wrong format", VERBOSE)
+	if len(filter.Format) != 0 && !StringInSlice(r.Format, filter.Format) {
+		logThis(filter.Name+": Wrong format", VERBOSE)
 		return false
 	}
-	if r.Artists[0] != "Various Artists" && len(filter.artist) != 0 {
+	if r.Artists[0] != "Various Artists" && len(filter.Artist) != 0 {
 		var foundAtLeastOneArtist bool
 		for _, artist := range r.Artists {
-			if StringInSlice(artist, filter.artist) {
+			if StringInSlice(artist, filter.Artist) {
 				foundAtLeastOneArtist = true
 				break
 			}
 		}
 		if !foundAtLeastOneArtist {
-			logThis(filter.label+": Wrong artist", VERBOSE)
+			logThis(filter.Name+": Wrong artist", VERBOSE)
 			return false
 		}
 	}
-	if len(filter.source) != 0 && !StringInSlice(r.Source, filter.source) {
-		logThis(filter.label+": Wrong source", VERBOSE)
+	if len(filter.Source) != 0 && !StringInSlice(r.Source, filter.Source) {
+		logThis(filter.Name+": Wrong source", VERBOSE)
 		return false
 	}
-	if len(filter.quality) != 0 && !StringInSlice(r.Quality, filter.quality) {
-		logThis(filter.label+": Wrong quality", VERBOSE)
+	if len(filter.Quality) != 0 && !StringInSlice(r.Quality, filter.Quality) {
+		logThis(filter.Name+": Wrong quality", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && filter.hasLog && !r.HasLog {
-		logThis(filter.label+": Release has no log", VERBOSE)
+	if r.Source == "CD" && filter.HasLog && !r.HasLog {
+		logThis(filter.Name+": Release has no log", VERBOSE)
 		return false
 	}
 	// only compare logscores if the announce contained that information
-	if r.Source == "CD" && filter.logScore != 0 && r.LogScore != logScoreNotInAnnounce && filter.logScore > r.LogScore {
-		logThis(filter.label+": Incorrect log score", VERBOSE)
+	if r.Source == "CD" && filter.LogScore != 0 && r.LogScore != logScoreNotInAnnounce && filter.LogScore > r.LogScore {
+		logThis(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && filter.hasCue && !r.HasCue {
-		logThis(filter.label+": Release has no cue", VERBOSE)
+	if r.Source == "CD" && filter.HasCue && !r.HasCue {
+		logThis(filter.Name+": Release has no cue", VERBOSE)
 		return false
 	}
-	if !filter.allowScene && r.IsScene {
-		logThis(filter.label+": Scene release not allowed", VERBOSE)
+	if !filter.AllowScene && r.IsScene {
+		logThis(filter.Name+": Scene release not allowed", VERBOSE)
 		return false
 	}
-	if len(filter.releaseType) != 0 && !StringInSlice(r.ReleaseType, filter.releaseType) {
-		logThis(filter.label+": Wrong release type", VERBOSE)
+	if len(filter.ReleaseType) != 0 && !StringInSlice(r.ReleaseType, filter.ReleaseType) {
+		logThis(filter.Name+": Wrong release type", VERBOSE)
 		return false
 	}
-	for _, excluded := range filter.tags.excluded {
+	for _, excluded := range filter.TagsExcluded {
 		if StringInSlice(excluded, r.Tags) {
-			logThis(filter.label+": Has excluded tag", VERBOSE)
+			logThis(filter.Name+": Has excluded tag", VERBOSE)
 			return false
 		}
 	}
-	if len(filter.tags.included) != 0 {
+	if len(filter.TagsIncluded) != 0 {
 		// if none of r.tags in conf.includedTags, return false
 		atLeastOneIncludedTag := false
 		for _, t := range r.Tags {
-			if StringInSlice(t, filter.tags.included) {
+			if StringInSlice(t, filter.TagsIncluded) {
 				atLeastOneIncludedTag = true
 				break
 			}
 		}
 		if !atLeastOneIncludedTag {
-			logThis(filter.label+": Does not have any wanted tag", VERBOSE)
+			logThis(filter.Name+": Does not have any wanted tag", VERBOSE)
 			return false
 		}
 	}
 	// taking the opportunity to retrieve and save some info
-	r.Filter = filter.label
+	r.Filter = filter.Name
 	return true
 }
 
-func (r *Release) HasCompatibleTrackerInfo(filter Filter, blacklistedUploaders []string, info *TrackerTorrentInfo) bool {
+func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUploaders []string, info *TrackerTorrentInfo) bool {
 	// checks
-	if filter.size.max != 0 && filter.size.max < (info.size/(1024*1024)) {
-		logThis(filter.label+": Release too big.", VERBOSE)
+	if filter.MaxSizeMB != 0 && uint64(filter.MaxSizeMB) < (info.size/(1024*1024)) {
+		logThis(filter.Name+": Release too big.", VERBOSE)
 		return false
 	}
-	if filter.size.min > 0 && filter.size.min > (info.size/(1024*1024)) {
-		logThis(filter.label+": Release too small.", VERBOSE)
+	if filter.MinSizeMB > 0 && uint64(filter.MinSizeMB) > (info.size/(1024*1024)) {
+		logThis(filter.Name+": Release too small.", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && r.HasLog && filter.logScore != 0 && filter.logScore > info.logScore {
-		logThis(filter.label+": Incorrect log score", VERBOSE)
+	if r.Source == "CD" && r.HasLog && filter.LogScore != 0 && filter.LogScore > info.logScore {
+		logThis(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
-	if len(filter.recordLabel) != 0 && !StringInSlice(info.label, filter.recordLabel) {
-		logThis(filter.label+": No match for record label", VERBOSE)
+	if len(filter.RecordLabel) != 0 && !StringInSlice(info.label, filter.RecordLabel) {
+		logThis(filter.Name+": No match for record label", VERBOSE)
 		return false
 	}
-	if r.Artists[0] == "Various Artists" && len(filter.artist) != 0 {
+	if r.Artists[0] == "Various Artists" && len(filter.Artist) != 0 {
 		var foundAtLeastOneArtist bool
 		for iArtist := range info.artists {
-			if StringInSlice(iArtist, filter.artist) {
+			if StringInSlice(iArtist, filter.Artist) {
 				foundAtLeastOneArtist = true
 			}
 		}
 		if !foundAtLeastOneArtist {
-			logThis(filter.label+": No match for artists", VERBOSE)
+			logThis(filter.Name+": No match for artists", VERBOSE)
 			return false
 		}
 	}
 	if StringInSlice(info.uploader, blacklistedUploaders) {
-		logThis(filter.label+": Uploader "+info.uploader+" is blacklisted.", VERBOSE)
+		logThis(filter.Name+": Uploader "+info.uploader+" is blacklisted.", VERBOSE)
 		return false
 	}
 	// taking the opportunity to retrieve and save some info

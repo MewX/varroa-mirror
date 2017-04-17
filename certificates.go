@@ -131,7 +131,7 @@ var (
 )
 
 func generateCertificates() error {
-	if !env.config.webserverConfigured() {
+	if !env.config.webserverConfigured {
 		return errors.New(webServerNotConfigured)
 	}
 
@@ -139,17 +139,17 @@ func generateCertificates() error {
 		return errors.Wrap(err, errorCreatingCertDir)
 	}
 	// create the necessary files
-	subj := fmt.Sprintf(subjTemplate, env.config.webServer.hostname)
+	subj := fmt.Sprintf(subjTemplate, env.config.WebServer.Hostname)
 	if err := ioutil.WriteFile(filepath.Join(certificatesDir, "index.txt"), []byte(""), 0644); err != nil {
 		return errors.Wrap(err, errorCreatingFile)
 	}
 	if err := ioutil.WriteFile(filepath.Join(certificatesDir, "serial.txt"), []byte("01"), 0644); err != nil {
 		return errors.Wrap(err, errorCreatingFile)
 	}
-	if err := ioutil.WriteFile(filepath.Join(certificatesDir, openSSLCAConfFile), []byte(fmt.Sprintf(openSSLCA, env.config.webServer.hostname)), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(certificatesDir, openSSLCAConfFile), []byte(fmt.Sprintf(openSSLCA, env.config.WebServer.Hostname)), 0644); err != nil {
 		return errors.Wrap(err, errorCreatingFile)
 	}
-	if err := ioutil.WriteFile(filepath.Join(certificatesDir, openSSLServerConfFile), []byte(fmt.Sprintf(openSSLServer, certificateKey, env.config.webServer.hostname, env.config.webServer.hostname)), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(certificatesDir, openSSLServerConfFile), []byte(fmt.Sprintf(openSSLServer, certificateKey, env.config.WebServer.Hostname, env.config.WebServer.Hostname)), 0644); err != nil {
 		return errors.Wrap(err, errorCreatingFile)
 	}
 	if err := ioutil.WriteFile(filepath.Join(certificatesDir, opensSLBackupScriptFile), []byte(fmt.Sprintf(openSSLshTemplate, openSSLCAConfFile, subj, openSSLServerConfFile, subj, openSSLCAConfFile, certificate)), 0644); err != nil {

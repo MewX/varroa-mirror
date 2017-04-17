@@ -3,13 +3,13 @@ general:
   log_level: 2
 
 trackers:
-  - name: black
-    user: i_am
-    password: a_test
-    url: https://something.com
+  - name: blue
+    user: username
+    password: secretpassword
+    url:  https://blue.ch
 
 autosnatch:
-  - tracker: black
+  - tracker: blue
     irc_server: irc.server.net:6697
     irc_key: kkeeyy
     irc_ssl: true
@@ -21,6 +21,6 @@ autosnatch:
     - AwfulUser
 
 filters:
-  - name: everything
-    allow_scene: true
+  - name: perfect
+    perfect_flac: true
 

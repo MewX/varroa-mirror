@@ -22,7 +22,7 @@ func TestCrypto(t *testing.T) {
 	passphrase = make([]byte, 32)
 	copy(passphrase[:], "passphrase")
 
-	check.Nil(env.config.load(testYAML))
+	check.Nil(env.config.Load(testYAML))
 
 	// 1. encrypt
 
@@ -56,11 +56,11 @@ func TestCrypto(t *testing.T) {
 	check.Nil(err)
 	// check decoded bytes can be loaded as Config
 	c := &Config{}
-	err = c.loadFromBytes(bOut)
+	err = c.LoadFromBytes(bOut)
 	check.Nil(err)
-	check.Equal("https://something.com", c.url)
-	check.Equal("i_am", c.user)
-	check.Equal("a_test", c.password)
+	check.Equal("https://something.com", c.Trackers[0].URL)
+	check.Equal("i_am", c.Trackers[0].User)
+	check.Equal("a_test", c.Trackers[0].Password)
 
 	// 3. decrypt and save
 

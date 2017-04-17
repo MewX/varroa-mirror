@@ -1,0 +1,35 @@
+general:
+  watch_directory: test
+  download_directory: test
+  log_level: 2
+
+trackers:
+  - name: blue
+    user: username
+    password: secretpassword
+    url:  https://blue.ch
+
+autosnatch:
+  - tracker: blue
+    irc_server: irc.server.net:6697
+    irc_key: kkeeyy
+    irc_ssl: true
+    nickserv_password: something
+    bot_name: mybot
+    announcer: Bee
+    announce_channel: "#blue-announce"
+    blacklisted_uploaders:
+    - AwfulUser
+
+webserver:
+  serve_stats: false
+  stats_password: httppassword
+  allow_downloads: true
+  token: thisisatoken
+  https_port: 1235
+  https_hostname: server.that.is.mine.com
+
+filters:
+  - name: perfect
+    perfect_flac: true
+

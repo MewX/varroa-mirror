@@ -220,13 +220,13 @@ func (h *History) getFirstTimestamp() time.Time {
 
 // Deploy to gitlab pages with git wrapper
 func (h *History) Deploy() error {
-	if !env.config.gitlabPagesConfigured() {
+	if !env.config.gitlabPagesConfigured {
 		return nil
 	}
 	if len(h.TrackerStats) == 0 {
 		return nil
 	}
-	git := NewGit(statsDir, env.config.user, env.config.user+"+varroa@redacted")
+	git := NewGit(statsDir, env.config.Trackers[0].User, env.config.Trackers[0].User+"+varroa@redacted")
 	if git == nil {
 		return errors.New("Error setting up git")
 	}
@@ -253,14 +253,14 @@ func (h *History) Deploy() error {
 	}
 	// push
 	if !git.HasRemote("origin") {
-		if err := git.AddRemote("origin", env.config.gitlab.pagesGitURL); err != nil {
+		if err := git.AddRemote("origin", env.config.GitlabPages.GitHTTPS); err != nil {
 			return errors.Wrap(err, errorGitAddRemote)
 		}
 	}
-	if err := git.Push("origin", env.config.gitlab.pagesGitURL, env.config.gitlab.user, env.config.gitlab.password); err != nil {
+	if err := git.Push("origin", env.config.GitlabPages.GitHTTPS, env.config.GitlabPages.User, env.config.GitlabPages.Password); err != nil {
 		return errors.Wrap(err, errorGitPush)
 	}
-	logThis("Pushed new stats to "+env.config.gitlab.pagesURL, NORMAL)
+	logThis("Pushed new stats to "+env.config.GitlabPages.URL, NORMAL)
 	return nil
 }
 
@@ -606,7 +606,7 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	}
 	if !firstOverallTimestamp.Equal(timestamps[0]) {
 		// if the first overall timestamp isn't in the snatch history, artificially add it
-		timestamps = append([]time.Time{firstOverallTimestamp, timestamps[0].Add(time.Duration(-env.config.statsUpdatePeriod) * time.Hour)}, timestamps...)
+		timestamps = append([]time.Time{firstOverallTimestamp, timestamps[0].Add(time.Duration(-env.config.Stats[0].UpdatePeriodH) * time.Hour)}, timestamps...)
 		ups = append([]float64{0, 0}, ups...)
 		downs = append([]float64{0, 0}, downs...)
 		buffers = append([]float64{0, 0}, buffers...)

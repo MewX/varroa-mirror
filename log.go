@@ -11,17 +11,12 @@ const (
 	VERBOSEST
 )
 
-type logMessage struct {
-	level   int
-	message string
-}
-
 func logThisError(err error, level int) {
 	logThis(err.Error(), level)
 }
 
 func logThis(msg string, level int) {
-	if env.config.logLevel >= level {
+	if env.config.General.LogLevel >= level {
 		if env.expectedOutput {
 			// only is daemon is up...
 			if env.inDaemon {

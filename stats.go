@@ -24,7 +24,7 @@ func manageStats(config *Config, tracker *GazelleTracker, previousStats *Tracker
 	// send notification
 	env.Notify("Current stats: " + stats.Progress(previousStats))
 	// if something is wrong, send notification and stop
-	if !stats.IsProgressAcceptable(previousStats, config.maxBufferDecreaseByPeriodMB) {
+	if !stats.IsProgressAcceptable(previousStats, config.Stats[0].MaxBufferDecreaseMB) {
 		logThis(errorBufferDrop, NORMAL)
 		// sending notification
 		env.Notify(errorBufferDrop)
@@ -39,7 +39,7 @@ func monitorStats(config *Config, tracker *GazelleTracker) {
 	previousStats := &TrackerStats{}
 	previousStats = manageStats(config, tracker, previousStats)
 	// periodic check
-	period := time.NewTicker(time.Hour * time.Duration(config.statsUpdatePeriod)).C
+	period := time.NewTicker(time.Hour * time.Duration(config.Stats[0].UpdatePeriodH)).C
 	for {
 		<-period
 		previousStats = manageStats(config, tracker, previousStats)

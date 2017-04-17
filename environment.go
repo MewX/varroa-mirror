@@ -152,6 +152,16 @@ func (e *Environment) SavePassphraseForDaemon() error {
 	return nil
 }
 
+// GetPassphrase and keep in Environment
+func (e *Environment) GetPassphrase() error {
+	passphrase, err := getPassphrase()
+	if err != nil {
+		return err
+	}
+	copy(env.configPassphrase[:], passphrase)
+	return nil
+}
+
 // LoadConfiguration whether the configuration file is encrypted or not.
 func (e *Environment) LoadConfiguration() error {
 	newConf := &Config{}
@@ -165,16 +175,16 @@ func (e *Environment) LoadConfiguration() error {
 		if err != nil {
 			return err
 		}
-		if err := newConf.loadFromBytes(configBytes); err != nil {
+		if err := newConf.LoadFromBytes(configBytes); err != nil {
 			return err
 		}
 	} else {
-		if err := newConf.load(defaultConfigurationFile); err != nil {
+		if err := newConf.Load(defaultConfigurationFile); err != nil {
 			return err
 		}
 	}
-	if e.config.user != "" {
-		// if conf.user exists, the configuration had been loaded previously
+	if len(e.config.Trackers) != 0 {
+		// if trackers are configured, the configuration had been loaded previously
 		logThis("Configuration reloaded.", NORMAL)
 	} else {
 		logThis("Configuration loaded.", VERBOSE)
@@ -192,13 +202,13 @@ func (e *Environment) SetUp() error {
 		}
 	}
 	// init notifications with pushover
-	if e.config.pushoverConfigured() {
-		e.notification.client = pushover.New(e.config.pushover.token)
-		e.notification.recipient = pushover.NewRecipient(e.config.pushover.user)
+	if e.config.notificationsConfigured {
+		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
+		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
 	}
 	// log in tracker
-	e.tracker = &GazelleTracker{rootURL: e.config.url}
-	if err := e.tracker.Login(e.config.user, e.config.password); err != nil {
+	e.tracker = &GazelleTracker{rootURL: e.config.Trackers[0].URL}
+	if err := e.tracker.Login(e.config.Trackers[0].User, e.config.Trackers[0].Password); err != nil {
 		return err
 	}
 	logThis("Logged in tracker.", NORMAL)
@@ -246,7 +256,7 @@ func (e *Environment) Reload() error {
 // Notify in a goroutine, or directly.
 func (e *Environment) Notify(msg string) error {
 	notity := func() error {
-		if e.config.pushoverConfigured() {
+		if e.config.notificationsConfigured {
 			if err := env.notification.Send(msg); err != nil {
 				logThisError(errors.Wrap(err, errorNotification), VERBOSE)
 				return err

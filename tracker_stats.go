@@ -40,7 +40,8 @@ func (s *TrackerStats) IsProgressAcceptable(previous *TrackerStats, maxDecrease 
 		return true
 	}
 	_, _, bufferChange, _, _ := s.Diff(previous)
-	if bufferChange > -int64(maxDecrease*1024*1024) {
+	// if maxDecrease is unset (=0), always return true
+	if maxDecrease == 0 || bufferChange >= -int64(maxDecrease*1024*1024) {
 		return true
 	}
 	logThis(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.\n", bufferChange, maxDecrease*1024*1024), VERBOSE)

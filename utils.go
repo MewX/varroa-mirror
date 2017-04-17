@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+//-----------------------------------------------------------------------------
+
 func startOfDay(t time.Time) time.Time {
 	return t.Truncate(24 * time.Hour)
 }
@@ -32,6 +34,8 @@ func allDaysSince(t time.Time) []time.Time {
 	}
 	return dayTimes
 }
+
+//-----------------------------------------------------------------------------
 
 // StringInSlice checks if a string is in a []string, returns bool.
 func StringInSlice(a string, list []string) bool {
@@ -81,6 +85,20 @@ func IntSliceToStringSlice(in []int) []string {
 	return b
 }
 
+func CommonInStringSlices(X, Y []string) []string {
+	m := make(map[string]bool)
+	for _, y := range Y {
+		m[y] = true
+	}
+	var ret []string
+	for _, x := range X {
+		if m[x] {
+			ret = append(ret, x)
+		}
+	}
+	return ret
+}
+
 func checkErrors(errs ...error) error {
 	for _, err := range errs {
 		if err != nil {
@@ -89,6 +107,8 @@ func checkErrors(errs ...error) error {
 	}
 	return nil
 }
+
+//-----------------------------------------------------------------------------
 
 // DirectoryExists checks if a directory exists.
 func DirectoryExists(path string) (res bool) {

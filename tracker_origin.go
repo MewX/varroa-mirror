@@ -24,7 +24,7 @@ func (toc *TrackerOriginJSON) Save(path string, info TrackerTorrentInfo) error {
 		if err := toc.load(); err != nil {
 			return err
 		}
-		if toc.ID == info.id && toc.Tracker == env.config.url {
+		if toc.ID == info.id && toc.Tracker == env.config.Trackers[0].URL {
 			toc.LastUpdatedMetadata = time.Now().Unix()
 		} else {
 			return errors.New(errorInfoNoMatchForOrigin)
@@ -32,7 +32,7 @@ func (toc *TrackerOriginJSON) Save(path string, info TrackerTorrentInfo) error {
 		// TODO if GetTorrentInfo errors out: origin.IsAlive = false and set TimeOfDeath
 	} else {
 		// creating origin
-		toc.Tracker = env.config.url
+		toc.Tracker = env.config.Trackers[0].URL
 		toc.ID = info.id
 		toc.TimeSnatched = time.Now().Unix()
 		toc.LastUpdatedMetadata = time.Now().Unix()

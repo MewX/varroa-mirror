@@ -51,11 +51,11 @@ func snatchFromID(id string) (*Release, error) {
 		logThis("Error parsing Torrent Info", NORMAL)
 		release = &Release{TorrentID: id}
 	}
-	release.torrentURL = env.config.url + "/torrents.php?action=download&id=" + id
+	release.torrentURL = env.config.Trackers[0].URL + "/torrents.php?action=download&id=" + id
 	release.TorrentFile = "remote-id" + id + ".torrent"
 
 	logThis("Web server: downloading torrent "+release.ShortString(), NORMAL)
-	if err := env.tracker.DownloadTorrent(release, env.config.defaultDestinationFolder); err != nil {
+	if err := env.tracker.DownloadTorrent(release, env.config.General.WatchDir); err != nil {
 		logThisError(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err
 	}
@@ -95,20 +95,20 @@ func validateGet(r *http.Request, config *Config) (string, error) {
 			return "", errors.New(errorNoToken)
 		}
 	}
-	if token[0] != config.webServer.token {
+	if token[0] != config.WebServer.Token {
 		return "", errors.New(errorWrongToken)
 	}
 	return id, nil
 }
 
 func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server) {
-	if !config.webserverConfigured() {
+	if !config.webserverConfigured {
 		logThis(webServerNotConfigured, NORMAL)
 		return
 	}
 
 	rtr := mux.NewRouter()
-	if config.webServer.allowDownloads {
+	if config.WebServer.AllowDownloads {
 		getStats := func(w http.ResponseWriter, r *http.Request) {
 			// checking token
 			token, ok := r.URL.Query()["token"]
@@ -117,7 +117,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			if token[0] != config.webServer.token {
+			if token[0] != config.WebServer.Token {
 				logThis(errorWrongToken, NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -202,7 +202,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 				}
 
 				var answer OutgoingJSON
-				if incoming.Token != env.config.webServer.token {
+				if incoming.Token != env.config.WebServer.Token {
 					logThis(errorIncorrectWebServerToken, NORMAL)
 					answer = OutgoingJSON{Status: responseError, Message: "Bad token!"}
 				} else {
@@ -242,20 +242,20 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 		rtr.HandleFunc("/ws", socket)
 	}
-	if config.webServer.serveStats {
+	if config.WebServer.ServeStats {
 		// serving static index.html in stats dir
-		if config.webServer.statsPassword != "" {
-			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(config.user, config.webServer.statsPassword)(http.FileServer(http.Dir(statsDir))))
+		if config.WebServer.Password != "" {
+			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(config.Trackers[0].User, config.WebServer.Password)(http.FileServer(http.Dir(statsDir))))
 		} else {
 			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
 		}
 	}
 
 	// serve
-	if config.serveHTTP() {
+	if config.webserverHTTP {
 		go func() {
 			logThis(webServerUpHTTP, NORMAL)
-			httpServer = &http.Server{Addr: fmt.Sprintf(":%d", config.webServer.portHTTP), Handler: rtr}
+			httpServer = &http.Server{Addr: fmt.Sprintf(":%d", config.WebServer.PortHTTP), Handler: rtr}
 			if err := httpServer.ListenAndServe(); err != nil {
 				if err == http.ErrServerClosed {
 					logThis(webServerShutDown, NORMAL)
@@ -265,7 +265,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 			}
 		}()
 	}
-	if config.serveHTTPS() {
+	if config.webserverHTTPS {
 		// if not there yet, generate the self-signed certificate
 		if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
 			if err := generateCertificates(); err != nil {
@@ -279,7 +279,7 @@ func webServer(config *Config, httpServer *http.Server, httpsServer *http.Server
 
 		go func() {
 			logThis(webServerUpHTTPS, NORMAL)
-			httpsServer = &http.Server{Addr: fmt.Sprintf(":%d", config.webServer.portHTTPS), Handler: rtr}
+			httpsServer = &http.Server{Addr: fmt.Sprintf(":%d", config.WebServer.PortHTTPS), Handler: rtr}
 			if err := httpsServer.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
 				if err == http.ErrServerClosed {
 					logThis(webServerShutDown, NORMAL)

@@ -38,19 +38,23 @@ func main() {
 				return
 			}
 			fmt.Print("Filters found in configuration file: \n\n")
-			for _, f := range env.config.filters {
+			for _, f := range env.config.Filters {
 				fmt.Println(f)
 			}
 		}
+		// now dealing with encrypt/decrypt commands, which both require the passphrase from user
+		if err := env.GetPassphrase(); err != nil {
+			logThisError(errors.Wrap(err, "Error getting passphrase"), NORMAL)
+		}
 		if cli.encrypt {
-			if err := env.config.encrypt(); err != nil {
+			if err := env.config.Encrypt(defaultConfigurationFile, env.configPassphrase); err != nil {
 				logThis(err.Error(), NORMAL)
 				return
 			}
 			logThis(infoEncrypted, NORMAL)
 		}
 		if cli.decrypt {
-			if err := env.config.decrypt(); err != nil {
+			if err := env.config.DecryptTo(defaultConfigurationFile, env.configPassphrase); err != nil {
 				logThis(err.Error(), NORMAL)
 				return
 			}
@@ -84,9 +88,13 @@ func main() {
 		}
 		// launch goroutines
 		go ircHandler(env.config, env.tracker)
-		go monitorStats(env.config, env.tracker)
+		if env.config.statsConfigured {
+			go monitorStats(env.config, env.tracker)
+		}
 		go apiCallRateLimiter(env.limiter)
-		go webServer(env.config, env.serverHTTP, env.serverHTTPS)
+		if env.config.webserverConfigured {
+			go webServer(env.config, env.serverHTTP, env.serverHTTPS)
+		}
 		go awaitOrders()
 		go automaticBackup()
 

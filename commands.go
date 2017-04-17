@@ -181,7 +181,7 @@ func refreshMetadata(IDStrings []string) error {
 			}
 		}
 		// try to find even if not in history
-		if env.config.downloadFolderConfigured() {
+		if env.config.downloadFolderConfigured {
 			for _, m := range missing {
 				// get data from RED.
 				info, err := env.tracker.GetTorrentInfo(m)
@@ -189,7 +189,7 @@ func refreshMetadata(IDStrings []string) error {
 					logThisError(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 					break
 				}
-				fullFolder := filepath.Join(env.config.downloadFolder, html.UnescapeString(info.folder))
+				fullFolder := filepath.Join(env.config.General.DownloadDir, html.UnescapeString(info.folder))
 				if DirectoryExists(fullFolder) {
 					r := info.Release()
 					if env.inDaemon {

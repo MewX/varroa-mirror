@@ -145,7 +145,7 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 	if err != nil {
 		logThisError(errors.Wrap(err, errorJSONAPI), NORMAL)
 		// if error, try once again after logging in again
-		if loginErr := t.Login(env.config.user, env.config.password); loginErr == nil {
+		if loginErr := t.Login(env.config.Trackers[0].User, env.config.Trackers[0].Password); loginErr == nil {
 			return callJSONAPI(t.client, url)
 		}
 		return nil, errors.New("Could not log in and send get request to " + url)

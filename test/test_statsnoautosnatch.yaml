@@ -1,0 +1,42 @@
+general:
+  watch_directory: test
+  download_directory: test
+  automatic_metadata_retrieval: true
+  log_level: 2
+
+trackers:
+  - name: blue
+    user: username
+    password: secretpassword
+    url:  https://blue.ch
+  - name: purple
+    user: username
+    password: secretpassword
+    url:  https://purple.cd
+
+stats:
+  - tracker: blue
+    update_period_hour: 1
+    max_buffer_decrease_by_period_mb: 500
+  - tracker: purple
+    update_period_hour: 12
+    max_buffer_decrease_by_period_mb: 2500
+
+webserver:
+  serve_stats: true
+  stats_password: httppassword
+  allow_downloads: true
+  token: thisisatoken
+  http_port: 1234
+  https_port: 1235
+  https_hostname: server.that.is.mine.com
+
+notifications:
+  pushover:
+    token: tokenpushovertoken
+    user: userpushoveruser
+
+gitlab_pages:
+  git_https: https://gitlab.com/something/repo.git
+  user: gitlabuser
+  password: anotherpassword
