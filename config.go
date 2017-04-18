@@ -63,16 +63,16 @@ func (ct *ConfigTracker) Check() error {
 }
 
 type ConfigAutosnatch struct {
-	Tracker          string
-	IRCServer        string `yaml:"irc_server"`
-	IRCKey           string `yaml:"irc_key"`
-	IRCSSL           bool   `yaml:"irc_ssl"`
-	IRCSSLSkipVerify bool   `yaml:"irc_ssl_skip_verify"`
-	NickservPassword string `yaml:"nickserv_password"`
-	BotName          string `yaml:"bot_name"`
-	Announcer        string
-	AnnounceChannel  string   `yaml:"announce_channel"`
-	Blacklisted      []string `yaml:"blacklisted_uploaders"`
+	Tracker              string
+	IRCServer            string `yaml:"irc_server"`
+	IRCKey               string `yaml:"irc_key"`
+	IRCSSL               bool   `yaml:"irc_ssl"`
+	IRCSSLSkipVerify     bool   `yaml:"irc_ssl_skip_verify"`
+	NickservPassword     string `yaml:"nickserv_password"`
+	BotName              string `yaml:"bot_name"`
+	Announcer            string
+	AnnounceChannel      string   `yaml:"announce_channel"`
+	BlacklistedUploaders []string `yaml:"blacklisted_uploaders"`
 }
 
 func (ca *ConfigAutosnatch) Check() error {

@@ -45,7 +45,7 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 					logThis(info.String(), VERBOSE)
 				}
 				// else check other criteria
-				if release.HasCompatibleTrackerInfo(filter, config.Autosnatch[0].Blacklisted, info) {
+				if release.HasCompatibleTrackerInfo(filter, config.Autosnatch[0].BlacklistedUploaders, info) {
 					logThis(" -> "+release.ShortString()+" triggered filter "+filter.Name+", snatching.", NORMAL)
 					// move to relevant watch directory
 					destination := config.General.WatchDir
@@ -63,7 +63,9 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 					// send notification
 					env.Notify(filter.Name + ": Snatched " + release.ShortString())
 					// save metadata once the download folder is created
-					go release.Metadata.SaveFromTracker(info)
+					if env.config.General.AutomaticMetadataRetrieval {
+						go release.Metadata.SaveFromTracker(info)
+					}
 					// no need to consider other filters
 					break
 				}

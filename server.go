@@ -66,10 +66,12 @@ func snatchFromID(id string) (*Release, error) {
 	// send notification
 	env.Notify("Snatched with web interface: " + release.ShortString())
 	// save metadata
-	if env.inDaemon {
-		go release.Metadata.SaveFromTracker(info)
-	} else {
-		release.Metadata.SaveFromTracker(info)
+	if env.config.General.AutomaticMetadataRetrieval {
+		if env.inDaemon {
+			go release.Metadata.SaveFromTracker(info)
+		} else {
+			release.Metadata.SaveFromTracker(info)
+		}
 	}
 	return release, nil
 }

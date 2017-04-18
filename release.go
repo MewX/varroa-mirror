@@ -195,6 +195,10 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 				foundAtLeastOneArtist = true
 				break
 			}
+			if StringInSlice(artist, filter.ExcludedArtist) {
+				logThis(filter.Name+": Found excluded artist " + artist, VERBOSE)
+				return false
+			}
 		}
 		if !foundAtLeastOneArtist {
 			logThis(filter.Name+": Wrong artist", VERBOSE)
@@ -278,6 +282,10 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 		for iArtist := range info.artists {
 			if StringInSlice(iArtist, filter.Artist) {
 				foundAtLeastOneArtist = true
+			}
+			if StringInSlice(iArtist, filter.ExcludedArtist) {
+				logThis(filter.Name+": Found excluded artist " + iArtist, VERBOSE)
+				return false
 			}
 		}
 		if !foundAtLeastOneArtist {

@@ -47,7 +47,7 @@ func TestConfig(t *testing.T) {
 	check.Equal("mybot", a.BotName)
 	check.Equal("Bee", a.Announcer)
 	check.Equal("#blue-announce", a.AnnounceChannel)
-	check.Equal([]string{"AwfulUser"}, a.Blacklisted)
+	check.Equal([]string{"AwfulUser"}, a.BlacklistedUploaders)
 	a = c.Autosnatch[1]
 	check.Equal("purple", a.Tracker)
 	check.Equal("irc.server.cd:6697", a.IRCServer)
@@ -58,7 +58,7 @@ func TestConfig(t *testing.T) {
 	check.Equal("bobot", a.BotName)
 	check.Equal("bolivar", a.Announcer)
 	check.Equal("#announce", a.AnnounceChannel)
-	check.Nil(a.Blacklisted)
+	check.Nil(a.BlacklistedUploaders)
 	// stats
 	fmt.Println("Checking stats")
 	check.Equal(2, len(c.Stats))
