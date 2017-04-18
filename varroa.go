@@ -30,6 +30,7 @@ func main() {
 			if err := archiveUserFiles(); err == nil {
 				logThis(infoUserFilesArchived, NORMAL)
 			}
+			return
 		}
 		if cli.showFilters {
 			// loading configuration
@@ -41,6 +42,7 @@ func main() {
 			for _, f := range env.config.Filters {
 				fmt.Println(f)
 			}
+			return
 		}
 		// now dealing with encrypt/decrypt commands, which both require the passphrase from user
 		if err := env.GetPassphrase(); err != nil {
