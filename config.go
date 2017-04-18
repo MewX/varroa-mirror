@@ -225,6 +225,7 @@ type ConfigFilter struct {
 	MinSizeMB       int    `yaml:"min_size_mb"`
 	MaxSizeMB       int    `yaml:"max_size_mb"`
 	WatchDir        string `yaml:"watch_directory"`
+	UniqueInGroup   bool   `yaml:"unique_in_group"`
 }
 
 func (cf *ConfigFilter) Check() error {
@@ -248,6 +249,9 @@ func (cf *ConfigFilter) Check() error {
 	}
 	if CommonInStringSlices(cf.TagsExcluded, cf.TagsIncluded) != nil {
 		return errors.New("Tags cannot be both included and excluded")
+	}
+	if cf.UniqueInGroup && cf.AllowDuplicates {
+		return errors.New("Filter can both allow duplicates and only allow one snatch/torrentgroup.")
 	}
 	if cf.PerfectFlac {
 		if cf.Format != nil || cf.Quality != nil || cf.Source != nil || cf.HasLog || cf.HasCue || cf.LogScore != 0 {

@@ -102,6 +102,7 @@ func (a *TrackerTorrentInfo) Release() *Release {
 	// r.url =
 	// r.torrentURL =
 	r.TorrentID = fmt.Sprintf("%d", gt.Response.Torrent.ID)
+	r.GroupID = fmt.Sprintf("%d", gt.Response.Group.ID)
 	// r.TorrentFile =
 	r.Size = uint64(gt.Response.Torrent.Size)
 	r.Folder = gt.Response.Torrent.FilePath

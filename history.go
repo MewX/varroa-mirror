@@ -328,6 +328,16 @@ func (s *SnatchHistory) HasDupe(r *Release) bool {
 	return false
 }
 
+func (s *SnatchHistory) HasReleaseFromGroup(r *Release) bool {
+	// check if a torrent of the same torrent group is already in history
+	for _, hr := range s.SnatchedReleases {
+		if r.IsInSameGroup(hr) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, []float64, []float64, error) {
 	if len(s.SnatchedReleases) == 0 {
 		return nil, nil, nil, errors.New(errorNoHistory)

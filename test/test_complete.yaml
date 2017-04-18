@@ -65,6 +65,7 @@ gitlab_pages:
 filters:
   - name: perfect
     perfect_flac: true
+    unique_in_group: true
 
   - name: test
     year:

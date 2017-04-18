@@ -50,6 +50,7 @@ type Release struct {
 	url         string
 	torrentURL  string
 	TorrentID   string
+	GroupID     string
 	TorrentFile string
 	Size        uint64
 	Folder      string
@@ -179,6 +180,11 @@ func (r *Release) IsDupe(o Release) bool {
 	return false
 }
 
+// IsInSameGroup returns true if both release are in the same torrentgroup.
+func (r *Release) IsInSameGroup(o Release) bool {
+	return r.GroupID == o.GroupID
+}
+
 func (r *Release) Satisfies(filter *ConfigFilter) bool {
 	if len(filter.Year) != 0 && !IntInSlice(r.Year, filter.Year) {
 		logThis(filter.Name+": Wrong year", VERBOSE)
@@ -196,7 +202,7 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 				break
 			}
 			if StringInSlice(artist, filter.ExcludedArtist) {
-				logThis(filter.Name+": Found excluded artist " + artist, VERBOSE)
+				logThis(filter.Name+": Found excluded artist "+artist, VERBOSE)
 				return false
 			}
 		}
@@ -284,7 +290,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 				foundAtLeastOneArtist = true
 			}
 			if StringInSlice(iArtist, filter.ExcludedArtist) {
-				logThis(filter.Name+": Found excluded artist " + iArtist, VERBOSE)
+				logThis(filter.Name+": Found excluded artist "+iArtist, VERBOSE)
 				return false
 			}
 		}
@@ -302,5 +308,6 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 	r.LogScore = info.logScore
 	r.Uploader = info.uploader
 	r.Folder = info.folder
+	r.GroupID = strconv.Itoa(info.groupID)
 	return true
 }

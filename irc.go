@@ -33,6 +33,11 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 				logThis(infoNotSnatchingDuplicate, VERBOSE)
 				continue
 			}
+			// checking if a torrent from the same group has already been downloaded
+			if filter.UniqueInGroup && env.history.HasReleaseFromGroup(release) {
+				logThis(infoNotSnatchingUniqueInGroup, VERBOSE)
+				continue
+			}
 			// checking if a filter is triggered
 			if release.Satisfies(filter) {
 				// get torrent info!
