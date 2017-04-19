@@ -148,7 +148,7 @@ func generateStats() error {
 	return env.history.GenerateGraphs()
 }
 
-func refreshMetadata(IDStrings []string) error {
+func refreshMetadata(tracker *GazelleTracker, IDStrings []string) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
@@ -158,15 +158,15 @@ func refreshMetadata(IDStrings []string) error {
 		if StringInSlice(r.TorrentID, IDStrings) {
 			logThis("Found release with ID "+r.TorrentID+" in history: "+r.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from RED.
-			info, err := env.tracker.GetTorrentInfo(r.TorrentID)
+			info, err := tracker.GetTorrentInfo(r.TorrentID)
 			if err != nil {
 				logThisError(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 				break
 			}
 			if env.inDaemon {
-				go r.Metadata.SaveFromTracker(info)
+				go r.Metadata.SaveFromTracker(tracker, info)
 			} else {
-				r.Metadata.SaveFromTracker(info)
+				r.Metadata.SaveFromTracker(tracker, info)
 			}
 			found = append(found, r.TorrentID)
 			break
@@ -184,7 +184,7 @@ func refreshMetadata(IDStrings []string) error {
 		if env.config.downloadFolderConfigured {
 			for _, m := range missing {
 				// get data from RED.
-				info, err := env.tracker.GetTorrentInfo(m)
+				info, err := tracker.GetTorrentInfo(m)
 				if err != nil {
 					logThisError(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 					break
@@ -193,9 +193,9 @@ func refreshMetadata(IDStrings []string) error {
 				if DirectoryExists(fullFolder) {
 					r := info.Release()
 					if env.inDaemon {
-						go r.Metadata.SaveFromTracker(info)
+						go r.Metadata.SaveFromTracker(tracker, info)
 					} else {
-						r.Metadata.SaveFromTracker(info)
+						r.Metadata.SaveFromTracker(tracker, info)
 					}
 				} else {
 					logThis(fmt.Sprintf(errorCannotFindID, m), NORMAL)
@@ -208,13 +208,13 @@ func refreshMetadata(IDStrings []string) error {
 	return nil
 }
 
-func snatchTorrents(IDStrings []string) error {
+func snatchTorrents(tracker *GazelleTracker, IDStrings []string) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
 	// snatch
 	for _, id := range IDStrings {
-		if release, err := snatchFromID(id); err != nil {
+		if release, err := snatchFromID(tracker, id); err != nil {
 			return errors.New("Error snatching torrent with ID #" + id)
 		} else {
 			logThis("Successfully snatched torrent "+release.ShortString(), NORMAL)
@@ -223,7 +223,7 @@ func snatchTorrents(IDStrings []string) error {
 	return nil
 }
 
-func checkLog(logPath string, tracker *GazelleTracker) error {
+func checkLog(tracker *GazelleTracker, logPath string) error {
 	score, err := tracker.GetLogScore(logPath)
 	if err != nil {
 		return errors.Wrap(err, errorGettingLogScore)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -29,8 +30,7 @@ type Environment struct {
 	history          *History
 	serverHTTP       *http.Server
 	serverHTTPS      *http.Server
-	tracker          *GazelleTracker
-	limiter          chan bool //  <- 1/tracker
+	Trackers         map[string]*GazelleTracker
 
 	expectedOutput  bool
 	websocketOutput bool
@@ -54,13 +54,11 @@ func NewEnvironment() *Environment {
 	e.history = &History{}
 	e.serverHTTP = &http.Server{}
 	e.serverHTTPS = &http.Server{}
-	e.tracker = &GazelleTracker{}
 	// disable  autosnatching
 	e.config.disabledAutosnatching = false
 	// is only true if we're in the daemon
 	e.inDaemon = false
 	e.configPassphrase = make([]byte, 32)
-	e.limiter = make(chan bool, allowedAPICallsByPeriod)
 	// current command expects output
 	e.expectedOutput = false
 	if !daemon.WasReborn() {
@@ -206,12 +204,23 @@ func (e *Environment) SetUp() error {
 		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
 		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
 	}
-	// log in tracker
-	e.tracker = &GazelleTracker{URL: e.config.Trackers[0].URL}
-	if err := e.tracker.Login(e.config.Trackers[0].User, e.config.Trackers[0].Password); err != nil {
-		return err
+
+	// log in all trackers, assuming labels are unique (configuration was checked)
+	for _, label := range e.config.TrackerLabels() {
+		config, err := e.config.GetTracker(label)
+		if err != nil {
+			return errors.Wrap(err, "Error getting tracker information")
+		}
+		tracker := &GazelleTracker{Name: config.Name, URL: config.URL, User: config.User, Password: config.Password, limiter: make(chan bool, allowedAPICallsByPeriod)}
+		if err := tracker.Login(); err != nil {
+			return errors.Wrap(err, "Error logging in tracker "+label)
+		}
+		logThis(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
+		// launching rate limiter
+		go tracker.apiCallRateLimiter()
+		e.Trackers[label] = tracker
 	}
-	logThis("Logged in tracker.", NORMAL)
+
 	// load history
 	return e.history.LoadAll(statsFile, historyFile)
 }
@@ -248,7 +257,7 @@ func (e *Environment) Reload() error {
 	}
 	if serverWasUp && thingsWentOK {
 		// launch server again
-		go webServer(e.config, e.serverHTTP, e.serverHTTPS)
+		go webServer(e, e.serverHTTP, e.serverHTTPS)
 	}
 	return nil
 }
@@ -274,4 +283,20 @@ func (e *Environment) RunOrGo(f func() error) error {
 		return nil
 	}
 	return f()
+}
+
+func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
+	// TODO find in already loaded trackers
+	tracker, ok := e.Trackers[label]
+	if !ok {
+		// not found:
+		config, err := e.config.GetTracker(label)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting tracker information")
+		}
+		tracker = &GazelleTracker{Name: config.Name, URL: config.URL, User: config.User, Password: config.Password}
+		// saving
+		e.Trackers[label] = tracker
+	}
+	return tracker, nil
 }

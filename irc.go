@@ -12,7 +12,7 @@ import (
 
 const announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
 
-func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) (*Release, error) {
+func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker, autosnatchConfig *ConfigAutosnatch) (*Release, error) {
 	// getting information
 	r := regexp.MustCompile(announcePattern)
 	hits := r.FindAllStringSubmatch(announced, -1)
@@ -50,7 +50,7 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 					logThis(info.String(), VERBOSE)
 				}
 				// else check other criteria
-				if release.HasCompatibleTrackerInfo(filter, config.Autosnatch[0].BlacklistedUploaders, info) {
+				if release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
 					logThis(" -> "+release.ShortString()+" triggered filter "+filter.Name+", snatching.", NORMAL)
 					// move to relevant watch directory
 					destination := config.General.WatchDir
@@ -68,8 +68,8 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 					// send notification
 					env.Notify(filter.Name + ": Snatched " + release.ShortString())
 					// save metadata once the download folder is created
-					if env.config.General.AutomaticMetadataRetrieval {
-						go release.Metadata.SaveFromTracker(info)
+					if config.General.AutomaticMetadataRetrieval {
+						go release.Metadata.SaveFromTracker(tracker, info)
 					}
 					// no need to consider other filters
 					break
@@ -88,37 +88,44 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker) 
 }
 
 func ircHandler(config *Config, tracker *GazelleTracker) {
-	IRCClient := irc.IRC(config.Autosnatch[0].BotName, config.Trackers[0].User)
-	IRCClient.UseTLS = config.Autosnatch[0].IRCSSL
-	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: config.Autosnatch[0].IRCSSLSkipVerify}
+	autosnatchConfig, err := config.GetAutosnatch(tracker.Name)
+	if err != nil {
+		logThis("Cannot find autosnatch configuration for tracker " + tracker.Name, NORMAL)
+		return
+	}
+
+
+	IRCClient := irc.IRC(autosnatchConfig.BotName, tracker.User)
+	IRCClient.UseTLS = autosnatchConfig.IRCSSL
+	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: autosnatchConfig.IRCSSLSkipVerify}
 	IRCClient.AddCallback("001", func(e *irc.Event) {
-		IRCClient.Privmsg("NickServ", "IDENTIFY "+config.Autosnatch[0].NickservPassword)
-		IRCClient.Privmsg(config.Autosnatch[0].Announcer, fmt.Sprintf("enter %s %s %s", config.Autosnatch[0].AnnounceChannel, config.Trackers[0].User, config.Autosnatch[0].IRCKey))
+		IRCClient.Privmsg("NickServ", "IDENTIFY "+autosnatchConfig.NickservPassword)
+		IRCClient.Privmsg(autosnatchConfig.Announcer, fmt.Sprintf("enter %s %s %s", autosnatchConfig.AnnounceChannel, tracker.User, autosnatchConfig.IRCKey))
 	})
 	IRCClient.AddCallback("PRIVMSG", func(e *irc.Event) {
-		if e.Nick != config.Autosnatch[0].Announcer {
+		if e.Nick != autosnatchConfig.Announcer {
 			return // spam
 		}
 		// e.Arguments's first element is the message's recipient, the second is the actual message
 		switch e.Arguments[0] {
-		case config.Autosnatch[0].BotName:
+		case autosnatchConfig.BotName:
 			// if sent to the bot, it's now ok to join the announce channel
 			// waiting for the announcer bot to actually invite us
 			time.Sleep(100 * time.Millisecond)
-			IRCClient.Join(config.Autosnatch[0].AnnounceChannel)
-		case config.Autosnatch[0].AnnounceChannel:
+			IRCClient.Join(autosnatchConfig.AnnounceChannel)
+		case autosnatchConfig.AnnounceChannel:
 			// if sent to the announce channel, it's a new release
 			if !config.disabledAutosnatching {
 				announced := e.Message()
 				logThis("++ Announced: "+announced, VERBOSE)
-				if _, err := analyzeAnnounce(announced, config, tracker); err != nil {
+				if _, err := analyzeAnnounce(announced, config, tracker, autosnatchConfig); err != nil {
 					logThisError(errors.Wrap(err, errorDealingWithAnnounce), VERBOSE)
 					return
 				}
 			}
 		}
 	})
-	err := IRCClient.Connect(config.Autosnatch[0].IRCServer)
+	err = IRCClient.Connect(autosnatchConfig.IRCServer)
 	if err != nil {
 		logThisError(errors.Wrap(err, errorConnectingToIRC), NORMAL)
 		return

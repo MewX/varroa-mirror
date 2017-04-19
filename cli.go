@@ -78,7 +78,7 @@ Usage:
 	varroa (start|reload|stop)
 	varroa stats
 	varroa refresh-metadata <ID>...
-	varroa check-log <LOG_FILE>
+	varroa check-log <TRACKER> <LOG_FILE>
 	varroa snatch <ID>...
 	varroa backup
 	varroa show-filters
@@ -106,6 +106,7 @@ type varroaArguments struct {
 	decrypt         bool
 	torrentIDs      []int
 	logFile         string
+	trackerLabel	string
 	requiresDaemon  bool
 	canUseDaemon    bool
 }
@@ -152,6 +153,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		b.logFile = logPath
 	}
+	b.trackerLabel = args["<TRACKER>"].(string)
 
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true

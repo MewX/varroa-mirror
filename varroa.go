@@ -70,6 +70,11 @@ func main() {
 		logThisError(errors.Wrap(err, errorLoadingConfig), NORMAL)
 		return
 	}
+	// checking the tracker given as argument (if any) is valid
+	if cli.trackerLabel != "" && !StringInSlice(cli.trackerLabel, env.config.TrackerLabels()) {
+		logThis(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), NORMAL)
+		return
+	}
 
 	// launching daemon
 	if cli.start {
@@ -111,8 +116,6 @@ func main() {
 			logThisError(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
-		// starting rate limiter
-		go apiCallRateLimiter(env.limiter)
 		// running the command
 		if cli.stats {
 			if err := generateStats(); err != nil {
@@ -130,7 +133,12 @@ func main() {
 			}
 		}
 		if cli.checkLog {
-			if err := checkLog(cli.logFile, env.tracker); err != nil {
+			currentTracker, err := env.Tracker(cli.trackerLabel)
+			if err != nil {
+				logThis(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), NORMAL)
+				return
+			}
+			if err := checkLog(cli.logFile, currentTracker); err != nil {
 				logThisError(errors.Wrap(err, errorCheckingLog), NORMAL)
 			}
 		}
@@ -150,14 +158,20 @@ func main() {
 }
 
 func goGoRoutines(e *Environment) {
-	go ircHandler(e.config, e.tracker)
-	if e.config.statsConfigured {
-		go monitorStats(e.config, e.tracker)
+	//  tracker-dependent goroutines
+	for _, t := range e.Trackers {
+		if e.config.autosnatchConfigured {
+			go ircHandler(e.config, t)
+		}
+		if e.config.statsConfigured {
+			go monitorStats(e.config, t)
+		}
 	}
-	go apiCallRateLimiter(e.limiter)
+	// general goroutines
 	if e.config.webserverConfigured {
-		go webServer(e.config, e.serverHTTP, e.serverHTTPS)
+		go webServer(e, e.serverHTTP, e.serverHTTPS)
 	}
+	// background goroutines
 	go awaitOrders()
 	go automaticBackup()
 }

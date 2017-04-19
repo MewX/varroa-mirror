@@ -32,17 +32,17 @@ const (
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
 )
 
-func apiCallRateLimiter(limiter chan bool) {
+func (t *GazelleTracker) apiCallRateLimiter() {
 	// fill the rate limiter the first time
 	for i := 0; i < allowedAPICallsByPeriod; i++ {
-		limiter <- true
+		t.limiter <- true
 	}
 	// every apiCallsPeriodS, refill the limiter channel
 	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
 	Loop:
 		for i := 0; i < allowedAPICallsByPeriod; i++ {
 			select {
-			case limiter <- true:
+			case t.limiter <- true:
 			default:
 				// if channel is full, do nothing and wait for the next tick
 				break Loop
@@ -51,12 +51,12 @@ func apiCallRateLimiter(limiter chan bool) {
 	}
 }
 
-func callJSONAPI(client *http.Client, url string) ([]byte, error) {
+func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	if client == nil {
 		return []byte{}, errors.New(errorNotLoggedIn)
 	}
 	// wait for rate limiter
-	<-env.limiter
+	<-t.limiter
 	// get request
 	resp, err := client.Get(url)
 	if err != nil {
@@ -86,8 +86,8 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 			// calling again, waiting for the rate limiter again should do the trick.
 			// that way 2 limiter slots will have passed before the next call is made,
 			// the server should allow it.
-			<-env.limiter
-			return callJSONAPI(client, url)
+			<-t.limiter
+			return t.callJSONAPI(client, url)
 		}
 		return data, errors.New(errorAPIResponseStatus + r.Status)
 	}
@@ -99,14 +99,20 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 type GazelleTracker struct {
 	Name   string
 	URL    string
+	User string
+	Password string
 	client *http.Client
 	userID int
+	limiter          chan bool //  <- 1/tracker
 }
 
-func (t *GazelleTracker) Login(user, password string) error {
+func (t *GazelleTracker) Login() error {
+	if t.User == "" || t.Password == "" {
+		return errors.New("missing login information")
+	}
 	form := url.Values{}
-	form.Add("username", user)
-	form.Add("password", password)
+	form.Add("username", t.User)
+	form.Add("password", t.Password)
 	form.Add("keeplogged", "1")
 	req, err := http.NewRequest("POST", t.URL+"/login.php", strings.NewReader(form.Encode()))
 	if err != nil {
@@ -142,12 +148,12 @@ func (t *GazelleTracker) Login(user, password string) error {
 }
 
 func (t *GazelleTracker) get(url string) ([]byte, error) {
-	data, err := callJSONAPI(t.client, url)
+	data, err := t.callJSONAPI(t.client, url)
 	if err != nil {
 		logThisError(errors.Wrap(err, errorJSONAPI), NORMAL)
 		// if error, try once again after logging in again
-		if loginErr := t.Login(env.config.Trackers[0].User, env.config.Trackers[0].Password); loginErr == nil {
-			return callJSONAPI(t.client, url)
+		if loginErr := t.Login(); loginErr == nil {
+			return t.callJSONAPI(t.client, url)
 		}
 		return nil, errors.New("Could not log in and send get request to " + url)
 	}
