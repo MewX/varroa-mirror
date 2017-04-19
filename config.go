@@ -431,10 +431,7 @@ func (c *Config) Check() error {
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
 
 	// config-wide checks
-	configuredTrackers := []string{}
-	for _, t := range c.Trackers {
-		configuredTrackers = append(configuredTrackers, t.Name)
-	}
+	configuredTrackers := c.TrackerLabels()
 	if len(c.Autosnatch) != 0 {
 		if c.General.WatchDir == "" {
 			return errors.New("Autosnatch enabled, existing watch directory must be provided")
@@ -480,4 +477,39 @@ func (c *Config) Encrypt(file string, passphrase []byte) error {
 func (c *Config) DecryptTo(file string, passphrase []byte) error {
 	encryptedConfigurationFile := strings.TrimSuffix(file, yamlExt) + encryptedExt
 	return decryptAndSave(encryptedConfigurationFile, passphrase)
+}
+
+func (c *Config) TrackerLabels() []string {
+	labels := []string{}
+	for _, t := range c.Trackers {
+		labels = append(labels, t.Name)
+	}
+	return labels
+}
+
+func (c *Config) GetTracker(label string) (*ConfigTracker, error) {
+	for _, t := range c.Trackers {
+		if t.Name == label {
+			return t, nil
+		}
+	}
+	return nil, errors.New("Could not find configuration for tracker " + label)
+}
+
+func (c *Config) GetStats(label string) (*ConfigStats, error) {
+	for _, t := range c.Stats {
+		if t.Tracker == label {
+			return t, nil
+		}
+	}
+	return nil, errors.New("Could not find Stats configuration for tracker " + label)
+}
+
+func (c *Config) GetAutosnatch(label string) (*ConfigAutosnatch, error) {
+	for _, t := range c.Autosnatch {
+		if t.Tracker == label {
+			return t, nil
+		}
+	}
+	return nil, errors.New("Could not find Autosnatch configuration for tracker " + label)
 }

@@ -207,7 +207,7 @@ func (e *Environment) SetUp() error {
 		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
 	}
 	// log in tracker
-	e.tracker = &GazelleTracker{rootURL: e.config.Trackers[0].URL}
+	e.tracker = &GazelleTracker{URL: e.config.Trackers[0].URL}
 	if err := e.tracker.Login(e.config.Trackers[0].User, e.config.Trackers[0].Password); err != nil {
 		return err
 	}

@@ -97,9 +97,10 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 //--------------------
 
 type GazelleTracker struct {
-	client  *http.Client
-	rootURL string
-	userID  int
+	Name   string
+	URL    string
+	client *http.Client
+	userID int
 }
 
 func (t *GazelleTracker) Login(user, password string) error {
@@ -107,7 +108,7 @@ func (t *GazelleTracker) Login(user, password string) error {
 	form.Add("username", user)
 	form.Add("password", password)
 	form.Add("keeplogged", "1")
-	req, err := http.NewRequest("POST", t.rootURL+"/login.php", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest("POST", t.URL+"/login.php", strings.NewReader(form.Encode()))
 	if err != nil {
 		fmt.Println(err.Error())
 		return err
@@ -133,7 +134,7 @@ func (t *GazelleTracker) Login(user, password string) error {
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(errorLogIn + ": Returned status: " + resp.Status)
 	}
-	if resp.Request.URL.String() == t.rootURL+"/login.php" {
+	if resp.Request.URL.String() == t.URL+"/login.php" {
 		// if after sending the request we're still redirected to the login page, something went wrong.
 		return errors.New(errorLogIn + ": Login page returned")
 	}
@@ -184,7 +185,7 @@ func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) e
 
 func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 	if t.userID == 0 {
-		data, err := t.get(t.rootURL + "/ajax.php?action=index")
+		data, err := t.get(t.URL + "/ajax.php?action=index")
 		if err != nil {
 			return nil, errors.Wrap(err, errorJSONAPI)
 		}
@@ -195,7 +196,7 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
-	data, err := t.get(t.rootURL + "/ajax.php?action=user&id=" + strconv.Itoa(t.userID))
+	data, err := t.get(t.URL + "/ajax.php?action=user&id=" + strconv.Itoa(t.userID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -222,7 +223,7 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 }
 
 func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) {
-	data, err := t.get(t.rootURL + "/ajax.php?action=torrent&id=" + id)
+	data, err := t.get(t.URL + "/ajax.php?action=torrent&id=" + id)
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -260,7 +261,7 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 }
 
 func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error) {
-	data, err := t.get(t.rootURL + "/ajax.php?action=artist&id=" + strconv.Itoa(artistID))
+	data, err := t.get(t.URL + "/ajax.php?action=artist&id=" + strconv.Itoa(artistID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -279,7 +280,7 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error)
 }
 
 func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorrentGroupInfo, error) {
-	data, err := t.get(t.rootURL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
+	data, err := t.get(t.URL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -351,7 +352,7 @@ func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
 		return "", errors.New("Log does not exist: " + logPath)
 	}
 	// prepare upload
-	req, err := t.prepareLogUpload(t.rootURL+"/logchecker.php", logPath)
+	req, err := t.prepareLogUpload(t.URL+"/logchecker.php", logPath)
 	if err != nil {
 		return "", errors.New("Could not prepare upload form: " + err.Error())
 	}

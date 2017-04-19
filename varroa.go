@@ -89,16 +89,7 @@ func main() {
 			return
 		}
 		// launch goroutines
-		go ircHandler(env.config, env.tracker)
-		if env.config.statsConfigured {
-			go monitorStats(env.config, env.tracker)
-		}
-		go apiCallRateLimiter(env.limiter)
-		if env.config.webserverConfigured {
-			go webServer(env.config, env.serverHTTP, env.serverHTTPS)
-		}
-		go awaitOrders()
-		go automaticBackup()
+		goGoRoutines(env)
 
 		// wait until daemon is stopped.
 		env.WaitForDaemonStop()
@@ -156,4 +147,17 @@ func main() {
 		}
 	}
 	return
+}
+
+func goGoRoutines(e *Environment) {
+	go ircHandler(e.config, e.tracker)
+	if e.config.statsConfigured {
+		go monitorStats(e.config, e.tracker)
+	}
+	go apiCallRateLimiter(e.limiter)
+	if e.config.webserverConfigured {
+		go webServer(e.config, e.serverHTTP, e.serverHTTPS)
+	}
+	go awaitOrders()
+	go automaticBackup()
 }
