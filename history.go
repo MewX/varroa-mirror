@@ -287,6 +287,11 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 		logThis("Error reading history file", NORMAL)
 		return err
 	}
+	if len(bytes) == 0 {
+		// newly created file
+		return nil
+	}
+
 	s.SnatchesPacked = bytes
 
 	// load releases from history to in-memory slice
