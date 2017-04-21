@@ -73,6 +73,7 @@ if (settingsPage) {
 	document.getElementById('varroa_settings_url').addEventListener('change', saveSettings, false);
 	document.getElementById('varroa_settings_port').addEventListener('change', saveSettings, false);
 	document.getElementById('varroa_settings_https').addEventListener('change', saveSettings, false);
+	document.getElementById('varroa_settings_site').addEventListener('change', saveSettings, false);
 }
 if (!settings && !settingsPage) {
 	GM_notification({
@@ -196,7 +197,7 @@ function createLink(linkelement, id) {
 	if (settings.https === true && isWebSocketConnected) {
 		link.addEventListener('click', getTorrent, false);
 	} else {
-		link.firstChild.href = 'http://' + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token;
+		link.firstChild.href = 'http://' + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token + "&site=" + settings.site;
 	}
 	link.firstChild.target = '_blank';
 	link.firstChild.title = vmLinkInfo;
@@ -210,7 +211,8 @@ function getTorrent() {
 		const get = {
 			Command: 'get',
 			Token: settings.token,
-			ID: id
+			ID: [id],
+			Site: settings.site
 		};
 		sock.send(JSON.stringify(get));
 		setVMStatus(vmGet + id);
@@ -250,9 +252,10 @@ function appendSettings() {
 	const lastTable = container.lastElementChild;
 	let settingsHTML = '<a name="varroa_settings"></a>\n<table cellpadding="6" cellspacing="1" border="0" width="100%" class="layout border user_options" id="varroa_settings">\n';
 	settingsHTML += '<tbody>\n<tr class="colhead_dark"><td colspan="2"><strong>Varroa Musica Settings (autosaved)</strong></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Webserver Token">Token</td><td><input type="text" id="varroa_settings_token" placeholder="insert_your_token" value="' + GM_getValue(settingsNamePrefix + 'token', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Webserver Token">Site</td><td><input type="text" id="varroa_settings_site" placeholder="site label" value="' + GM_getValue(settingsNamePrefix + 'site', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Webserver Token">Token</td><td><input type="text" id="varroa_settings_token" placeholder="your token" value="' + GM_getValue(settingsNamePrefix + 'token', '') + '"></td></tr>\n';
 	settingsHTML += '<tr><td class="label" title="Webserver hostname (seedbox hostname)">Hostname</td><td><input type="text" id="varroa_settings_url" placeholder="hostname.com" value="' + GM_getValue(settingsNamePrefix + 'url', '') + '"></td></tr>\n';
-	settingsHTML += '<tr><td class="label" title="Webserver port">Port</td><td><input type="text" id="varroa_settings_port" placeholder="your_chosen_port" value="' + GM_getValue(settingsNamePrefix + 'port', '') + '"></td></tr>\n';
+	settingsHTML += '<tr><td class="label" title="Webserver port">Port</td><td><input type="text" id="varroa_settings_port" placeholder="your chosen port" value="' + GM_getValue(settingsNamePrefix + 'port', '') + '"></td></tr>\n';
 	let checked = '';
 	if (GM_getValue(settingsNamePrefix + 'https', false) === true) {
 		checked = 'checked';
@@ -273,12 +276,14 @@ function getSettings() {
 	const url = GM_getValue(settingsNamePrefix + 'url', '');
 	const port = GM_getValue(settingsNamePrefix + 'port', '');
 	const https = GM_getValue(settingsNamePrefix + 'https', false);
+	const site = GM_getValue(settingsNamePrefix + 'site', '');
 	if (token && url && port) {
 		return {
 			token,
 			url,
 			port,
-			https
+			https,
+			site
 		};
 	}
 	return false;

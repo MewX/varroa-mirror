@@ -29,8 +29,8 @@ const (
 type IncomingJSON struct {
 	Token   string
 	Command string
-	ID      string
-	Label   string
+	ID      []string
+	Site    string
 }
 
 // OutgoingJSON to the websocket created by the GM script.
@@ -231,18 +231,21 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 						// say hello right back
 						answer = OutgoingJSON{Status: responseInfo, Message: handshakeCommand}
 					case downloadCommand:
-						tracker, err := e.Tracker(incoming.Label)
+						tracker, err := e.Tracker(incoming.Site)
 						if err != nil {
-							logThisError(errors.Wrap(err, "Error identifying in configuration tracker " + incoming.Label), NORMAL)
+							logThisError(errors.Wrap(err, "Error identifying in configuration tracker " + incoming.Site), NORMAL)
 							answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
 						} else {
 							// snatching
-							release, err := snatchFromID(tracker, incoming.ID)
-							if err != nil {
-								logThis("Error snatching torrent: "+err.Error(), NORMAL)
-								answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
-							} else {
-								answer = OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent " + release.ShortString()}
+							for _, id := range incoming.ID {
+								release, err := snatchFromID(tracker, id)
+								if err != nil {
+									logThis("Error snatching torrent: "+err.Error(), NORMAL)
+									answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
+								} else {
+									answer = OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent " + release.ShortString()}
+								}
+								// TODO send responses for all IDs (only 1 from GM Script for now anyway)
 							}
 						}
 					case statsCommand:
