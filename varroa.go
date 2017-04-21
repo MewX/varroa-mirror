@@ -70,11 +70,6 @@ func main() {
 		logThisError(errors.Wrap(err, errorLoadingConfig), NORMAL)
 		return
 	}
-	// checking the tracker given as argument (if any) is valid
-	if cli.trackerLabel != "" && !StringInSlice(cli.trackerLabel, env.config.TrackerLabels()) {
-		logThis(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), NORMAL)
-		return
-	}
 
 	// launching daemon
 	if cli.start {
@@ -116,29 +111,33 @@ func main() {
 			logThisError(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
-		// running the command
+
+		// general commands
 		if cli.stats {
 			if err := generateStats(); err != nil {
 				logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 			}
+			return
+		}
+
+		// commands that require tracker label
+		tracker, err := env.Tracker(cli.trackerLabel)
+		if err != nil {
+			logThis(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), NORMAL)
+			return
 		}
 		if cli.refreshMetadata {
-			if err := refreshMetadata(IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+			if err := refreshMetadata(tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
 				logThisError(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		}
 		if cli.snatch {
-			if err := snatchTorrents(IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+			if err := snatchTorrents(tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
 				logThisError(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		}
 		if cli.checkLog {
-			currentTracker, err := env.Tracker(cli.trackerLabel)
-			if err != nil {
-				logThis(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), NORMAL)
-				return
-			}
-			if err := checkLog(cli.logFile, currentTracker); err != nil {
+			if err := checkLog(tracker, []string{cli.logFile}); err != nil {
 				logThisError(errors.Wrap(err, errorCheckingLog), NORMAL)
 			}
 		}
@@ -172,6 +171,6 @@ func goGoRoutines(e *Environment) {
 		go webServer(e, e.serverHTTP, e.serverHTTPS)
 	}
 	// background goroutines
-	go awaitOrders()
+	go awaitOrders(e)
 	go automaticBackup()
 }

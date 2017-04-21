@@ -97,13 +97,13 @@ func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, e
 //--------------------
 
 type GazelleTracker struct {
-	Name   string
-	URL    string
-	User string
+	Name     string
+	URL      string
+	User     string
 	Password string
-	client *http.Client
-	userID int
-	limiter          chan bool //  <- 1/tracker
+	client   *http.Client
+	userID   int
+	limiter  chan bool //  <- 1/tracker
 }
 
 func (t *GazelleTracker) Login() error {

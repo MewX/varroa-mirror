@@ -90,10 +90,9 @@ func analyzeAnnounce(announced string, config *Config, tracker *GazelleTracker, 
 func ircHandler(config *Config, tracker *GazelleTracker) {
 	autosnatchConfig, err := config.GetAutosnatch(tracker.Name)
 	if err != nil {
-		logThis("Cannot find autosnatch configuration for tracker " + tracker.Name, NORMAL)
+		logThis("Cannot find autosnatch configuration for tracker "+tracker.Name, NORMAL)
 		return
 	}
-
 
 	IRCClient := irc.IRC(autosnatchConfig.BotName, tracker.User)
 	IRCClient.UseTLS = autosnatchConfig.IRCSSL

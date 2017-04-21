@@ -25,11 +25,11 @@ const (
 	responseError
 )
 
-// IncomingJSON from the websocket created by the GM script.
+// IncomingJSON from the websocket created by the GM script, also used with unix socket.
 type IncomingJSON struct {
 	Token   string
 	Command string
-	ID      []string
+	Args    []string
 	Site    string
 }
 
@@ -165,7 +165,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			// snatching
 			tracker, err := e.Tracker(trackerLabel)
 			if err != nil {
-				logThisError(errors.Wrap(err, "Error identifying in configuration tracker " + trackerLabel), NORMAL)
+				logThisError(errors.Wrap(err, "Error identifying in configuration tracker "+trackerLabel), NORMAL)
 				return
 			}
 			release, err := snatchFromID(tracker, id)
@@ -233,11 +233,11 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 					case downloadCommand:
 						tracker, err := e.Tracker(incoming.Site)
 						if err != nil {
-							logThisError(errors.Wrap(err, "Error identifying in configuration tracker " + incoming.Site), NORMAL)
+							logThisError(errors.Wrap(err, "Error identifying in configuration tracker "+incoming.Site), NORMAL)
 							answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
 						} else {
 							// snatching
-							for _, id := range incoming.ID {
+							for _, id := range incoming.Args {
 								release, err := snatchFromID(tracker, id)
 								if err != nil {
 									logThis("Error snatching torrent: "+err.Error(), NORMAL)

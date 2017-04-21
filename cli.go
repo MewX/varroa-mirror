@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
 )
@@ -77,9 +79,9 @@ Configuration Commands:
 Usage:
 	varroa (start|reload|stop)
 	varroa stats
-	varroa refresh-metadata <ID>...
+	varroa refresh-metadata <TRACKER> <ID>...
 	varroa check-log <TRACKER> <LOG_FILE>
-	varroa snatch <ID>...
+	varroa snatch <TRACKER> <ID>...
 	varroa backup
 	varroa show-filters
 	varroa (encrypt|decrypt)
@@ -106,7 +108,7 @@ type varroaArguments struct {
 	decrypt         bool
 	torrentIDs      []int
 	logFile         string
-	trackerLabel	string
+	trackerLabel    string
 	requiresDaemon  bool
 	canUseDaemon    bool
 }
@@ -168,25 +170,34 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	return nil
 }
 
-func (b *varroaArguments) commandToDaemon() string {
+func (b *varroaArguments) commandToDaemon() []byte {
+	out := IncomingJSON{Site: b.trackerLabel}
 	if b.stats {
-		return "stats"
+		out.Command = "stats"
 	}
 	if b.reload {
-		return "reload"
+		out.Command = "reload"
 	}
 	if b.stop {
 		// to cleanly close the unix socket
-		return "stop"
+		out.Command = "stop"
 	}
 	if b.refreshMetadata {
-		return "refresh-metadata " + IntSliceToString(b.torrentIDs)
+		out.Command = "refresh-metadata"
+		out.Args = IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.snatch {
-		return "snatch " + IntSliceToString(b.torrentIDs)
+		out.Command = "snatch"
+		out.Args = IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.checkLog {
-		return "check-log " + b.logFile
+		out.Command = "check-log"
+		out.Args = []string{b.logFile}
 	}
-	return ""
+	commandBytes, err := json.Marshal(out)
+	if err != nil {
+		logThisError(errors.Wrap(err, "Cannot parse command"), NORMAL)
+		return []byte{}
+	}
+	return commandBytes
 }

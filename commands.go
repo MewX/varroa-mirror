@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+
 	"github.com/jasonlvhit/gocron"
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
@@ -28,7 +30,7 @@ func sendOrders(cli *varroaArguments) error {
 		return errors.Wrap(err, errorDialingSocket)
 	}
 	// sending command
-	if _, err = conn.Write([]byte(cli.commandToDaemon())); err != nil {
+	if _, err = conn.Write(cli.commandToDaemon()); err != nil {
 		return errors.Wrap(err, errorWritingToSocket)
 	}
 Loop:
@@ -57,7 +59,7 @@ Loop:
 	return conn.Close()
 }
 
-func awaitOrders() {
+func awaitOrders(e *Environment) {
 	conn, err := net.Listen("unix", varroaSocket)
 	if err != nil {
 		logThisError(errors.Wrap(err, errorCreatingSocket), NORMAL)
@@ -99,14 +101,23 @@ func awaitOrders() {
 			logThisError(errors.Wrap(err, errorReadingFromSocket), NORMAL)
 			continue
 		}
-		// NOTE: simple split, do something better if necessary
-		fullCommand := strings.Split(string(buf[:n]), " ")
-		if len(fullCommand) == 0 {
+
+		orders := IncomingJSON{}
+		if err := json.Unmarshal(buf[:n], &orders); err != nil {
+			logThisError(errors.Wrap(err, "Error parsing incoming command from unix socket"), NORMAL)
 			continue
+		}
+		var tracker *GazelleTracker
+		if orders.Site != "" {
+			tracker, err = e.Tracker(orders.Site)
+			if err != nil {
+				logThisError(errors.Wrap(err, "Error parsing tracker label for command from unix socket"), NORMAL)
+				continue
+			}
 		}
 
 		stopEverything := false
-		switch fullCommand[0] {
+		switch orders.Command {
 		case "stats":
 			if err := generateStats(); err != nil {
 				logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
@@ -119,15 +130,15 @@ func awaitOrders() {
 				logThisError(errors.Wrap(err, errorReloading), NORMAL)
 			}
 		case "refresh-metadata":
-			if err := refreshMetadata(fullCommand[1:]); err != nil {
+			if err := refreshMetadata(tracker, orders.Args); err != nil {
 				logThisError(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		case "snatch":
-			if err := snatchTorrents(fullCommand[1:]); err != nil {
+			if err := snatchTorrents(tracker, orders.Args); err != nil {
 				logThisError(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		case "check-log":
-			if err := checkLog(strings.Join(fullCommand[1:], " "), env.tracker); err != nil {
+			if err := checkLog(tracker, orders.Args); err != nil {
 				logThisError(errors.Wrap(err, errorCheckingLog), NORMAL)
 			}
 		}
@@ -223,12 +234,14 @@ func snatchTorrents(tracker *GazelleTracker, IDStrings []string) error {
 	return nil
 }
 
-func checkLog(tracker *GazelleTracker, logPath string) error {
-	score, err := tracker.GetLogScore(logPath)
-	if err != nil {
-		return errors.Wrap(err, errorGettingLogScore)
+func checkLog(tracker *GazelleTracker, logPaths []string) error {
+	for _, log := range logPaths {
+		score, err := tracker.GetLogScore(log)
+		if err != nil {
+			return errors.Wrap(err, errorGettingLogScore)
+		}
+		logThis(fmt.Sprintf("Found score %s for log file %s.", score, log), NORMAL)
 	}
-	logThis(fmt.Sprintf("Found score %s for log file %s.", score, logPath), NORMAL)
 	return nil
 }
 
