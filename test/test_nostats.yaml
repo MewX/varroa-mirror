@@ -23,6 +23,7 @@ autosnatch:
 
 webserver:
   serve_stats: false
+  stats_user: httpuser
   stats_password: httppassword
   allow_downloads: true
   token: thisisatoken

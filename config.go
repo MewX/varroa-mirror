@@ -129,6 +129,7 @@ func (cs *ConfigStats) Check() error {
 
 type ConfigWebServer struct {
 	ServeStats     bool   `yaml:"serve_stats"`
+	User           string `yaml:"stats_user"`
 	Password       string `yaml:"stats_password"`
 	AllowDownloads bool   `yaml:"allow_downloads"`
 	Token          string
@@ -153,6 +154,9 @@ func (cw *ConfigWebServer) Check() error {
 	// TODO NOT TRUE if the user provides the certificates...
 	if cw.PortHTTPS != 0 && cw.Hostname == "" {
 		return errors.New("HTTPS server requires a hostname")
+	}
+	if cw.Password != "" && cw.User == "" || cw.Password == "" && cw.User != "" {
+		return errors.New("If password-protecting the stats webserver, both user & password must be provided")
 	}
 	return nil
 }
