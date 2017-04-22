@@ -226,7 +226,7 @@ func (e *Environment) SetUp(autologin bool) error {
 			// stats configured for this tracker
 			h := &History{Tracker: label}
 			// load relevant history
-			if err := h.LoadAll(statsFile+label, historyFile+label); err != nil {
+			if err := h.LoadAll(); err != nil {
 				return errors.Wrap(err, "Error loading history for tracker "+label)
 			}
 			e.History[label] = h

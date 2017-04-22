@@ -7,12 +7,10 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/wcharczuk/go-chart"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -56,31 +54,15 @@ pages:
 </html>`
 )
 
-var (
-	uploadStatsFile           = filepath.Join(statsDir, "up")
-	uploadPerDayStatsFile     = filepath.Join(statsDir, "up_per_day")
-	downloadStatsFile         = filepath.Join(statsDir, "down")
-	downloadPerDayStatsFile   = filepath.Join(statsDir, "down_per_day")
-	ratioStatsFile            = filepath.Join(statsDir, "ratio")
-	ratioPerDayStatsFile      = filepath.Join(statsDir, "ratio_per_day")
-	bufferStatsFile           = filepath.Join(statsDir, "buffer")
-	bufferPerDayStatsFile     = filepath.Join(statsDir, "buffer_per_day")
-	overallStatsFile          = filepath.Join(statsDir, "stats")
-	numberSnatchedPerDayFile  = filepath.Join(statsDir, "snatches_per_day")
-	sizeSnatchedPerDayFile    = filepath.Join(statsDir, "size_snatched_per_day")
-	totalSnatchesByFilterFile = filepath.Join(statsDir, "total_snatched_by_filter")
-	toptagsFile               = filepath.Join(statsDir, "top_tags")
-	gitlabCIYamlFile          = filepath.Join(statsDir, ".gitlab-ci.yml")
-	htmlIndexFile             = filepath.Join(statsDir, "index.html")
-	historyFile               = filepath.Join(statsDir, "history_")
-	statsFile                 = filepath.Join(statsDir, "stats_")
-)
-
 // History manages stats and generates graphs.
 type History struct {
 	Tracker string
 	SnatchHistory
 	TrackerStatsHistory
+}
+
+func (h *History) getPath(file string) string {
+	return filepath.Join(statsDir, h.Tracker+"_"+file)
 }
 
 func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
@@ -149,14 +131,14 @@ func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 	}
 }
 
-func (h *History) LoadAll(statsFile, snatchesFile string) error {
+func (h *History) LoadAll() error {
 	// make sure we're using the latest format, convert if necessary
-	h.migrateOldFormats(statsFile, snatchesFile)
+	h.migrateOldFormats(h.getPath(statsFile), h.getPath(historyFile))
 
-	if err := h.TrackerStatsHistory.Load(statsFile + csvExt); err != nil {
+	if err := h.TrackerStatsHistory.Load(h.getPath(statsFile) + csvExt); err != nil {
 		return err
 	}
-	if err := h.SnatchHistory.Load(snatchesFile + msgpackExt); err != nil {
+	if err := h.SnatchHistory.Load(h.getPath(historyFile) + msgpackExt); err != nil {
 		return err
 	}
 	return nil
@@ -175,12 +157,25 @@ func (h *History) GenerateGraphs(e *Environment) error {
 	statsOK := true
 	dailyStatsOK := true
 	// generate stats graphs
-	if err := h.GenerateStatsGraphs(firstOverallTimestamp, statsConfig.UpdatePeriodH); err != nil {
+	if err := h.GenerateStatsGraphs(firstOverallTimestamp,
+		statsConfig.UpdatePeriodH,
+		h.getPath(uploadStatsFile),
+		h.getPath(downloadStatsFile),
+		h.getPath(bufferStatsFile),
+		h.getPath(ratioStatsFile),
+		h.getPath(uploadPerDayStatsFile),
+		h.getPath(downloadPerDayStatsFile),
+		h.getPath(bufferPerDayStatsFile),
+		h.getPath(ratioPerDayStatsFile)); err != nil {
 		logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 		statsOK = false
 	}
 	// generate history graphs if necessary
-	if err := h.GenerateDailyGraphs(firstOverallTimestamp); err != nil {
+	if err := h.GenerateDailyGraphs(firstOverallTimestamp,
+		h.getPath(sizeSnatchedPerDayFile),
+		h.getPath(numberSnatchedPerDayFile),
+		h.getPath(totalSnatchesByFilterFile),
+		h.getPath(toptagsFile)); err != nil {
 		if err.Error() == errorNoFurtherSnatches {
 			logThis.Info(errorNoFurtherSnatches, VERBOSE)
 		} else {
@@ -191,12 +186,24 @@ func (h *History) GenerateGraphs(e *Environment) error {
 	if statsOK {
 		if dailyStatsOK {
 			// combine graphs into overallStatsFile
-			if err := combineAllPNGs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
+			if err := combineAllPNGs(h.getPath(overallStatsFile),
+				h.getPath(uploadStatsFile),
+				h.getPath(uploadPerDayStatsFile),
+				h.getPath(downloadStatsFile),
+				h.getPath(downloadPerDayStatsFile),
+				h.getPath(bufferStatsFile),
+				h.getPath(bufferPerDayStatsFile),
+				h.getPath(ratioStatsFile),
+				h.getPath(ratioPerDayStatsFile),
+				h.getPath(numberSnatchedPerDayFile),
+				h.getPath(sizeSnatchedPerDayFile),
+				h.getPath(totalSnatchesByFilterFile),
+				h.getPath(toptagsFile)); err != nil {
 				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 			}
 		}
 		// create/update index.html
-		if err := ioutil.WriteFile(htmlIndexFile, []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), filepath.Base(statsFile)+csvExt, h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(statsDir, htmlIndexFile), []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), filepath.Base(h.getPath(statsFile))+csvExt, h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
 			return err
 		}
 		// deploy automatically, if at least the StatsGraphs have been generated
@@ -244,12 +251,12 @@ func (h *History) Deploy(e *Environment) error {
 			return errors.Wrap(err, errorGitInit)
 		}
 		// create .gitlab-ci.yml
-		if err := ioutil.WriteFile(gitlabCIYamlFile, []byte(gitlabCI), 0666); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(statsDir, gitlabCIYamlFile), []byte(gitlabCI), 0666); err != nil {
 			return err
 		}
 	}
 	// add overall stats and other files
-	if err := git.Add("*"+svgExt, filepath.Base(statsFile+csvExt), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
+	if err := git.Add("*"+svgExt, filepath.Base(h.getPath(statsFile)+csvExt), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
 		return errors.Wrap(err, errorGitAdd)
 	}
 	// commit

@@ -123,7 +123,7 @@ func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, [
 	return dayTimes, snatchesPerDay, sizePerDay, nil
 }
 
-func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) error {
+func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time, sizeSnatchedFile, numberSnatched, totalByFilter, topTags string) error {
 	if len(s.SnatchedReleases) == s.LastGeneratedPerDay {
 		// no additional snatch since the graphs were last generated, nothing needs to be done
 		return errors.New(errorNoFurtherSnatches)
@@ -160,10 +160,10 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	}
 
 	// generate graphs
-	if err := writeTimeSeriesChart(sizeSnatchedSeries, "Size snatched/day (Gb)", sizeSnatchedPerDayFile, true); err != nil {
+	if err := writeTimeSeriesChart(sizeSnatchedSeries, "Size snatched/day (Gb)", sizeSnatchedFile, true); err != nil {
 		return err
 	}
-	if err := writeTimeSeriesChart(numberSnatchedSeries, "Snatches/day", numberSnatchedPerDayFile, true); err != nil {
+	if err := writeTimeSeriesChart(numberSnatchedSeries, "Snatches/day", numberSnatched, true); err != nil {
 		return err
 	}
 
@@ -176,7 +176,7 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	for k, v := range filterHits {
 		pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
 	}
-	if err := writePieChart(pieSlices, "Total snatches by filter", totalSnatchesByFilterFile); err != nil {
+	if err := writePieChart(pieSlices, "Total snatches by filter", totalByFilter); err != nil {
 		return err
 	}
 
@@ -195,7 +195,7 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	if len(top10tags) > 10 {
 		top10tags = top10tags[:10]
 	}
-	if err := writePieChart(top10tags, "Top tags", toptagsFile); err != nil {
+	if err := writePieChart(top10tags, "Top tags", topTags); err != nil {
 		return err
 	}
 
