@@ -475,7 +475,7 @@ func (c *Config) Check() error {
 }
 
 func (c *Config) Encrypt(file string, passphrase []byte) error {
-	return encrypt(file, passphrase)
+	return encryptAndSave(file, passphrase)
 }
 
 func (c *Config) DecryptTo(file string, passphrase []byte) error {

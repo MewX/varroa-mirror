@@ -28,13 +28,13 @@ func TestCrypto(t *testing.T) {
 	// 1. encrypt
 
 	// bad passphrase
-	err := encrypt(testYAML, []byte("tooshort"))
+	err := encryptAndSave(testYAML, []byte("tooshort"))
 	check.NotNil(err)
 	// not yaml
-	err = encrypt(testYAML+"--", passphrase)
+	err = encryptAndSave(testYAML+"--", passphrase)
 	check.NotNil(err)
 	// normal
-	err = encrypt(testYAML, passphrase)
+	err = encryptAndSave(testYAML, passphrase)
 	check.Nil(err)
 	check.True(FileExists(testENC))
 	defer os.Remove(testENC)

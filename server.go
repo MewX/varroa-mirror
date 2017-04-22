@@ -273,7 +273,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 	if e.config.WebServer.ServeStats {
 		// serving static index.html in stats dir
 		if e.config.WebServer.Password != "" {
-			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(e.config.Trackers[0].User, e.config.WebServer.Password)(http.FileServer(http.Dir(statsDir))))
+			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.FileServer(http.Dir(statsDir))))
 		} else {
 			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
 		}

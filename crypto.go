@@ -27,7 +27,7 @@ func getPassphrase() (string, error) {
 	return string(pass), nil
 }
 
-func encrypt(path string, passphrase []byte) error {
+func encryptAndSave(path string, passphrase []byte) error {
 	// config.yaml -> config.enc
 	if len(passphrase) != 32 {
 		return errors.New(errorBadPassphrase)
