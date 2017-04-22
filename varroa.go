@@ -84,7 +84,7 @@ func main() {
 			return
 		}
 		// setting up for the daemon
-		if err := env.SetUp(); err != nil {
+		if err := env.SetUp(true); err != nil {
 			logThis.Error(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
@@ -107,7 +107,7 @@ func main() {
 			return
 		}
 		// setting up since the daemon isn't running
-		if err := env.SetUp(); err != nil {
+		if err := env.SetUp(false); err != nil {
 			logThis.Error(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}

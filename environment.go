@@ -53,8 +53,9 @@ func NewEnvironment() *Environment {
 	e.notification = &Notification{}
 	e.serverHTTP = &http.Server{}
 	e.serverHTTPS = &http.Server{}
-	// disable  autosnatching
-	e.config.disabledAutosnatching = false
+	// make maps
+	e.Trackers = make(map[string]*GazelleTracker)
+	e.History = make(map[string]*History)
 	// is only true if we're in the daemon
 	e.inDaemon = false
 	e.configPassphrase = make([]byte, 32)
@@ -191,7 +192,7 @@ func (e *Environment) LoadConfiguration() error {
 }
 
 // SetUp the Environment
-func (e *Environment) SetUp() error {
+func (e *Environment) SetUp(autologin bool) error {
 	// prepare directory for stats if necessary
 	if !DirectoryExists(statsDir) {
 		if err := os.MkdirAll(statsDir, 0777); err != nil {
@@ -211,10 +212,12 @@ func (e *Environment) SetUp() error {
 			return errors.Wrap(err, "Error getting tracker information")
 		}
 		tracker := &GazelleTracker{Name: config.Name, URL: config.URL, User: config.User, Password: config.Password, limiter: make(chan bool, allowedAPICallsByPeriod)}
-		if err := tracker.Login(); err != nil {
-			return errors.Wrap(err, "Error logging in tracker "+label)
+		if autologin {
+			if err := tracker.Login(); err != nil {
+				return errors.Wrap(err, "Error logging in tracker "+label)
+			}
+			logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
 		}
-		logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
 		// launching rate limiter
 		go tracker.apiCallRateLimiter()
 		e.Trackers[label] = tracker
@@ -274,7 +277,11 @@ func (e *Environment) Reload() error {
 func (e *Environment) Notify(msg string) error {
 	notity := func() error {
 		if e.config.notificationsConfigured {
-			if err := e.notification.Send(msg, e.config.gitlabPagesConfigured, e.config.GitlabPages.URL); err != nil {
+			link := ""
+			if e.config.gitlabPagesConfigured {
+				link = e.config.GitlabPages.URL
+			}
+			if err := e.notification.Send(msg, e.config.gitlabPagesConfigured, link); err != nil {
 				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
 				return err
 			}
@@ -294,7 +301,7 @@ func (e *Environment) RunOrGo(f func() error) error {
 }
 
 func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
-	// TODO find in already loaded trackers
+	// find in already loaded trackers
 	tracker, ok := e.Trackers[label]
 	if !ok {
 		// not found:
@@ -305,6 +312,12 @@ func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
 		tracker = &GazelleTracker{Name: config.Name, URL: config.URL, User: config.User, Password: config.Password}
 		// saving
 		e.Trackers[label] = tracker
+	}
+	if tracker.client == nil {
+		if err := tracker.Login(); err != nil {
+			return tracker, errors.Wrap(err, "Error logging in tracker "+label)
+		}
+		logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
 	}
 	return tracker, nil
 }
