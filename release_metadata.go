@@ -23,14 +23,14 @@ type ReleaseMetadata struct {
 	Summary ReleaseInfo
 }
 
-func (rm *ReleaseMetadata) Synthetize() error {
+func (rm *ReleaseMetadata) Synthetize(tracker *GazelleTracker) error {
 	// fill rm.Summary
 	var info GazelleTorrent
 	if unmarshalErr := json.Unmarshal(rm.Info.fullJSON, &info.Response); unmarshalErr != nil {
 		logThis.Info("Error parsing torrent info JSON", NORMAL)
 		return nil
 	}
-	if err := rm.Summary.fromGazelleInfo(info); err != nil {
+	if err := rm.Summary.fromGazelleInfo(tracker, info); err != nil {
 		return err
 	}
 	// origin
@@ -41,8 +41,8 @@ func (rm *ReleaseMetadata) Synthetize() error {
 	return rm.Summary.loadUserJSON(rm.Root)
 }
 
-func (rm *ReleaseMetadata) GenerateSummary() error {
-	if err := rm.Synthetize(); err != nil {
+func (rm *ReleaseMetadata) GenerateSummary(tracker *GazelleTracker) error {
+	if err := rm.Synthetize(tracker); err != nil {
 		return err
 	}
 	md := rm.Summary.toMD()
@@ -50,12 +50,13 @@ func (rm *ReleaseMetadata) GenerateSummary() error {
 }
 
 // SaveFromTracker all of the associated metadata.
-func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *TrackerTorrentInfo) error {
-	if !env.config.downloadFolderConfigured {
+func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *TrackerTorrentInfo, destination string) error {
+	if destination == "" {
+		// download folder not set
 		return nil
 	}
 
-	rm.Root = filepath.Join(env.config.General.DownloadDir, html.UnescapeString(info.folder), metadataDir)
+	rm.Root = filepath.Join(destination, html.UnescapeString(info.folder), metadataDir)
 	rm.Info = *info
 
 	// create metadata dir if necessary
@@ -63,7 +64,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *Tracke
 		return errors.Wrap(err, errorCreatingMetadataDir)
 	}
 	// creating or updating origin.json
-	if err := rm.Origin.Save(filepath.Join(rm.Root, originJSONFile), rm.Info); err != nil {
+	if err := rm.Origin.Save(filepath.Join(rm.Root, originJSONFile), tracker, rm.Info); err != nil {
 		return errors.Wrap(err, errorWithOriginJSON)
 	}
 
@@ -109,7 +110,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *Tracke
 		logThis.Error(errors.Wrap(err, errorGeneratingUserMetadataJSON), NORMAL)
 	}
 	// generate summary
-	if err := rm.GenerateSummary(); err != nil {
+	if err := rm.GenerateSummary(tracker); err != nil {
 		logThis.Error(errors.Wrap(err, errorGeneratingSummary), NORMAL)
 	}
 	// download tracker cover to target folder

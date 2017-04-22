@@ -74,7 +74,7 @@ func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, e
 	// check success
 	var r GazelleGenericResponse
 	if err := json.Unmarshal(data, &r); err != nil {
-		logThis("BAD JSON, Received: \n"+string(data), VERBOSEST)
+		logThis.Info("BAD JSON, Received: \n"+string(data), VERBOSEST)
 		return []byte{}, errors.Wrap(err, errorUnmarshallingJSON)
 	}
 	if r.Status != statusSuccess {

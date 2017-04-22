@@ -121,6 +121,11 @@ func TestRegexp(t *testing.T) {
 	fmt.Println("+ Testing Announce parsing & filtering...")
 	verify := assert.New(t)
 
+	// setting up logger
+	env := NewEnvironment()
+	logThis.env = env
+
+	// testing parser
 	for _, announced := range announces {
 		r := regexp.MustCompile(announcePattern)
 		hits := r.FindAllStringSubmatch(announced.announce, -1)

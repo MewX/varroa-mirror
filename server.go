@@ -40,7 +40,7 @@ type OutgoingJSON struct {
 }
 
 // TODO: see if this could also be used by irc
-func snatchFromID(tracker *GazelleTracker, id string) (*Release, error) {
+func snatchFromID(e *Environment, tracker *GazelleTracker, id string) (*Release, error) {
 	// get torrent info
 	info, err := tracker.GetTorrentInfo(id)
 	if err != nil {
@@ -56,22 +56,22 @@ func snatchFromID(tracker *GazelleTracker, id string) (*Release, error) {
 	release.TorrentFile = "remote-id" + id + ".torrent"
 
 	logThis.Info("Web server: downloading torrent "+release.ShortString(), NORMAL)
-	if err := tracker.DownloadTorrent(release, env.config.General.WatchDir); err != nil {
+	if err := tracker.DownloadTorrent(release, e.config.General.WatchDir); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err
 	}
 	// add to history
-	if err := env.history.AddSnatch(release, "remote"); err != nil {
+	if err := e.History[tracker.Name].AddSnatch(release, "remote"); err != nil {
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
 	// send notification
-	env.Notify("Snatched with web interface: " + release.ShortString())
+	e.Notify("Snatched with web interface: " + release.ShortString())
 	// save metadata
-	if env.config.General.AutomaticMetadataRetrieval {
-		if env.inDaemon {
-			go release.Metadata.SaveFromTracker(tracker, info)
+	if e.config.General.AutomaticMetadataRetrieval {
+		if e.inDaemon {
+			go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 		} else {
-			release.Metadata.SaveFromTracker(tracker, info)
+			release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 		}
 	}
 	return release, nil
@@ -168,9 +168,9 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				logThis.Error(errors.Wrap(err, "Error identifying in configuration tracker "+trackerLabel), NORMAL)
 				return
 			}
-			release, err := snatchFromID(tracker, id)
+			release, err := snatchFromID(e, tracker, id)
 			if err != nil {
-				logThisE.rror(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
+				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 				return
 			}
 			// write response
@@ -238,7 +238,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 						} else {
 							// snatching
 							for _, id := range incoming.Args {
-								release, err := snatchFromID(tracker, id)
+								release, err := snatchFromID(e, tracker, id)
 								if err != nil {
 									logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
 									answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}

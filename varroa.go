@@ -132,7 +132,7 @@ func main() {
 			}
 		}
 		if cli.snatch {
-			if err := snatchTorrents(tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+			if err := snatchTorrents(env, tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		}

@@ -168,10 +168,14 @@ func (h *History) GenerateGraphs(e *Environment) error {
 	if firstOverallTimestamp.After(time.Now()) {
 		return errors.New(errorInvalidTimestamp)
 	}
+	statsConfig, err := e.config.GetStats(h.Tracker)
+	if err != nil {
+		return errors.Wrap(err, "Error getting stats for "+h.Tracker)
+	}
 	statsOK := true
 	dailyStatsOK := true
 	// generate stats graphs
-	if err := h.GenerateStatsGraphs(firstOverallTimestamp); err != nil {
+	if err := h.GenerateStatsGraphs(firstOverallTimestamp, statsConfig.UpdatePeriodH); err != nil {
 		logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 		statsOK = false
 	}
@@ -588,7 +592,7 @@ func (t *TrackerStatsHistory) StatsPerDay(firstTimestamp time.Time) ([]time.Time
 	return dayTimes, upPerDay, downPerDay, bufferPerDay, ratioPerDay, nil
 }
 
-func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Time) error {
+func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Time, updatePeriod int) error {
 	// generate tracker stats graphs
 	if len(t.TrackerStatsRecords) <= 2 {
 		// not enough data points yet
@@ -621,7 +625,7 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	}
 	if !firstOverallTimestamp.Equal(timestamps[0]) {
 		// if the first overall timestamp isn't in the snatch history, artificially add it
-		timestamps = append([]time.Time{firstOverallTimestamp, timestamps[0].Add(time.Duration(-env.config.Stats[0].UpdatePeriodH) * time.Hour)}, timestamps...)
+		timestamps = append([]time.Time{firstOverallTimestamp, timestamps[0].Add(time.Duration(-updatePeriod) * time.Hour)}, timestamps...)
 		ups = append([]float64{0, 0}, ups...)
 		downs = append([]float64{0, 0}, downs...)
 		buffers = append([]float64{0, 0}, buffers...)

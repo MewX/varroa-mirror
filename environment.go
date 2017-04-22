@@ -274,7 +274,7 @@ func (e *Environment) Reload() error {
 func (e *Environment) Notify(msg string) error {
 	notity := func() error {
 		if e.config.notificationsConfigured {
-			if err := e.notification.Send(msg); err != nil {
+			if err := e.notification.Send(msg, e.config.gitlabPagesConfigured, e.config.GitlabPages.URL); err != nil {
 				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
 				return err
 			}

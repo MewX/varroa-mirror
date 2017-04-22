@@ -133,7 +133,7 @@ func awaitOrders(e *Environment) {
 				logThis.Error(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		case "snatch":
-			if err := snatchTorrents(tracker, orders.Args); err != nil {
+			if err := snatchTorrents(e, tracker, orders.Args); err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		case "check-log":
@@ -156,7 +156,7 @@ func awaitOrders(e *Environment) {
 func generateStats(e *Environment) error {
 	logThis.Info("Generating stats", VERBOSE)
 	for _, h := range e.History {
-		if err := h.GenerateGraphs(); err != nil {
+		if err := h.GenerateGraphs(e); err != nil {
 			return err
 		}
 	}
@@ -179,9 +179,9 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				break
 			}
 			if e.inDaemon {
-				go r.Metadata.SaveFromTracker(tracker, info)
+				go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			} else {
-				r.Metadata.SaveFromTracker(tracker, info)
+				r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			}
 			found = append(found, r.TorrentID)
 			break
@@ -208,9 +208,9 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				if DirectoryExists(fullFolder) {
 					r := info.Release()
 					if e.inDaemon {
-						go r.Metadata.SaveFromTracker(tracker, info)
+						go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 					} else {
-						r.Metadata.SaveFromTracker(tracker, info)
+						r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 					}
 				} else {
 					logThis.Info(fmt.Sprintf(errorCannotFindID, m), NORMAL)
@@ -223,13 +223,13 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 	return nil
 }
 
-func snatchTorrents(tracker *GazelleTracker, IDStrings []string) error {
+func snatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
 	// snatch
 	for _, id := range IDStrings {
-		if release, err := snatchFromID(tracker, id); err != nil {
+		if release, err := snatchFromID(e, tracker, id); err != nil {
 			return errors.New("Error snatching torrent with ID #" + id)
 		} else {
 			logThis.Info("Successfully snatched torrent "+release.ShortString(), NORMAL)
