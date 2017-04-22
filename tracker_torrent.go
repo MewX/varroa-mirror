@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/pkg/errors"
 )
 
 type TrackerTorrentInfo struct {
@@ -71,7 +71,7 @@ func (a *TrackerTorrentInfo) Release() *Release {
 	}
 	var gt GazelleTorrent
 	if unmarshalErr := json.Unmarshal(a.fullJSON, &gt.Response); unmarshalErr != nil {
-		logThis("Error parsing torrent info JSON", NORMAL)
+		logThis.Error(errors.Wrap(unmarshalErr, "Error parsing torrent info JSON"), NORMAL)
 		return nil
 	}
 	r := &Release{}

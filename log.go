@@ -11,22 +11,26 @@ const (
 	VERBOSEST
 )
 
-func logThisError(err error, level int) {
-	logThis(err.Error(), level)
+type LogThis struct {
+	env *Environment
 }
 
-func logThis(msg string, level int) {
-	if env.config.General == nil {
+func (l *LogThis) Error(err error, level int) {
+	l.Info(err.Error(), level)
+}
+
+func (l *LogThis) Info(msg string, level int) {
+	if l.env.config.General == nil {
 		// configuration was not loaded, printing error message
 		fmt.Println(msg)
 		return
 	}
-	if env.config.General.LogLevel >= level {
-		if env.expectedOutput {
+	if l.env.config.General.LogLevel >= level {
+		if l.env.expectedOutput {
 			// only is daemon is up...
-			if env.inDaemon {
+			if l.env.inDaemon {
 				log.Println(msg)
-				env.sendBackToCLI <- msg
+				l.env.sendBackToCLI <- msg
 			} else {
 				fmt.Println(msg)
 			}
@@ -34,8 +38,8 @@ func logThis(msg string, level int) {
 			log.Println(msg)
 		}
 		// write to socket
-		if env.websocketOutput {
-			env.sendToWebsocket <- msg
+		if l.env.websocketOutput {
+			l.env.sendToWebsocket <- msg
 		}
 	}
 }

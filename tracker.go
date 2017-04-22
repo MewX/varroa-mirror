@@ -82,7 +82,7 @@ func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, e
 			return data, errors.New(errorInvalidResponse)
 		}
 		if r.Error == errorGazelleRateLimitExceeded {
-			logThis(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
+			logThis.Info(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
 			// calling again, waiting for the rate limiter again should do the trick.
 			// that way 2 limiter slots will have passed before the next call is made,
 			// the server should allow it.
@@ -126,13 +126,13 @@ func (t *GazelleTracker) Login() error {
 	}
 	jar, err := cookiejar.New(&options)
 	if err != nil {
-		logThisError(errors.Wrap(err, errorLogIn), NORMAL)
+		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
 		return err
 	}
 	t.client = &http.Client{Jar: jar}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		logThisError(errors.Wrap(err, errorLogIn), NORMAL)
+		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
 		return err
 	}
 	defer resp.Body.Close()
@@ -150,7 +150,7 @@ func (t *GazelleTracker) Login() error {
 func (t *GazelleTracker) get(url string) ([]byte, error) {
 	data, err := t.callJSONAPI(t.client, url)
 	if err != nil {
-		logThisError(errors.Wrap(err, errorJSONAPI), NORMAL)
+		logThis.Error(errors.Wrap(err, errorJSONAPI), NORMAL)
 		// if error, try once again after logging in again
 		if loginErr := t.Login(); loginErr == nil {
 			return t.callJSONAPI(t.client, url)
@@ -184,7 +184,7 @@ func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) e
 	}
 	// cleaning up
 	if err := os.Remove(r.TorrentFile); err != nil {
-		logThis(fmt.Sprintf(errorRemovingTempFile, r.TorrentFile), VERBOSE)
+		logThis.Info(fmt.Sprintf(errorRemovingTempFile, r.TorrentFile), VERBOSE)
 	}
 	return nil
 }
@@ -212,7 +212,7 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
-		logThis("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
+		logThis.Info("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
 		ratio = 0.0
 	}
 	// GazelleIndex to TrackerStats

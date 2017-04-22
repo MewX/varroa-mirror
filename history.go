@@ -72,12 +72,13 @@ var (
 	toptagsFile               = filepath.Join(statsDir, "top_tags")
 	gitlabCIYamlFile          = filepath.Join(statsDir, ".gitlab-ci.yml")
 	htmlIndexFile             = filepath.Join(statsDir, "index.html")
-	historyFile               = filepath.Join(statsDir, "history")
-	statsFile                 = filepath.Join(statsDir, "stats")
+	historyFile               = filepath.Join(statsDir, "history_")
+	statsFile                 = filepath.Join(statsDir, "stats_")
 )
 
 // History manages stats and generates graphs.
 type History struct {
+	Tracker string
 	SnatchHistory
 	TrackerStatsHistory
 }
@@ -85,37 +86,37 @@ type History struct {
 func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 	// if upgrading from v5, trying to move the csv files to the stats folder, their new home
 	if FileExists(filepath.Base(statsFile+csvExt)) && !FileExists(statsFile+csvExt) {
-		logThis("Migrating tracker stats file to the stats folder.", NORMAL)
+		logThis.Info("Migrating tracker stats file to the stats folder.", NORMAL)
 		if err := os.Rename(filepath.Base(statsFile+csvExt), statsFile+csvExt); err != nil {
-			logThisError(errors.Wrap(err, errorMovingFile), NORMAL)
+			logThis.Error(errors.Wrap(err, errorMovingFile), NORMAL)
 		}
 	}
 
 	if FileExists(filepath.Base(snatchesFile+csvExt)) && !FileExists(snatchesFile+csvExt) {
-		logThis("Migrating sntach history file to the stats folder.", NORMAL)
+		logThis.Info("Migrating sntach history file to the stats folder.", NORMAL)
 		if err := os.Rename(filepath.Base(snatchesFile+csvExt), snatchesFile+csvExt); err != nil {
-			logThisError(errors.Wrap(err, errorMovingFile), NORMAL)
+			logThis.Error(errors.Wrap(err, errorMovingFile), NORMAL)
 		}
 	}
 
 	// if upgrading from v8, converting history.csv to history.db (msgpack)
 	if !FileExists(snatchesFile+msgpackExt) && FileExists(snatchesFile+csvExt) {
-		logThis("Migrating sntach history file to the latest format (csv -> msgpack).", NORMAL)
+		logThis.Info("Migrating sntach history file to the latest format (csv -> msgpack).", NORMAL)
 		// load history file
 		f, errOpening := os.OpenFile(snatchesFile+csvExt, os.O_RDONLY, 0644)
 		if errOpening != nil {
-			logThis(errorMigratingFile+snatchesFile+csvExt, NORMAL)
+			logThis.Info(errorMigratingFile+snatchesFile+csvExt, NORMAL)
 			return
 		}
 
 		w := csv.NewReader(f)
 		records, errReading := w.ReadAll()
 		if errReading != nil {
-			logThis("Error loading old history file: "+errReading.Error(), NORMAL)
+			logThis.Error(errors.Wrap(errReading, "Error loading old history file"), NORMAL)
 			return
 		}
 		if err := f.Close(); err != nil {
-			logThis("Error closing old history file: "+err.Error(), NORMAL)
+			logThis.Error(errors.Wrap(err, "Error closing old history file"), NORMAL)
 		}
 
 		releases := []Release{}
@@ -123,7 +124,7 @@ func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 		for i, record := range records {
 			r := &Release{}
 			if err := r.FromSlice(record); err != nil {
-				logThisError(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
+				logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
 			} else {
 				releases = append(releases, *r)
 			}
@@ -132,18 +133,18 @@ func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 		// save to new file
 		b, err := msgpack.Marshal(releases)
 		if err != nil {
-			logThisError(errors.Wrap(err, errorMigratingFile+snatchesFile+msgpackExt), NORMAL)
+			logThis.Error(errors.Wrap(err, errorMigratingFile+snatchesFile+msgpackExt), NORMAL)
 			return
 		}
 		if err := ioutil.WriteFile(snatchesFile+msgpackExt, b, 0640); err != nil {
-			logThisError(errors.Wrap(err, errorMigratingFile+snatchesFile+msgpackExt), NORMAL)
+			logThis.Error(errors.Wrap(err, errorMigratingFile+snatchesFile+msgpackExt), NORMAL)
 			return
 		}
 		// renaming old file
 		if err := os.Rename(snatchesFile+csvExt, snatchesFile+".csv.migrated"); err != nil {
-			logThis("Error renaming old history.csv file, please remove or move it elsewhere.", NORMAL)
+			logThis.Info("Error renaming old history.csv file, please remove or move it elsewhere.", NORMAL)
 		} else {
-			logThis("Old history file renamed to "+snatchesFile+".csv.migrated", NORMAL)
+			logThis.Info("Old history file renamed to "+snatchesFile+".csv.migrated", NORMAL)
 		}
 	}
 }
@@ -161,7 +162,7 @@ func (h *History) LoadAll(statsFile, snatchesFile string) error {
 	return nil
 }
 
-func (h *History) GenerateGraphs() error {
+func (h *History) GenerateGraphs(e *Environment) error {
 	// get first overall timestamp in all history sources
 	firstOverallTimestamp := h.getFirstTimestamp()
 	if firstOverallTimestamp.After(time.Now()) {
@@ -171,15 +172,15 @@ func (h *History) GenerateGraphs() error {
 	dailyStatsOK := true
 	// generate stats graphs
 	if err := h.GenerateStatsGraphs(firstOverallTimestamp); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 		statsOK = false
 	}
 	// generate history graphs if necessary
 	if err := h.GenerateDailyGraphs(firstOverallTimestamp); err != nil {
 		if err.Error() == errorNoFurtherSnatches {
-			logThis(errorNoFurtherSnatches, VERBOSE)
+			logThis.Info(errorNoFurtherSnatches, VERBOSE)
 		} else {
-			logThisError(errors.Wrap(err, errorGeneratingDailyGraphs), NORMAL)
+			logThis.Error(errors.Wrap(err, errorGeneratingDailyGraphs), NORMAL)
 			dailyStatsOK = false
 		}
 	}
@@ -187,7 +188,7 @@ func (h *History) GenerateGraphs() error {
 		if dailyStatsOK {
 			// combine graphs into overallStatsFile
 			if err := combineAllPNGs(overallStatsFile, uploadStatsFile, uploadPerDayStatsFile, downloadStatsFile, downloadPerDayStatsFile, bufferStatsFile, bufferPerDayStatsFile, ratioStatsFile, ratioPerDayStatsFile, numberSnatchedPerDayFile, sizeSnatchedPerDayFile, totalSnatchesByFilterFile, toptagsFile); err != nil {
-				logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 			}
 		}
 		// create/update index.html
@@ -195,7 +196,7 @@ func (h *History) GenerateGraphs() error {
 			return err
 		}
 		// deploy automatically, if at least the StatsGraphs have been generated
-		return h.Deploy()
+		return h.Deploy(e)
 	}
 	return errors.New(errorCreatingGraphs)
 }
@@ -219,14 +220,14 @@ func (h *History) getFirstTimestamp() time.Time {
 }
 
 // Deploy to gitlab pages with git wrapper
-func (h *History) Deploy() error {
-	if !env.config.gitlabPagesConfigured {
+func (h *History) Deploy(e *Environment) error {
+	if !e.config.gitlabPagesConfigured {
 		return nil
 	}
 	if len(h.TrackerStats) == 0 {
 		return nil
 	}
-	git := NewGit(statsDir, env.config.Trackers[0].User, env.config.Trackers[0].User+"+varroa@redacted")
+	git := NewGit(statsDir, e.Trackers[h.Tracker].User, e.Trackers[h.Tracker].User+"+varroa@redacted")
 	if git == nil {
 		return errors.New("Error setting up git")
 	}
@@ -253,14 +254,14 @@ func (h *History) Deploy() error {
 	}
 	// push
 	if !git.HasRemote("origin") {
-		if err := git.AddRemote("origin", env.config.GitlabPages.GitHTTPS); err != nil {
+		if err := git.AddRemote("origin", e.config.GitlabPages.GitHTTPS); err != nil {
 			return errors.Wrap(err, errorGitAddRemote)
 		}
 	}
-	if err := git.Push("origin", env.config.GitlabPages.GitHTTPS, env.config.GitlabPages.User, env.config.GitlabPages.Password); err != nil {
+	if err := git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
 		return errors.Wrap(err, errorGitPush)
 	}
-	logThis("Pushed new stats to "+env.config.GitlabPages.URL, NORMAL)
+	logThis.Info("Pushed new stats to "+e.config.GitlabPages.URL, NORMAL)
 	return nil
 }
 
@@ -284,7 +285,7 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 
 	bytes, err := ioutil.ReadFile(snatchesFile)
 	if err != nil {
-		logThis("Error reading history file", NORMAL)
+		logThis.Error(errors.Wrap(err, "Error reading history file"), NORMAL)
 		return err
 	}
 	if len(bytes) == 0 {
@@ -296,7 +297,7 @@ func (s *SnatchHistory) Load(snatchesFile string) error {
 	// load releases from history to in-memory slice
 	err = msgpack.Unmarshal(bytes, &s.SnatchedReleases)
 	if err != nil {
-		logThis("Error loading releases from history file", NORMAL)
+		logThis.Error(errors.Wrap(err, "Error loading releases from history file"), NORMAL)
 	}
 	// fix empty filters, if any
 	for i := range s.SnatchedReleases {
@@ -386,13 +387,13 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time) err
 	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := s.SnatchedPerDay(firstOverallTimestamp)
 	if err != nil {
 		if err.Error() == errorNoHistory {
-			logThis(errorNoHistory, NORMAL)
+			logThis.Error(err, NORMAL)
 			return nil // nothing to do yet
 		}
 		return err
 	}
 	if len(timestamps) < 2 {
-		logThis(errorNotEnoughDays, NORMAL)
+		logThis.Info(errorNotEnoughDays, NORMAL)
 		return nil // not enough days yet
 	}
 	if !firstOverallTimestamp.Equal(timestamps[0]) {
@@ -484,7 +485,7 @@ func (t *TrackerStatsHistory) Load(statsFile string) error {
 	for i, stats := range trackerStats {
 		r := &TrackerStats{}
 		if err := r.FromSlice(stats); err != nil {
-			logThisError(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
+			logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
 		} else {
 			t.TrackerStats = append(t.TrackerStats, r)
 		}
@@ -651,19 +652,19 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	// write individual graphs
 	atLeastOneFailed := false
 	if err := writeTimeSeriesChart(upSeries, "Upload (Gb)", uploadStatsFile, false); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraph+"for upload"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for upload"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(downSeries, "Download (Gb)", downloadStatsFile, false); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraph+"for download"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for download"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(bufferSeries, "Buffer (Gb)", bufferStatsFile, false); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraph+"for buffer"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for buffer"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(ratioSeries, "Ratio", ratioStatsFile, false); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraph+"for ratio"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for ratio"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if atLeastOneFailed {
@@ -699,19 +700,19 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 
 	// write individual graphs
 	if err := writeTimeSeriesChart(upPerDaySeries, "Upload/day (Gb)", uploadPerDayStatsFile, true); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraph+"for upload/day"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for upload/day"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(downPerDaySeries, "Download/day (Gb)", downloadPerDayStatsFile, true); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraph+"for download/day"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for download/day"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(bufferPerDaySeries, "Buffer/day (Gb)", bufferPerDayStatsFile, true); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraph+"for buffer/day"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for buffer/day"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(ratioPerDaySeries, "Ratio/day", ratioPerDayStatsFile, true); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraph+"for ratio/day"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for ratio/day"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if atLeastOneFailed {

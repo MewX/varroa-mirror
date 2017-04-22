@@ -7,17 +7,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-var env *Environment
-
-func init() {
-	env = NewEnvironment()
-}
+//var env *Environment
+var logThis LogThis
 
 func main() {
+	env := NewEnvironment()
+	logThis.env = env
+
 	// parsing CLI
 	cli := &varroaArguments{}
 	if err := cli.parseCLI(os.Args[1:]); err != nil {
-		logThisError(errors.Wrap(err, errorArguments), NORMAL)
+		logThis.Error(errors.Wrap(err, errorArguments), NORMAL)
 		return
 	}
 	if cli.builtin {
@@ -28,14 +28,14 @@ func main() {
 	if !cli.canUseDaemon {
 		if cli.backup {
 			if err := archiveUserFiles(); err == nil {
-				logThis(infoUserFilesArchived, NORMAL)
+				logThis.Info(infoUserFilesArchived, NORMAL)
 			}
 			return
 		}
 		if cli.showFilters {
 			// loading configuration
 			if err := env.LoadConfiguration(); err != nil {
-				logThisError(errors.Wrap(err, errorLoadingConfig), NORMAL)
+				logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
 				return
 			}
 			fmt.Print("Filters found in configuration file: \n\n")
@@ -46,28 +46,28 @@ func main() {
 		}
 		// now dealing with encrypt/decrypt commands, which both require the passphrase from user
 		if err := env.GetPassphrase(); err != nil {
-			logThisError(errors.Wrap(err, "Error getting passphrase"), NORMAL)
+			logThis.Error(errors.Wrap(err, "Error getting passphrase"), NORMAL)
 		}
 		if cli.encrypt {
 			if err := env.config.Encrypt(defaultConfigurationFile, env.configPassphrase); err != nil {
-				logThis(err.Error(), NORMAL)
+				logThis.Info(err.Error(), NORMAL)
 				return
 			}
-			logThis(infoEncrypted, NORMAL)
+			logThis.Info(infoEncrypted, NORMAL)
 		}
 		if cli.decrypt {
 			if err := env.config.DecryptTo(defaultConfigurationFile, env.configPassphrase); err != nil {
-				logThis(err.Error(), NORMAL)
+				logThis.Error(err, NORMAL)
 				return
 			}
-			logThis(infoDecrypted, NORMAL)
+			logThis.Info(infoDecrypted, NORMAL)
 		}
 		return
 	}
 
 	// loading configuration
 	if err := env.LoadConfiguration(); err != nil {
-		logThisError(errors.Wrap(err, errorLoadingConfig), NORMAL)
+		logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
 		return
 	}
 
@@ -75,7 +75,7 @@ func main() {
 	if cli.start {
 		// daemonizing process
 		if err := env.Daemonize(os.Args); err != nil {
-			logThisError(errors.Wrap(err, errorGettingDaemonContext), NORMAL)
+			logThis.Error(errors.Wrap(err, errorGettingDaemonContext), NORMAL)
 			return
 		}
 		// if not in daemon, job is over; exiting.
@@ -85,7 +85,7 @@ func main() {
 		}
 		// setting up for the daemon
 		if err := env.SetUp(); err != nil {
-			logThisError(errors.Wrap(err, errorSettingUp), NORMAL)
+			logThis.Error(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
 		// launch goroutines
@@ -102,20 +102,20 @@ func main() {
 	if err != nil {
 		// no daemon found, running commands directly.
 		if cli.requiresDaemon {
-			logThisError(errors.Wrap(err, errorFindingDaemon), NORMAL)
+			logThis.Error(errors.Wrap(err, errorFindingDaemon), NORMAL)
 			fmt.Println(infoUsage)
 			return
 		}
 		// setting up since the daemon isn't running
 		if err := env.SetUp(); err != nil {
-			logThisError(errors.Wrap(err, errorSettingUp), NORMAL)
+			logThis.Error(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
 
 		// general commands
 		if cli.stats {
-			if err := generateStats(); err != nil {
-				logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+			if err := generateStats(env); err != nil {
+				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 			}
 			return
 		}
@@ -123,28 +123,28 @@ func main() {
 		// commands that require tracker label
 		tracker, err := env.Tracker(cli.trackerLabel)
 		if err != nil {
-			logThis(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), NORMAL)
+			logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), NORMAL)
 			return
 		}
 		if cli.refreshMetadata {
-			if err := refreshMetadata(tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
-				logThisError(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
+			if err := refreshMetadata(env, tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+				logThis.Error(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		}
 		if cli.snatch {
 			if err := snatchTorrents(tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
-				logThisError(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
+				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		}
 		if cli.checkLog {
 			if err := checkLog(tracker, []string{cli.logFile}); err != nil {
-				logThisError(errors.Wrap(err, errorCheckingLog), NORMAL)
+				logThis.Error(errors.Wrap(err, errorCheckingLog), NORMAL)
 			}
 		}
 	} else {
 		// daemon is up, sending commands to the daemon through the unix socket
 		if err := sendOrders(cli); err != nil {
-			logThisError(errors.Wrap(err, errorSendingCommandToDaemon), NORMAL)
+			logThis.Error(errors.Wrap(err, errorSendingCommandToDaemon), NORMAL)
 			return
 		}
 		// at last, sending signals for shutdown
@@ -160,10 +160,10 @@ func goGoRoutines(e *Environment) {
 	//  tracker-dependent goroutines
 	for _, t := range e.Trackers {
 		if e.config.autosnatchConfigured {
-			go ircHandler(e.config, t)
+			go ircHandler(e, t)
 		}
 		if e.config.statsConfigured {
-			go monitorStats(e.config, t)
+			go monitorStats(e, e.History[t.Name], t)
 		}
 	}
 	// general goroutines

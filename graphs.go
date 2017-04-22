@@ -110,12 +110,12 @@ func combineAllPNGs(combined string, graphs ...string) error {
 	for _, graph := range graphs {
 		imgFile, err := os.Open(graph + pngExt)
 		if err != nil {
-			logThisError(errors.Wrap(err, errorImageNotFound), NORMAL)
+			logThis.Error(errors.Wrap(err, errorImageNotFound), NORMAL)
 			continue
 		}
 		img, _, err := image.Decode(imgFile)
 		if err != nil {
-			logThisError(errors.Wrap(err, errorImageNotFound), NORMAL)
+			logThis.Error(errors.Wrap(err, errorImageNotFound), NORMAL)
 			continue
 		}
 		images = append(images, img)

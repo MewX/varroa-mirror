@@ -6,42 +6,48 @@ import (
 	"github.com/pkg/errors"
 )
 
-func manageStats(config *Config, tracker *GazelleTracker, previousStats *TrackerStats) *TrackerStats {
+func manageStats(e *Environment, h *History, tracker *GazelleTracker, previousStats *TrackerStats, maxDecrease int) *TrackerStats {
 	stats, err := tracker.GetStats()
 	if err != nil {
-		logThisError(errors.Wrap(err, errorGettingStats), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGettingStats), NORMAL)
 		return &TrackerStats{}
 	}
-	logThis(stats.Progress(previousStats), NORMAL)
+	logThis.Info(stats.Progress(previousStats), NORMAL)
 	// save to CSV
-	if err := env.history.TrackerStatsHistory.Add(stats); err != nil {
-		logThisError(errors.Wrap(err, errorWritingCSV), NORMAL)
+	if err := h.TrackerStatsHistory.Add(stats); err != nil {
+		logThis.Error(errors.Wrap(err, errorWritingCSV), NORMAL)
 	}
 	// generate graphs
-	if err := env.history.GenerateGraphs(); err != nil {
-		logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+	if err := h.GenerateGraphs(e); err != nil {
+		logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 	}
 	// send notification
-	env.Notify("Current stats: " + stats.Progress(previousStats))
+	e.Notify("Current stats: " + stats.Progress(previousStats))
 	// if something is wrong, send notification and stop
-	if !stats.IsProgressAcceptable(previousStats, config.Stats[0].MaxBufferDecreaseMB) {
-		logThis(errorBufferDrop, NORMAL)
+	if !stats.IsProgressAcceptable(previousStats, maxDecrease) {
+		logThis.Info(errorBufferDrop, NORMAL)
 		// sending notification
-		env.Notify(errorBufferDrop)
+		e.Notify(errorBufferDrop)
 		// stopping things
-		config.disabledAutosnatching = true
+		e.config.disabledAutosnatching = true
 	}
 	return stats
 }
 
-func monitorStats(config *Config, tracker *GazelleTracker) {
+func monitorStats(e *Environment, h *History, tracker *GazelleTracker) {
+	statsConfig, err := e.config.GetStats(tracker.Name)
+	if err != nil {
+		logThis.Error(errors.Wrap(err, "Error loading stats config for "+tracker.Name), NORMAL)
+		return
+	}
+
 	// initial stats
 	previousStats := &TrackerStats{}
-	previousStats = manageStats(config, tracker, previousStats)
+	previousStats = manageStats(e, h, tracker, previousStats, statsConfig.MaxBufferDecreaseMB)
 	// periodic check
-	period := time.NewTicker(time.Hour * time.Duration(config.Stats[0].UpdatePeriodH)).C
+	period := time.NewTicker(time.Hour * time.Duration(statsConfig.UpdatePeriodH)).C
 	for {
 		<-period
-		previousStats = manageStats(config, tracker, previousStats)
+		previousStats = manageStats(e, h, tracker, previousStats, statsConfig.MaxBufferDecreaseMB)
 	}
 }

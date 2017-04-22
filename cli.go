@@ -196,7 +196,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {
-		logThisError(errors.Wrap(err, "Cannot parse command"), NORMAL)
+		logThis.Error(errors.Wrap(err, "Cannot parse command"), NORMAL)
 		return []byte{}
 	}
 	return commandBytes

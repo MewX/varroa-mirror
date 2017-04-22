@@ -27,10 +27,10 @@ type Environment struct {
 	daemon           *daemon.Context
 	inDaemon         bool // <- == daemon.WasReborn()
 	notification     *Notification
-	history          *History
 	serverHTTP       *http.Server
 	serverHTTPS      *http.Server
 	Trackers         map[string]*GazelleTracker
+	History          map[string]*History
 
 	expectedOutput  bool
 	websocketOutput bool
@@ -51,7 +51,6 @@ func NewEnvironment() *Environment {
 	}
 	e.config = &Config{}
 	e.notification = &Notification{}
-	e.history = &History{}
 	e.serverHTTP = &http.Server{}
 	e.serverHTTPS = &http.Server{}
 	// disable  autosnatching
@@ -81,9 +80,9 @@ func (e *Environment) Daemonize(args []string) error {
 		return err
 	}
 	if child != nil {
-		logThis("Starting daemon...", NORMAL)
+		logThis.Info("Starting daemon...", NORMAL)
 	} else {
-		logThis("+ varroa musica daemon started", NORMAL)
+		logThis.Info("+ varroa musica daemon started", NORMAL)
 		// now in the daemon
 		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
 		e.inDaemon = true
@@ -92,16 +91,16 @@ func (e *Environment) Daemonize(args []string) error {
 }
 
 func quitDaemon(sig os.Signal) error {
-	logThis("+ terminating", VERBOSE)
+	logThis.Info("+ terminating", VERBOSE)
 	return daemon.ErrStop
 }
 
 // Wait for the daemon to stop.
 func (e *Environment) WaitForDaemonStop() {
 	if err := daemon.ServeSignals(); err != nil {
-		logThisError(errors.Wrap(err, errorServingSignals), NORMAL)
+		logThis.Error(errors.Wrap(err, errorServingSignals), NORMAL)
 	}
-	logThis("+ varroa musica stopped", NORMAL)
+	logThis.Info("+ varroa musica stopped", NORMAL)
 }
 
 // FindDaemon if it is running.
@@ -114,13 +113,13 @@ func (e *Environment) FindDaemon() (*os.Process, error) {
 func (e *Environment) StopDaemon(daemonProcess *os.Process) {
 	daemon.AddCommand(boolFlag(true), syscall.SIGTERM, quitDaemon)
 	if err := daemon.SendCommands(daemonProcess); err != nil {
-		logThisError(errors.Wrap(err, errorSendingSignal), NORMAL)
+		logThis.Error(errors.Wrap(err, errorSendingSignal), NORMAL)
 	}
 	if err := e.daemon.Release(); err != nil {
-		logThisError(errors.Wrap(err, errorReleasingDaemon), NORMAL)
+		logThis.Error(errors.Wrap(err, errorReleasingDaemon), NORMAL)
 	}
 	if err := os.Remove(pidFile); err != nil {
-		logThisError(errors.Wrap(err, errorRemovingPID), NORMAL)
+		logThis.Error(errors.Wrap(err, errorRemovingPID), NORMAL)
 	}
 }
 
@@ -156,7 +155,7 @@ func (e *Environment) GetPassphrase() error {
 	if err != nil {
 		return err
 	}
-	copy(env.configPassphrase[:], passphrase)
+	copy(e.configPassphrase[:], passphrase)
 	return nil
 }
 
@@ -183,9 +182,9 @@ func (e *Environment) LoadConfiguration() error {
 	}
 	if len(e.config.Trackers) != 0 {
 		// if trackers are configured, the configuration had been loaded previously
-		logThis("Configuration reloaded.", NORMAL)
+		logThis.Info("Configuration reloaded.", NORMAL)
 	} else {
-		logThis("Configuration loaded.", VERBOSE)
+		logThis.Info("Configuration loaded.", VERBOSE)
 	}
 	e.config = newConf
 	return nil
@@ -215,24 +214,33 @@ func (e *Environment) SetUp() error {
 		if err := tracker.Login(); err != nil {
 			return errors.Wrap(err, "Error logging in tracker "+label)
 		}
-		logThis(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
+		logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
 		// launching rate limiter
 		go tracker.apiCallRateLimiter()
 		e.Trackers[label] = tracker
-	}
 
-	// load history
-	return e.history.LoadAll(statsFile, historyFile)
+		if _, err := e.config.GetStats(label); err == nil {
+			// stats configured for this tracker
+			h := &History{Tracker: label}
+			// load relevant history
+			if err := h.LoadAll(statsFile+label, historyFile+label); err != nil {
+				return errors.Wrap(err, "Error loading history for tracker "+label)
+			}
+			e.History[label] = h
+		}
+
+	}
+	return nil
 }
 
 // Reload the configuration file, restart autosnatching, and try to restart the web server
 func (e *Environment) Reload() error {
-	if err := env.LoadConfiguration(); err != nil {
+	if err := e.LoadConfiguration(); err != nil {
 		return errors.Wrap(err, errorLoadingConfig)
 	}
 	if e.config.disabledAutosnatching {
 		e.config.disabledAutosnatching = false
-		logThis("Autosnatching enabled.", NORMAL)
+		logThis.Info("Autosnatching enabled.", NORMAL)
 	}
 	// if server up
 	thingsWentOK := true
@@ -242,7 +250,7 @@ func (e *Environment) Reload() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := e.serverHTTP.Shutdown(ctx); err != nil {
-			logThisError(errors.Wrap(err, errorShuttingDownServer), NORMAL)
+			logThis.Error(errors.Wrap(err, errorShuttingDownServer), NORMAL)
 			thingsWentOK = false
 		}
 	}
@@ -251,7 +259,7 @@ func (e *Environment) Reload() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := e.serverHTTPS.Shutdown(ctx); err != nil {
-			logThisError(errors.Wrap(err, errorShuttingDownServer), NORMAL)
+			logThis.Error(errors.Wrap(err, errorShuttingDownServer), NORMAL)
 			thingsWentOK = false
 		}
 	}
@@ -266,8 +274,8 @@ func (e *Environment) Reload() error {
 func (e *Environment) Notify(msg string) error {
 	notity := func() error {
 		if e.config.notificationsConfigured {
-			if err := env.notification.Send(msg); err != nil {
-				logThisError(errors.Wrap(err, errorNotification), VERBOSE)
+			if err := e.notification.Send(msg); err != nil {
+				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
 				return err
 			}
 		}
