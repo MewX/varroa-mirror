@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -332,20 +333,20 @@ func (e *Environment) GenerateIndex() error {
 	for label, h := range e.History {
 		indexData.CSV = append(indexData.CSV, HTMLLink{Name: label + ".csv", URL: filepath.Base(h.getPath(statsFile + csvExt))})
 
-		statsNames := []struct{
-			Name string
+		statsNames := []struct {
+			Name  string
 			Label string
 		}{
-			{ Name: "Buffer", Label: label + "_" + bufferStatsFile},
-			{ Name: "Upload", Label: label + "_" + uploadStatsFile},
-			{ Name: "Download", Label: label + "_" + downloadStatsFile},
-			{ Name: "Ratio", Label: label + "_" + ratioStatsFile},
-			{ Name: "Buffer/day", Label: label + "_" + bufferPerDayStatsFile},
-			{ Name: "Upload/day", Label: label + "_" + uploadPerDayStatsFile},
-			{ Name: "Download/day", Label: label + "_" + downloadPerDayStatsFile},
-			{ Name: "Ratio/day", Label: label + "_" + ratioPerDayStatsFile},
-			{ Name: "Snatches/day", Label: label + "_" + numberSnatchedPerDayFile},
-			{ Name: "Size Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
+			{Name: "Buffer", Label: label + "_" + bufferStatsFile},
+			{Name: "Upload", Label: label + "_" + uploadStatsFile},
+			{Name: "Download", Label: label + "_" + downloadStatsFile},
+			{Name: "Ratio", Label: label + "_" + ratioStatsFile},
+			{Name: "Buffer/day", Label: label + "_" + bufferPerDayStatsFile},
+			{Name: "Upload/day", Label: label + "_" + uploadPerDayStatsFile},
+			{Name: "Download/day", Label: label + "_" + downloadPerDayStatsFile},
+			{Name: "Ratio/day", Label: label + "_" + ratioPerDayStatsFile},
+			{Name: "Snatches/day", Label: label + "_" + numberSnatchedPerDayFile},
+			{Name: "Size Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
 		}
 		// add graphs + links
 		graphLinks := []HTMLLink{}
@@ -358,4 +359,47 @@ func (e *Environment) GenerateIndex() error {
 		indexData.Stats = append(indexData.Stats, stats)
 	}
 	return indexData.ToHTML(filepath.Join(statsDir, htmlIndexFile))
+}
+
+// DeployToGitlabPages with git wrapper
+func (e *Environment) DeployToGitlabPages() error {
+	if !e.config.gitlabPagesConfigured {
+		return nil
+	}
+	git := NewGit(statsDir, e.config.GitlabPages.User, e.config.GitlabPages.User+"+varroa@musica")
+	if git == nil {
+		return errors.New("Error setting up git")
+	}
+	// make sure we're going back to cwd
+	defer git.getBack()
+
+	// init repository if necessary
+	if !git.Exists() {
+		if err := git.Init(); err != nil {
+			return errors.Wrap(err, errorGitInit)
+		}
+		// create .gitlab-ci.yml
+		if err := ioutil.WriteFile(filepath.Join(statsDir, gitlabCIYamlFile), []byte(gitlabCI), 0666); err != nil {
+			return err
+		}
+	}
+	// add overall stats and other files
+	if err := git.Add("*"+svgExt, "*"+csvExt, filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
+		return errors.Wrap(err, errorGitAdd)
+	}
+	// commit
+	if err := git.Commit("varroa musica stats update."); err != nil {
+		return errors.Wrap(err, errorGitCommit)
+	}
+	// push
+	if !git.HasRemote("origin") {
+		if err := git.AddRemote("origin", e.config.GitlabPages.GitHTTPS); err != nil {
+			return errors.Wrap(err, errorGitAddRemote)
+		}
+	}
+	if err := git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
+		return errors.Wrap(err, errorGitPush)
+	}
+	logThis.Info("Pushed new stats to "+e.config.GitlabPages.URL, NORMAL)
+	return nil
 }

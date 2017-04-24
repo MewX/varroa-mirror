@@ -28,30 +28,6 @@ pages:
   only:
   - master
 `
-	htlmIndex = `
-<html>
-  <head>
-    <title>varroa musica</title>
-    <meta content="">
-    <style></style>
-  </head>
-  <body>
-    <h1 style="text-align:center;">Varroa Musica</h1>
-    <p style="text-align:center;">Last updated: %s | <a href="%s">csv</a></p>
-    <p style="text-align:center;">Latest stats: %s</p>
-    <p style="text-align:center;"><a href="#buffer">Buffer</a> | <a href="#up">Upload</a> | <a href="#down">Download</a> | <a href="#ratio">Ratio</a> | <a href="#buffer_per_day">Buffer/day</a> | <a href="#up_per_day">Upload/day</a> | <a href="#down_per_day">Download/day</a> | <a href="#ratio_per_day">Ratio/day</a> | <a href="#snatches_per_day">Snatches/day</a> | <a href="#size_snatched_per_day">Size Snatched/day</a></p>
-    <p id="buffer" style="text-align:center;"><img src="buffer.svg" alt="stats" style="align:center"></p>
-    <p id="up" style="text-align:center;"><img src="up.svg" alt="stats" style="align:center"></p>
-    <p id="down" style="text-align:center;"><img src="down.svg" alt="stats" style="align:center"></p>
-    <p id="ratio" style="text-align:center;"><img src="ratio.svg" alt="stats" style="align:center"></p>
-    <p id="buffer_per_day" style="text-align:center;"><img src="buffer_per_day.svg" alt="stats" style="align:center"></p>
-    <p id="up_per_day" style="text-align:center;"><img src="up_per_day.svg" alt="stats" style="align:center"></p>
-    <p id="down_per_day" style="text-align:center;"><img src="down_per_day.svg" alt="stats" style="align:center"></p>
-    <p id="ratio_per_day" style="text-align:center;"><img src="ratio_per_day.svg" alt="stats" style="align:center"></p>
-    <p id="snatches_per_day" style="text-align:center;"><img src="snatches_per_day.svg" alt="stats" style="align:center"></p>
-    <p id="size_snatched_per_day" style="text-align:center;"><img src="size_snatched_per_day.svg" alt="stats" style="align:center"></p>
-  </body>
-</html>`
 )
 
 // History manages stats and generates graphs.
@@ -145,10 +121,6 @@ func (h *History) LoadAll() error {
 }
 
 func (h *History) GenerateGraphs(e *Environment) error {
-	// generate index.html
-	if err := e.GenerateIndex(); err != nil {
-		return errors.Wrap(err, "Error generating index.html")
-	}
 	// get first overall timestamp in all history sources
 	firstOverallTimestamp := h.getFirstTimestamp()
 	if firstOverallTimestamp.After(time.Now()) {
@@ -187,28 +159,25 @@ func (h *History) GenerateGraphs(e *Environment) error {
 			dailyStatsOK = false
 		}
 	}
-	if statsOK {
-		if dailyStatsOK {
-			// combine graphs into overallStatsFile
-			if err := combineAllPNGs(h.getPath(overallStatsFile),
-				h.getPath(uploadStatsFile),
-				h.getPath(uploadPerDayStatsFile),
-				h.getPath(downloadStatsFile),
-				h.getPath(downloadPerDayStatsFile),
-				h.getPath(bufferStatsFile),
-				h.getPath(bufferPerDayStatsFile),
-				h.getPath(ratioStatsFile),
-				h.getPath(ratioPerDayStatsFile),
-				h.getPath(numberSnatchedPerDayFile),
-				h.getPath(sizeSnatchedPerDayFile),
-				h.getPath(totalSnatchesByFilterFile),
-				h.getPath(toptagsFile)); err != nil {
-				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
-			}
+	if statsOK && dailyStatsOK {
+		// combine graphs into overallStatsFile
+		if err := combineAllPNGs(h.getPath(overallStatsFile),
+			h.getPath(uploadStatsFile),
+			h.getPath(uploadPerDayStatsFile),
+			h.getPath(downloadStatsFile),
+			h.getPath(downloadPerDayStatsFile),
+			h.getPath(bufferStatsFile),
+			h.getPath(bufferPerDayStatsFile),
+			h.getPath(ratioStatsFile),
+			h.getPath(ratioPerDayStatsFile),
+			h.getPath(numberSnatchedPerDayFile),
+			h.getPath(sizeSnatchedPerDayFile),
+			h.getPath(totalSnatchesByFilterFile),
+			h.getPath(toptagsFile)); err != nil {
+			logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 		}
-		// deploy automatically, if at least the StatsGraphs have been generated
-		return h.Deploy(e)
 	}
+
 	return errors.New(errorCreatingGraphs)
 }
 
@@ -228,50 +197,4 @@ func (h *History) getFirstTimestamp() time.Time {
 		return time.Unix(snatchTimestamp, 0)
 	}
 	return time.Unix(statsTimestamp, 0)
-}
-
-// Deploy to gitlab pages with git wrapper
-func (h *History) Deploy(e *Environment) error {
-	if !e.config.gitlabPagesConfigured {
-		return nil
-	}
-	if len(h.TrackerStats) == 0 {
-		return nil
-	}
-	git := NewGit(statsDir, e.Trackers[h.Tracker].User, e.Trackers[h.Tracker].User+"+varroa@redacted")
-	if git == nil {
-		return errors.New("Error setting up git")
-	}
-	// make sure we're going back to cwd
-	defer git.getBack()
-
-	// init repository if necessary
-	if !git.Exists() {
-		if err := git.Init(); err != nil {
-			return errors.Wrap(err, errorGitInit)
-		}
-		// create .gitlab-ci.yml
-		if err := ioutil.WriteFile(filepath.Join(statsDir, gitlabCIYamlFile), []byte(gitlabCI), 0666); err != nil {
-			return err
-		}
-	}
-	// add overall stats and other files
-	if err := git.Add("*"+svgExt, filepath.Base(h.getPath(statsFile)+csvExt), filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
-		return errors.Wrap(err, errorGitAdd)
-	}
-	// commit
-	if err := git.Commit("varroa musica stats update."); err != nil {
-		return errors.Wrap(err, errorGitCommit)
-	}
-	// push
-	if !git.HasRemote("origin") {
-		if err := git.AddRemote("origin", e.config.GitlabPages.GitHTTPS); err != nil {
-			return errors.Wrap(err, errorGitAddRemote)
-		}
-	}
-	if err := git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
-		return errors.Wrap(err, errorGitPush)
-	}
-	logThis.Info("Pushed new stats to "+e.config.GitlabPages.URL, NORMAL)
-	return nil
 }

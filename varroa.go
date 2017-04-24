@@ -162,11 +162,11 @@ func goGoRoutines(e *Environment) {
 		if e.config.autosnatchConfigured {
 			go ircHandler(e, t)
 		}
-		if e.config.statsConfigured {
-			go monitorStats(e, e.History[t.Name], t)
-		}
 	}
 	// general goroutines
+	if e.config.statsConfigured {
+		go monitorAllStats(e)
+	}
 	if e.config.webserverConfigured {
 		go webServer(e, e.serverHTTP, e.serverHTTPS)
 	}

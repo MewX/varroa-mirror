@@ -202,19 +202,19 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	// write individual graphs
 	atLeastOneFailed := false
 	if err := writeTimeSeriesChart(upSeries, "Upload (Gb)", uploadFile, false); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for upload"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for upload"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(downSeries, "Download (Gb)", downloadFile, false); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for download"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for download"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(bufferSeries, "Buffer (Gb)", bufferFile, false); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for buffer"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for buffer"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(ratioSeries, "Ratio", ratioFile, false); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for ratio"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for ratio"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if atLeastOneFailed {
@@ -250,19 +250,19 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 
 	// write individual graphs
 	if err := writeTimeSeriesChart(upPerDaySeries, "Upload/day (Gb)", uploadPerDayFile, true); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for upload/day"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for upload/day"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(downPerDaySeries, "Download/day (Gb)", downloadPerDayFile, true); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for download/day"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for download/day"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(bufferPerDaySeries, "Buffer/day (Gb)", bufferPerDayFile, true); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for buffer/day"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for buffer/day"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(ratioPerDaySeries, "Ratio/day", ratioPerDayFile, true); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+"for ratio/day"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for ratio/day"), NORMAL)
 		atLeastOneFailed = true
 	}
 	if atLeastOneFailed {
