@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -320,4 +321,41 @@ func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
 		logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
 	}
 	return tracker, nil
+}
+
+func (e *Environment) GenerateIndex() error {
+	if !e.config.statsConfigured {
+		return nil
+	}
+
+	indexData := &HTMLIndex{Title: varroa, Time: time.Now().Format("2006-01-02 15:04:05")}
+	for label, h := range e.History {
+		indexData.CSV = append(indexData.CSV, HTMLLink{Name: label + ".csv", URL: filepath.Base(h.getPath(statsFile + csvExt))})
+
+		statsNames := []struct{
+			Name string
+			Label string
+		}{
+			{ Name: "Buffer", Label: label + "_" + bufferStatsFile},
+			{ Name: "Upload", Label: label + "_" + uploadStatsFile},
+			{ Name: "Download", Label: label + "_" + downloadStatsFile},
+			{ Name: "Ratio", Label: label + "_" + ratioStatsFile},
+			{ Name: "Buffer/day", Label: label + "_" + bufferPerDayStatsFile},
+			{ Name: "Upload/day", Label: label + "_" + uploadPerDayStatsFile},
+			{ Name: "Download/day", Label: label + "_" + downloadPerDayStatsFile},
+			{ Name: "Ratio/day", Label: label + "_" + ratioPerDayStatsFile},
+			{ Name: "Snatches/day", Label: label + "_" + numberSnatchedPerDayFile},
+			{ Name: "Size Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
+		}
+		// add graphs + links
+		graphLinks := []HTMLLink{}
+		graphs := []HTMLLink{}
+		for _, s := range statsNames {
+			graphLinks = append(graphLinks, HTMLLink{Name: s.Name, URL: "#" + s.Label})
+			graphs = append(graphs, HTMLLink{Title: label + ": " + s.Name, Name: s.Label, URL: s.Label + svgExt})
+		}
+		stats := HTMLStats{Name: label, Stats: h.TrackerStats[len(h.TrackerStats)-1].String(), Graphs: graphs, GraphLinks: graphLinks}
+		indexData.Stats = append(indexData.Stats, stats)
+	}
+	return indexData.ToHTML(filepath.Join(statsDir, htmlIndexFile))
 }

@@ -145,6 +145,10 @@ func (h *History) LoadAll() error {
 }
 
 func (h *History) GenerateGraphs(e *Environment) error {
+	// generate index.html
+	if err := e.GenerateIndex(); err != nil {
+		return errors.Wrap(err, "Error generating index.html")
+	}
 	// get first overall timestamp in all history sources
 	firstOverallTimestamp := h.getFirstTimestamp()
 	if firstOverallTimestamp.After(time.Now()) {
@@ -201,10 +205,6 @@ func (h *History) GenerateGraphs(e *Environment) error {
 				h.getPath(toptagsFile)); err != nil {
 				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 			}
-		}
-		// create/update index.html
-		if err := ioutil.WriteFile(filepath.Join(statsDir, htmlIndexFile), []byte(fmt.Sprintf(htlmIndex, time.Now().Format("2006-01-02 15:04:05"), filepath.Base(h.getPath(statsFile))+csvExt, h.TrackerStats[len(h.TrackerStats)-1].String())), 0666); err != nil {
-			return err
 		}
 		// deploy automatically, if at least the StatsGraphs have been generated
 		return h.Deploy(e)
