@@ -128,7 +128,7 @@ func TestConfig(t *testing.T) {
 	check.True(f.AllowScene)
 	check.True(f.AllowDuplicates)
 	check.Equal([]string{"Album", "EP"}, f.ReleaseType)
-	check.Equal("watch/f1", f.WatchDir)
+	check.Equal("test", f.WatchDir)
 	check.Equal(10, f.MinSizeMB)
 	check.Equal(500, f.MaxSizeMB)
 	check.Equal([]string{"hip.hop", "pop"}, f.TagsIncluded)
