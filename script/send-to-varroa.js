@@ -186,6 +186,7 @@ function newSocket() {
 		console.log('Server connection closed.');
 		isWebSocketConnected = false;
 		setVMStatus(vmKO);
+		setTimeout(function() { newSocket(); }, 5000);
 	};
 }
 
@@ -197,7 +198,7 @@ function createLink(linkelement, id) {
 	if (settings.https === true && isWebSocketConnected) {
 		link.addEventListener('click', getTorrent, false);
 	} else {
-		link.firstChild.href = 'http://' + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token + "&site=" + settings.site;
+		link.firstChild.href = 'http://' + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token + '&site=' + settings.site;
 	}
 	link.firstChild.target = '_blank';
 	link.firstChild.title = vmLinkInfo;
