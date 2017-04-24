@@ -37,12 +37,14 @@ const htlmIndexTemplate = `
   </body>
 </html>`
 
+// HTMLLink represents a link.
 type HTMLLink struct {
 	Name  string
 	URL   string
 	Title string
 }
 
+// HTMLStats has all the information for a tracker: stats and graphs.
 type HTMLStats struct {
 	Name       string
 	Stats      string
@@ -50,6 +52,7 @@ type HTMLStats struct {
 	Graphs     []HTMLLink
 }
 
+// HTMLIndex provides data for the htmlIndexTemplate.
 type HTMLIndex struct {
 	Title string
 	Time  string
@@ -57,6 +60,7 @@ type HTMLIndex struct {
 	Stats []HTMLStats
 }
 
+// ToHTML executes the template and save the result to a file.
 func (hi *HTMLIndex) ToHTML(file string) error {
 	t, err := template.New("index").Parse(htlmIndexTemplate)
 	if err != nil {

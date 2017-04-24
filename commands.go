@@ -102,8 +102,8 @@ func awaitOrders(e *Environment) {
 		}
 
 		orders := IncomingJSON{}
-		if err := json.Unmarshal(buf[:n], &orders); err != nil {
-			logThis.Error(errors.Wrap(err, "Error parsing incoming command from unix socket"), NORMAL)
+		if jsonErr := json.Unmarshal(buf[:n], &orders); jsonErr != nil {
+			logThis.Error(errors.Wrap(jsonErr, "Error parsing incoming command from unix socket"), NORMAL)
 			continue
 		}
 		var tracker *GazelleTracker

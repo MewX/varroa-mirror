@@ -117,7 +117,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 			if !e.config.disabledAutosnatching {
 				announced := ev.Message()
 				logThis.Info("++ Announced: "+announced, VERBOSE)
-				if _, err := analyzeAnnounce(announced, e, tracker, autosnatchConfig); err != nil {
+				if _, err = analyzeAnnounce(announced, e, tracker, autosnatchConfig); err != nil {
 					logThis.Error(errors.Wrap(err, errorDealingWithAnnounce), VERBOSE)
 					return
 				}
