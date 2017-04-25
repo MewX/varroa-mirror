@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
@@ -14,15 +15,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 )
-
-/*
-Template:
-	## Source
-
-	Automatically generated on TIMESTAMP.
-	Torrent was still registered / unregistered on TRACKER URL.
-	Direct link: TORRENTLINK
-*/
 
 const (
 	// TODO: add track durations + total duration
@@ -128,7 +120,7 @@ type ReleaseInfo struct {
 }
 
 func (ri *ReleaseInfo) fromGazelleInfo(tracker *GazelleTracker, info GazelleTorrent) error {
-	ri.Title = info.Response.Group.Name
+	ri.Title = html.UnescapeString(info.Response.Group.Name)
 	allArtists := info.Response.Group.MusicInfo.Artists
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.Composers...)
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.Conductor...)
@@ -137,7 +129,7 @@ func (ri *ReleaseInfo) fromGazelleInfo(tracker *GazelleTracker, info GazelleTorr
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.RemixedBy...)
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.With...)
 	for _, a := range allArtists {
-		ri.Artists = append(ri.Artists, ReleaseInfoArtist{ID: a.ID, Name: a.Name})
+		ri.Artists = append(ri.Artists, ReleaseInfoArtist{ID: a.ID, Name: html.UnescapeString(a.Name)})
 	}
 	ri.CoverPath = trackerCoverFile + filepath.Ext(info.Response.Group.WikiImage)
 	ri.Tags = info.Response.Group.Tags
@@ -156,7 +148,7 @@ func (ri *ReleaseInfo) fromGazelleInfo(tracker *GazelleTracker, info GazelleTorr
 
 	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
 	if info.Response.Torrent.Description != "" {
-		ri.Lineage = append(ri.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: info.Response.Torrent.Description})
+		ri.Lineage = append(ri.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: html.UnescapeString(info.Response.Torrent.Description)})
 	}
 	// parsing track list
 	r := regexp.MustCompile(trackPattern)
@@ -166,7 +158,7 @@ func (ri *ReleaseInfo) fromGazelleInfo(tracker *GazelleTracker, info GazelleTorr
 		hits := r.FindAllStringSubmatch(f, -1)
 		if len(hits) != 0 {
 			// TODO instead of path, actually find the title
-			track.Title = hits[0][1]
+			track.Title = html.UnescapeString(hits[0][1])
 			size, _ := strconv.ParseUint(hits[0][2], 10, 64)
 			track.Size = humanize.IBytes(size)
 			ri.Tracks = append(ri.Tracks, track)
@@ -180,7 +172,7 @@ func (ri *ReleaseInfo) fromGazelleInfo(tracker *GazelleTracker, info GazelleTorr
 	ri.Tracker = tracker.URL
 	ri.TrackerURL = tracker.URL + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
 	// TODO de-wikify
-	ri.Description = info.Response.Group.WikiBody
+	ri.Description = html.UnescapeString(info.Response.Group.WikiBody)
 	return nil
 }
 
