@@ -168,18 +168,22 @@ type GazelleTorrent struct {
 		} `json:"group"`
 		Torrent struct {
 			Description             string `json:"description"`
+			Dynamicrange            string `json:"dynamicrange"`
 			Encoding                string `json:"encoding"`
 			FileCount               int    `json:"fileCount"`
 			FileList                string `json:"fileList"`
 			FilePath                string `json:"filePath"`
 			Format                  string `json:"format"`
 			FreeTorrent             bool   `json:"freeTorrent"`
+			Grade                   string `json:"grade"`
 			HasCue                  bool   `json:"hasCue"`
 			HasLog                  bool   `json:"hasLog"`
 			ID                      int    `json:"id"`
 			InfoHash                string `json:"infoHash"`
 			Leechers                int    `json:"leechers"`
+			Lineage                 string `json:"lineage"`
 			LogScore                int    `json:"logScore"`
+			Matrixorrunout          string `json:"matrixorrunout"`
 			Media                   string `json:"media"`
 			RemasterCatalogueNumber string `json:"remasterCatalogueNumber"`
 			RemasterRecordLabel     string `json:"remasterRecordLabel"`
@@ -187,6 +191,7 @@ type GazelleTorrent struct {
 			RemasterYear            int    `json:"remasterYear"`
 			Remastered              bool   `json:"remastered"`
 			Reported                bool   `json:"reported"`
+			Samplerate              string `json:"samplerate"`
 			Scene                   bool   `json:"scene"`
 			Seeders                 int    `json:"seeders"`
 			Size                    int    `json:"size"`
