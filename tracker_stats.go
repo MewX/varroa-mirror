@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	userStats     = "User: %s (%s) | "
+	userStats     = "%s (%s) | "
 	progress      = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.3f (%.3f)"
 	firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.3f"
 )

@@ -65,7 +65,7 @@ func snatchFromID(e *Environment, tracker *GazelleTracker, id string) (*Release,
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
 	// send notification
-	e.Notify("Snatched with web interface: " + release.ShortString())
+	e.Notify(tracker.Name + ": Snatched with web interface: " + release.ShortString())
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
 		if e.inDaemon {

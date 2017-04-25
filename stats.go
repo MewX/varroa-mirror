@@ -20,7 +20,7 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, maxDecreas
 	// compare with new stats
 	logThis.Info(stats.Progress(previousStats), NORMAL)
 	// send notification
-	e.Notify("Current stats: " + stats.Progress(previousStats))
+	e.Notify(tracker.Name + " stats: " + stats.Progress(previousStats))
 	// if something is wrong, send notification and stop
 	if !stats.IsProgressAcceptable(previousStats, maxDecrease) {
 		logThis.Info(errorBufferDrop, NORMAL)
