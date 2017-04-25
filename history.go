@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -122,9 +121,9 @@ func (h *History) LoadAll() error {
 
 func (h *History) GenerateGraphs(e *Environment) error {
 	// get first overall timestamp in all history sources
-	firstOverallTimestamp := h.getFirstTimestamp()
-	if firstOverallTimestamp.After(time.Now()) {
-		return errors.New(errorInvalidTimestamp)
+	firstOverallTimestamp, err := h.getFirstTimestamp()
+	if err != nil {
+		return errors.Wrap(err, errorInvalidTimestamp)
 	}
 	statsConfig, err := e.config.GetStats(h.Tracker)
 	if err != nil {
@@ -181,20 +180,30 @@ func (h *History) GenerateGraphs(e *Environment) error {
 	return errors.New(errorCreatingGraphs)
 }
 
-func (h *History) getFirstTimestamp() time.Time {
-	// assuming timestamps are in chronological order.
-	snatchTimestamp, statsTimestamp := int64(math.MaxInt32), int64(math.MaxInt32)
-
+func (h *History) getFirstTimestamp() (time.Time, error) {
+	// read earliest timestamps in history and stats
+	firstTimestampSnatches := time.Time{}
+	firstTimestampStats := time.Time{}
 	if len(h.SnatchedReleases) != 0 {
-		snatchTimestamp = h.SnatchedReleases[0].Timestamp.Unix()
+		firstTimestampSnatches = h.SnatchedReleases[0].Timestamp
 	}
 	if len(h.TrackerStatsRecords) != 0 && len(h.TrackerStatsRecords[0]) > 0 {
 		if timestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64); err == nil {
-			statsTimestamp = timestamp
+			firstTimestampStats = time.Unix(timestamp, 0)
 		}
 	}
-	if snatchTimestamp < statsTimestamp {
-		return time.Unix(snatchTimestamp, 0)
+	// get the earliest non-zero timestamp
+	if firstTimestampSnatches.IsZero() && firstTimestampStats.IsZero() {
+		return time.Time{}, errors.New("Cannot find first timestamp, empty history/stats")
 	}
-	return time.Unix(statsTimestamp, 0)
+	if firstTimestampSnatches.IsZero() {
+		return firstTimestampStats, nil
+	}
+	if firstTimestampStats.IsZero() {
+		return firstTimestampSnatches, nil
+	}
+	if firstTimestampSnatches.Before(firstTimestampStats) || firstTimestampSnatches.Equal(firstTimestampStats) {
+		return firstTimestampSnatches, nil
+	}
+	return firstTimestampStats, nil
 }
