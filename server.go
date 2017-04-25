@@ -136,13 +136,26 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
+			// get site
+			trackerLabel, ok := mux.Vars(r)["site"]
+			if !ok {
+				// if it's not in URL, try to get from query parameters
+				queryTrackerLabel, ok2 := r.URL.Query()["site"]
+				if !ok2 {
+					logThis.Info(errorNoID, NORMAL)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				trackerLabel = queryTrackerLabel[0]
+			}
+			// get filename
 			filename, ok := mux.Vars(r)["name"]
 			if !ok {
 				logThis.Info(errorNoStatsFilename, NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			file, err := ioutil.ReadFile(filepath.Join(statsDir, filename))
+			file, err := ioutil.ReadFile(filepath.Join(statsDir, trackerLabel+"_"+filename))
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorNoStatsFilename), NORMAL)
 				w.WriteHeader(http.StatusNotFound)
@@ -166,11 +179,13 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			tracker, err := e.Tracker(trackerLabel)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, "Error identifying in configuration tracker "+trackerLabel), NORMAL)
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 			release, err := snatchFromID(e, tracker, id)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 			// write response

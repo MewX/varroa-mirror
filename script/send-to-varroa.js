@@ -56,7 +56,8 @@ if (settings) {
 	if (settings.https === true) {
 		hello = {
 			Command: 'hello',
-			Token: settings.token
+			Token: settings.token,
+			Site: settings.site
 		};
 		// Open the websocket to varroa
 		newSocket();
@@ -121,7 +122,7 @@ function addLinks() {
 }
 
 function makeStatsLink(label, filename) {
-	let link = settings.url + ':' + settings.port + '/getStats/' + filename + '?token=' + settings.token;
+	let link = settings.url + ':' + settings.port + '/getStats/' + filename + '?token=' + settings.token + '&site=' + settings.site;
 	if (settings.https === true) {
 		link = 'https://' + link;
 	} else {
@@ -186,7 +187,9 @@ function newSocket() {
 		console.log('Server connection closed.');
 		isWebSocketConnected = false;
 		setVMStatus(vmKO);
-		setTimeout(function() { newSocket(); }, 5000);
+		setTimeout(() => {
+			newSocket();
+		}, 5000);
 	};
 }
 
@@ -212,7 +215,7 @@ function getTorrent() {
 		const get = {
 			Command: 'get',
 			Token: settings.token,
-			ID: [id],
+			Args: [id],
 			Site: settings.site
 		};
 		sock.send(JSON.stringify(get));
