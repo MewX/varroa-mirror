@@ -244,7 +244,7 @@ func checkLog(tracker *GazelleTracker, logPaths []string) error {
 		if err != nil {
 			return errors.Wrap(err, errorGettingLogScore)
 		}
-		logThis.Info(fmt.Sprintf("Found score %s for log file %s.", score, log), NORMAL)
+		logThis.Info(fmt.Sprintf("Logchecker results: %s.", score), NORMAL)
 	}
 	return nil
 }
