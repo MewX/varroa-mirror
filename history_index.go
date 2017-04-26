@@ -59,8 +59,8 @@ const (
 
 	indexCSS = `
 body {
-    color: #777;
-    /*background-color: #fafafa;*/
+    /*color: #777;*/
+    background-color: #37474f;
 }
 
 .legend {
@@ -117,7 +117,7 @@ The content <div> is where all your content goes.
 
 .header {
      margin: 0;
-     color: #333;
+    /* color: #333;*/
      text-align: center;
      padding: 2.5em 2em 0;
      border-bottom: 1px solid #eee;
@@ -137,7 +137,7 @@ The content <div> is where all your content goes.
 .content-subhead {
     margin: 50px 0 20px 0;
     font-weight: 300;
-    color: #888;
+    color: #ddd; /*#888;*/
 }
 
 
@@ -155,7 +155,7 @@ appears on the left side of the page.
     left: 0;
     bottom: 0;
     z-index: 1000; /* so the menu or its navicon stays above all content */
-    background: #191818;
+    background: #f57f17; /*#191818;*/
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -163,7 +163,7 @@ appears on the left side of the page.
     All anchors inside the menu should be styled like this.
     */
     #menu a {
-	color: #999;
+	color: #000000; /* #999;*/
 	border: none;
 	padding: 0.6em 0 0.6em 0.6em;
     }
@@ -189,7 +189,7 @@ appears on the left side of the page.
 	*/
 	#menu .pure-menu li a:hover,
 	#menu .pure-menu li a:focus {
-	    background: #333;
+	    background: #bc5100; /*#333;*/
 	}
 
     /*
@@ -197,7 +197,7 @@ appears on the left side of the page.
     */
     #menu .pure-menu-selected,
     #menu .pure-menu-heading {
-	background: #1f8dd6;
+	background: #ffb04c; /*#1f8dd6;*/
     }
 	/*
 	This styles a link within a selected menu item <li>.
@@ -281,6 +281,7 @@ Hides the menu at 48em, but modify this based on your app's needs.
     .content {
 	padding-left: 2em;
 	padding-right: 2em;
+	color: #fff;
     }
 
     #layout {

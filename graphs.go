@@ -10,20 +10,27 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
+	"github.com/wcharczuk/go-chart/drawing"
 )
 
 var (
 	commonStyle = chart.Style{
 		Show:        true,
-		StrokeColor: chart.ColorBlue,
-		FillColor:   chart.ColorBlue.WithAlpha(25),
+		StrokeColor: drawing.ColorFromHex("f57f17"),
+		FillColor:   drawing.ColorFromHex("f57f17").WithAlpha(80),
+		FontColor:  chart.ColorWhite,
 	}
 	timeAxis = chart.XAxis{
 		Style: chart.Style{
 			Show: true,
+			FontColor: chart.ColorWhite,
+			StrokeColor: chart.ColorWhite,
 		},
 		Name:           "Time",
-		NameStyle:      chart.StyleShow(),
+		NameStyle:     chart.Style{
+			Show: true,
+			FontColor: chart.ColorWhite,
+		},
 		ValueFormatter: chart.TimeValueFormatter,
 	}
 )
@@ -82,12 +89,35 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 		Height: 500,
 		XAxis:  timeAxis,
 		YAxis: chart.YAxis{
-			Style:     chart.StyleShow(),
+			Style:     chart.Style{
+				Show: true,
+				FontColor: chart.ColorWhite,
+				StrokeColor: chart.ColorWhite,
+			},
 			Name:      axisLabel,
-			NameStyle: chart.StyleShow(),
+			NameStyle:  chart.Style{
+				Show: true,
+				FontColor: chart.ColorWhite,
+			},
+
 		},
 		Series: plottedSeries,
+		Background: chart.Style{
+			StrokeWidth: 0,
+			StrokeColor:  drawing.ColorBlue.WithAlpha(0),
+			Padding: chart.Box{0,0,0,0},
+			FillColor: drawing.ColorBlue.WithAlpha(0),
+			FontColor: chart.ColorWhite,
+		},
+		Canvas: chart.Style{
+			StrokeWidth: 0,
+			StrokeColor:  drawing.ColorBlue.WithAlpha(0),
+			Padding: chart.Box{0,0,0,0},
+			FillColor: drawing.ColorBlue.WithAlpha(0),
+			FontColor: chart.ColorWhite,
+		},
 	}
+
 	// generate SVG
 	bufferSVG := bytes.NewBuffer([]byte{})
 	if err := graph.Render(chart.SVG, bufferSVG); err != nil {
