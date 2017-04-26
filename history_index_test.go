@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
+	//"os"
 	"testing"
 	"time"
 
@@ -48,7 +48,7 @@ func TestHTMLIndex(t *testing.T) {
 			},
 		},
 	}
-	defer os.Remove(testFile)
+//	defer os.Remove(testFile)
 
 	// generating index
 	check.Nil(data.ToHTML(testFile))
