@@ -329,7 +329,7 @@ func (e *Environment) GenerateIndex() error {
 		return nil
 	}
 
-	indexData := &HTMLIndex{Title: varroa, Time: time.Now().Format("2006-01-02 15:04:05")}
+	indexData := &HTMLIndex{Title: strings.ToUpper(varroa), Time: time.Now().Format("2006-01-02 15:04:05")}
 	for label, h := range e.History {
 		indexData.CSV = append(indexData.CSV, HTMLLink{Name: label + ".csv", URL: filepath.Base(h.getPath(statsFile + csvExt))})
 
