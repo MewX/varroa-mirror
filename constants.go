@@ -50,6 +50,7 @@ const (
 	infoNotInteresting            = "No filter is interested in release: %s. Ignoring."
 	infoNotMusic                  = "Not a music release, ignoring."
 	infoNotSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
+	infoFilterIgnoredForTracker   = "Filter %s ignored for tracker %s."
 	infoNotSnatchingUniqueInGroup = "Release from the same torrentgroup already downloaded, and snatch must be unique in group"
 	infoAllMetadataSaved          = "All metadata saved."
 	infoMetadataSaved             = "Metadata saved to: "

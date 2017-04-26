@@ -28,6 +28,11 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 		var downloadedTorrent bool
 		var info *TrackerTorrentInfo
 		for _, filter := range e.config.Filters {
+			// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
+			if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
+				logThis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), VERBOSE)
+				continue
+			}
 			// checking if duplicate
 			if !filter.AllowDuplicates && e.History[tracker.Name].HasDupe(release) {
 				logThis.Info(infoNotSnatchingDuplicate, VERBOSE)

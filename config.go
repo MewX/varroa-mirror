@@ -209,27 +209,28 @@ func (cg *ConfigGitlabPages) Check() error {
 }
 
 type ConfigFilter struct {
-	Name            string
-	Artist          []string
+	Name            string   `yaml:"name"`
+	Artist          []string `yaml:"artist"`
 	ExcludedArtist  []string `yaml:"excluded_artist"`
-	Year            []int
+	Year            []int    `yaml:"year"`
 	RecordLabel     []string `yaml:"record_label"`
 	TagsIncluded    []string `yaml:"included_tags"`
 	TagsExcluded    []string `yaml:"excluded_tags"`
 	ReleaseType     []string `yaml:"type"`
-	Format          []string
-	Source          []string
-	Quality         []string
-	HasCue          bool   `yaml:"has_cue"`
-	HasLog          bool   `yaml:"has_log"`
-	LogScore        int    `yaml:"log_score"`
-	PerfectFlac     bool   `yaml:"perfect_flac"`
-	AllowDuplicates bool   `yaml:"allow_duplicates"`
-	AllowScene      bool   `yaml:"allow_scene"`
-	MinSizeMB       int    `yaml:"min_size_mb"`
-	MaxSizeMB       int    `yaml:"max_size_mb"`
-	WatchDir        string `yaml:"watch_directory"`
-	UniqueInGroup   bool   `yaml:"unique_in_group"`
+	Format          []string `yaml:"format"`
+	Source          []string `yaml:"source"`
+	Quality         []string `yaml:"quality"`
+	HasCue          bool     `yaml:"has_cue"`
+	HasLog          bool     `yaml:"has_log"`
+	LogScore        int      `yaml:"log_score"`
+	PerfectFlac     bool     `yaml:"perfect_flac"`
+	AllowDuplicates bool     `yaml:"allow_duplicates"`
+	AllowScene      bool     `yaml:"allow_scene"`
+	MinSizeMB       int      `yaml:"min_size_mb"`
+	MaxSizeMB       int      `yaml:"max_size_mb"`
+	WatchDir        string   `yaml:"watch_directory"`
+	UniqueInGroup   bool     `yaml:"unique_in_group"`
+	Tracker         []string `yaml:"tracker"`
 }
 
 func (cf *ConfigFilter) Check() error {
@@ -447,6 +448,16 @@ func (c *Config) Check() error {
 		for _, a := range c.Autosnatch {
 			if !StringInSlice(a.Tracker, configuredTrackers) {
 				return errors.New(fmt.Sprintf("Autosnatch enabled, but tracker %s undefined", a.Tracker))
+			}
+		}
+		// check all filter trackers are defined
+		if len(c.Filters) != 0 {
+			for _, f := range c.Filters {
+				for _, t := range f.Tracker {
+					if !StringInSlice(t, configuredTrackers) {
+						return errors.New(fmt.Sprintf("Filter %s refers to undefined tracker %s", f.Name, t))
+					}
+				}
 			}
 		}
 	}
