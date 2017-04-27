@@ -68,6 +68,7 @@ body {
 }
 .legend a {
 	text-decoration: none;
+	color: #ccc;
 }
 
 .pure-img-responsive {
@@ -110,7 +111,7 @@ The content <div> is where all your content goes.
 .content {
     margin: 0 auto;
     padding: 0 2em;
-    max-width: 800px;
+    max-width: 1000px;
     margin-bottom: 50px;
     line-height: 1.6em;
 }
@@ -342,7 +343,7 @@ Hides the menu at 48em, but modify this based on your app's needs.
             	<li class="pure-menu-item"><a class="pure-menu-link" href="#title">{{.Title}}</a></li>
 		{{range .Stats}}
 			<li class="pure-menu-heading">{{.Name}}</li>
-			<li class="pure-menu-item"> <a class="pure-menu-link" href="#stats-{{ .Name }}">stats</a></li>
+			<li class="pure-menu-item"> <a class="pure-menu-link" href="#stats-{{ .Name }}">Stats</a></li>
 			{{range .GraphLinks}}
 			<li class="pure-menu-item"> <a class="pure-menu-link" href="{{ .URL }}">{{ .Name }}</a></li>
 			{{end}}
@@ -354,18 +355,13 @@ Hides the menu at 48em, but modify this based on your app's needs.
     <div id="main">
         <div class="header">
             	<h1 id="title">{{.Title}}</h1>
-           	<h2>Complete stats.</h2>
+           	<h2>Last updated: {{.Time}}{{range .CSV}} | <a href="{{ .URL }}">{{ .Name }}</a>{{else}}{{end}}</h2>
         </div>
         <div class="content">
-		<h2 class="content-subhead">Last Updated</h2>
-		<p>Last updated: {{.Time}}{{range .CSV}} | <a href="{{ .URL }}">{{ .Name }}</a>{{else}}{{end}}</p>
-
-		<h2 class="content-subhead">Stats</h2>
 		{{range .Stats}}
-		<p id="stats-{{.Name}}">Latest {{.Name}} stats: {{.Stats}}</p>
-		{{end}}
-
-		{{range .Stats}}
+		<h1 id="stats-{{.Name}}" >{{.Name}}</h1>
+		<h2  class="content-subhead">{{.Name}} Stats</h2>
+		<p>{{.Stats}}</p>
 		<h2 class="content-subhead">{{.Name}} Graphs</h2>
 		<h3 class="content-subhead">Preview</h3>
 		<div class="pure-g">
@@ -378,7 +374,7 @@ Hides the menu at 48em, but modify this based on your app's needs.
 		<h3 class="content-subhead">Graphs</h3>
 		{{range .Graphs}}
 		<div class="pure-g">
-			<div class="pure-u-1-1" id="{{.Name}}">
+			<div class="pure-u-1" id="{{.Name}}">
 				<img class="pure-img-responsive" src="{{.URL}}" alt="<missing stats, not enough data yet?>" style="align:center">
 			</div>
 		</div>
