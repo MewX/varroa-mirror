@@ -2,7 +2,8 @@ package main
 
 const (
 	varroa        = "varroa musica"
-	varroaVersion = "varroa musica -- v13dev."
+	version       = "v13dev"
+	varroaVersion = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
 

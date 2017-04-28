@@ -132,7 +132,7 @@ const (
 		padding: 0;
 		margin-top: 0;
 	}
-	h2 a {
+	.header a {
 		text-decoration: none;
 		color: #ccc;
 	}
@@ -393,7 +393,9 @@ const (
     <div id="main">
         <div class="header">
             	<h1 id="title">{{.Title}}</h1>
-           	<h2>Last updated: {{.Time}}{{range .CSV}} | <a href="{{ .URL }}">{{ .Name }}</a>{{else}}{{end}}</h2>
+           	<p>Last updated: {{.Time}}</p>
+           	<p>Raw data: {{range .CSV}}<a href="{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
+           	<p>Version: {{.Version}}</p>
         </div>
         <div class="content">
 		{{range .Stats}}
@@ -405,7 +407,7 @@ const (
 		<div class="pure-g">
 			{{range .Graphs}}
 			<div class="pure-u-1-6">
-				<a href="#{{ .Name }}"><img class="pure-img-responsive" src="{{.URL}}" alt="<missing stats, not enough data yet?>"></a>
+				<a href="#{{ .Name }}"><img class="pure-img-responsive" src="{{.URL}}" alt="<missing stats, not enough data yet?>" title="{{.Name}}"></a>
 			</div>
 			{{end}}
 		</div>
@@ -459,10 +461,11 @@ type HTMLStats struct {
 
 // HTMLIndex provides data for the htmlIndexTemplate.
 type HTMLIndex struct {
-	Title string
-	Time  string
-	CSV   []HTMLLink
-	Stats []HTMLStats
+	Title   string
+	Time    string
+	Version string
+	CSV     []HTMLLink
+	Stats   []HTMLStats
 }
 
 // ToHTML executes the template and save the result to a file.

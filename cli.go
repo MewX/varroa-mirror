@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 
+	"fmt"
+
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
 )
@@ -115,7 +117,7 @@ type varroaArguments struct {
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// parse arguments and options
-	args, err := docopt.Parse(varroaUsage, osArgs, true, varroaVersion, false, false)
+	args, err := docopt.Parse(varroaUsage, osArgs, true, fmt.Sprintf(varroaVersion, varroa, version), false, false)
 	if err != nil {
 		return errors.Wrap(err, errorInfoBadArguments)
 	}
