@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/goji/httpauth"
 	"github.com/gorilla/mux"
@@ -122,6 +123,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 	}
 
 	rtr := mux.NewRouter()
+	var mutex = &sync.Mutex{}
 	if e.config.WebServer.AllowDownloads {
 		getStats := func(w http.ResponseWriter, r *http.Request) {
 			// checking token
@@ -212,9 +214,15 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				for {
 					select {
 					case messageToLog := <-e.sendToWebsocket:
-						// TODO differentiate info / error
-						if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog}); err != nil {
-							logThis.Error(errors.Wrap(err, errorWritingToWebSocket), NORMAL)
+						if e.websocketOutput {
+							mutex.Lock()
+							// TODO differentiate info / error
+							if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog}); err != nil {
+								if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+									logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), VERBOSEST)
+								}
+							}
+							mutex.Unlock()
 						}
 					case <-endThisConnection:
 						return
@@ -226,13 +234,12 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				// TODO if server is shutting down, c.Close()
 				incoming := IncomingJSON{}
 				if err := c.ReadJSON(&incoming); err != nil {
-					if websocket.IsCloseError(err, websocket.CloseGoingAway) || websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
-						endThisConnection <- struct{}{}
-						e.websocketOutput = false
-						break
+					if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+						logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), VERBOSEST)
 					}
-					logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), NORMAL)
-					continue
+					endThisConnection <- struct{}{}
+					e.websocketOutput = false
+					break
 				}
 
 				var answer OutgoingJSON
@@ -271,11 +278,13 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 					}
 				}
 				// writing answer
+				mutex.Lock()
 				if err := c.WriteJSON(answer); err != nil {
-					logThis.Error(errors.Wrap(err, errorWritingToWebSocket), NORMAL)
+					if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+						logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), VERBOSEST)
+					}
 				}
-
-				// TODO: reset after a while
+				mutex.Unlock()
 			}
 		}
 		// interface for remotely ordering downloads
