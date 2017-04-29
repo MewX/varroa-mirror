@@ -24,7 +24,7 @@ var (
 	filter13 = &ConfigFilter{Name: "filter13", Quality: []string{"Lossless", "24bit Lossless"}, AllowScene: true}
 	filter14 = &ConfigFilter{Name: "filter14", Source: []string{"Vinyl", "Cassette"}, AllowScene: true}
 	filter15 = &ConfigFilter{Name: "filter15", Source: []string{"CD"}, HasLog: true, LogScore: 100}
-	filter16 = &ConfigFilter{Name: "filter16", Source: []string{"CD"}, LogScore: 80} // will trigger even if hasLog == false
+	filter16 = &ConfigFilter{Name: "filter16", Source: []string{"CD"}, LogScore: 80}
 	filter17 = &ConfigFilter{Name: "filter17", Quality: []string{"Lossless"}, AllowScene: true}
 	filter18 = &ConfigFilter{Name: "filter18", Year: []int{2017}, Format: []string{"FLAC"}, Source: []string{"WEB"}, Quality: []string{"Lossless"}, AllowScene: true, TagsIncluded: []string{"abstract"}, TagsExcluded: []string{"korean"}}
 
@@ -41,7 +41,7 @@ var announces = []struct {
 		`An artist - Title / \ with utf8 characters éç_?<Ω>§Ð¢<¢<Ð> [2013] [Album] - MP3 / 320 / CD - https://mysterious.address/torrents.php?id=93821 / https://mysterious.address/torrents.php?action=download&id=981243 - tag1.taggy,tag2.mctagface`,
 		true,
 		"Release info:\n\tArtist: An artist\n\tTitle: Title / \\ with utf8 characters éç_?<Ω>§Ð¢<¢<Ð>\n\tYear: 2013\n\tRelease Type: Album\n\tFormat: MP3\n\tQuality: 320\n\tHasLog: false\n\tLog Score: -9999\n\tHas Cue: false\n\tScene: false\n\tSource: CD\n\tTags: [tag1.taggy tag2.mctagface]\n\tURL: https://mysterious.address/torrents.php?id=93821\n\tTorrent URL: https://mysterious.address/torrents.php?action=download&id=981243\n\tTorrent ID: 981243",
-		[]*ConfigFilter{filter4, filter6, filter12, filter16},
+		[]*ConfigFilter{filter4, filter6, filter12},
 	},
 	{
 		`An artist:!, with / another artist! :)ÆΩ¢ - Title / \ with - utf8 characters éç_?<Ω>§Ð¢<¢<Ð> [1999] [EP] - FLAC / 24bit Lossless / Vinyl / Scene - https://mysterious.address/torrents.php?id=93821 / https://mysterious.address/torrents.php?action=download&id=981243 - tag.mctagface`,

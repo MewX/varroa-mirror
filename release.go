@@ -194,12 +194,11 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		logThis.Info(filter.Name+": Wrong format", VERBOSE)
 		return false
 	}
-	if r.Artists[0] != "Various Artists" && len(filter.Artist) != 0 {
+	if r.Artists[0] != "Various Artists" && (len(filter.Artist) != 0 || len(filter.ExcludedArtist) != 0) {
 		var foundAtLeastOneArtist bool
 		for _, artist := range r.Artists {
 			if StringInSlice(artist, filter.Artist) {
 				foundAtLeastOneArtist = true
-				break
 			}
 			if StringInSlice(artist, filter.ExcludedArtist) {
 				logThis.Info(filter.Name+": Found excluded artist "+artist, VERBOSE)
@@ -224,7 +223,7 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		return false
 	}
 	// only compare logscores if the announce contained that information
-	if r.Source == "CD" && filter.LogScore != 0 && r.LogScore != logScoreNotInAnnounce && filter.LogScore > r.LogScore {
+	if r.Source == "CD" && filter.LogScore != 0 && (!r.HasLog || (r.LogScore != logScoreNotInAnnounce && filter.LogScore > r.LogScore)) {
 		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
@@ -283,7 +282,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 		logThis.Info(filter.Name+": No match for record label", VERBOSE)
 		return false
 	}
-	if r.Artists[0] == "Various Artists" && len(filter.Artist) != 0 {
+	if r.Artists[0] == "Various Artists" && (len(filter.Artist) != 0 || len(filter.ExcludedArtist) != 0) {
 		var foundAtLeastOneArtist bool
 		for iArtist := range info.artists {
 			if StringInSlice(iArtist, filter.Artist) {

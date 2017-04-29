@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -237,7 +238,7 @@ func (cf *ConfigFilter) Check() error {
 	if cf.Name == "" {
 		return errors.New("Missing filter name")
 	}
-	if (cf.HasCue || cf.HasLog) && !StringInSlice("CD", cf.Source) {
+	if (cf.HasCue || cf.HasLog || cf.LogScore != 0) && !StringInSlice("CD", cf.Source) {
 		return errors.New("Has Log/Cue only relevant if CD is an acceptable source")
 	}
 	if cf.MaxSizeMB < 0 || cf.MinSizeMB < 0 {
@@ -256,7 +257,7 @@ func (cf *ConfigFilter) Check() error {
 		return errors.New("Tags cannot be both included and excluded")
 	}
 	if cf.UniqueInGroup && cf.AllowDuplicates {
-		return errors.New("Filter can both allow duplicates and only allow one snatch/torrentgroup.")
+		return errors.New("Filter can both allow duplicates and only allow one snatch/torrentgroup")
 	}
 	if cf.PerfectFlac {
 		if cf.Format != nil || cf.Quality != nil || cf.Source != nil || cf.HasLog || cf.HasCue || cf.LogScore != 0 {
@@ -269,6 +270,9 @@ func (cf *ConfigFilter) Check() error {
 		cf.HasLog = true
 		cf.LogScore = 100
 		cf.Source = []string{"CD", "Vinyl", "DVD", "Soundboard", "WEB", "Cassette", "Blu-ray", "SACD", "DAT"}
+	}
+	if reflect.DeepEqual(*cf, ConfigFilter{Name: cf.Name}) {
+		return errors.New("Empty filter would snatch everything, it probably is not what you want")
 	}
 
 	// TODO: check source/quality against hard-coded values?, MP3, 24bit Lossless, etc?

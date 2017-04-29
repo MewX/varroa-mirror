@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-//var env *Environment
 var logThis LogThis
 
 func main() {
