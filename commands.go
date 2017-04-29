@@ -154,11 +154,16 @@ func awaitOrders(e *Environment) {
 }
 
 func generateStats(e *Environment) error {
-	logThis.Info("Generating stats", VERBOSE)
-	for _, h := range e.History {
+	atLeastOneError := false
+	for t, h := range e.History {
+		logThis.Info("Generating stats for "+t, VERBOSE)
 		if err := h.GenerateGraphs(e); err != nil {
-			return err
+			logThis.Error(errors.Wrap(err, errorGeneratingGraphs), VERBOSE)
+			atLeastOneError = true
 		}
+	}
+	if atLeastOneError {
+		return errors.New(errorGeneratingGraphs)
 	}
 	return nil
 }

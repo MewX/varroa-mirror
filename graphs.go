@@ -113,7 +113,7 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 	if err := graph.Render(chart.PNG, bufferPNG); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filename+svgExt, bufferPNG.Bytes(), 0644); err != nil {
+	if err := ioutil.WriteFile(filename+pngExt, bufferPNG.Bytes(), 0644); err != nil {
 		return err
 	}
 
@@ -133,14 +133,12 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 	graph.Background = chart.Style{
 		StrokeWidth: 0,
 		StrokeColor: drawing.ColorBlue.WithAlpha(0),
-		Padding:     chart.Box{0, 0, 0, 0},
 		FillColor:   drawing.ColorBlue.WithAlpha(0),
 		FontColor:   chart.ColorWhite,
 	}
 	graph.Canvas = chart.Style{
 		StrokeWidth: 0,
 		StrokeColor: drawing.ColorBlue.WithAlpha(0),
-		Padding:     chart.Box{0, 0, 0, 0},
 		FillColor:   drawing.ColorBlue.WithAlpha(0),
 		FontColor:   chart.ColorWhite,
 	}

@@ -160,7 +160,7 @@ func (h *History) GenerateGraphs(e *Environment) error {
 	}
 	if statsOK && dailyStatsOK {
 		// combine graphs into overallStatsFile
-		if err := combineAllPNGs(h.getPath(overallStatsFile),
+		return combineAllPNGs(h.getPath(overallStatsFile),
 			h.getPath(uploadStatsFile),
 			h.getPath(uploadPerDayStatsFile),
 			h.getPath(downloadStatsFile),
@@ -172,11 +172,8 @@ func (h *History) GenerateGraphs(e *Environment) error {
 			h.getPath(numberSnatchedPerDayFile),
 			h.getPath(sizeSnatchedPerDayFile),
 			h.getPath(totalSnatchesByFilterFile),
-			h.getPath(toptagsFile)); err != nil {
-			logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
-		}
+			h.getPath(toptagsFile))
 	}
-
 	return errors.New(errorCreatingGraphs)
 }
 
