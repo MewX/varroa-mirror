@@ -165,7 +165,9 @@ func TestRelease(t *testing.T) {
 	f18 := &ConfigFilter{Name: "f18", Artist: []string{"a"}}
 	f19 := &ConfigFilter{Name: "f19", Artist: []string{"a"}, ExcludedArtist: []string{"b"}}
 	f20 := &ConfigFilter{Name: "f20", Year: []int{2016}, AllowScene: true}
-	f21 := &ConfigFilter{Name: "f21", MaxSizeMB: 100, MinSizeMB: 1, AllowScene: true}
+	f21 := &ConfigFilter{Name: "f21", MaxSizeMB: 100, MinSizeMB: 1, AllowScene: true} // cannot be checked with Satisfies
+	f22 := &ConfigFilter{Name: "f22", Source: []string{"CD"}, HasLog: true, HasCue: true, AllowScene: true}
+	f23 := &ConfigFilter{Name: "f23", HasLog: true, HasCue: true, AllowScene: true}
 
 	// checking filters
 	check.NotNil(f0.Check())
@@ -190,6 +192,8 @@ func TestRelease(t *testing.T) {
 	check.Nil(f19.Check())
 	check.Nil(f20.Check())
 	check.Nil(f21.Check())
+	check.Nil(f22.Check())
+	check.NotNil(f23.Check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -294,9 +298,15 @@ func TestRelease(t *testing.T) {
 	check.True(r4.Satisfies(f20))
 	check.False(r5.Satisfies(f20))
 
-	check.False(r1.Satisfies(f20))
-	check.False(r2.Satisfies(f20))
-	check.True(r3.Satisfies(f20))
-	check.True(r4.Satisfies(f20))
-	check.False(r5.Satisfies(f20))
+	check.True(r1.Satisfies(f21))
+	check.True(r2.Satisfies(f21))
+	check.True(r3.Satisfies(f21))
+	check.True(r4.Satisfies(f21))
+	check.True(r5.Satisfies(f21))
+
+	check.True(r1.Satisfies(f22))
+	check.False(r2.Satisfies(f22))
+	check.False(r3.Satisfies(f22))
+	check.False(r4.Satisfies(f22))
+	check.True(r5.Satisfies(f22))
 }
