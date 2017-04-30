@@ -73,7 +73,10 @@ func monitorAllStats(e *Environment) {
 	if err := e.GenerateIndex(); err != nil {
 		logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
 	}
-	// TODO deploy?
+	// deploy
+	if err := e.DeployToGitlabPages(); err != nil {
+		logThis.Error(errors.Wrap(err, "Error deploying to Gitlab Pages"), NORMAL)
+	}
 
 	// preparing
 	tickerChans := []<-chan time.Time{}
@@ -109,5 +112,4 @@ func monitorAllStats(e *Environment) {
 			logThis.Error(errors.Wrap(err, "Error deploying to Gitlab Pages"), NORMAL)
 		}
 	}
-
 }
