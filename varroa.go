@@ -31,16 +31,14 @@ func main() {
 			}
 			return
 		}
-		if cli.showFilters {
+		if cli.showConfig {
 			// loading configuration
 			if err := env.LoadConfiguration(); err != nil {
 				logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
 				return
 			}
-			fmt.Print("Filters found in configuration file: \n\n")
-			for _, f := range env.config.Filters {
-				fmt.Println(f)
-			}
+			fmt.Print("Found in configuration file: \n\n")
+			fmt.Println(env.config)
 			return
 		}
 		// now dealing with encrypt/decrypt commands, which both require the passphrase from user

@@ -40,6 +40,15 @@ func (cg *ConfigGeneral) Check() error {
 	return nil
 }
 
+func (cg *ConfigGeneral) String() string {
+	txt := "General configuration:\n"
+	txt += "\tLog level: " + strconv.Itoa(cg.LogLevel) + "\n"
+	txt += "\tWatch directory: " + cg.WatchDir + "\n"
+	txt += "\tDownload directory: " + cg.DownloadDir + "\n"
+	txt += "\tDownload metadata automatically: " + fmt.Sprintf("%v", cg.AutomaticMetadataRetrieval) + "\n"
+	return txt
+}
+
 type ConfigTracker struct {
 	Name     string
 	User     string
@@ -61,6 +70,14 @@ func (ct *ConfigTracker) Check() error {
 		return errors.New("Missing tracker URL")
 	}
 	return nil
+}
+
+func (ct *ConfigTracker) String() string {
+	txt := "Tracker configuration for " + ct.Name + "\n"
+	txt += "\tUser: " + ct.User + "\n"
+	txt += "\tPassword: " + ct.Password + "\n"
+	txt += "\tURL: " + ct.URL + "\n"
+	return txt
 }
 
 type ConfigAutosnatch struct {
@@ -112,6 +129,22 @@ func (ca *ConfigAutosnatch) Check() error {
 	return nil
 }
 
+func (ca *ConfigAutosnatch) String() string {
+	txt := "Autosnatch configuration for " + ca.Tracker + "\n"
+	txt += "\tIRC server: " + ca.IRCServer + "\n"
+	txt += "\tIRC KeyPassword: " + ca.IRCKey + "\n"
+	txt += "\tUse SSL: " + fmt.Sprintf("%v", ca.IRCSSL) + "\n"
+	txt += "\tSkip SSL verification: " + fmt.Sprintf("%v", ca.IRCSSLSkipVerify) + "\n"
+	txt += "\tNickserv password: " + ca.NickservPassword + "\n"
+	txt += "\tBot nickname: " + ca.BotName + "\n"
+	txt += "\tAnnouncer: " + ca.Announcer + "\n"
+	txt += "\tAnnounce channel: " + ca.AnnounceChannel + "\n"
+	if len(ca.BlacklistedUploaders) != 0 {
+		txt += "\tBlacklisted uploaders: " + strings.Join(ca.BlacklistedUploaders, ",") + "\n"
+	}
+	return txt
+}
+
 type ConfigStats struct {
 	Tracker             string
 	UpdatePeriodH       int `yaml:"update_period_hour"`
@@ -126,6 +159,13 @@ func (cs *ConfigStats) Check() error {
 		return errors.New("Missing stats update period (in hours)")
 	}
 	return nil
+}
+
+func (cs *ConfigStats) String() string {
+	txt := "Stats configuration for " + cs.Tracker + "\n"
+	txt += "\tUpdate period (hours): " + strconv.Itoa(cs.UpdatePeriodH) + "\n"
+	txt += "\tMaximum buffer decrease (MB): " + strconv.Itoa(cs.MaxBufferDecreaseMB) + "\n"
+	return txt
 }
 
 type ConfigWebServer struct {
@@ -162,6 +202,19 @@ func (cw *ConfigWebServer) Check() error {
 	return nil
 }
 
+func (cw *ConfigWebServer) String() string {
+	txt := "Webserver configuration:\n"
+	txt += "\tServe stats: " + fmt.Sprintf("%v", cw.ServeStats) + "\n"
+	txt += "\tUser: " + cw.User + "\n"
+	txt += "\tPassword: " + cw.Password + "\n"
+	txt += "\tAllow downloads: " + fmt.Sprintf("%v", cw.AllowDownloads) + "\n"
+	txt += "\tToken: " + cw.Token + "\n"
+	txt += "\tHTTP port: " + strconv.Itoa(cw.PortHTTP) + "\n"
+	txt += "\tHTTPS port: " + strconv.Itoa(cw.PortHTTPS) + "\n"
+	txt += "\tHostname: " + cw.Hostname + "\n"
+	return txt
+}
+
 type ConfigNotifications struct {
 	Pushover *ConfigPushover
 }
@@ -179,6 +232,13 @@ func (cp *ConfigPushover) Check() error {
 		return errors.New("Pushover token must be provided")
 	}
 	return nil
+}
+
+func (cp *ConfigPushover) String() string {
+	txt := "Pushover configuration:\n"
+	txt += "\tUser: " + cp.User + "\n"
+	txt += "\tToken: " + cp.Token + "\n"
+	return txt
 }
 
 type ConfigGitlabPages struct {
@@ -207,6 +267,15 @@ func (cg *ConfigGitlabPages) Check() error {
 		cg.URL = fmt.Sprintf("https://%s.gitlab.io/%s", hits[0][1], hits[0][2])
 	}
 	return nil
+}
+
+func (cg *ConfigGitlabPages) String() string {
+	txt := "Gitlab Pages configuration:\n"
+	txt += "\tGit repository: " + cg.GitHTTPS + "\n"
+	txt += "\tUser: " + cg.User + "\n"
+	txt += "\tPassword: " + cg.Password + "\n"
+	txt += "\tURL: " + cg.URL + "\n"
+	return txt
 }
 
 type ConfigFilter struct {
@@ -282,7 +351,7 @@ func (cf *ConfigFilter) Check() error {
 }
 
 func (cf *ConfigFilter) String() string {
-	description := cf.Name + ":\n"
+	description := "Filter configuration for " + cf.Name + ":\n"
 	if len(cf.Year) != 0 {
 		description += "\tYear(s): " + strings.Join(IntSliceToStringSlice(cf.Year), ", ") + "\n"
 	}
@@ -331,7 +400,6 @@ func (cf *ConfigFilter) String() string {
 	if cf.MaxSizeMB != 0 {
 		description += "\tMaximum Size: " + strconv.Itoa(cf.MaxSizeMB) + "\n"
 	}
-
 	if cf.WatchDir != "" {
 		description += "\tSpecial destination folder: " + cf.WatchDir + "\n"
 	}
@@ -356,6 +424,32 @@ type Config struct {
 	notificationsConfigured  bool
 	downloadFolderConfigured bool
 	disabledAutosnatching    bool
+}
+
+func (c *Config) String() string {
+	txt := c.General.String() + "\n"
+	for _, f := range c.Trackers {
+		txt += f.String() + "\n"
+	}
+	for _, f := range c.Stats {
+		txt += f.String() + "\n"
+	}
+	for _, f := range c.Autosnatch {
+		txt += f.String() + "\n"
+	}
+	for _, f := range c.Filters {
+		txt += f.String() + "\n"
+	}
+	if c.webserverConfigured {
+		txt += c.WebServer.String() + "\n"
+	}
+	if c.notificationsConfigured {
+		txt += c.Notifications.Pushover.String() + "\n"
+	}
+	if c.gitlabPagesConfigured {
+		txt += c.GitlabPages.String() + "\n"
+	}
+	return txt
 }
 
 func (c *Config) Load(file string) error {
