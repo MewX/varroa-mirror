@@ -51,6 +51,7 @@ let isWebSocketConnected = false;
 let vmStatusDiv = null;
 let sock;
 let hello;
+let alreadyAddedLinks = false;
 
 if (settings) {
 	if (settings.https === true) {
@@ -85,6 +86,9 @@ if (!settings && !settingsPage) {
 }
 
 function addLinks() {
+	if (alreadyAddedLinks === true) {
+		return;
+	}
 	const alltorrents = [];
 	for (let i = 0; i < document.links.length; i++) {
 		alltorrents.push(document.links[i]);
@@ -119,6 +123,8 @@ function addLinks() {
 			childList: true
 		});
 	}
+
+	alreadyAddedLinks = true;
 }
 
 function makeStatsLink(label, filename) {
