@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
@@ -14,15 +15,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 )
-
-/*
-Template:
-	## Source
-
-	Automatically generated on TIMESTAMP.
-	Torrent was still registered / unregistered on TRACKER URL.
-	Direct link: TORRENTLINK
-*/
 
 const (
 	// TODO: add track durations + total duration
@@ -121,13 +113,14 @@ type ReleaseInfo struct {
 	TotalTime             string
 	Lineage               []ReleaseInfoLineage
 	Description           string
+	Tracker               string
 	TrackerURL            string
 	LastUpdated           int64
 	IsAlive               bool
 }
 
-func (ri *ReleaseInfo) fromGazelleInfo(info GazelleTorrent) error {
-	ri.Title = info.Response.Group.Name
+func (ri *ReleaseInfo) fromGazelleInfo(tracker *GazelleTracker, info GazelleTorrent) error {
+	ri.Title = html.UnescapeString(info.Response.Group.Name)
 	allArtists := info.Response.Group.MusicInfo.Artists
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.Composers...)
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.Conductor...)
@@ -136,7 +129,7 @@ func (ri *ReleaseInfo) fromGazelleInfo(info GazelleTorrent) error {
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.RemixedBy...)
 	allArtists = append(allArtists, info.Response.Group.MusicInfo.With...)
 	for _, a := range allArtists {
-		ri.Artists = append(ri.Artists, ReleaseInfoArtist{ID: a.ID, Name: a.Name})
+		ri.Artists = append(ri.Artists, ReleaseInfoArtist{ID: a.ID, Name: html.UnescapeString(a.Name)})
 	}
 	ri.CoverPath = trackerCoverFile + filepath.Ext(info.Response.Group.WikiImage)
 	ri.Tags = info.Response.Group.Tags
@@ -155,7 +148,7 @@ func (ri *ReleaseInfo) fromGazelleInfo(info GazelleTorrent) error {
 
 	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
 	if info.Response.Torrent.Description != "" {
-		ri.Lineage = append(ri.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: info.Response.Torrent.Description})
+		ri.Lineage = append(ri.Lineage, ReleaseInfoLineage{Source: "TorrentDescription", LinkOrDescription: html.UnescapeString(info.Response.Torrent.Description)})
 	}
 	// parsing track list
 	r := regexp.MustCompile(trackPattern)
@@ -165,20 +158,21 @@ func (ri *ReleaseInfo) fromGazelleInfo(info GazelleTorrent) error {
 		hits := r.FindAllStringSubmatch(f, -1)
 		if len(hits) != 0 {
 			// TODO instead of path, actually find the title
-			track.Title = hits[0][1]
+			track.Title = html.UnescapeString(hits[0][1])
 			size, _ := strconv.ParseUint(hits[0][2], 10, 64)
 			track.Size = humanize.IBytes(size)
 			ri.Tracks = append(ri.Tracks, track)
 			// TODO Duration  + Disc + number
 		} else {
-			logThis("Could not parse filelist.", NORMAL)
+			logThis.Info("Could not parse filelist.", NORMAL)
 		}
 
 	}
 	// TODO TotalTime
-	ri.TrackerURL = env.config.url + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
+	ri.Tracker = tracker.URL
+	ri.TrackerURL = tracker.URL + "/torrents.php?torrentid=" + strconv.Itoa(info.Response.Torrent.ID)
 	// TODO de-wikify
-	ri.Description = info.Response.Group.WikiBody
+	ri.Description = html.UnescapeString(info.Response.Group.WikiBody)
 	return nil
 }
 
@@ -218,14 +212,14 @@ func (ri *ReleaseInfo) toMD() string {
 	// general output
 	md := fmt.Sprintf(mdTemplate, artists, ri.Title, ri.Year, ri.CoverPath, strings.Join(ri.Tags, ", "),
 		ri.ReleaseType, ri.RecordLabel, ri.CatalogNumber, ri.Source, remaster, ri.Format, ri.Quality, tracklist,
-		lineage, time.Now().Format("2006-01-02 15:04"), isAlive, env.config.url, ri.TrackerURL)
+		lineage, time.Now().Format("2006-01-02 15:04"), isAlive, ri.Tracker, ri.TrackerURL)
 	return md
 }
 
 func (ri *ReleaseInfo) writeUserJSON(folder string) error {
 	userJSON := filepath.Join(folder, userMetadataJSONFile)
 	if FileExists(userJSON) {
-		logThis("User metadata JSON already exists.", VERBOSE)
+		logThis.Info("User metadata JSON already exists.", VERBOSE)
 		return nil
 	}
 	// save as blank JSON, with no values, for the user to force metadata values if needed.
@@ -243,7 +237,7 @@ func (ri *ReleaseInfo) writeUserJSON(folder string) error {
 func (ri *ReleaseInfo) loadUserJSON(folder string) error {
 	userJSON := filepath.Join(folder, userMetadataJSONFile)
 	if !FileExists(userJSON) {
-		logThis("User metadata JSON does not exist.", VERBOSE)
+		logThis.Info("User metadata JSON does not exist.", VERBOSE)
 		return nil
 	}
 	// loading user metadata file
@@ -253,7 +247,7 @@ func (ri *ReleaseInfo) loadUserJSON(folder string) error {
 	}
 	var userInfo *ReleaseInfo
 	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
-		logThis("Error parsing torrent info JSON", NORMAL)
+		logThis.Info("Error parsing torrent info JSON", NORMAL)
 		return nil
 	}
 	//  overwrite tracker values if non-zero value found

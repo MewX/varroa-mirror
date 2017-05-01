@@ -27,7 +27,7 @@ func getPassphrase() (string, error) {
 	return string(pass), nil
 }
 
-func encrypt(path string, passphrase []byte) error {
+func encryptAndSave(path string, passphrase []byte) error {
 	// config.yaml -> config.enc
 	if len(passphrase) != 32 {
 		return errors.New(errorBadPassphrase)
@@ -74,11 +74,11 @@ func decrypt(path string, passphrase []byte) ([]byte, error) {
 	cfbdec.XORKeyStream(decoded, b)
 
 	// check it's valid YAML?
-	var config QuickCheckConfig
+	var config Config
 	if err := yaml.Unmarshal(decoded, &config); err != nil {
 		return []byte{}, errors.Wrap(err, errorBadDecryptedFile)
 	}
-	if config.Tracker.Password == "" || config.Tracker.User == "" || config.Tracker.URL == "" {
+	if config.Trackers[0].Password == "" || config.Trackers[0].User == "" || config.Trackers[0].URL == "" {
 		return []byte{}, errors.New(errorReadingDecryptedFile)
 	}
 	return decoded, nil
@@ -91,13 +91,4 @@ func decryptAndSave(path string, passphrase []byte) error {
 	}
 	// save to .yaml
 	return ioutil.WriteFile(strings.TrimSuffix(path, encryptedExt)+yamlExt, decoded, 0644)
-}
-
-// QuickCheckConfig helps checking the decoded bytes look like a valid configuration file
-type QuickCheckConfig struct {
-	Tracker struct {
-		URL      string
-		User     string
-		Password string
-	}
 }

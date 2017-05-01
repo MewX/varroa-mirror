@@ -7,17 +7,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-var env *Environment
-
-func init() {
-	env = NewEnvironment()
-}
+var logThis LogThis
 
 func main() {
+	env := NewEnvironment()
+	logThis.env = env
+
 	// parsing CLI
 	cli := &varroaArguments{}
 	if err := cli.parseCLI(os.Args[1:]); err != nil {
-		logThisError(errors.Wrap(err, errorArguments), NORMAL)
+		logThis.Error(errors.Wrap(err, errorArguments), NORMAL)
 		return
 	}
 	if cli.builtin {
@@ -28,40 +27,44 @@ func main() {
 	if !cli.canUseDaemon {
 		if cli.backup {
 			if err := archiveUserFiles(); err == nil {
-				logThis(infoUserFilesArchived, NORMAL)
+				logThis.Info(infoUserFilesArchived, NORMAL)
 			}
+			return
 		}
-		if cli.showFilters {
+		if cli.showConfig {
 			// loading configuration
 			if err := env.LoadConfiguration(); err != nil {
-				logThisError(errors.Wrap(err, errorLoadingConfig), NORMAL)
+				logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
 				return
 			}
-			fmt.Print("Filters found in configuration file: \n\n")
-			for _, f := range env.config.filters {
-				fmt.Println(f)
-			}
+			fmt.Print("Found in configuration file: \n\n")
+			fmt.Println(env.config)
+			return
+		}
+		// now dealing with encrypt/decrypt commands, which both require the passphrase from user
+		if err := env.GetPassphrase(); err != nil {
+			logThis.Error(errors.Wrap(err, "Error getting passphrase"), NORMAL)
 		}
 		if cli.encrypt {
-			if err := env.config.encrypt(); err != nil {
-				logThis(err.Error(), NORMAL)
+			if err := env.config.Encrypt(defaultConfigurationFile, env.configPassphrase); err != nil {
+				logThis.Info(err.Error(), NORMAL)
 				return
 			}
-			logThis(infoEncrypted, NORMAL)
+			logThis.Info(infoEncrypted, NORMAL)
 		}
 		if cli.decrypt {
-			if err := env.config.decrypt(); err != nil {
-				logThis(err.Error(), NORMAL)
+			if err := env.config.DecryptTo(defaultConfigurationFile, env.configPassphrase); err != nil {
+				logThis.Error(err, NORMAL)
 				return
 			}
-			logThis(infoDecrypted, NORMAL)
+			logThis.Info(infoDecrypted, NORMAL)
 		}
 		return
 	}
 
 	// loading configuration
 	if err := env.LoadConfiguration(); err != nil {
-		logThisError(errors.Wrap(err, errorLoadingConfig), NORMAL)
+		logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
 		return
 	}
 
@@ -69,7 +72,7 @@ func main() {
 	if cli.start {
 		// daemonizing process
 		if err := env.Daemonize(os.Args); err != nil {
-			logThisError(errors.Wrap(err, errorGettingDaemonContext), NORMAL)
+			logThis.Error(errors.Wrap(err, errorGettingDaemonContext), NORMAL)
 			return
 		}
 		// if not in daemon, job is over; exiting.
@@ -78,17 +81,12 @@ func main() {
 			return
 		}
 		// setting up for the daemon
-		if err := env.SetUp(); err != nil {
-			logThisError(errors.Wrap(err, errorSettingUp), NORMAL)
+		if err := env.SetUp(true); err != nil {
+			logThis.Error(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
 		// launch goroutines
-		go ircHandler(env.config, env.tracker)
-		go monitorStats(env.config, env.tracker)
-		go apiCallRateLimiter(env.limiter)
-		go webServer(env.config, env.serverHTTP, env.serverHTTPS)
-		go awaitOrders()
-		go automaticBackup()
+		goGoRoutines(env)
 
 		// wait until daemon is stopped.
 		env.WaitForDaemonStop()
@@ -101,42 +99,49 @@ func main() {
 	if err != nil {
 		// no daemon found, running commands directly.
 		if cli.requiresDaemon {
-			logThisError(errors.Wrap(err, errorFindingDaemon), NORMAL)
+			logThis.Error(errors.Wrap(err, errorFindingDaemon), NORMAL)
 			fmt.Println(infoUsage)
 			return
 		}
 		// setting up since the daemon isn't running
-		if err := env.SetUp(); err != nil {
-			logThisError(errors.Wrap(err, errorSettingUp), NORMAL)
+		if err := env.SetUp(false); err != nil {
+			logThis.Error(errors.Wrap(err, errorSettingUp), NORMAL)
 			return
 		}
-		// starting rate limiter
-		go apiCallRateLimiter(env.limiter)
-		// running the command
+
+		// general commands
 		if cli.stats {
-			if err := generateStats(); err != nil {
-				logThisError(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+			if err := generateStats(env); err != nil {
+				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
 			}
+			return
+		}
+
+		// commands that require tracker label
+		tracker, err := env.Tracker(cli.trackerLabel)
+		if err != nil {
+			logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), NORMAL)
+			return
 		}
 		if cli.refreshMetadata {
-			if err := refreshMetadata(IntSliceToStringSlice(cli.torrentIDs)); err != nil {
-				logThisError(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
+			if err := refreshMetadata(env, tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+				logThis.Error(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		}
 		if cli.snatch {
-			if err := snatchTorrents(IntSliceToStringSlice(cli.torrentIDs)); err != nil {
-				logThisError(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
+			if err := snatchTorrents(env, tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		}
 		if cli.checkLog {
-			if err := checkLog(cli.logFile, env.tracker); err != nil {
-				logThisError(errors.Wrap(err, errorCheckingLog), NORMAL)
+			if err := checkLog(tracker, []string{cli.logFile}); err != nil {
+				logThis.Error(errors.Wrap(err, errorCheckingLog), NORMAL)
 			}
 		}
 	} else {
 		// daemon is up, sending commands to the daemon through the unix socket
 		if err := sendOrders(cli); err != nil {
-			logThisError(errors.Wrap(err, errorSendingCommandToDaemon), NORMAL)
+			logThis.Error(errors.Wrap(err, errorSendingCommandToDaemon), NORMAL)
 			return
 		}
 		// at last, sending signals for shutdown
@@ -146,4 +151,23 @@ func main() {
 		}
 	}
 	return
+}
+
+func goGoRoutines(e *Environment) {
+	//  tracker-dependent goroutines
+	for _, t := range e.Trackers {
+		if e.config.autosnatchConfigured {
+			go ircHandler(e, t)
+		}
+	}
+	// general goroutines
+	if e.config.statsConfigured {
+		go monitorAllStats(e)
+	}
+	if e.config.webserverConfigured {
+		go webServer(e, e.serverHTTP, e.serverHTTPS)
+	}
+	// background goroutines
+	go awaitOrders(e)
+	go automaticBackup()
 }

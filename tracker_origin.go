@@ -18,13 +18,13 @@ type TrackerOriginJSON struct {
 	TimeOfDeath         int64  `json:"time_of_death"`
 }
 
-func (toc *TrackerOriginJSON) Save(path string, info TrackerTorrentInfo) error {
+func (toc *TrackerOriginJSON) Save(path string, tracker *GazelleTracker, info TrackerTorrentInfo) error {
 	toc.Path = path
 	if FileExists(toc.Path) {
 		if err := toc.load(); err != nil {
 			return err
 		}
-		if toc.ID == info.id && toc.Tracker == env.config.url {
+		if toc.ID == info.id && toc.Tracker == tracker.URL {
 			toc.LastUpdatedMetadata = time.Now().Unix()
 		} else {
 			return errors.New(errorInfoNoMatchForOrigin)
@@ -32,7 +32,7 @@ func (toc *TrackerOriginJSON) Save(path string, info TrackerTorrentInfo) error {
 		// TODO if GetTorrentInfo errors out: origin.IsAlive = false and set TimeOfDeath
 	} else {
 		// creating origin
-		toc.Tracker = env.config.url
+		toc.Tracker = tracker.URL
 		toc.ID = info.id
 		toc.TimeSnatched = time.Now().Unix()
 		toc.LastUpdatedMetadata = time.Now().Unix()

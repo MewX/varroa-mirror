@@ -32,17 +32,17 @@ const (
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
 )
 
-func apiCallRateLimiter(limiter chan bool) {
+func (t *GazelleTracker) apiCallRateLimiter() {
 	// fill the rate limiter the first time
 	for i := 0; i < allowedAPICallsByPeriod; i++ {
-		limiter <- true
+		t.limiter <- true
 	}
 	// every apiCallsPeriodS, refill the limiter channel
 	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
 	Loop:
 		for i := 0; i < allowedAPICallsByPeriod; i++ {
 			select {
-			case limiter <- true:
+			case t.limiter <- true:
 			default:
 				// if channel is full, do nothing and wait for the next tick
 				break Loop
@@ -51,12 +51,12 @@ func apiCallRateLimiter(limiter chan bool) {
 	}
 }
 
-func callJSONAPI(client *http.Client, url string) ([]byte, error) {
+func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	if client == nil {
 		return []byte{}, errors.New(errorNotLoggedIn)
 	}
 	// wait for rate limiter
-	<-env.limiter
+	<-t.limiter
 	// get request
 	resp, err := client.Get(url)
 	if err != nil {
@@ -74,7 +74,7 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 	// check success
 	var r GazelleGenericResponse
 	if err := json.Unmarshal(data, &r); err != nil {
-		logThis("BAD JSON, Received: \n"+string(data), VERBOSEST)
+		logThis.Info("BAD JSON, Received: \n"+string(data), VERBOSEST)
 		return []byte{}, errors.Wrap(err, errorUnmarshallingJSON)
 	}
 	if r.Status != statusSuccess {
@@ -82,12 +82,12 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 			return data, errors.New(errorInvalidResponse)
 		}
 		if r.Error == errorGazelleRateLimitExceeded {
-			logThis(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
+			logThis.Info(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
 			// calling again, waiting for the rate limiter again should do the trick.
 			// that way 2 limiter slots will have passed before the next call is made,
 			// the server should allow it.
-			<-env.limiter
-			return callJSONAPI(client, url)
+			<-t.limiter
+			return t.callJSONAPI(client, url)
 		}
 		return data, errors.New(errorAPIResponseStatus + r.Status)
 	}
@@ -97,17 +97,24 @@ func callJSONAPI(client *http.Client, url string) ([]byte, error) {
 //--------------------
 
 type GazelleTracker struct {
-	client  *http.Client
-	rootURL string
-	userID  int
+	Name     string
+	URL      string
+	User     string
+	Password string
+	client   *http.Client
+	userID   int
+	limiter  chan bool //  <- 1/tracker
 }
 
-func (t *GazelleTracker) Login(user, password string) error {
+func (t *GazelleTracker) Login() error {
+	if t.User == "" || t.Password == "" {
+		return errors.New("missing login information")
+	}
 	form := url.Values{}
-	form.Add("username", user)
-	form.Add("password", password)
+	form.Add("username", t.User)
+	form.Add("password", t.Password)
 	form.Add("keeplogged", "1")
-	req, err := http.NewRequest("POST", t.rootURL+"/login.php", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest("POST", t.URL+"/login.php", strings.NewReader(form.Encode()))
 	if err != nil {
 		fmt.Println(err.Error())
 		return err
@@ -119,13 +126,13 @@ func (t *GazelleTracker) Login(user, password string) error {
 	}
 	jar, err := cookiejar.New(&options)
 	if err != nil {
-		logThisError(errors.Wrap(err, errorLogIn), NORMAL)
+		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
 		return err
 	}
 	t.client = &http.Client{Jar: jar}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		logThisError(errors.Wrap(err, errorLogIn), NORMAL)
+		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
 		return err
 	}
 	defer resp.Body.Close()
@@ -133,7 +140,7 @@ func (t *GazelleTracker) Login(user, password string) error {
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(errorLogIn + ": Returned status: " + resp.Status)
 	}
-	if resp.Request.URL.String() == t.rootURL+"/login.php" {
+	if resp.Request.URL.String() == t.URL+"/login.php" {
 		// if after sending the request we're still redirected to the login page, something went wrong.
 		return errors.New(errorLogIn + ": Login page returned")
 	}
@@ -141,12 +148,12 @@ func (t *GazelleTracker) Login(user, password string) error {
 }
 
 func (t *GazelleTracker) get(url string) ([]byte, error) {
-	data, err := callJSONAPI(t.client, url)
+	data, err := t.callJSONAPI(t.client, url)
 	if err != nil {
-		logThisError(errors.Wrap(err, errorJSONAPI), NORMAL)
+		logThis.Error(errors.Wrap(err, errorJSONAPI), NORMAL)
 		// if error, try once again after logging in again
-		if loginErr := t.Login(env.config.user, env.config.password); loginErr == nil {
-			return callJSONAPI(t.client, url)
+		if loginErr := t.Login(); loginErr == nil {
+			return t.callJSONAPI(t.client, url)
 		}
 		return nil, errors.New("Could not log in and send get request to " + url)
 	}
@@ -177,14 +184,14 @@ func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) e
 	}
 	// cleaning up
 	if err := os.Remove(r.TorrentFile); err != nil {
-		logThis(fmt.Sprintf(errorRemovingTempFile, r.TorrentFile), VERBOSE)
+		logThis.Info(fmt.Sprintf(errorRemovingTempFile, r.TorrentFile), VERBOSE)
 	}
 	return nil
 }
 
 func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 	if t.userID == 0 {
-		data, err := t.get(t.rootURL + "/ajax.php?action=index")
+		data, err := t.get(t.URL + "/ajax.php?action=index")
 		if err != nil {
 			return nil, errors.Wrap(err, errorJSONAPI)
 		}
@@ -195,7 +202,7 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
-	data, err := t.get(t.rootURL + "/ajax.php?action=user&id=" + strconv.Itoa(t.userID))
+	data, err := t.get(t.URL + "/ajax.php?action=user&id=" + strconv.Itoa(t.userID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -205,7 +212,7 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
-		logThis("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
+		logThis.Info("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
 		ratio = 0.0
 	}
 	// GazelleIndex to TrackerStats
@@ -222,7 +229,7 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 }
 
 func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) {
-	data, err := t.get(t.rootURL + "/ajax.php?action=torrent&id=" + id)
+	data, err := t.get(t.URL + "/ajax.php?action=torrent&id=" + id)
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -260,7 +267,7 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 }
 
 func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error) {
-	data, err := t.get(t.rootURL + "/ajax.php?action=artist&id=" + strconv.Itoa(artistID))
+	data, err := t.get(t.URL + "/ajax.php?action=artist&id=" + strconv.Itoa(artistID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -279,7 +286,7 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error)
 }
 
 func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorrentGroupInfo, error) {
-	data, err := t.get(t.rootURL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
+	data, err := t.get(t.URL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -351,7 +358,7 @@ func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
 		return "", errors.New("Log does not exist: " + logPath)
 	}
 	// prepare upload
-	req, err := t.prepareLogUpload(t.rootURL+"/logchecker.php", logPath)
+	req, err := t.prepareLogUpload(t.URL+"/logchecker.php", logPath)
 	if err != nil {
 		return "", errors.New("Could not prepare upload form: " + err.Error())
 	}
@@ -375,8 +382,13 @@ func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
 	returnData := string(data)
 	r := regexp.MustCompile(logScorePattern)
 	if r.MatchString(returnData) {
-		return r.FindStringSubmatch(returnData)[1], nil
+		return "Log score " + r.FindStringSubmatch(returnData)[1], nil
 	} else {
+		if strings.Contains(returnData, "Your log has failed.") {
+			return "Log rejected", nil
+		} else if strings.Contains(returnData, "This too shall pass.") {
+			return "Log checks out, at least Silver", nil
+		}
 		return "", errors.New("Could not find score")
 	}
 }

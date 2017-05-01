@@ -1,6 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+
+	"fmt"
+
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
 )
@@ -60,9 +64,10 @@ Commands:
 
 Configuration Commands:
 
-	show-filters:
-		displays the filters set in the configuration file (allows
-		checking the filters and good YAML formatting).
+	show-config:
+		displays what varroa has parsed from the configuration file
+		(useful for checking the YAML is correctly formatted, and the
+		filters are correctly interpreted).
 	encrypt:
 		encrypts your configuration file. The encrypted version can
 		be used in place of the plaintext version, if you're
@@ -77,11 +82,11 @@ Configuration Commands:
 Usage:
 	varroa (start|reload|stop)
 	varroa stats
-	varroa refresh-metadata <ID>...
-	varroa check-log <LOG_FILE>
-	varroa snatch <ID>...
+	varroa refresh-metadata <TRACKER> <ID>...
+	varroa check-log <TRACKER> <LOG_FILE>
+	varroa snatch <TRACKER> <ID>...
 	varroa backup
-	varroa show-filters
+	varroa show-config
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -101,18 +106,19 @@ type varroaArguments struct {
 	checkLog        bool
 	snatch          bool
 	backup          bool
-	showFilters     bool
+	showConfig      bool
 	encrypt         bool
 	decrypt         bool
 	torrentIDs      []int
 	logFile         string
+	trackerLabel    string
 	requiresDaemon  bool
 	canUseDaemon    bool
 }
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// parse arguments and options
-	args, err := docopt.Parse(varroaUsage, osArgs, true, varroaVersion, false, false)
+	args, err := docopt.Parse(varroaUsage, osArgs, true, fmt.Sprintf(varroaVersion, varroa, version), false, false)
 	if err != nil {
 		return errors.Wrap(err, errorInfoBadArguments)
 	}
@@ -131,7 +137,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.checkLog = args["check-log"].(bool)
 	b.snatch = args["snatch"].(bool)
 	b.backup = args["backup"].(bool)
-	b.showFilters = args["show-filters"].(bool)
+	b.showConfig = args["show-config"].(bool)
 	b.encrypt = args["encrypt"].(bool)
 	b.decrypt = args["decrypt"].(bool)
 	// arguments
@@ -152,6 +158,9 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		b.logFile = logPath
 	}
+	if b.refreshMetadata || b.snatch || b.checkLog {
+		b.trackerLabel = args["<TRACKER>"].(string)
+	}
 
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
@@ -160,31 +169,40 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showFilters || b.decrypt || b.encrypt {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt {
 		b.canUseDaemon = false
 	}
 	return nil
 }
 
-func (b *varroaArguments) commandToDaemon() string {
+func (b *varroaArguments) commandToDaemon() []byte {
+	out := IncomingJSON{Site: b.trackerLabel}
 	if b.stats {
-		return "stats"
+		out.Command = "stats"
 	}
 	if b.reload {
-		return "reload"
+		out.Command = "reload"
 	}
 	if b.stop {
 		// to cleanly close the unix socket
-		return "stop"
+		out.Command = "stop"
 	}
 	if b.refreshMetadata {
-		return "refresh-metadata " + IntSliceToString(b.torrentIDs)
+		out.Command = "refresh-metadata"
+		out.Args = IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.snatch {
-		return "snatch " + IntSliceToString(b.torrentIDs)
+		out.Command = "snatch"
+		out.Args = IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.checkLog {
-		return "check-log " + b.logFile
+		out.Command = "check-log"
+		out.Args = []string{b.logFile}
 	}
-	return ""
+	commandBytes, err := json.Marshal(out)
+	if err != nil {
+		logThis.Error(errors.Wrap(err, "Cannot parse command"), NORMAL)
+		return []byte{}
+	}
+	return commandBytes
 }

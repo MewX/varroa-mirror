@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
+	"github.com/wcharczuk/go-chart/drawing"
 )
 
 var (
@@ -18,12 +19,29 @@ var (
 		StrokeColor: chart.ColorBlue,
 		FillColor:   chart.ColorBlue.WithAlpha(25),
 	}
+	commonStyleSVG = chart.Style{
+		Show:        true,
+		StrokeColor: drawing.ColorFromHex("f57f17"),
+		FillColor:   drawing.ColorFromHex("f57f17").WithAlpha(80),
+		FontColor:   chart.ColorWhite,
+	}
 	timeAxis = chart.XAxis{
-		Style: chart.Style{
-			Show: true,
-		},
+		Style:          chart.StyleShow(),
 		Name:           "Time",
 		NameStyle:      chart.StyleShow(),
+		ValueFormatter: chart.TimeValueFormatter,
+	}
+	timeAxisSVG = chart.XAxis{
+		Style: chart.Style{
+			Show:        true,
+			FontColor:   chart.ColorWhite,
+			StrokeColor: chart.ColorWhite,
+		},
+		Name: "Time",
+		NameStyle: chart.Style{
+			Show:      true,
+			FontColor: chart.ColorWhite,
+		},
 		ValueFormatter: chart.TimeValueFormatter,
 	}
 )
@@ -39,7 +57,8 @@ func sliceByteToGigabyte(in []float64) []float64 {
 func writePieChart(values []chart.Value, title, filename string) error {
 	// pie chart
 	pie := chart.PieChart{
-		Height: 500,
+		Height: 1000,
+		Width:  2000,
 		Title:  title,
 		TitleStyle: chart.Style{
 			Show:      true,
@@ -71,7 +90,7 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 		sma := &chart.SMASeries{
 			Style: chart.Style{
 				Show:            true,
-				StrokeColor:     chart.ColorRed,
+				StrokeColor:     drawing.ColorFromHex("bc5100"),
 				StrokeDashArray: []float64{5.0, 5.0},
 			},
 			InnerSeries: series,
@@ -79,7 +98,8 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 		plottedSeries = append(plottedSeries, sma)
 	}
 	graph := chart.Chart{
-		Height: 500,
+		Height: 1000,
+		Width:  2000,
 		XAxis:  timeAxis,
 		YAxis: chart.YAxis{
 			Style:     chart.StyleShow(),
@@ -88,20 +108,46 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 		},
 		Series: plottedSeries,
 	}
-	// generate SVG
-	bufferSVG := bytes.NewBuffer([]byte{})
-	if err := graph.Render(chart.SVG, bufferSVG); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(filename+svgExt, bufferSVG.Bytes(), 0644); err != nil {
-		return err
-	}
 	// generate PNG
 	bufferPNG := bytes.NewBuffer([]byte{})
 	if err := graph.Render(chart.PNG, bufferPNG); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filename+pngExt, bufferPNG.Bytes(), 0644)
+	if err := ioutil.WriteFile(filename+pngExt, bufferPNG.Bytes(), 0644); err != nil {
+		return err
+	}
+
+	// changing styles for SVG
+	graph.XAxis = timeAxisSVG
+	graph.YAxis.Style = chart.Style{
+		Show:        true,
+		FontColor:   chart.ColorWhite,
+		StrokeColor: chart.ColorWhite,
+	}
+	graph.YAxis.NameStyle = chart.Style{
+		Show:      true,
+		FontColor: chart.ColorWhite,
+	}
+	series.Style = commonStyleSVG
+	graph.Series[0] = series
+	graph.Background = chart.Style{
+		StrokeWidth: 0,
+		StrokeColor: drawing.ColorBlue.WithAlpha(0),
+		FillColor:   drawing.ColorBlue.WithAlpha(0),
+		FontColor:   chart.ColorWhite,
+	}
+	graph.Canvas = chart.Style{
+		StrokeWidth: 0,
+		StrokeColor: drawing.ColorBlue.WithAlpha(0),
+		FillColor:   drawing.ColorBlue.WithAlpha(0),
+		FontColor:   chart.ColorWhite,
+	}
+	// generate SVG
+	bufferSVG := bytes.NewBuffer([]byte{})
+	if err := graph.Render(chart.SVG, bufferSVG); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filename+svgExt, bufferSVG.Bytes(), 0644)
 }
 
 func combineAllPNGs(combined string, graphs ...string) error {
@@ -110,12 +156,12 @@ func combineAllPNGs(combined string, graphs ...string) error {
 	for _, graph := range graphs {
 		imgFile, err := os.Open(graph + pngExt)
 		if err != nil {
-			logThisError(errors.Wrap(err, errorImageNotFound), NORMAL)
+			logThis.Error(errors.Wrap(err, errorImageNotFound), NORMAL)
 			continue
 		}
 		img, _, err := image.Decode(imgFile)
 		if err != nil {
-			logThisError(errors.Wrap(err, errorImageNotFound), NORMAL)
+			logThis.Error(errors.Wrap(err, errorImageNotFound), NORMAL)
 			continue
 		}
 		images = append(images, img)

@@ -28,18 +28,18 @@ func NewGit(root, user, email string) *Git {
 	// checking git is available
 	_, err := exec.LookPath(git)
 	if err != nil {
-		logThis("Git is not available on this system", NORMAL)
+		logThis.Info("Git is not available on this system", NORMAL)
 		return nil
 	}
 	// check root is dir and exists
 	if !DirectoryExists(root) {
-		logThis("Git repository path does not exist", NORMAL)
+		logThis.Info("Git repository path does not exist", NORMAL)
 		return nil
 	}
 	// remember current path
 	path, err := os.Getwd()
 	if err != nil {
-		logThis("Cannot get current directory", NORMAL)
+		logThis.Info("Cannot get current directory", NORMAL)
 		return nil
 	}
 	return &Git{path: root, user: user, email: email, currentPath: path}
@@ -100,7 +100,7 @@ func (g *Git) Commit(message string) error {
 	defer g.getBack()
 	out, err := exec.Command(git, "commit", "-m", message).CombinedOutput()
 	if err != nil {
-		logThis("Error committing stats: "+string(out), NORMAL)
+		logThis.Info("Error committing stats: "+string(out), NORMAL)
 	}
 	return err
 }
@@ -152,7 +152,7 @@ func (g *Git) Push(remoteName, remoteURL, remoteUser, remotePassword string) err
 
 	out, err := exec.Command(git, "push", remoteName, "master").CombinedOutput()
 	if err != nil {
-		logThis("Error pushing stats to gitlab-pages: "+string(out), NORMAL)
+		logThis.Info("Error pushing stats to gitlab-pages: "+string(out), NORMAL)
 	}
 	return err
 }

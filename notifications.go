@@ -11,13 +11,13 @@ type Notification struct {
 	recipient *pushover.Recipient
 }
 
-func (n *Notification) Send(message string) error {
+func (n *Notification) Send(message string, addLink bool, link string) error {
 	if n.client == nil || n.recipient == nil {
 		return errors.New("Could not send notification: " + message)
 	}
 	var pushoverMessage *pushover.Message
-	if env.config.gitlabPagesConfigured() {
-		pushoverMessage = &pushover.Message{Message: message, Title: varroa, URL: env.config.gitlab.pagesURL, URLTitle: "Graphs"}
+	if addLink {
+		pushoverMessage = &pushover.Message{Message: message, Title: varroa, URL: link, URLTitle: "Graphs"}
 	} else {
 		pushoverMessage = pushover.NewMessageWithTitle(message, varroa)
 	}

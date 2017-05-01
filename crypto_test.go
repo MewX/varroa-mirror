@@ -18,22 +18,23 @@ func TestCrypto(t *testing.T) {
 	testFilename := "test_crypto"
 	testYAML := filepath.Join(testDir, testFilename+yamlExt)
 	testENC := filepath.Join(testDir, testFilename+encryptedExt)
+	env := &Environment{}
 	var passphrase []byte
 	passphrase = make([]byte, 32)
 	copy(passphrase[:], "passphrase")
 
-	check.Nil(env.config.load(testYAML))
+	check.Nil(env.config.Load(testYAML))
 
 	// 1. encrypt
 
 	// bad passphrase
-	err := encrypt(testYAML, []byte("tooshort"))
+	err := encryptAndSave(testYAML, []byte("tooshort"))
 	check.NotNil(err)
 	// not yaml
-	err = encrypt(testYAML+"--", passphrase)
+	err = encryptAndSave(testYAML+"--", passphrase)
 	check.NotNil(err)
 	// normal
-	err = encrypt(testYAML, passphrase)
+	err = encryptAndSave(testYAML, passphrase)
 	check.Nil(err)
 	check.True(FileExists(testENC))
 	defer os.Remove(testENC)
@@ -56,11 +57,11 @@ func TestCrypto(t *testing.T) {
 	check.Nil(err)
 	// check decoded bytes can be loaded as Config
 	c := &Config{}
-	err = c.loadFromBytes(bOut)
+	err = c.LoadFromBytes(bOut)
 	check.Nil(err)
-	check.Equal("https://something.com", c.url)
-	check.Equal("i_am", c.user)
-	check.Equal("a_test", c.password)
+	check.Equal("https://something.com", c.Trackers[0].URL)
+	check.Equal("i_am", c.Trackers[0].User)
+	check.Equal("a_test", c.Trackers[0].Password)
 
 	// 3. decrypt and save
 

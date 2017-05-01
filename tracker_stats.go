@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	userStats     = "User: %s (%s) | "
+	userStats     = "%s (%s) | "
 	progress      = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.3f (%.3f)"
 	firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.3f"
 )
@@ -40,10 +40,11 @@ func (s *TrackerStats) IsProgressAcceptable(previous *TrackerStats, maxDecrease 
 		return true
 	}
 	_, _, bufferChange, _, _ := s.Diff(previous)
-	if bufferChange > -int64(maxDecrease*1024*1024) {
+	// if maxDecrease is unset (=0), always return true
+	if maxDecrease == 0 || bufferChange >= -int64(maxDecrease*1024*1024) {
 		return true
 	}
-	logThis(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.\n", bufferChange, maxDecrease*1024*1024), VERBOSE)
+	logThis.Info(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.\n", bufferChange, maxDecrease*1024*1024), VERBOSE)
 	return false
 }
 
