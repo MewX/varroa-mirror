@@ -169,6 +169,8 @@ func TestRelease(t *testing.T) {
 	f22 := &ConfigFilter{Name: "f22", Source: []string{"CD"}, HasLog: true, HasCue: true, AllowScene: true}
 	f23 := &ConfigFilter{Name: "f23", HasLog: true, HasCue: true, AllowScene: true}
 	f24 := &ConfigFilter{Name: "f24", ExcludedReleaseType: []string{"Album"}, AllowScene: true}
+	f25 := &ConfigFilter{Name: "f25", HasCue: true, HasLog: true, LogScore: 100, Source: []string{"CD"}, ReleaseType: []string{"Album"}, Format: []string{"FLAC"}}
+	f26 := &ConfigFilter{Name: "f26", RecordLabel: []string{"label1", "label2"}}
 
 	// checking filters
 	check.NotNil(f0.Check())
@@ -196,6 +198,8 @@ func TestRelease(t *testing.T) {
 	check.Nil(f22.Check())
 	check.NotNil(f23.Check())
 	check.Nil(f24.Check())
+	check.Nil(f25.Check())
+	check.Nil(f26.Check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -317,4 +321,38 @@ func TestRelease(t *testing.T) {
 	check.True(r3.Satisfies(f24))
 	check.True(r4.Satisfies(f24))
 	check.False(r5.Satisfies(f24))
+
+	check.True(r1.Satisfies(f25))
+	check.False(r2.Satisfies(f25))
+	check.False(r3.Satisfies(f25))
+	check.False(r4.Satisfies(f25))
+	check.False(r5.Satisfies(f25))
+
+	// checking with TorrentInfo
+	i1 := &TrackerTorrentInfo{size: 1234567, logScore: 100, uploader: "that_guy"}
+	i2 := &TrackerTorrentInfo{size: 1234567, logScore: 80}
+	i3 := &TrackerTorrentInfo{size: 11, logScore: 80}
+	i4 := &TrackerTorrentInfo{size: 123456789, logScore: 80}
+	i5 := &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
+	i6 := &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
+
+	// log score
+	check.True(r1.HasCompatibleTrackerInfo(f17, []string{}, i1))
+	check.False(r1.HasCompatibleTrackerInfo(f17, []string{}, i2))
+	check.True(r1.HasCompatibleTrackerInfo(f14, []string{}, i2))
+	check.True(r1.HasCompatibleTrackerInfo(f14, []string{}, i1))
+	check.True(r1.HasCompatibleTrackerInfo(f25, []string{}, i1))
+	check.False(r1.HasCompatibleTrackerInfo(f25, []string{}, i2))
+
+	// blacklisted users
+	check.False(r1.HasCompatibleTrackerInfo(f17, []string{"that_guy", "another_one"}, i1))
+
+	// labels
+	check.True(r1.HasCompatibleTrackerInfo(f26, []string{}, i5))
+	check.False(r1.HasCompatibleTrackerInfo(f26, []string{}, i6))
+
+	// min/max size out of bounds
+	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i3))
+	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i4))
+
 }
