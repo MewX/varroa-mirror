@@ -279,28 +279,29 @@ func (cg *ConfigGitlabPages) String() string {
 }
 
 type ConfigFilter struct {
-	Name            string   `yaml:"name"`
-	Artist          []string `yaml:"artist"`
-	ExcludedArtist  []string `yaml:"excluded_artist"`
-	Year            []int    `yaml:"year"`
-	RecordLabel     []string `yaml:"record_label"`
-	TagsIncluded    []string `yaml:"included_tags"`
-	TagsExcluded    []string `yaml:"excluded_tags"`
-	ReleaseType     []string `yaml:"type"`
-	Format          []string `yaml:"format"`
-	Source          []string `yaml:"source"`
-	Quality         []string `yaml:"quality"`
-	HasCue          bool     `yaml:"has_cue"`
-	HasLog          bool     `yaml:"has_log"`
-	LogScore        int      `yaml:"log_score"`
-	PerfectFlac     bool     `yaml:"perfect_flac"`
-	AllowDuplicates bool     `yaml:"allow_duplicates"`
-	AllowScene      bool     `yaml:"allow_scene"`
-	MinSizeMB       int      `yaml:"min_size_mb"`
-	MaxSizeMB       int      `yaml:"max_size_mb"`
-	WatchDir        string   `yaml:"watch_directory"`
-	UniqueInGroup   bool     `yaml:"unique_in_group"`
-	Tracker         []string `yaml:"tracker"`
+	Name                string   `yaml:"name"`
+	Artist              []string `yaml:"artist"`
+	ExcludedArtist      []string `yaml:"excluded_artist"`
+	Year                []int    `yaml:"year"`
+	RecordLabel         []string `yaml:"record_label"`
+	TagsIncluded        []string `yaml:"included_tags"`
+	TagsExcluded        []string `yaml:"excluded_tags"`
+	ReleaseType         []string `yaml:"type"`
+	ExcludedReleaseType []string `yaml:"excluded_type"`
+	Format              []string `yaml:"format"`
+	Source              []string `yaml:"source"`
+	Quality             []string `yaml:"quality"`
+	HasCue              bool     `yaml:"has_cue"`
+	HasLog              bool     `yaml:"has_log"`
+	LogScore            int      `yaml:"log_score"`
+	PerfectFlac         bool     `yaml:"perfect_flac"`
+	AllowDuplicates     bool     `yaml:"allow_duplicates"`
+	AllowScene          bool     `yaml:"allow_scene"`
+	MinSizeMB           int      `yaml:"min_size_mb"`
+	MaxSizeMB           int      `yaml:"max_size_mb"`
+	WatchDir            string   `yaml:"watch_directory"`
+	UniqueInGroup       bool     `yaml:"unique_in_group"`
+	Tracker             []string `yaml:"tracker"`
 }
 
 func (cf *ConfigFilter) Check() error {
@@ -324,6 +325,9 @@ func (cf *ConfigFilter) Check() error {
 	}
 	if CommonInStringSlices(cf.TagsExcluded, cf.TagsIncluded) != nil {
 		return errors.New("Tags cannot be both included and excluded")
+	}
+	if len(cf.ExcludedReleaseType) != 0 && len(cf.ReleaseType) != 0 {
+		return errors.New("Release types cannot be both included and excluded")
 	}
 	if cf.UniqueInGroup && cf.AllowDuplicates {
 		return errors.New("Filter can both allow duplicates and only allow one snatch/torrentgroup")
@@ -378,6 +382,9 @@ func (cf *ConfigFilter) String() string {
 	}
 	if len(cf.ReleaseType) != 0 {
 		description += "\tType(s): " + strings.Join(cf.ReleaseType, ", ") + "\n"
+	}
+	if len(cf.ExcludedReleaseType) != 0 {
+		description += "\tExcluded Type(s): " + strings.Join(cf.ExcludedReleaseType, ", ") + "\n"
 	}
 	if cf.HasCue {
 		description += "\tHas Cue: true\n"

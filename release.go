@@ -235,6 +235,10 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		logThis.Info(filter.Name+": Scene release not allowed", VERBOSE)
 		return false
 	}
+	if len(filter.ExcludedReleaseType) != 0 && StringInSlice(r.ReleaseType, filter.ExcludedReleaseType) {
+		logThis.Info(filter.Name+": Excluded release type", VERBOSE)
+		return false
+	}
 	if len(filter.ReleaseType) != 0 && !StringInSlice(r.ReleaseType, filter.ReleaseType) {
 		logThis.Info(filter.Name+": Wrong release type", VERBOSE)
 		return false

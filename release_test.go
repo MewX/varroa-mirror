@@ -168,6 +168,7 @@ func TestRelease(t *testing.T) {
 	f21 := &ConfigFilter{Name: "f21", MaxSizeMB: 100, MinSizeMB: 1, AllowScene: true} // cannot be checked with Satisfies
 	f22 := &ConfigFilter{Name: "f22", Source: []string{"CD"}, HasLog: true, HasCue: true, AllowScene: true}
 	f23 := &ConfigFilter{Name: "f23", HasLog: true, HasCue: true, AllowScene: true}
+	f24 := &ConfigFilter{Name: "f24", ExcludedReleaseType: []string{"Album"}, AllowScene: true}
 
 	// checking filters
 	check.NotNil(f0.Check())
@@ -194,6 +195,7 @@ func TestRelease(t *testing.T) {
 	check.Nil(f21.Check())
 	check.Nil(f22.Check())
 	check.NotNil(f23.Check())
+	check.Nil(f24.Check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -309,4 +311,10 @@ func TestRelease(t *testing.T) {
 	check.False(r3.Satisfies(f22))
 	check.False(r4.Satisfies(f22))
 	check.True(r5.Satisfies(f22))
+
+	check.False(r1.Satisfies(f24))
+	check.False(r2.Satisfies(f24))
+	check.True(r3.Satisfies(f24))
+	check.True(r4.Satisfies(f24))
+	check.False(r5.Satisfies(f24))
 }
