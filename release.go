@@ -205,7 +205,7 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 				return false
 			}
 		}
-		if !foundAtLeastOneArtist {
+		if !foundAtLeastOneArtist && len(filter.Artist) != 0 {
 			logThis.Info(filter.Name+": Wrong artist", VERBOSE)
 			return false
 		}
@@ -297,7 +297,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 				return false
 			}
 		}
-		if !foundAtLeastOneArtist {
+		if !foundAtLeastOneArtist && len(filter.Artist) != 0 {
 			logThis.Info(filter.Name+": No match for artists", VERBOSE)
 			return false
 		}
