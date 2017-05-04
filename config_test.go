@@ -84,6 +84,11 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking notifications")
 	check.Equal("tokenpushovertoken", c.Notifications.Pushover.Token)
 	check.Equal("userpushoveruser", c.Notifications.Pushover.User)
+	// webhooks
+	fmt.Println("Checking webhooks")
+	check.Equal("http://some.thing", c.Notifications.WebHooks.Address)
+	check.Equal("tokenwebhooktoken", c.Notifications.WebHooks.Token)
+	check.Equal([]string{"blue"}, c.Notifications.WebHooks.Trackers)
 	// gitlab
 	fmt.Println("Checking gitlab pages")
 	check.Equal("https://gitlab.com/something/repo.git", c.GitlabPages.GitHTTPS)
@@ -147,6 +152,7 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverConfigured)
 	check.True(c.gitlabPagesConfigured)
 	check.True(c.notificationsConfigured)
+	check.True(c.webhooksConfigured)
 	check.True(c.downloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)

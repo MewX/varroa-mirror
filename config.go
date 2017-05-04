@@ -217,6 +217,7 @@ func (cw *ConfigWebServer) String() string {
 
 type ConfigNotifications struct {
 	Pushover *ConfigPushover
+	WebHooks *WebHooksConfig
 }
 
 type ConfigPushover struct {
@@ -238,6 +239,34 @@ func (cp *ConfigPushover) String() string {
 	txt := "Pushover configuration:\n"
 	txt += "\tUser: " + cp.User + "\n"
 	txt += "\tToken: " + cp.Token + "\n"
+	return txt
+}
+
+type WebHooksConfig struct {
+	Address  string
+	Token string
+	Trackers []string
+}
+
+func (whc *WebHooksConfig) Check() error {
+	// TODO check address format!
+	if whc.Address == "" {
+		return errors.New("Webhook configuration must provide remote server address")
+	}
+	if whc.Token == "" {
+		return errors.New("Webhook configuration must provide a token for the remote server")
+	}
+	if len(whc.Trackers) == 0 {
+		return errors.New("Webhook configuration must provide the list of relevant trackers")
+	}
+	return nil
+}
+
+func (whc *WebHooksConfig) String() string {
+	txt := "WebHook configuration:\n"
+	txt += "\tAddress: " + whc.Address + "\n"
+	txt += "\tToken: " + whc.Token + "\n"
+	txt += "\tTrackers: " + strings.Join(whc.Trackers, ", ") + "\n"
 	return txt
 }
 
@@ -429,6 +458,7 @@ type Config struct {
 	webserverHTTPS           bool
 	gitlabPagesConfigured    bool
 	notificationsConfigured  bool
+	webhooksConfigured       bool
 	downloadFolderConfigured bool
 	disabledAutosnatching    bool
 }
@@ -455,6 +485,9 @@ func (c *Config) String() string {
 	}
 	if c.gitlabPagesConfigured {
 		txt += c.GitlabPages.String() + "\n"
+	}
+	if c.webserverConfigured {
+		txt += c.Notifications.WebHooks.String() + "\n"
 	}
 	return txt
 }
@@ -512,9 +545,15 @@ func (c *Config) Check() error {
 		}
 	}
 	// pushover checks
-	if c.Notifications != nil {
+	if c.Notifications != nil && c.Notifications.Pushover != nil {
 		if err := c.Notifications.Pushover.Check(); err != nil {
 			return errors.Wrap(err, "Error reading pushover configuration")
+		}
+	}
+	// webhook checks
+	if c.Notifications != nil && c.Notifications.WebHooks != nil {
+		if err := c.Notifications.WebHooks.Check(); err != nil {
+			return errors.Wrap(err, "Error reading webhooks configuration")
 		}
 	}
 	// gitlab checks
@@ -535,7 +574,8 @@ func (c *Config) Check() error {
 	c.statsConfigured = len(c.Stats) != 0
 	c.webserverConfigured = c.WebServer != nil
 	c.gitlabPagesConfigured = c.GitlabPages != nil
-	c.notificationsConfigured = c.Notifications != nil
+	c.notificationsConfigured = c.Notifications != nil && c.Notifications.Pushover != nil
+	c.webhooksConfigured = c.Notifications != nil && c.Notifications.WebHooks != nil
 	c.downloadFolderConfigured = c.General.DownloadDir != ""
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
@@ -574,10 +614,18 @@ func (c *Config) Check() error {
 			}
 		}
 	}
-	if c.WebServer != nil && c.WebServer.ServeStats && len(c.Stats) == 0 {
+	if c.webhooksConfigured {
+		// check all webhook trackers point to defined Trackers
+		for _, a := range c.Notifications.WebHooks.Trackers {
+			if !StringInSlice(a, configuredTrackers) {
+				return errors.New(fmt.Sprintf("Stats enabled, but tracker %s undefined", a))
+			}
+		}
+	}
+	if c.webserverConfigured && c.WebServer.ServeStats && len(c.Stats) == 0 {
 		return errors.New("Webserver configured to serve stats, but no stats configured")
 	}
-	if c.GitlabPages != nil && len(c.Stats) == 0 {
+	if c.gitlabPagesConfigured && len(c.Stats) == 0 {
 		return errors.New("GitLab Pages configured to serve stats, but no stats configured")
 	}
 	if len(c.Filters) != 0 && len(c.Autosnatch) == 0 {

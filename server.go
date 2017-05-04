@@ -57,7 +57,7 @@ func snatchFromID(e *Environment, tracker *GazelleTracker, id string) (*Release,
 	release.torrentURL = tracker.URL + "/torrents.php?action=download&id=" + id
 	release.TorrentFile = norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
 
-	logThis.Info("Web server: downloading torrent "+release.ShortString(), NORMAL)
+	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
 	if err := tracker.DownloadTorrent(release, e.config.General.WatchDir); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err

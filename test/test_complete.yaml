@@ -57,6 +57,12 @@ notifications:
   pushover:
     token: tokenpushovertoken
     user: userpushoveruser
+  webhooks:
+    address: http://some.thing
+    token: tokenwebhooktoken
+    trackers:
+    - blue
+
 
 gitlab_pages:
   git_https: https://gitlab.com/something/repo.git
