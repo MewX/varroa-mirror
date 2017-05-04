@@ -6,10 +6,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/subosito/norma"
 )
 
 const (
@@ -100,7 +100,7 @@ func NewRelease(parts []string) (*Release, error) {
 
 	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: parts[4], Format: parts[5], Quality: parts[6], Source: parts[13], HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: parts[16], torrentURL: parts[17], Tags: tags, TorrentID: torrentID, Metadata: ReleaseMetadata{}}
 	r.TorrentFile = fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
-	r.TorrentFile = strings.Replace(r.TorrentFile, "/", "-", -1)
+	r.TorrentFile = norma.Sanitize(r.TorrentFile)
 	return r, nil
 }
 
