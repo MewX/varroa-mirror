@@ -42,6 +42,7 @@ const (
 	csvExt       = ".csv"
 	msgpackExt   = ".db"
 	jsonExt      = ".json"
+	torrentExt   = ".torrent"
 
 	// information
 	infoUserFilesArchived         = "User files backed up."
