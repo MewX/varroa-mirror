@@ -71,7 +71,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 						logThis.Error(errors.Wrap(err, errorAddingToHistory), NORMAL)
 					}
 					// send notification
-					e.Notify(tracker.Name + "/" + filter.Name + ": Snatched " + release.ShortString())
+					e.Notify(filter.Name+": Snatched "+release.ShortString(), tracker.Name, "info")
 					// save metadata once the download folder is created
 					if e.config.General.AutomaticMetadataRetrieval {
 						go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)

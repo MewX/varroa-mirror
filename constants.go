@@ -2,7 +2,7 @@ package main
 
 const (
 	varroa        = "varroa musica"
-	version       = "v14dev"
+	version       = "v14"
 	varroaVersion = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
@@ -151,7 +151,9 @@ const (
 	errorRemovingTempFile       = "Error removing temporary file %s"
 	errorAddingToHistory        = "Error adding release to history"
 	// notifications errors
-	errorNotification = "Error while sending pushover notification"
+	errorNotification  = "Error while sending pushover notification"
+	errorWebhook       = "Error pushing webhook POST"
+	errorNotifications = "Error while sending notifications"
 	// release metadata errors
 	errorWritingJSONMetadata        = "Error writing metadata file"
 	errorDownloadingTrackerCover    = "Error downloading tracker cover"

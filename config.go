@@ -244,7 +244,7 @@ func (cp *ConfigPushover) String() string {
 
 type WebHooksConfig struct {
 	Address  string
-	Token string
+	Token    string
 	Trackers []string
 }
 
@@ -457,7 +457,7 @@ type Config struct {
 	webserverHTTP            bool
 	webserverHTTPS           bool
 	gitlabPagesConfigured    bool
-	notificationsConfigured  bool
+	pushoverConfigured       bool
 	webhooksConfigured       bool
 	downloadFolderConfigured bool
 	disabledAutosnatching    bool
@@ -480,7 +480,7 @@ func (c *Config) String() string {
 	if c.webserverConfigured {
 		txt += c.WebServer.String() + "\n"
 	}
-	if c.notificationsConfigured {
+	if c.pushoverConfigured {
 		txt += c.Notifications.Pushover.String() + "\n"
 	}
 	if c.gitlabPagesConfigured {
@@ -574,7 +574,7 @@ func (c *Config) Check() error {
 	c.statsConfigured = len(c.Stats) != 0
 	c.webserverConfigured = c.WebServer != nil
 	c.gitlabPagesConfigured = c.GitlabPages != nil
-	c.notificationsConfigured = c.Notifications != nil && c.Notifications.Pushover != nil
+	c.pushoverConfigured = c.Notifications != nil && c.Notifications.Pushover != nil
 	c.webhooksConfigured = c.Notifications != nil && c.Notifications.WebHooks != nil
 	c.downloadFolderConfigured = c.General.DownloadDir != ""
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0

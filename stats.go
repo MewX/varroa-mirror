@@ -20,12 +20,12 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, maxDecreas
 	// compare with new stats
 	logThis.Info(stats.Progress(previousStats), NORMAL)
 	// send notification
-	e.Notify(tracker.Name + " stats: " + stats.Progress(previousStats))
+	e.Notify("stats: "+stats.Progress(previousStats), tracker.Name, "info")
 	// if something is wrong, send notification and stop
 	if !stats.IsProgressAcceptable(previousStats, maxDecrease) {
 		logThis.Info(errorBufferDrop, NORMAL)
 		// sending notification
-		e.Notify(errorBufferDrop)
+		e.Notify(errorBufferDrop, tracker.Name, "error")
 		// stopping things
 		e.config.disabledAutosnatching = true
 	}

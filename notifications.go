@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/gregdel/pushover"
@@ -56,14 +54,12 @@ func (whj *WebHookJSON) Send(address string, token string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "Error sending webhook request")
 	}
 	defer resp.Body.Close()
-
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
-	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
-
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("Webhook remote returned status: " + resp.Status)
+	}
+	// not doing anything with body, really.
 	return nil
 }
