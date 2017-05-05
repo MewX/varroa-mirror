@@ -57,6 +57,12 @@ notifications:
   pushover:
     token: tokenpushovertoken
     user: userpushoveruser
+  webhooks:
+    address: http://some.thing
+    token: tokenwebhooktoken
+    trackers:
+    - blue
+
 
 gitlab_pages:
   git_https: https://gitlab.com/something/repo.git
@@ -69,6 +75,8 @@ filters:
     unique_in_group: true
     tracker:
     - blue
+    excluded_type:
+    - Concert Recording
 
   - name: test
     year:
@@ -93,6 +101,7 @@ filters:
     type:
       - Album
       - EP
+
     watch_directory: test
     min_size_mb: 10
     max_size_mb: 500

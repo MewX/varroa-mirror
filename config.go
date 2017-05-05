@@ -217,6 +217,7 @@ func (cw *ConfigWebServer) String() string {
 
 type ConfigNotifications struct {
 	Pushover *ConfigPushover
+	WebHooks *WebHooksConfig
 }
 
 type ConfigPushover struct {
@@ -238,6 +239,34 @@ func (cp *ConfigPushover) String() string {
 	txt := "Pushover configuration:\n"
 	txt += "\tUser: " + cp.User + "\n"
 	txt += "\tToken: " + cp.Token + "\n"
+	return txt
+}
+
+type WebHooksConfig struct {
+	Address  string
+	Token    string
+	Trackers []string
+}
+
+func (whc *WebHooksConfig) Check() error {
+	// TODO check address format!
+	if whc.Address == "" {
+		return errors.New("Webhook configuration must provide remote server address")
+	}
+	if whc.Token == "" {
+		return errors.New("Webhook configuration must provide a token for the remote server")
+	}
+	if len(whc.Trackers) == 0 {
+		return errors.New("Webhook configuration must provide the list of relevant trackers")
+	}
+	return nil
+}
+
+func (whc *WebHooksConfig) String() string {
+	txt := "WebHook configuration:\n"
+	txt += "\tAddress: " + whc.Address + "\n"
+	txt += "\tToken: " + whc.Token + "\n"
+	txt += "\tTrackers: " + strings.Join(whc.Trackers, ", ") + "\n"
 	return txt
 }
 
@@ -279,28 +308,29 @@ func (cg *ConfigGitlabPages) String() string {
 }
 
 type ConfigFilter struct {
-	Name            string   `yaml:"name"`
-	Artist          []string `yaml:"artist"`
-	ExcludedArtist  []string `yaml:"excluded_artist"`
-	Year            []int    `yaml:"year"`
-	RecordLabel     []string `yaml:"record_label"`
-	TagsIncluded    []string `yaml:"included_tags"`
-	TagsExcluded    []string `yaml:"excluded_tags"`
-	ReleaseType     []string `yaml:"type"`
-	Format          []string `yaml:"format"`
-	Source          []string `yaml:"source"`
-	Quality         []string `yaml:"quality"`
-	HasCue          bool     `yaml:"has_cue"`
-	HasLog          bool     `yaml:"has_log"`
-	LogScore        int      `yaml:"log_score"`
-	PerfectFlac     bool     `yaml:"perfect_flac"`
-	AllowDuplicates bool     `yaml:"allow_duplicates"`
-	AllowScene      bool     `yaml:"allow_scene"`
-	MinSizeMB       int      `yaml:"min_size_mb"`
-	MaxSizeMB       int      `yaml:"max_size_mb"`
-	WatchDir        string   `yaml:"watch_directory"`
-	UniqueInGroup   bool     `yaml:"unique_in_group"`
-	Tracker         []string `yaml:"tracker"`
+	Name                string   `yaml:"name"`
+	Artist              []string `yaml:"artist"`
+	ExcludedArtist      []string `yaml:"excluded_artist"`
+	Year                []int    `yaml:"year"`
+	RecordLabel         []string `yaml:"record_label"`
+	TagsIncluded        []string `yaml:"included_tags"`
+	TagsExcluded        []string `yaml:"excluded_tags"`
+	ReleaseType         []string `yaml:"type"`
+	ExcludedReleaseType []string `yaml:"excluded_type"`
+	Format              []string `yaml:"format"`
+	Source              []string `yaml:"source"`
+	Quality             []string `yaml:"quality"`
+	HasCue              bool     `yaml:"has_cue"`
+	HasLog              bool     `yaml:"has_log"`
+	LogScore            int      `yaml:"log_score"`
+	PerfectFlac         bool     `yaml:"perfect_flac"`
+	AllowDuplicates     bool     `yaml:"allow_duplicates"`
+	AllowScene          bool     `yaml:"allow_scene"`
+	MinSizeMB           int      `yaml:"min_size_mb"`
+	MaxSizeMB           int      `yaml:"max_size_mb"`
+	WatchDir            string   `yaml:"watch_directory"`
+	UniqueInGroup       bool     `yaml:"unique_in_group"`
+	Tracker             []string `yaml:"tracker"`
 }
 
 func (cf *ConfigFilter) Check() error {
@@ -324,6 +354,9 @@ func (cf *ConfigFilter) Check() error {
 	}
 	if CommonInStringSlices(cf.TagsExcluded, cf.TagsIncluded) != nil {
 		return errors.New("Tags cannot be both included and excluded")
+	}
+	if len(cf.ExcludedReleaseType) != 0 && len(cf.ReleaseType) != 0 {
+		return errors.New("Release types cannot be both included and excluded")
 	}
 	if cf.UniqueInGroup && cf.AllowDuplicates {
 		return errors.New("Filter can both allow duplicates and only allow one snatch/torrentgroup")
@@ -379,6 +412,9 @@ func (cf *ConfigFilter) String() string {
 	if len(cf.ReleaseType) != 0 {
 		description += "\tType(s): " + strings.Join(cf.ReleaseType, ", ") + "\n"
 	}
+	if len(cf.ExcludedReleaseType) != 0 {
+		description += "\tExcluded Type(s): " + strings.Join(cf.ExcludedReleaseType, ", ") + "\n"
+	}
 	if cf.HasCue {
 		description += "\tHas Cue: true\n"
 	}
@@ -421,7 +457,8 @@ type Config struct {
 	webserverHTTP            bool
 	webserverHTTPS           bool
 	gitlabPagesConfigured    bool
-	notificationsConfigured  bool
+	pushoverConfigured       bool
+	webhooksConfigured       bool
 	downloadFolderConfigured bool
 	disabledAutosnatching    bool
 }
@@ -443,11 +480,14 @@ func (c *Config) String() string {
 	if c.webserverConfigured {
 		txt += c.WebServer.String() + "\n"
 	}
-	if c.notificationsConfigured {
+	if c.pushoverConfigured {
 		txt += c.Notifications.Pushover.String() + "\n"
 	}
 	if c.gitlabPagesConfigured {
 		txt += c.GitlabPages.String() + "\n"
+	}
+	if c.webserverConfigured {
+		txt += c.Notifications.WebHooks.String() + "\n"
 	}
 	return txt
 }
@@ -505,9 +545,15 @@ func (c *Config) Check() error {
 		}
 	}
 	// pushover checks
-	if c.Notifications != nil {
+	if c.Notifications != nil && c.Notifications.Pushover != nil {
 		if err := c.Notifications.Pushover.Check(); err != nil {
 			return errors.Wrap(err, "Error reading pushover configuration")
+		}
+	}
+	// webhook checks
+	if c.Notifications != nil && c.Notifications.WebHooks != nil {
+		if err := c.Notifications.WebHooks.Check(); err != nil {
+			return errors.Wrap(err, "Error reading webhooks configuration")
 		}
 	}
 	// gitlab checks
@@ -528,7 +574,8 @@ func (c *Config) Check() error {
 	c.statsConfigured = len(c.Stats) != 0
 	c.webserverConfigured = c.WebServer != nil
 	c.gitlabPagesConfigured = c.GitlabPages != nil
-	c.notificationsConfigured = c.Notifications != nil
+	c.pushoverConfigured = c.Notifications != nil && c.Notifications.Pushover != nil
+	c.webhooksConfigured = c.Notifications != nil && c.Notifications.WebHooks != nil
 	c.downloadFolderConfigured = c.General.DownloadDir != ""
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
@@ -567,10 +614,18 @@ func (c *Config) Check() error {
 			}
 		}
 	}
-	if c.WebServer != nil && c.WebServer.ServeStats && len(c.Stats) == 0 {
+	if c.webhooksConfigured {
+		// check all webhook trackers point to defined Trackers
+		for _, a := range c.Notifications.WebHooks.Trackers {
+			if !StringInSlice(a, configuredTrackers) {
+				return errors.New(fmt.Sprintf("Stats enabled, but tracker %s undefined", a))
+			}
+		}
+	}
+	if c.webserverConfigured && c.WebServer.ServeStats && len(c.Stats) == 0 {
 		return errors.New("Webserver configured to serve stats, but no stats configured")
 	}
-	if c.GitlabPages != nil && len(c.Stats) == 0 {
+	if c.gitlabPagesConfigured && len(c.Stats) == 0 {
 		return errors.New("GitLab Pages configured to serve stats, but no stats configured")
 	}
 	if len(c.Filters) != 0 && len(c.Autosnatch) == 0 {

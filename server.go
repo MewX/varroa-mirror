@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
+	"github.com/subosito/norma"
 )
 
 const (
@@ -54,9 +55,9 @@ func snatchFromID(e *Environment, tracker *GazelleTracker, id string) (*Release,
 		release = &Release{TorrentID: id}
 	}
 	release.torrentURL = tracker.URL + "/torrents.php?action=download&id=" + id
-	release.TorrentFile = "remote-id" + id + ".torrent"
+	release.TorrentFile = norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
 
-	logThis.Info("Web server: downloading torrent "+release.ShortString(), NORMAL)
+	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
 	if err := tracker.DownloadTorrent(release, e.config.General.WatchDir); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err
@@ -66,7 +67,7 @@ func snatchFromID(e *Environment, tracker *GazelleTracker, id string) (*Release,
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
 	// send notification
-	e.Notify(tracker.Name + ": Snatched with web interface: " + release.ShortString())
+	e.Notify("Snatched with web interface: "+release.ShortString(), tracker.Name, "info")
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
 		if e.inDaemon {

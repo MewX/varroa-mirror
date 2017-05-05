@@ -6,10 +6,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/subosito/norma"
 )
 
 const (
@@ -100,7 +100,7 @@ func NewRelease(parts []string) (*Release, error) {
 
 	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: parts[4], Format: parts[5], Quality: parts[6], Source: parts[13], HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: parts[16], torrentURL: parts[17], Tags: tags, TorrentID: torrentID, Metadata: ReleaseMetadata{}}
 	r.TorrentFile = fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
-	r.TorrentFile = strings.Replace(r.TorrentFile, "/", "-", -1)
+	r.TorrentFile = norma.Sanitize(r.TorrentFile)
 	return r, nil
 }
 
@@ -205,7 +205,7 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 				return false
 			}
 		}
-		if !foundAtLeastOneArtist {
+		if !foundAtLeastOneArtist && len(filter.Artist) != 0 {
 			logThis.Info(filter.Name+": Wrong artist", VERBOSE)
 			return false
 		}
@@ -233,6 +233,10 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 	}
 	if !filter.AllowScene && r.IsScene {
 		logThis.Info(filter.Name+": Scene release not allowed", VERBOSE)
+		return false
+	}
+	if len(filter.ExcludedReleaseType) != 0 && StringInSlice(r.ReleaseType, filter.ExcludedReleaseType) {
+		logThis.Info(filter.Name+": Excluded release type", VERBOSE)
 		return false
 	}
 	if len(filter.ReleaseType) != 0 && !StringInSlice(r.ReleaseType, filter.ReleaseType) {
@@ -293,7 +297,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 				return false
 			}
 		}
-		if !foundAtLeastOneArtist {
+		if !foundAtLeastOneArtist && len(filter.Artist) != 0 {
 			logThis.Info(filter.Name+": No match for artists", VERBOSE)
 			return false
 		}

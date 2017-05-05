@@ -1,9 +1,12 @@
 package main
 
 import (
-	"errors"
+	"bytes"
+	"encoding/json"
+	"net/http"
 
 	"github.com/gregdel/pushover"
+	"github.com/pkg/errors"
 )
 
 type Notification struct {
@@ -23,4 +26,40 @@ func (n *Notification) Send(message string, addLink bool, link string) error {
 	}
 	_, err := n.client.SendMessage(pushoverMessage, n.recipient)
 	return err
+}
+
+//-----------------------------------------------------------------------------
+
+type WebHookJSON struct {
+	Site    string
+	Message string
+	Type    string // "error" "info"
+	Link    string
+}
+
+func (whj *WebHookJSON) Send(address string, token string) error {
+	// TODO check address?
+
+	// create POST request
+	hook, err := json.Marshal(whj)
+	if err != nil {
+		return errors.Wrap(err, "Error creating webhook JSON")
+	}
+
+	req, err := http.NewRequest("POST", address, bytes.NewBuffer(hook))
+	req.Header.Set("X-Varroa-Event", whj.Type)
+	req.Header.Set("X-Varroa-Token", token)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "Error sending webhook request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("Webhook remote returned status: " + resp.Status)
+	}
+	// not doing anything with body, really.
+	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -202,7 +203,7 @@ func (e *Environment) SetUp(autologin bool) error {
 		}
 	}
 	// init notifications with pushover
-	if e.config.notificationsConfigured {
+	if e.config.pushoverConfigured {
 		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
 		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
 	}
@@ -224,16 +225,13 @@ func (e *Environment) SetUp(autologin bool) error {
 		go tracker.apiCallRateLimiter()
 		e.Trackers[label] = tracker
 
-		if _, err := e.config.GetStats(label); err == nil {
-			// stats configured for this tracker
-			h := &History{Tracker: label}
-			// load relevant history
-			if err := h.LoadAll(); err != nil {
-				return errors.Wrap(err, "Error loading history for tracker "+label)
-			}
-			e.History[label] = h
+		// load history for this tracker
+		h := &History{Tracker: label}
+		// load relevant history
+		if err := h.LoadAll(); err != nil {
+			return errors.Wrap(err, "Error loading history for tracker "+label)
 		}
-
+		e.History[label] = h
 	}
 	return nil
 }
@@ -276,17 +274,31 @@ func (e *Environment) Reload() error {
 }
 
 // Notify in a goroutine, or directly.
-func (e *Environment) Notify(msg string) error {
+func (e *Environment) Notify(msg, tracker, msgType string) error {
 	notity := func() error {
-		if e.config.notificationsConfigured {
-			link := ""
-			if e.config.gitlabPagesConfigured {
-				link = e.config.GitlabPages.URL
-			}
-			if err := e.notification.Send(msg, e.config.gitlabPagesConfigured, link); err != nil {
+		link := ""
+		if e.config.gitlabPagesConfigured {
+			link = e.config.GitlabPages.URL
+		} else if e.config.webserverConfigured && e.config.WebServer.ServeStats && e.config.WebServer.PortHTTPS != 0 {
+			link = "https://" + e.config.WebServer.Hostname + ":" + strconv.Itoa(e.config.WebServer.PortHTTPS)
+		}
+		atLeastOneError := false
+		if e.config.pushoverConfigured {
+			if err := e.notification.Send(tracker+": "+msg, e.config.gitlabPagesConfigured, link); err != nil {
 				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
-				return err
+				atLeastOneError = true
 			}
+		}
+		if e.config.webhooksConfigured && StringInSlice(tracker, e.config.Notifications.WebHooks.Trackers) {
+			// create json, POST it
+			whJSON := &WebHookJSON{Site: tracker, Message: msg, Link: link, Type: msgType}
+			if err := whJSON.Send(e.config.Notifications.WebHooks.Address, e.config.Notifications.WebHooks.Token); err != nil {
+				logThis.Error(errors.Wrap(err, errorWebhook), VERBOSE)
+				atLeastOneError = true
+			}
+		}
+		if atLeastOneError {
+			return errors.New(errorNotifications)
 		}
 		return nil
 	}
