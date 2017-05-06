@@ -59,7 +59,8 @@ compiled_varroa_dev:
     - go get github.com/howeyc/gopass
     - go get gopkg.in/yaml.v2
     - go get github.com/pkg/errors
-    - go build -race -ldflags "-extldflags '-static'" -o varroa
+    - go build -o varroa
+#    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
     paths:
     - varroa
