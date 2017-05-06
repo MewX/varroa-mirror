@@ -486,7 +486,7 @@ func (c *Config) String() string {
 	if c.gitlabPagesConfigured {
 		txt += c.GitlabPages.String() + "\n"
 	}
-	if c.webserverConfigured {
+	if c.webhooksConfigured {
 		txt += c.Notifications.WebHooks.String() + "\n"
 	}
 	return txt
