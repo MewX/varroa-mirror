@@ -119,7 +119,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 			IRCClient.Join(autosnatchConfig.AnnounceChannel)
 		case autosnatchConfig.AnnounceChannel:
 			// if sent to the announce channel, it's a new release
-			if !e.config.disabledAutosnatching {
+			if !autosnatchConfig.disabledAutosnatching {
 				announced := ev.Message()
 				logThis.Info("++ Announced: "+announced, VERBOSE)
 				if _, err = analyzeAnnounce(announced, e, tracker, autosnatchConfig); err != nil {

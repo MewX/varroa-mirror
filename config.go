@@ -81,16 +81,17 @@ func (ct *ConfigTracker) String() string {
 }
 
 type ConfigAutosnatch struct {
-	Tracker              string
-	IRCServer            string `yaml:"irc_server"`
-	IRCKey               string `yaml:"irc_key"`
-	IRCSSL               bool   `yaml:"irc_ssl"`
-	IRCSSLSkipVerify     bool   `yaml:"irc_ssl_skip_verify"`
-	NickservPassword     string `yaml:"nickserv_password"`
-	BotName              string `yaml:"bot_name"`
-	Announcer            string
-	AnnounceChannel      string   `yaml:"announce_channel"`
-	BlacklistedUploaders []string `yaml:"blacklisted_uploaders"`
+	Tracker               string
+	IRCServer             string `yaml:"irc_server"`
+	IRCKey                string `yaml:"irc_key"`
+	IRCSSL                bool   `yaml:"irc_ssl"`
+	IRCSSLSkipVerify      bool   `yaml:"irc_ssl_skip_verify"`
+	NickservPassword      string `yaml:"nickserv_password"`
+	BotName               string `yaml:"bot_name"`
+	Announcer             string
+	AnnounceChannel       string   `yaml:"announce_channel"`
+	BlacklistedUploaders  []string `yaml:"blacklisted_uploaders"`
+	disabledAutosnatching bool
 }
 
 func (ca *ConfigAutosnatch) Check() error {
@@ -460,7 +461,6 @@ type Config struct {
 	pushoverConfigured       bool
 	webhooksConfigured       bool
 	downloadFolderConfigured bool
-	disabledAutosnatching    bool
 }
 
 func (c *Config) String() string {
