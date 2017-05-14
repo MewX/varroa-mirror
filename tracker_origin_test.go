@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -64,4 +65,13 @@ func TestTrackerOriginJSON(t *testing.T) {
 	check.True(tojCheck.Origins[tracker2.Name].IsAlive)
 	check.Equal(toj.Origins[tracker2.Name].TimeSnatched, tojCheck.Origins[tracker2.Name].TimeSnatched)
 	check.Equal(toj.Origins[tracker2.Name].LastUpdatedMetadata, tojCheck.Origins[tracker2.Name].LastUpdatedMetadata)
+
+	// update
+	time.Sleep(time.Second * 1)
+	lastUpdated := toj.Origins[tracker1.Name].LastUpdatedMetadata
+	err = toj.Save(destFile, tracker1, info1)
+	check.Nil(err)
+	check.NotEqual(lastUpdated, toj.Origins[tracker1.Name].LastUpdatedMetadata)
+	check.True(lastUpdated < toj.Origins[tracker1.Name].LastUpdatedMetadata)
+
 }

@@ -9,8 +9,8 @@ import (
 )
 
 type TrackerOriginJSON struct {
-	Path    string                `json:"-"`
-	Origins map[string]OriginJSON `json:"known_origins"`
+	Path    string                 `json:"-"`
+	Origins map[string]*OriginJSON `json:"known_origins"`
 }
 
 type OriginJSON struct {
@@ -31,7 +31,7 @@ func (toc *TrackerOriginJSON) Save(path string, tracker *GazelleTracker, info Tr
 		}
 		for i, o := range toc.Origins {
 			if i == tracker.Name && o.ID == info.id {
-				o.LastUpdatedMetadata = time.Now().Unix()
+				toc.Origins[i].LastUpdatedMetadata = time.Now().Unix()
 				foundOrigin = true
 			}
 			// TODO if GetTorrentInfo errors out: origin.IsAlive = false and set TimeOfDeath
@@ -39,10 +39,10 @@ func (toc *TrackerOriginJSON) Save(path string, tracker *GazelleTracker, info Tr
 	}
 	if !foundOrigin {
 		if toc.Origins == nil {
-			toc.Origins = make(map[string]OriginJSON)
+			toc.Origins = make(map[string]*OriginJSON)
 		}
 		// creating origin
-		toc.Origins[tracker.Name] = OriginJSON{Tracker: tracker.URL, ID: info.id, TimeSnatched: time.Now().Unix(), LastUpdatedMetadata: time.Now().Unix(), IsAlive: true}
+		toc.Origins[tracker.Name] = &OriginJSON{Tracker: tracker.URL, ID: info.id, TimeSnatched: time.Now().Unix(), LastUpdatedMetadata: time.Now().Unix(), IsAlive: true}
 	}
 	return toc.write()
 }
