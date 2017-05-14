@@ -93,7 +93,7 @@ func TestRelease(t *testing.T) {
 		Metadata:    ReleaseMetadata{},
 	}
 	r4 := &Release{
-		Artists:     []string{"a"},
+		Artists:     []string{"a", "j"},
 		Title:       "title",
 		Year:        2016,
 		ReleaseType: "Single",
@@ -171,7 +171,7 @@ func TestRelease(t *testing.T) {
 	f24 := &ConfigFilter{Name: "f24", ExcludedReleaseType: []string{"Album"}, AllowScene: true}
 	f25 := &ConfigFilter{Name: "f25", HasCue: true, HasLog: true, LogScore: 100, Source: []string{"CD"}, ReleaseType: []string{"Album"}, Format: []string{"FLAC"}}
 	f26 := &ConfigFilter{Name: "f26", RecordLabel: []string{"label1", "label2"}}
-	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b"}, AllowScene: true}
+	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b", "k"}, AllowScene: true}
 
 	// checking filters
 	check.NotNil(f0.Check())

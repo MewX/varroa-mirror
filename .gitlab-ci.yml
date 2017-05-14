@@ -65,7 +65,7 @@ compiled_varroa_dev:
     paths:
     - varroa
     name: "varroa-dev-${CI_COMMIT_REF_NAME}"
-    expire_in: 1 week
+    expire_in: 4 weeks
   except:
     - tags  
     
