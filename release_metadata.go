@@ -34,9 +34,13 @@ func (rm *ReleaseMetadata) Synthetize(tracker *GazelleTracker) error {
 		return err
 	}
 	// origin
-	rm.Summary.LastUpdated = rm.Origin.LastUpdatedMetadata
-	rm.Summary.IsAlive = rm.Origin.IsAlive
-
+	origin, ok := rm.Origin.Origins[tracker.Name]
+	if ok {
+		rm.Summary.LastUpdated = origin.LastUpdatedMetadata
+		rm.Summary.IsAlive = origin.IsAlive
+	} else {
+		return errors.New(errorInfoNoMatchForOrigin)
+	}
 	// load user info
 	return rm.Summary.loadUserJSON(rm.Root)
 }

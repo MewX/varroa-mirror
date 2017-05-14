@@ -9,7 +9,11 @@ import (
 )
 
 type TrackerOriginJSON struct {
-	Path                string `json:"-"`
+	Path    string                `json:"-"`
+	Origins map[string]OriginJSON `json:"known_origins"`
+}
+
+type OriginJSON struct {
 	Tracker             string `json:"tracker"`
 	ID                  int    `json:"id"`
 	TimeSnatched        int64  `json:"time_snatched"`
@@ -20,23 +24,25 @@ type TrackerOriginJSON struct {
 
 func (toc *TrackerOriginJSON) Save(path string, tracker *GazelleTracker, info TrackerTorrentInfo) error {
 	toc.Path = path
+	foundOrigin := false
 	if FileExists(toc.Path) {
 		if err := toc.load(); err != nil {
 			return err
 		}
-		if toc.ID == info.id && toc.Tracker == tracker.URL {
-			toc.LastUpdatedMetadata = time.Now().Unix()
-		} else {
-			return errors.New(errorInfoNoMatchForOrigin)
+		for i, o := range toc.Origins {
+			if i == tracker.Name && o.ID == info.id {
+				o.LastUpdatedMetadata = time.Now().Unix()
+				foundOrigin = true
+			}
+			// TODO if GetTorrentInfo errors out: origin.IsAlive = false and set TimeOfDeath
 		}
-		// TODO if GetTorrentInfo errors out: origin.IsAlive = false and set TimeOfDeath
-	} else {
+	}
+	if !foundOrigin {
+		if toc.Origins == nil {
+			toc.Origins = make(map[string]OriginJSON)
+		}
 		// creating origin
-		toc.Tracker = tracker.URL
-		toc.ID = info.id
-		toc.TimeSnatched = time.Now().Unix()
-		toc.LastUpdatedMetadata = time.Now().Unix()
-		toc.IsAlive = true
+		toc.Origins[tracker.Name] = OriginJSON{Tracker: tracker.URL, ID: info.id, TimeSnatched: time.Now().Unix(), LastUpdatedMetadata: time.Now().Unix(), IsAlive: true}
 	}
 	return toc.write()
 }
