@@ -33,16 +33,6 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 				logThis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), VERBOSE)
 				continue
 			}
-			// checking if duplicate
-			if !filter.AllowDuplicates && e.History[tracker.Name].HasDupe(release) {
-				logThis.Info(infoNotSnatchingDuplicate, VERBOSE)
-				continue
-			}
-			// checking if a torrent from the same group has already been downloaded
-			if filter.UniqueInGroup && e.History[tracker.Name].HasReleaseFromGroup(release) {
-				logThis.Info(infoNotSnatchingUniqueInGroup, VERBOSE)
-				continue
-			}
 			// checking if a filter is triggered
 			if release.Satisfies(filter) {
 				// get torrent info!
@@ -56,6 +46,16 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 				}
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
+					// checking if duplicate
+					if !filter.AllowDuplicates && e.History[tracker.Name].HasDupe(release) {
+						logThis.Info(infoNotSnatchingDuplicate, VERBOSE)
+						continue
+					}
+					// checking if a torrent from the same group has already been downloaded
+					if filter.UniqueInGroup && e.History[tracker.Name].HasReleaseFromGroup(release) {
+						logThis.Info(infoNotSnatchingUniqueInGroup, VERBOSE)
+						continue
+					}
 					logThis.Info(" -> "+release.ShortString()+" triggered filter "+filter.Name+", snatching.", NORMAL)
 					// move to relevant watch directory
 					destination := e.config.General.WatchDir

@@ -174,8 +174,14 @@ func (r *Release) FromSlice(slice []string) error {
 func (r *Release) IsDupe(o Release) bool {
 	// checking if similar
 	// size and tags are not taken into account
-	if r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.HasLog == o.HasLog && r.LogScore == o.LogScore && r.HasCue == o.HasCue && r.IsScene == o.IsScene {
-		return true
+	if r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.IsScene == o.IsScene {
+		if r.Source == "CD" {
+			if r.HasLog == o.HasLog && r.LogScore == o.LogScore && r.HasCue == o.HasCue {
+				return true
+			}
+		} else {
+			return true
+		}
 	}
 	return false
 }
