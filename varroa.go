@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 )
@@ -31,35 +32,53 @@ func main() {
 			}
 			return
 		}
-		if cli.showConfig {
-			// loading configuration
-			if err := env.LoadConfiguration(); err != nil {
-				logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
-				return
+		if cli.encrypt || cli.decrypt {
+			// now dealing with encrypt/decrypt commands, which both require the passphrase from user
+			if err := env.GetPassphrase(); err != nil {
+				logThis.Error(errors.Wrap(err, "Error getting passphrase"), NORMAL)
 			}
+			if cli.encrypt {
+				if err := env.config.Encrypt(defaultConfigurationFile, env.configPassphrase); err != nil {
+					logThis.Info(err.Error(), NORMAL)
+					return
+				}
+				logThis.Info(infoEncrypted, NORMAL)
+			}
+			if cli.decrypt {
+				if err := env.config.DecryptTo(defaultConfigurationFile, env.configPassphrase); err != nil {
+					logThis.Error(err, NORMAL)
+					return
+				}
+				logThis.Info(infoDecrypted, NORMAL)
+			}
+			return
+		}
+		// commands that require the configuration
+		// loading configuration
+		if err := env.LoadConfiguration(); err != nil {
+			logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
+			return
+		}
+		if cli.showConfig {
 			fmt.Print("Found in configuration file: \n\n")
 			fmt.Println(env.config)
 			return
 		}
-		// now dealing with encrypt/decrypt commands, which both require the passphrase from user
-		if err := env.GetPassphrase(); err != nil {
-			logThis.Error(errors.Wrap(err, "Error getting passphrase"), NORMAL)
-		}
-		if cli.encrypt {
-			if err := env.config.Encrypt(defaultConfigurationFile, env.configPassphrase); err != nil {
-				logThis.Info(err.Error(), NORMAL)
+		if cli.downloadScan {
+			if err := env.Downloads.Load(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+				logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 				return
 			}
-			logThis.Info(infoEncrypted, NORMAL)
-		}
-		if cli.decrypt {
-			if err := env.config.DecryptTo(defaultConfigurationFile, env.configPassphrase); err != nil {
-				logThis.Error(err, NORMAL)
+			if err := env.Downloads.Scan(); err != nil {
+				logThis.Error(errors.Wrap(err, "Error scanning downloads"), NORMAL)
 				return
 			}
-			logThis.Info(infoDecrypted, NORMAL)
+			if err := env.Downloads.Save(); err != nil {
+				logThis.Error(errors.Wrap(err, "Error saving downloads database"), NORMAL)
+				return
+			}
+			return
 		}
-		return
 	}
 
 	// loading configuration

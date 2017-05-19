@@ -33,6 +33,7 @@ const (
 	htmlIndexFile             = "index.html"
 	historyFile               = "history"
 	statsFile                 = "stats"
+	downloadsDBFile           = "downloads"
 
 	// file extensions
 	yamlExt      = ".yaml"

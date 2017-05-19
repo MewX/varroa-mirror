@@ -61,6 +61,9 @@ Commands:
 	backup:
 		backup user files (stats, history, configuration file) to a
 		timestamped zip file. Automatically triggered every day.
+	downloads scan:
+		scan all current downloads to retrieve information on what
+		has already been downloaded.
 
 Configuration Commands:
 
@@ -88,6 +91,7 @@ Usage:
 	varroa backup
 	varroa show-config
 	varroa (encrypt|decrypt)
+	varroa downloads scan
 	varroa --version
 
 Options:
@@ -109,6 +113,7 @@ type varroaArguments struct {
 	showConfig      bool
 	encrypt         bool
 	decrypt         bool
+	downloadScan    bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
@@ -140,6 +145,9 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.showConfig = args["show-config"].(bool)
 	b.encrypt = args["encrypt"].(bool)
 	b.decrypt = args["decrypt"].(bool)
+	if args["downloads"].(bool) {
+		b.downloadScan = args["scan"].(bool)
+	}
 	// arguments
 	if b.refreshMetadata || b.snatch {
 		IDs, ok := args["<ID>"].([]string)
@@ -165,11 +173,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan {
 		b.canUseDaemon = false
 	}
 	return nil

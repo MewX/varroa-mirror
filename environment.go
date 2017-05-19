@@ -34,6 +34,7 @@ type Environment struct {
 	serverHTTPS      *http.Server
 	Trackers         map[string]*GazelleTracker
 	History          map[string]*History
+	Downloads        *Downloads
 
 	expectedOutput  bool
 	websocketOutput bool
@@ -191,6 +192,10 @@ func (e *Environment) LoadConfiguration() error {
 		logThis.Info("Configuration loaded.", VERBOSE)
 	}
 	e.config = newConf
+	// init downloads configuration
+	if e.config.downloadFolderConfigured {
+		e.Downloads = &Downloads{Root: e.config.General.DownloadDir}
+	}
 	return nil
 }
 
@@ -207,7 +212,6 @@ func (e *Environment) SetUp(autologin bool) error {
 		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
 		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
 	}
-
 	// log in all trackers, assuming labels are unique (configuration was checked)
 	for _, label := range e.config.TrackerLabels() {
 		config, err := e.config.GetTracker(label)
