@@ -16,6 +16,7 @@ type TrackerOriginJSON struct {
 type OriginJSON struct {
 	Tracker             string `json:"tracker"`
 	ID                  int    `json:"id"`
+	GroupID                  int    `json:"group_id"`
 	TimeSnatched        int64  `json:"time_snatched"`
 	LastUpdatedMetadata int64  `json:"last_updated"`
 	IsAlive             bool   `json:"is_alive"`
@@ -32,6 +33,8 @@ func (toc *TrackerOriginJSON) Save(path string, tracker *GazelleTracker, info Tr
 		for i, o := range toc.Origins {
 			if i == tracker.Name && o.ID == info.id {
 				toc.Origins[i].LastUpdatedMetadata = time.Now().Unix()
+				// may have been edited
+				toc.Origins[i].GroupID = info.groupID
 				foundOrigin = true
 			}
 			// TODO if GetTorrentInfo errors out: origin.IsAlive = false and set TimeOfDeath
@@ -42,7 +45,7 @@ func (toc *TrackerOriginJSON) Save(path string, tracker *GazelleTracker, info Tr
 			toc.Origins = make(map[string]*OriginJSON)
 		}
 		// creating origin
-		toc.Origins[tracker.Name] = &OriginJSON{Tracker: tracker.URL, ID: info.id, TimeSnatched: time.Now().Unix(), LastUpdatedMetadata: time.Now().Unix(), IsAlive: true}
+		toc.Origins[tracker.Name] = &OriginJSON{Tracker: tracker.URL, ID: info.id, GroupID: info.groupID, TimeSnatched: time.Now().Unix(), LastUpdatedMetadata: time.Now().Unix(), IsAlive: true}
 	}
 	return toc.write()
 }
