@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCommonInSlices(t *testing.T) {
-	fmt.Println("+ Testing CommonInSlices...")
+func TestSliceHelpers(t *testing.T) {
+	fmt.Println("+ Testing CommonInSlices + RemoveFromSlice...")
 	check := assert.New(t)
 
 	a := []string{"1", "2", "3"}
@@ -22,4 +22,9 @@ func TestCommonInSlices(t *testing.T) {
 	check.Equal([]string{"3"}, res2)
 	res3 := CommonInStringSlices(a, d)
 	check.Nil(res3)
+
+	t1 := RemoveFromSlice("4", a)
+	check.Equal(a, t1)
+	t2 := RemoveFromSlice("1", a)
+	check.Equal(b, t2)
 }
