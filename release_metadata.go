@@ -34,9 +34,13 @@ func (rm *ReleaseMetadata) Synthetize(tracker *GazelleTracker) error {
 		return err
 	}
 	// origin
-	rm.Summary.LastUpdated = rm.Origin.LastUpdatedMetadata
-	rm.Summary.IsAlive = rm.Origin.IsAlive
-
+	origin, ok := rm.Origin.Origins[tracker.Name]
+	if ok {
+		rm.Summary.LastUpdated = origin.LastUpdatedMetadata
+		rm.Summary.IsAlive = origin.IsAlive
+	} else {
+		return errors.New(errorInfoNoMatchForOrigin)
+	}
 	// load user info
 	return rm.Summary.loadUserJSON(rm.Root)
 }
@@ -46,7 +50,7 @@ func (rm *ReleaseMetadata) GenerateSummary(tracker *GazelleTracker) error {
 		return err
 	}
 	md := rm.Summary.toMD()
-	return ioutil.WriteFile(filepath.Join(rm.Root, summaryFile), []byte(md), 0644)
+	return ioutil.WriteFile(filepath.Join(rm.Root, tracker.Name+"_"+summaryFile), []byte(md), 0644)
 }
 
 // SaveFromTracker all of the associated metadata.
@@ -71,7 +75,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *Tracke
 	// NOTE: errors are not returned (for now) in case the following things can be retrieved
 
 	// write tracker metadata to target folder
-	if err := ioutil.WriteFile(filepath.Join(rm.Root, trackerMetadataFile), rm.Info.fullJSON, 0666); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(rm.Root, tracker.Name+"_"+trackerMetadataFile), rm.Info.fullJSON, 0666); err != nil {
 		logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 	} else {
 		logThis.Info(infoMetadataSaved+rm.Info.folder, VERBOSE)
@@ -83,7 +87,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *Tracke
 	} else {
 		rm.Group = *torrentGroupInfo
 		// write tracker artist metadata to target folder
-		if err := ioutil.WriteFile(filepath.Join(rm.Root, trackerTGroupMetadataFile), rm.Group.fullJSON, 0666); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(rm.Root, tracker.Name+"_"+trackerTGroupMetadataFile), rm.Group.fullJSON, 0666); err != nil {
 			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
 			logThis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, rm.Group.name, rm.Info.folder), VERBOSE)
@@ -99,7 +103,7 @@ func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *Tracke
 		rm.Artists = append(rm.Artists, *artistInfo)
 		// write tracker artist metadata to target folder
 		// making sure the artistInfo.name+jsonExt is a valid filename
-		if err := ioutil.WriteFile(filepath.Join(rm.Root, norma.Sanitize(artistInfo.name)+jsonExt), artistInfo.fullJSON, 0666); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(rm.Root, tracker.Name+"_"+norma.Sanitize(artistInfo.name)+jsonExt), artistInfo.fullJSON, 0666); err != nil {
 			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
 			logThis.Info(fmt.Sprintf(infoArtistMetadataSaved, artistInfo.name, rm.Info.folder), VERBOSE)
@@ -114,11 +118,11 @@ func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *Tracke
 		logThis.Error(errors.Wrap(err, errorGeneratingSummary), NORMAL)
 	}
 	// download tracker cover to target folder
-	if err := info.DownloadCover(filepath.Join(rm.Root, trackerCoverFile)); err != nil {
+	if err := info.DownloadCover(filepath.Join(rm.Root, tracker.Name+"_"+trackerCoverFile)); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTrackerCover), NORMAL)
 	} else {
 		logThis.Info(infoCoverSaved+rm.Info.folder, VERBOSE)
 	}
-	logThis.Info(infoAllMetadataSaved, VERBOSE)
+	logThis.Info(fmt.Sprintf(infoAllMetadataSaved, tracker.Name), VERBOSE)
 	return nil
 }

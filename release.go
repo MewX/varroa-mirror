@@ -61,24 +61,40 @@ type Release struct {
 	Metadata    ReleaseMetadata
 }
 
-func NewRelease(parts []string) (*Release, error) {
+func NewRelease(parts []string, alternative bool) (*Release, error) {
 	if len(parts) != 19 {
 		return nil, errors.New("Incomplete announce information")
 	}
+
+	var tags []string
+	var url, torrentURL, torrentID string
 	pattern := `http[s]?://[[:alnum:]\./:]*torrents\.php\?action=download&id=([\d]*)`
 	rg := regexp.MustCompile(pattern)
-	hits := rg.FindAllStringSubmatch(parts[17], -1)
-	torrentID := ""
+
+	if alternative {
+		tags = strings.Split(parts[16], ",")
+		url = parts[17]
+		torrentURL = parts[18]
+
+	} else {
+		tags = strings.Split(parts[18], ",")
+		url = parts[16]
+		torrentURL = parts[17]
+	}
+
+	// getting torrentID
+	hits := rg.FindAllStringSubmatch(torrentURL, -1)
 	if len(hits) != 0 {
 		torrentID = hits[0][1]
 	}
+	// cleaning up tags
+	for i, el := range tags {
+		tags[i] = strings.TrimSpace(el)
+	}
+
 	year, err := strconv.Atoi(parts[3])
 	if err != nil {
 		year = -1
-	}
-	tags := strings.Split(parts[18], ",")
-	for i, el := range tags {
-		tags[i] = strings.TrimSpace(el)
 	}
 	hasLog := parts[8] != ""
 	logScore, err := strconv.Atoi(parts[10])
@@ -98,11 +114,12 @@ func NewRelease(parts []string) (*Release, error) {
 		artist = append(artist, subArtists...)
 	}
 
-	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: parts[4], Format: parts[5], Quality: parts[6], Source: parts[13], HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: parts[16], torrentURL: parts[17], Tags: tags, TorrentID: torrentID, Metadata: ReleaseMetadata{}}
+	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: parts[4], Format: parts[5], Quality: parts[6], Source: parts[13], HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: url, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID, Metadata: ReleaseMetadata{}}
 	r.TorrentFile = fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
 	r.TorrentFile = norma.Sanitize(r.TorrentFile)
 	return r, nil
 }
+
 
 func (r *Release) String() string {
 	return fmt.Sprintf(ReleaseString, strings.Join(r.Artists, ","), r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.HasLog, r.LogScore, r.HasCue, r.IsScene, r.Source, r.Tags, r.url, r.torrentURL, r.TorrentID)
@@ -174,8 +191,14 @@ func (r *Release) FromSlice(slice []string) error {
 func (r *Release) IsDupe(o Release) bool {
 	// checking if similar
 	// size and tags are not taken into account
-	if r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.HasLog == o.HasLog && r.LogScore == o.LogScore && r.HasCue == o.HasCue && r.IsScene == o.IsScene {
-		return true
+	if r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.IsScene == o.IsScene {
+		if r.Source == "CD" {
+			if r.HasLog == o.HasLog && r.LogScore == o.LogScore && r.HasCue == o.HasCue {
+				return true
+			}
+		} else {
+			return true
+		}
 	}
 	return false
 }

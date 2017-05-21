@@ -59,12 +59,13 @@ compiled_varroa_dev:
     - go get github.com/howeyc/gopass
     - go get gopkg.in/yaml.v2
     - go get github.com/pkg/errors
-    - go build -race -ldflags "-extldflags '-static'" -o varroa
+    - go build -o varroa
+#    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
     paths:
     - varroa
     name: "varroa-dev-${CI_COMMIT_REF_NAME}"
-    expire_in: 1 week
+    expire_in: 4 weeks
   except:
     - tags  
     

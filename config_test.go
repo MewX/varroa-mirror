@@ -157,6 +157,18 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
 
+	// disabling autosnatch
+	check.False(c.Autosnatch[0].disabledAutosnatching)
+	autosnatchConfig, err := c.GetAutosnatch("blue")
+	check.Nil(err)
+	autosnatchConfig.disabledAutosnatching = true
+	check.True(c.Autosnatch[0].disabledAutosnatching)
+	// enabling again
+	for _, a := range c.Autosnatch {
+		a.disabledAutosnatching = false
+	}
+	check.False(c.Autosnatch[0].disabledAutosnatching)
+
 	// quick testing of files that only use a few features
 	c = &Config{}
 	err = c.Load("test/test_nostats.yaml")
@@ -193,4 +205,5 @@ func TestConfig(t *testing.T) {
 	check.True(c.downloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
+
 }

@@ -8,16 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRelease(t *testing.T) {
-	fmt.Println("+ Testing Release...")
-	check := assert.New(t)
-	// setup logger
-	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{config: c}
-	logThis = LogThis{env: env}
-
+var (
 	// releases
-	r1 := &Release{
+	r1 = &Release{
 		Artists:     []string{"a", "b"},
 		Title:       "title",
 		Year:        2017,
@@ -42,7 +35,7 @@ func TestRelease(t *testing.T) {
 		Filter:      "",
 		Metadata:    ReleaseMetadata{},
 	}
-	r2 := &Release{
+	r2 = &Release{
 		Artists:     []string{"a", "b"},
 		Title:       "title",
 		Year:        2017,
@@ -67,7 +60,7 @@ func TestRelease(t *testing.T) {
 		Filter:      "",
 		Metadata:    ReleaseMetadata{},
 	}
-	r3 := &Release{
+	r3 = &Release{
 		Artists:     []string{"c"},
 		Title:       "title",
 		Year:        2016,
@@ -92,8 +85,8 @@ func TestRelease(t *testing.T) {
 		Filter:      "",
 		Metadata:    ReleaseMetadata{},
 	}
-	r4 := &Release{
-		Artists:     []string{"a"},
+	r4 = &Release{
+		Artists:     []string{"a", "j"},
 		Title:       "title",
 		Year:        2016,
 		ReleaseType: "Single",
@@ -117,7 +110,7 @@ func TestRelease(t *testing.T) {
 		Filter:      "",
 		Metadata:    ReleaseMetadata{},
 	}
-	r5 := &Release{
+	r5 = &Release{
 		Artists:     []string{"a", "b", "a & b"},
 		Title:       "title",
 		Year:        2017,
@@ -142,6 +135,82 @@ func TestRelease(t *testing.T) {
 		Filter:      "",
 		Metadata:    ReleaseMetadata{},
 	}
+	r1Dupe = &Release{
+		Artists:     []string{"a", "b"},
+		Title:       "title",
+		Year:        2017,
+		ReleaseType: "Album",
+		Format:      "FLAC",
+		Quality:     "Lossless",
+		HasLog:      true,
+		HasCue:      true,
+		IsScene:     false,
+		Source:      "CD",
+		Tags:        []string{"tag1", "tag2", "othertag"},
+		url:         "https;//some.thing",
+		torrentURL:  "https;//some.thing/id/2",
+		TorrentID:   "277",
+		GroupID:     "21",
+		TorrentFile: "torrent.torrent",
+		Size:        123456789,
+		Folder:      "a, b (2017) title",
+		LogScore:    100,
+		Uploader:    "that_guy",
+		Timestamp:   time.Now(),
+		Filter:      "",
+		Metadata:    ReleaseMetadata{},
+	}
+	r6 = &Release{
+		Artists:     []string{"a"},
+		Title:       "title6",
+		Year:        2017,
+		ReleaseType: "Album",
+		Format:      "FLAC",
+		Quality:     "24bit Lossless",
+		Source:      "WEB",
+		Tags:        []string{"tag1", "tag2"},
+		url:         "https;//some.thing",
+		torrentURL:  "https;//some.thing/id/2",
+		TorrentID:   "22",
+		GroupID:     "21",
+		TorrentFile: "torrent.torrent",
+		Size:        123456789,
+		Folder:      "a, b (2017) title",
+		Uploader:    "that_guy",
+		Timestamp:   time.Now(),
+		Filter:      "",
+		Metadata:    ReleaseMetadata{},
+	}
+	r6Dupe = &Release{
+		Artists:     []string{"a"},
+		Title:       "title6",
+		Year:        2017,
+		ReleaseType: "Album",
+		Format:      "FLAC",
+		Quality:     "24bit Lossless",
+		Source:      "WEB",
+		Tags:        []string{"tag1", "tag2"},
+		url:         "https;//some.thing",
+		torrentURL:  "https;//some.thing/id/2",
+		TorrentID:   "212",
+		GroupID:     "21",
+		TorrentFile: "torrent.torrent",
+		Size:        123456789,
+		Folder:      "a, b (2017) title",
+		Uploader:    "that_guy",
+		Timestamp:   time.Now(),
+		Filter:      "",
+		Metadata:    ReleaseMetadata{},
+	}
+)
+
+func TestRelease(t *testing.T) {
+	fmt.Println("+ Testing Release...")
+	check := assert.New(t)
+	// setup logger
+	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
+	env := &Environment{config: c}
+	logThis = LogThis{env: env}
 
 	// filters
 	f0 := &ConfigFilter{Name: "f0"}
@@ -171,7 +240,7 @@ func TestRelease(t *testing.T) {
 	f24 := &ConfigFilter{Name: "f24", ExcludedReleaseType: []string{"Album"}, AllowScene: true}
 	f25 := &ConfigFilter{Name: "f25", HasCue: true, HasLog: true, LogScore: 100, Source: []string{"CD"}, ReleaseType: []string{"Album"}, Format: []string{"FLAC"}}
 	f26 := &ConfigFilter{Name: "f26", RecordLabel: []string{"label1", "label2"}}
-	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b"}, AllowScene: true}
+	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b", "k"}, AllowScene: true}
 
 	// checking filters
 	check.NotNil(f0.Check())

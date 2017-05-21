@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -19,22 +20,31 @@ func TestTrackerOriginJSON(t *testing.T) {
 	testDir := "test"
 	env := &Environment{}
 	c := &Config{}
-	tr := &ConfigTracker{URL: "http://azerty.com"}
-	c.Trackers = append(c.Trackers, tr)
+	tr := &ConfigTracker{Name: "tracker1", URL: "http://azerty.com"}
+	tr2 := &ConfigTracker{Name: "tracker2", URL: "http://qwerty.com"}
+	c.Trackers = append(c.Trackers, tr, tr2)
 	env.config = c
-	info := TrackerTorrentInfo{id: 1234}
+	info1 := TrackerTorrentInfo{id: 1234}
+	info2 := TrackerTorrentInfo{id: 123456}
 	destFile := filepath.Join(testDir, "test_origin.json")
-	tracker := &GazelleTracker{URL: "http://azerty.com"}
+	tracker1 := &GazelleTracker{Name: "tracker1", URL: "http://azerty.com"}
+	tracker2 := &GazelleTracker{Name: "tracker2", URL: "http://qwerty.com"}
 
 	// saving origin JSON to file
 	toj := &TrackerOriginJSON{}
 	check.False(FileExists(destFile))
-	err := toj.Save(destFile, tracker, info)
+	err := toj.Save(destFile, tracker1, info1)
 	check.Nil(err)
 	check.True(FileExists(destFile))
-	check.Equal(info.id, toj.ID)
-	check.NotEqual(0, toj.TimeSnatched)
-	check.NotEqual(0, toj.LastUpdatedMetadata)
+	check.Equal(info1.id, toj.Origins[tracker1.Name].ID)
+	check.NotEqual(0, toj.Origins[tracker1.Name].TimeSnatched)
+	check.NotEqual(0, toj.Origins[tracker1.Name].LastUpdatedMetadata)
+	err = toj.Save(destFile, tracker2, info2)
+	check.Nil(err)
+	check.True(FileExists(destFile))
+	check.Equal(info2.id, toj.Origins[tracker2.Name].ID)
+	check.NotEqual(0, toj.Origins[tracker2.Name].TimeSnatched)
+	check.NotEqual(0, toj.Origins[tracker2.Name].LastUpdatedMetadata)
 
 	defer os.Remove(destFile)
 
@@ -44,9 +54,24 @@ func TestTrackerOriginJSON(t *testing.T) {
 	var tojCheck TrackerOriginJSON
 	err = json.Unmarshal(b, &tojCheck)
 	check.Nil(err)
-	check.Equal(toj.ID, tojCheck.ID)
-	check.Equal(env.config.Trackers[0].URL, tojCheck.Tracker)
-	check.True(tojCheck.IsAlive)
-	check.Equal(toj.TimeSnatched, tojCheck.TimeSnatched)
-	check.Equal(toj.LastUpdatedMetadata, tojCheck.LastUpdatedMetadata)
+	check.Equal(toj.Origins[tracker1.Name].ID, tojCheck.Origins[tracker1.Name].ID)
+	check.Equal(env.config.Trackers[0].URL, tojCheck.Origins[tracker1.Name].Tracker)
+	check.True(tojCheck.Origins[tracker1.Name].IsAlive)
+	check.Equal(toj.Origins[tracker1.Name].TimeSnatched, tojCheck.Origins[tracker1.Name].TimeSnatched)
+	check.Equal(toj.Origins[tracker1.Name].LastUpdatedMetadata, tojCheck.Origins[tracker1.Name].LastUpdatedMetadata)
+
+	check.Equal(toj.Origins[tracker2.Name].ID, tojCheck.Origins[tracker2.Name].ID)
+	check.Equal(env.config.Trackers[1].URL, tojCheck.Origins[tracker2.Name].Tracker)
+	check.True(tojCheck.Origins[tracker2.Name].IsAlive)
+	check.Equal(toj.Origins[tracker2.Name].TimeSnatched, tojCheck.Origins[tracker2.Name].TimeSnatched)
+	check.Equal(toj.Origins[tracker2.Name].LastUpdatedMetadata, tojCheck.Origins[tracker2.Name].LastUpdatedMetadata)
+
+	// update
+	time.Sleep(time.Second * 1)
+	lastUpdated := toj.Origins[tracker1.Name].LastUpdatedMetadata
+	err = toj.Save(destFile, tracker1, info1)
+	check.Nil(err)
+	check.NotEqual(lastUpdated, toj.Origins[tracker1.Name].LastUpdatedMetadata)
+	check.True(lastUpdated < toj.Origins[tracker1.Name].LastUpdatedMetadata)
+
 }

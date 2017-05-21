@@ -241,8 +241,10 @@ func (e *Environment) Reload() error {
 	if err := e.LoadConfiguration(); err != nil {
 		return errors.Wrap(err, errorLoadingConfig)
 	}
-	if e.config.disabledAutosnatching {
-		e.config.disabledAutosnatching = false
+	if e.config.autosnatchConfigured {
+		for _, a := range e.config.Autosnatch {
+			a.disabledAutosnatching = false
+		}
 		logThis.Info("Autosnatching enabled.", NORMAL)
 	}
 	// if server up

@@ -31,7 +31,7 @@ func (a *TrackerTorrentInfo) String() string {
 	for k := range a.artists {
 		artistNames = append(artistNames, k)
 	}
-	return fmt.Sprintf("Torrent info | Record label: %s | Log Score: %d | Artists: %s | Size %s", a.label, a.logScore, strings.Join(artistNames, ","), humanize.IBytes(uint64(a.size)))
+	return fmt.Sprintf("Torrent info | ID %d | GroupID %d | Record label: %s | Log Score: %d | Artists: %s | Size %s", a.id, a.groupID, a.label, a.logScore, strings.Join(artistNames, ","), humanize.IBytes(uint64(a.size)))
 }
 
 func (a *TrackerTorrentInfo) DownloadCover(targetWithoutExtension string) error {

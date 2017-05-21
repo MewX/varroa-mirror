@@ -23,11 +23,16 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, maxDecreas
 	e.Notify("stats: "+stats.Progress(previousStats), tracker.Name, "info")
 	// if something is wrong, send notification and stop
 	if !stats.IsProgressAcceptable(previousStats, maxDecrease) {
-		logThis.Info(errorBufferDrop, NORMAL)
+		logThis.Info(tracker.Name+": "+errorBufferDrop, NORMAL)
 		// sending notification
-		e.Notify(errorBufferDrop, tracker.Name, "error")
+		e.Notify(tracker.Name+": "+errorBufferDrop, tracker.Name, "error")
 		// stopping things
-		e.config.disabledAutosnatching = true
+		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
+		if err != nil {
+			logThis.Error(errors.Wrap(err, "Cannot find autosnatch configuration for tracker "+tracker.Name), NORMAL)
+		} else {
+			autosnatchConfig.disabledAutosnatching = true
+		}
 	}
 	// save to CSV
 	if err := h.TrackerStatsHistory.Add(stats); err != nil {
