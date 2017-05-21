@@ -8,16 +8,27 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/thoj/go-ircevent"
+	"strings"
 )
 
-const announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
+const (
+	announcePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*) - ([\w\., ]*)`
+	alternativeAnnouncePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- ([\w\., ]*) - (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*)`
+)
 
 func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, autosnatchConfig *ConfigAutosnatch) (*Release, error) {
-	// getting information
+	// getting information, trying the alternative pattern if the main one fails
 	r := regexp.MustCompile(announcePattern)
+	r2 := regexp.MustCompile(alternativeAnnouncePattern)
+	alternative := false
 	hits := r.FindAllStringSubmatch(announced, -1)
+	if len(hits) == 0 {
+		hits = r2.FindAllStringSubmatch(announced, -1)
+		alternative = true
+	}
+
 	if len(hits) != 0 {
-		release, err := NewRelease(hits[0])
+		release, err := NewRelease(hits[0], alternative)
 		if err != nil {
 			return nil, err
 		}
@@ -93,6 +104,9 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 }
 
 func ircHandler(e *Environment, tracker *GazelleTracker) {
+	// general replacer to remove color codes and other useless things from announces.
+	r := strings.NewReplacer("\x02TORRENT:\x02 ", "", "\x0303", "", "\x0304", "", "\x0310", "", "\x0312", "", "\x03", "")
+
 	autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
 	if err != nil {
 		logThis.Info("Cannot find autosnatch configuration for tracker "+tracker.Name, NORMAL)
@@ -111,17 +125,17 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 			return // spam
 		}
 		// e.Arguments's first element is the message's recipient, the second is the actual message
-		switch ev.Arguments[0] {
-		case autosnatchConfig.BotName:
+		switch strings.ToLower(ev.Arguments[0]) {
+		case strings.ToLower(autosnatchConfig.BotName):
 			// if sent to the bot, it's now ok to join the announce channel
 			// waiting for the announcer bot to actually invite us
 			time.Sleep(100 * time.Millisecond)
 			IRCClient.Join(autosnatchConfig.AnnounceChannel)
-		case autosnatchConfig.AnnounceChannel:
+		case strings.ToLower(autosnatchConfig.AnnounceChannel):
 			// if sent to the announce channel, it's a new release
 			if !autosnatchConfig.disabledAutosnatching {
-				announced := ev.Message()
-				logThis.Info("++ Announced: "+announced, VERBOSE)
+				announced := r.Replace(ev.Message())
+				logThis.Info("++ Announced on " + tracker.Name + ": "+announced, VERBOSE)
 				if _, err = analyzeAnnounce(announced, e, tracker, autosnatchConfig); err != nil {
 					logThis.Error(errors.Wrap(err, errorDealingWithAnnounce), VERBOSE)
 					return
