@@ -61,9 +61,6 @@ Commands:
 	backup:
 		backup user files (stats, history, configuration file) to a
 		timestamped zip file. Automatically triggered every day.
-	downloads scan:
-		scan all current downloads to retrieve information on what
-		has already been downloaded.
 
 Configuration Commands:
 
@@ -91,7 +88,6 @@ Usage:
 	varroa backup
 	varroa show-config
 	varroa (encrypt|decrypt)
-	varroa downloads scan
 	varroa --version
 
 Options:
@@ -145,9 +141,12 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.showConfig = args["show-config"].(bool)
 	b.encrypt = args["encrypt"].(bool)
 	b.decrypt = args["decrypt"].(bool)
-	if args["downloads"].(bool) {
-		b.downloadScan = args["scan"].(bool)
-	}
+	/*
+		// TODO enable with other downloads commands
+		if args["downloads"].(bool) {
+			b.downloadScan = args["scan"].(bool)
+		}
+	*/
 	// arguments
 	if b.refreshMetadata || b.snatch {
 		IDs, ok := args["<ID>"].([]string)

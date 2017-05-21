@@ -32,7 +32,8 @@ type DownloadFolder struct {
 	GroupID            map[string]int
 	HasTrackerMetadata bool
 	HasOriginJSON      bool
-	ReleaseInfo        map[string]string
+	HasDescription     bool
+	ReleaseInfo        map[string][]byte
 }
 
 func (d *DownloadFolder) String() string {
@@ -60,7 +61,7 @@ func (d *DownloadFolder) Load() error {
 		d.GroupID = make(map[string]int)
 	}
 	if d.ReleaseInfo == nil {
-		d.ReleaseInfo = make(map[string]string)
+		d.ReleaseInfo = make(map[string][]byte)
 	}
 
 	// TODO dertermine d.State?
@@ -91,7 +92,8 @@ func (d *DownloadFolder) Load() error {
 						if err != nil {
 							logThis.Error(err, NORMAL)
 						} else {
-							d.ReleaseInfo[tracker] = string(blackfriday.MarkdownCommon(bytes))
+							d.ReleaseInfo[tracker] = blackfriday.MarkdownCommon(bytes)
+							d.HasDescription = true
 						}
 					}
 				}

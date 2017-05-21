@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -122,6 +123,14 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
 	}
+	if e.config.WebServer.ServeMetadata {
+		if err := e.Downloads.Load(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
+			return
+		}
+		// scan on startup in goroutine
+		go e.Downloads.Scan()
+	}
 
 	rtr := mux.NewRouter()
 	var mutex = &sync.Mutex{}
@@ -194,6 +203,52 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			// write response
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(fmt.Sprintf(autoCloseTab, release.ShortString())))
+		}
+		getMetadata := func(w http.ResponseWriter, r *http.Request) {
+			// if not configured, return error
+			if !e.config.WebServer.ServeMetadata {
+				logThis.Error(errors.New("Error, not configured to serve metadata"), NORMAL)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			response := []byte{}
+			id, ok := mux.Vars(r)["id"]
+			if !ok {
+				list := "<h1>Downloads</h1><ul>"
+				for _, d := range e.Downloads.Downloads {
+					list += fmt.Sprintf(`<li><a href="downloads/%d">%s</a></li>`, d.Index, d.Path)
+				}
+				list += "</ul>"
+				response = []byte(list)
+			} else {
+				// display individual download metadata
+				downloadID, err := strconv.ParseUint(id, 10, 64)
+				if err != nil {
+					logThis.Error(errors.New("Error parsing download ID"), NORMAL)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				// find Download
+				dl, err := e.Downloads.FindByID(downloadID)
+				if err != nil {
+					logThis.Error(errors.New("Error finding download ID "+id+" in db."), NORMAL)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+
+				if dl.HasDescription {
+					// TODO if more than 1 tracker, make things prettier
+					for _, rinfo := range dl.ReleaseInfo {
+						response = append(response, rinfo...)
+					}
+				} else {
+					response = []byte(dl.String())
+				}
+			}
+			// write response
+			w.WriteHeader(http.StatusOK)
+			w.Write(response)
 		}
 		upgrader := websocket.Upgrader{
 			// allows connection to websocket from anywhere
@@ -290,6 +345,8 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 		}
 		// interface for remotely ordering downloads
 		rtr.HandleFunc("/get/{id:[0-9]+}", getTorrent).Methods("GET")
+		rtr.HandleFunc("/downloads", getMetadata).Methods("GET")
+		rtr.HandleFunc("/downloads/{id:[0-9]+}", getMetadata).Methods("GET")
 		rtr.HandleFunc("/getStats/{name:[\\w]+.svg}", getStats).Methods("GET")
 		rtr.HandleFunc("/getStats/{name:[\\w]+.png}", getStats).Methods("GET")
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
@@ -303,7 +360,6 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
 		}
 	}
-
 	// serve
 	if e.config.webserverHTTP {
 		go func() {

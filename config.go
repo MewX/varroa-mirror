@@ -170,6 +170,7 @@ func (cs *ConfigStats) String() string {
 }
 
 type ConfigWebServer struct {
+	ServeMetadata  bool   `yaml:"serve_metadata"`
 	ServeStats     bool   `yaml:"serve_stats"`
 	User           string `yaml:"stats_user"`
 	Password       string `yaml:"stats_password"`
@@ -181,7 +182,7 @@ type ConfigWebServer struct {
 }
 
 func (cw *ConfigWebServer) Check() error {
-	if !cw.ServeStats && !cw.AllowDownloads {
+	if !cw.ServeStats && !cw.AllowDownloads && !cw.ServeMetadata {
 		return errors.New("Webserver configured, but not serving stats or allowing remote downloads")
 	}
 	if cw.AllowDownloads && cw.Token == "" {
@@ -630,6 +631,12 @@ func (c *Config) Check() error {
 	}
 	if len(c.Filters) != 0 && len(c.Autosnatch) == 0 {
 		return errors.New("Filters defined but no autosnatch configuration found")
+	}
+	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.downloadFolderConfigured {
+		return errors.New("Webserver configured to serve metadata, but download folder not configured")
+	}
+	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.General.AutomaticMetadataRetrieval {
+		return errors.New("Webserver configured to serve metadata, but metadata automatic download not configured")
 	}
 
 	// TODO check no duplicates (2 Stats/autosnatch for same tracker, 2 trackers with same name)

@@ -74,6 +74,7 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking webserver")
 	check.True(c.WebServer.ServeStats)
 	check.True(c.WebServer.AllowDownloads)
+	check.True(c.WebServer.ServeMetadata)
 	check.Equal("httppassword", c.WebServer.Password)
 	check.Equal("httpuser", c.WebServer.User)
 	check.Equal("thisisatoken", c.WebServer.Token)
