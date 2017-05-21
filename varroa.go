@@ -65,18 +65,11 @@ func main() {
 			return
 		}
 		if cli.downloadScan {
-			if err := env.Downloads.Load(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+			if err := env.Downloads.LoadAndScan(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
 				logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 				return
 			}
-			if err := env.Downloads.Scan(); err != nil {
-				logThis.Error(errors.Wrap(err, "Error scanning downloads"), NORMAL)
-				return
-			}
-			if err := env.Downloads.Save(); err != nil {
-				logThis.Error(errors.Wrap(err, "Error saving downloads database"), NORMAL)
-				return
-			}
+			fmt.Println(env.Downloads.String())
 			return
 		}
 	}

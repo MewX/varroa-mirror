@@ -3,7 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
+
+	"github.com/russross/blackfriday"
 )
 
 const (
@@ -18,29 +21,82 @@ type DownloadState int
 //-----------------------
 
 type DownloadFolder struct {
-	Path     string
-	Root     string
-	Metadata ReleaseMetadata // => add InfoHash!!
-	State    DownloadState
-	LogFile  []string // for check-log
-	Tracker  string
-	ID       int
-	GroupID  int
+	Index              uint64
+	Path               string
+	Root               string
+	Metadata           ReleaseMetadata // => add InfoHash!!
+	State              DownloadState
+	LogFiles           []string // for check-log
+	Trackers           []string
+	ID                 map[string]int
+	GroupID            map[string]int
+	HasTrackerMetadata bool
+	HasOriginJSON      bool
+	ReleaseInfo        map[string]string
+}
+
+func (d *DownloadFolder) String() string {
+	txt := fmt.Sprintf("Index: %d, Folder: %s, State: %d", d.Index, d.Path, d.State)
+	if d.HasTrackerMetadata {
+		txt += ", Has tracker metadata: "
+	}
+	if d.HasOriginJSON {
+		for _, t := range d.Trackers {
+			txt += fmt.Sprintf("%s (ID #%d, GID #%d) ", t, d.ID[t], d.GroupID[t])
+		}
+	}
+	return txt
 }
 
 func (d *DownloadFolder) Load() error {
 	if d.Path == "" {
-		return errors.New("ERRRRR")
+		return errors.New("Error, download folder path not set")
+	}
+	// init if necessary
+	if d.ID == nil {
+		d.ID = make(map[string]int)
+	}
+	if d.GroupID == nil {
+		d.GroupID = make(map[string]int)
+	}
+	if d.ReleaseInfo == nil {
+		d.ReleaseInfo = make(map[string]string)
 	}
 
-	// TODO dertermine d.State
-	fmt.Println(d.State)
-	fmt.Println(d.State == stateUnknown)
+	// TODO dertermine d.State?
 
-	// TODO check if metadata is present
-	fmt.Println(filepath.Join(d.Root, d.Path, metadataDir))
+	// check if tracker metadata is present
 	if DirectoryExists(filepath.Join(d.Root, d.Path, metadataDir)) {
-		fmt.Println("HAS METADATA")
+		d.HasTrackerMetadata = true
+
+		// find origin.json
+		if FileExists(filepath.Join(d.Root, d.Path, metadataDir, originJSONFile)) {
+			d.HasOriginJSON = true
+
+			origin := TrackerOriginJSON{Path: filepath.Join(d.Root, d.Path, metadataDir, originJSONFile)}
+			if err := origin.load(); err != nil {
+				logThis.Error(err, NORMAL)
+			} else {
+				for tracker, o := range origin.Origins {
+					if !StringInSlice(tracker, d.Trackers) {
+						d.Trackers = append(d.Trackers, tracker)
+					}
+					// updating
+					d.ID[tracker] = o.ID
+					d.GroupID[tracker] = o.GroupID
+					// getting release.md info
+					// TODO only update if file has changed!!!
+					if FileExists(filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+summaryFile)) {
+						bytes, err := ioutil.ReadFile(filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+summaryFile))
+						if err != nil {
+							logThis.Error(err, NORMAL)
+						} else {
+							d.ReleaseInfo[tracker] = string(blackfriday.MarkdownCommon(bytes))
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// TODO find if .rejected/.exported in root

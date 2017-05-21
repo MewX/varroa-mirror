@@ -16,7 +16,7 @@ type TrackerOriginJSON struct {
 type OriginJSON struct {
 	Tracker             string `json:"tracker"`
 	ID                  int    `json:"id"`
-	GroupID                  int    `json:"group_id"`
+	GroupID             int    `json:"group_id"`
 	TimeSnatched        int64  `json:"time_snatched"`
 	LastUpdatedMetadata int64  `json:"last_updated"`
 	IsAlive             bool   `json:"is_alive"`

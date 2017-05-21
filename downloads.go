@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
 
 	"github.com/pkg/errors"
 	"gopkg.in/vmihailenco/msgpack.v2"
@@ -14,7 +12,16 @@ import (
 type Downloads struct {
 	Root      string
 	DBFile    string
+	MaxIndex  uint64
 	Downloads []*DownloadFolder
+}
+
+func (d *Downloads) String() string {
+	txt := "Downloads:\n"
+	for _, dl := range d.Downloads {
+		txt += "\t" + dl.String() + "\n"
+	}
+	return txt
 }
 
 func (d *Downloads) Load(path string) error {
@@ -40,6 +47,12 @@ func (d *Downloads) Load(path string) error {
 	if err != nil {
 		logThis.Error(errors.Wrap(err, "Error loading releases from history file"), NORMAL)
 	}
+	// get max index
+	for _, dl := range d.Downloads {
+		if dl.Index > d.MaxIndex {
+			d.MaxIndex = dl.Index
+		}
+	}
 	return err
 }
 
@@ -54,8 +67,13 @@ func (d *Downloads) Save() error {
 }
 
 func (d *Downloads) Scan() error {
-	// TODO refresh d.Downloads
-	// don't walk, use listdir, we only want the top-level directories here
+	// list of loaded folders
+	knownDownloads := []string{}
+	for _, dl := range d.Downloads {
+		knownDownloads = append(knownDownloads, dl.Path)
+	}
+
+	// don't walk, we only want the top-level directories here
 	entries, err := ioutil.ReadDir(d.Root)
 	if err != nil {
 		log.Fatal(err)
@@ -65,39 +83,58 @@ func (d *Downloads) Scan() error {
 			dl, err := d.FindByFolder(entry.Name())
 			if err != nil {
 				// new entry
-				fmt.Println("NEW ENTRY: " + entry.Name())
+				logThis.Info("Found new download: "+entry.Name(), VERBOSEST)
 				if err := d.Add(entry.Name()); err != nil {
 					logThis.Error(err, NORMAL)
-					continue // or return errors.Wrap?
+					continue
 				}
 			} else {
-				// TODO UPDATE / CHECK?
-				fmt.Println("FOUND KNOWN: " + dl.Path)
+				logThis.Info("Updating known download: "+dl.Path, VERBOSEST)
+				// TODO might be time-consuming to reload everything...
+				if err := dl.Load(); err != nil {
+					logThis.Error(err, NORMAL)
+					continue
+				}
+			}
+			knownDownloads = RemoveFromSlice(entry.Name(), knownDownloads)
+		}
+	}
+	// remove from db folders that are no longer in the filesystem
+	if len(knownDownloads) != 0 {
+		for _, dl := range knownDownloads {
+			logThis.Info("Removing from download db: "+dl, VERBOSEST)
+			if err := d.RemoveByFolder(dl); err != nil {
+				logThis.Error(err, NORMAL)
 			}
 		}
 	}
-	// TODO DELETE ALL FOLDERS IN DB NOT FOUND HERE
+	return nil
+}
+
+func (d *Downloads) LoadAndScan(path string) error {
+	if err := d.Load(path); err != nil {
+		return errors.New("Error loading downloads database")
+	}
+	if err := d.Scan(); err != nil {
+		return errors.New("Error scanning downloads")
+	}
 	return nil
 }
 
 func (d *Downloads) Add(path string) error {
-	fmt.Println("ADDING " + path)
-	dl := &DownloadFolder{Path: path, Root: d.Root}
+	dl := &DownloadFolder{Index: d.MaxIndex + 1, Path: path, Root: d.Root}
 	if err := dl.Load(); err != nil {
 		logThis.Error(err, NORMAL)
 		return err
 	}
 	d.Downloads = append(d.Downloads, dl)
+	d.MaxIndex += 1
 	return nil
 }
 
-func (d *Downloads) FindByID(id string) (*DownloadFolder, error) {
-	tID, err := strconv.Atoi(id)
-	if err != nil {
-		return nil, err
-	}
+func (d *Downloads) FindByID(id uint64) (*DownloadFolder, error) {
 	for _, dl := range d.Downloads {
-		if dl.ID == tID {
+		if dl.Index == id {
 			return dl, nil
 		}
 	}
@@ -113,7 +150,23 @@ func (d *Downloads) FindByFolder(folder string) (*DownloadFolder, error) {
 	return nil, errors.New("folder not found")
 }
 
+func (d *Downloads) RemoveByFolder(folder string) error {
+	for i, v := range d.Downloads {
+		if v.Path == folder {
+			d.Downloads = append(d.Downloads[:i], d.Downloads[i+1:]...)
+			return nil
+		}
+	}
+	return errors.New("Folder not found in DB.")
+}
+
 func (d *Downloads) FindByInfoHash(infoHash string) error {
+	// TODO ?
+
+	return nil
+}
+
+func (d *Downloads) FindByTrackerID(tracker, id string) error {
 	// TODO ?
 
 	return nil
