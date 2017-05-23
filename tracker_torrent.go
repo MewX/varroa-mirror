@@ -17,6 +17,7 @@ type TrackerTorrentInfo struct {
 	id       int
 	groupID  int
 	label    string
+	edition  string
 	logScore int
 	artists  map[string]int // concat artists, composers, etc: artist name: id
 	size     uint64

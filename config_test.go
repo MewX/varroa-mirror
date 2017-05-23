@@ -122,6 +122,7 @@ func TestConfig(t *testing.T) {
 	check.True(f.PerfectFlac)
 	check.True(f.UniqueInGroup)
 	check.Equal([]string{"blue"}, f.Tracker)
+	check.Nil(f.Edition)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]
 	check.Equal("test", f.Name)
@@ -146,6 +147,7 @@ func TestConfig(t *testing.T) {
 	check.False(f.PerfectFlac)
 	check.False(f.UniqueInGroup)
 	check.Nil(f.Tracker)
+	check.Equal([]string{"Bonus", "Anniversary"}, f.Edition)
 
 	check.True(c.autosnatchConfigured)
 	check.True(c.statsConfigured)

@@ -101,7 +101,6 @@ filters:
     type:
       - Album
       - EP
-
     watch_directory: test
     min_size_mb: 10
     max_size_mb: 500
@@ -116,4 +115,7 @@ filters:
     - Spammy McSpam
     record_label:
     - Warp
+    edition_contains:
+    - Bonus
+    - Anniversary
 
