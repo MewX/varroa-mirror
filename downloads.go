@@ -160,6 +160,20 @@ func (d *Downloads) RemoveByFolder(folder string) error {
 	return errors.New("Folder not found in DB.")
 }
 
+func (d *Downloads) FindByArtist(artist string) []*DownloadFolder {
+	hits := []*DownloadFolder{}
+	for _, dl := range d.Downloads {
+		if dl.HasInfo {
+			for _, info := range dl.Metadata {
+				if StringInSlice(artist, info.ArtistNames()) {
+					hits = append(hits, dl)
+				}
+			}
+		}
+	}
+	return hits
+}
+
 func (d *Downloads) FindByInfoHash(infoHash string) error {
 	// TODO ?
 

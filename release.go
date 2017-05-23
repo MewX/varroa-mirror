@@ -120,7 +120,6 @@ func NewRelease(parts []string, alternative bool) (*Release, error) {
 	return r, nil
 }
 
-
 func (r *Release) String() string {
 	return fmt.Sprintf(ReleaseString, strings.Join(r.Artists, ","), r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.HasLog, r.LogScore, r.HasCue, r.IsScene, r.Source, r.Tags, r.url, r.torrentURL, r.TorrentID)
 }

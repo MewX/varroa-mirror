@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"strings"
+
 	"github.com/russross/blackfriday"
 )
 
@@ -24,36 +26,46 @@ type DownloadFolder struct {
 	Index              uint64
 	Path               string
 	Root               string
-	Metadata           ReleaseMetadata // => add InfoHash!!
+	Metadata           map[string]TrackerTorrentInfo
 	State              DownloadState
-	LogFiles           []string // for check-log
 	Trackers           []string
 	ID                 map[string]int
 	GroupID            map[string]int
 	HasTrackerMetadata bool
 	HasOriginJSON      bool
 	HasDescription     bool
+	HasInfo            bool
 	ReleaseInfo        map[string][]byte
+
+	// TODO? LogFiles           []string // for check-log
 }
 
 func (d *DownloadFolder) String() string {
 	txt := fmt.Sprintf("Index: %d, Folder: %s, State: %d", d.Index, d.Path, d.State)
 	if d.HasTrackerMetadata {
 		txt += ", Has tracker metadata: "
-	}
-	if d.HasOriginJSON {
-		for _, t := range d.Trackers {
-			txt += fmt.Sprintf("%s (ID #%d, GID #%d) ", t, d.ID[t], d.GroupID[t])
+		if d.HasOriginJSON {
+			for _, t := range d.Trackers {
+				txt += fmt.Sprintf("%s (ID #%d, GID #%d) ", t, d.ID[t], d.GroupID[t])
+			}
 		}
+		if d.HasInfo {
+			// TODO!!!
+			for _, t := range d.Trackers {
+				artists := []string{}
+				for k := range d.Metadata[t].artists {
+					artists = append(artists, k)
+				}
+				txt += fmt.Sprintf("| %s metadata: Artist(s): %s / Label: %s ", t, strings.Join(artists, ", "), d.Metadata[t].label)
+			}
+		}
+	} else {
+		txt += ", does not have any tracker metadata."
 	}
 	return txt
 }
 
-func (d *DownloadFolder) Load() error {
-	if d.Path == "" {
-		return errors.New("Error, download folder path not set")
-	}
-	// init if necessary
+func (d *DownloadFolder) init() {
 	if d.ID == nil {
 		d.ID = make(map[string]int)
 	}
@@ -63,8 +75,17 @@ func (d *DownloadFolder) Load() error {
 	if d.ReleaseInfo == nil {
 		d.ReleaseInfo = make(map[string][]byte)
 	}
+	if d.Metadata == nil {
+		d.Metadata = make(map[string]TrackerTorrentInfo)
+	}
+}
 
-	// TODO dertermine d.State?
+func (d *DownloadFolder) Load() error {
+	if d.Path == "" {
+		return errors.New("Error, download folder path not set")
+	}
+	// init if necessary
+	d.init()
 
 	// check if tracker metadata is present
 	if DirectoryExists(filepath.Join(d.Root, d.Path, metadataDir)) {
@@ -85,10 +106,13 @@ func (d *DownloadFolder) Load() error {
 					// updating
 					d.ID[tracker] = o.ID
 					d.GroupID[tracker] = o.GroupID
+
+					// TODO only update if file has changed!!! or if state == unsorted
+
 					// getting release.md info
-					// TODO only update if file has changed!!!
-					if FileExists(filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+summaryFile)) {
-						bytes, err := ioutil.ReadFile(filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+summaryFile))
+					releaseMD := filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+summaryFile)
+					if FileExists(releaseMD) {
+						bytes, err := ioutil.ReadFile(releaseMD)
 						if err != nil {
 							logThis.Error(err, NORMAL)
 						} else {
@@ -96,16 +120,24 @@ func (d *DownloadFolder) Load() error {
 							d.HasDescription = true
 						}
 					}
+					// getting release info from json
+					infoJSON := filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+trackerMetadataFile)
+					if FileExists(infoJSON) {
+						info := TrackerTorrentInfo{}
+						if err := info.Load(infoJSON); err != nil {
+							logThis.Error(err, NORMAL)
+						} else {
+							d.Metadata[tracker] = info
+							d.HasInfo = true
+						}
+					}
 				}
 			}
 		}
 	}
 
-	// TODO find if .rejected/.exported in root
-
-	// TODO scan for log files (using walk, for multi-disc releases)
-
-	// TODO if state = unsorted, parse metadata to get Tracker + ID (+ GroupID?)
+	// TODO external way to detect d.State? hidden file? ex: find if .rejected/.exported in root?
+	// TODO scan for log files (using walk, for multi-disc releases)?
 
 	return nil
 }

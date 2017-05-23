@@ -64,13 +64,34 @@ func main() {
 			fmt.Println(env.config)
 			return
 		}
-		if cli.downloadScan {
+		if cli.downloadScan || cli.downloadSearch {
+			if !env.config.downloadFolderConfigured {
+				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), NORMAL)
+				return
+			}
 			if err := env.Downloads.LoadAndScan(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
 				logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 				return
 			}
-			fmt.Println(env.Downloads.String())
-			return
+			if cli.downloadScan {
+				fmt.Println(env.Downloads.String())
+				if err := env.Downloads.Save(); err != nil {
+					logThis.Error(errors.Wrap(err, "Error saving downloads database"), NORMAL)
+					return
+				}
+				return
+			}
+			if cli.downloadSearch {
+				hits := env.Downloads.FindByArtist(cli.artistName)
+				if len(hits) == 0 {
+					fmt.Println("Nothing found.")
+				} else {
+					for _, dl := range hits {
+						fmt.Println(dl)
+					}
+				}
+				return
+			}
 		}
 	}
 
