@@ -4,9 +4,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"regexp"
-	"time"
-
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/thoj/go-ircevent"

@@ -55,7 +55,7 @@ const (
 	infoNotSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
 	infoFilterIgnoredForTracker   = "Filter %s ignored for tracker %s."
 	infoNotSnatchingUniqueInGroup = "Release from the same torrentgroup already downloaded, and snatch must be unique in group"
-	infoAllMetadataSaved          = "All metadata saved."
+	infoAllMetadataSaved          = "All %s metadata saved."
 	infoMetadataSaved             = "Metadata saved to: "
 	infoArtistMetadataSaved       = "Artist Metadata for %s saved to: %s"
 	infoTorrentGroupMetadataSaved = "Torrent Group Metadata for %s saved to: %s"

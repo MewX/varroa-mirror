@@ -241,6 +241,7 @@ func TestRelease(t *testing.T) {
 	f25 := &ConfigFilter{Name: "f25", HasCue: true, HasLog: true, LogScore: 100, Source: []string{"CD"}, ReleaseType: []string{"Album"}, Format: []string{"FLAC"}}
 	f26 := &ConfigFilter{Name: "f26", RecordLabel: []string{"label1", "label2"}}
 	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b", "k"}, AllowScene: true}
+	f28 := &ConfigFilter{Name: "f28", PerfectFlac: true, Edition: []string{"Deluxe", "Bonus"}}
 
 	// checking filters
 	check.NotNil(f0.Check())
@@ -271,6 +272,7 @@ func TestRelease(t *testing.T) {
 	check.Nil(f25.Check())
 	check.Nil(f26.Check())
 	check.Nil(f27.Check())
+	check.Nil(f28.Check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -412,6 +414,8 @@ func TestRelease(t *testing.T) {
 	i4 := &TrackerTorrentInfo{size: 123456789, logScore: 80}
 	i5 := &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
 	i6 := &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
+	i7 := &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition"}
+	i8 := &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster"}
 
 	// log score
 	check.True(r1.HasCompatibleTrackerInfo(f17, []string{}, i1))
@@ -432,4 +436,7 @@ func TestRelease(t *testing.T) {
 	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i3))
 	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i4))
 
+	// edition
+	check.True(r1.HasCompatibleTrackerInfo(f28, []string{}, i7))
+	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i8))
 }

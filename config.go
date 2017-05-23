@@ -319,6 +319,7 @@ type ConfigFilter struct {
 	TagsExcluded        []string `yaml:"excluded_tags"`
 	ReleaseType         []string `yaml:"type"`
 	ExcludedReleaseType []string `yaml:"excluded_type"`
+	Edition             []string `yaml:"edition_contains"`
 	Format              []string `yaml:"format"`
 	Source              []string `yaml:"source"`
 	Quality             []string `yaml:"quality"`

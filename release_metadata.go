@@ -123,6 +123,6 @@ func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *Tracke
 	} else {
 		logThis.Info(infoCoverSaved+rm.Info.folder, VERBOSE)
 	}
-	logThis.Info(infoAllMetadataSaved, VERBOSE)
+	logThis.Info(fmt.Sprintf(infoAllMetadataSaved, tracker.Name), VERBOSE)
 	return nil
 }

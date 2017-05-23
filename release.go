@@ -328,6 +328,19 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 		logThis.Info(filter.Name+": Uploader "+info.uploader+" is blacklisted.", VERBOSE)
 		return false
 	}
+	if len(filter.Edition) != 0 {
+		found := false
+		for _, w := range filter.Edition {
+			if strings.Contains(strings.ToLower(info.edition), strings.ToLower(w)) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			logThis.Info(filter.Name+": Edition name does not match any creteria.", VERBOSE)
+			return false
+		}
+	}
 	// taking the opportunity to retrieve and save some info
 	r.Size = info.size
 	r.LogScore = info.logScore
