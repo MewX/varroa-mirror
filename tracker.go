@@ -234,7 +234,7 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
 	info := &TrackerTorrentInfo{}
-	if unmarshalErr := info.LoadFromBytes(data); err != nil {
+	if unmarshalErr := info.LoadFromBytes(data, true); err != nil {
 		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
 	return info, nil

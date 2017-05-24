@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/subosito/norma"
+	"github.com/russross/blackfriday"
 )
 
 const (
@@ -240,7 +241,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				if dl.HasDescription {
 					// TODO if more than 1 tracker, make things prettier
 					for _, rinfo := range dl.ReleaseInfo {
-						response = append(response, rinfo...)
+						response = append(response, blackfriday.MarkdownCommon(rinfo)...)
 					}
 				} else {
 					response = []byte(dl.String())

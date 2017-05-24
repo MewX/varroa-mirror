@@ -203,7 +203,7 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 		// try to find even if not in history
 		if e.config.downloadFolderConfigured {
 			for _, m := range missing {
-				// get data from RED.
+				// get data from tracker.
 				info, err := tracker.GetTorrentInfo(m)
 				if err != nil {
 					logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)

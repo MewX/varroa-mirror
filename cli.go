@@ -66,6 +66,8 @@ Commands:
 		downloads.
 	downloads search:
 		returns all known downloads on which an artist has worked.
+	downloads info:
+		returns information about a specific download
 
 Configuration Commands:
 
@@ -92,7 +94,7 @@ Usage:
 	varroa snatch <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa downloads (scan|search <ARTIST>)
+	varroa downloads (scan|search <ARTIST>|info <ID>)
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -117,6 +119,7 @@ type varroaArguments struct {
 	decrypt         bool
 	downloadScan    bool
 	downloadSearch  bool
+	downloadInfo  bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
@@ -155,9 +158,10 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if b.downloadSearch {
 			b.artistName = args["<ARTIST>"].(string)
 		}
+		b.downloadInfo = args["info"].(bool)
 	}
 	// arguments
-	if b.refreshMetadata || b.snatch {
+	if b.refreshMetadata || b.snatch  || b.downloadInfo {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
 			return errors.New("Invalid torrent IDs.")
@@ -181,11 +185,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo {
 		b.canUseDaemon = false
 	}
 	return nil

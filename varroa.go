@@ -64,7 +64,7 @@ func main() {
 			fmt.Println(env.config)
 			return
 		}
-		if cli.downloadScan || cli.downloadSearch {
+		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo {
 			if !env.config.downloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), NORMAL)
 				return
@@ -73,12 +73,9 @@ func main() {
 				logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 				return
 			}
+			defer env.Downloads.Save()
 			if cli.downloadScan {
 				fmt.Println(env.Downloads.String())
-				if err := env.Downloads.Save(); err != nil {
-					logThis.Error(errors.Wrap(err, "Error saving downloads database"), NORMAL)
-					return
-				}
 				return
 			}
 			if cli.downloadSearch {
@@ -90,6 +87,15 @@ func main() {
 						fmt.Println(dl)
 					}
 				}
+				return
+			}
+			if cli.downloadInfo {
+				dl, err := env.Downloads.FindByID(uint64(cli.torrentIDs[0]))
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), NORMAL)
+					return
+				}
+				fmt.Println(dl.Description())
 				return
 			}
 		}

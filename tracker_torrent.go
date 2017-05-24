@@ -123,9 +123,15 @@ func (a *TrackerTorrentInfo) Release() *Release {
 }
 
 // LoadFromBytes and fill the relevant fields.
-func (a *TrackerTorrentInfo) LoadFromBytes(data []byte) error {
+func (a *TrackerTorrentInfo) LoadFromBytes(data []byte, fullJSON bool) error {
 	var gt GazelleTorrent
-	if unmarshalErr := json.Unmarshal(data, &gt.Response); unmarshalErr != nil {
+	var unmarshalErr error
+	if fullJSON {
+		unmarshalErr = json.Unmarshal(data, &gt)
+	} else {
+		unmarshalErr = json.Unmarshal(data, &gt.Response)
+	}
+	if unmarshalErr != nil {
 		logThis.Error(errors.Wrap(unmarshalErr, "Error parsing torrent info JSON"), NORMAL)
 		return nil
 	}
@@ -178,5 +184,5 @@ func (a *TrackerTorrentInfo) Load(path string) error {
 	if err != nil {
 		return errors.Wrap(err, "Error loading JSON file "+path)
 	}
-	return a.LoadFromBytes(bytes)
+	return a.LoadFromBytes(bytes, false)
 }

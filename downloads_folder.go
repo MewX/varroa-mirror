@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 
 	"strings"
-
-	"github.com/russross/blackfriday"
 )
 
 const (
@@ -41,7 +39,11 @@ type DownloadFolder struct {
 }
 
 func (d *DownloadFolder) String() string {
-	txt := fmt.Sprintf("Index: %d, Folder: %s, State: %d", d.Index, d.Path, d.State)
+	return fmt.Sprintf("Index: %d, Folder: %s, State: %d", d.Index, d.Path, d.State)
+}
+
+func (d *DownloadFolder) Description() string {
+	txt := d.String()
 	if d.HasTrackerMetadata {
 		txt += ", Has tracker metadata: "
 		if d.HasOriginJSON {
@@ -49,8 +51,11 @@ func (d *DownloadFolder) String() string {
 				txt += fmt.Sprintf("%s (ID #%d, GID #%d) ", t, d.ID[t], d.GroupID[t])
 			}
 		}
-		if d.HasInfo {
-			// TODO!!!
+		if d.HasDescription {
+			for _, t := range d.Trackers {
+				txt += fmt.Sprintf("\n%s:\n%s", t, string(d.ReleaseInfo[t]))
+			}
+		} else if d.HasInfo {
 			for _, t := range d.Trackers {
 				artists := []string{}
 				for k := range d.Metadata[t].artists {
@@ -64,6 +69,7 @@ func (d *DownloadFolder) String() string {
 	}
 	return txt
 }
+
 
 func (d *DownloadFolder) init() {
 	if d.ID == nil {
@@ -116,7 +122,7 @@ func (d *DownloadFolder) Load() error {
 						if err != nil {
 							logThis.Error(err, NORMAL)
 						} else {
-							d.ReleaseInfo[tracker] = blackfriday.MarkdownCommon(bytes)
+							d.ReleaseInfo[tracker] = bytes
 							d.HasDescription = true
 						}
 					}
