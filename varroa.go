@@ -100,9 +100,11 @@ func main() {
 			}
 			if cli.downloadSort {
 				if len(cli.torrentIDs) == 0 {
-					// TODO sort everything
-					fmt.Println("SORTING ALL DOWNLOADS")
-
+					fmt.Println("Considering new or unsorted downloads.")
+					if err := env.Downloads.Sort(); err != nil {
+						logThis.Error(errors.Wrap(err, "Error sorting downloads"), NORMAL)
+						return
+					}
 				} else {
 					dl, err := env.Downloads.FindByID(uint64(cli.torrentIDs[0]))
 					if err != nil {

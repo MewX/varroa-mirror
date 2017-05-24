@@ -165,13 +165,13 @@ func (d *DownloadFolder) Load() error {
 }
 
 func (d *DownloadFolder) Sort() error {
-	fmt.Println("Hello! Sorting " + d.Path)
+	fmt.Println("Sorting " + d.Path)
 	// TODO if mpd configured...
 	if Accept("Load release into MPD") {
 		//TODO
 		fmt.Println("Sending to MPD.")
 	}
-	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it with yourself."))
+	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
 
 	validChoice := false
 	errs := 0
