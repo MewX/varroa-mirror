@@ -122,7 +122,7 @@ func (d *Downloads) LoadAndScan(path string) error {
 }
 
 func (d *Downloads) Add(path string) error {
-	dl := &DownloadFolder{Index: d.MaxIndex + 1, Path: path, Root: d.Root}
+	dl := &DownloadFolder{Index: d.MaxIndex + 1, Path: path, Root: d.Root, State: stateUnknown}
 	if err := dl.Load(); err != nil {
 		logThis.Error(err, NORMAL)
 		return err

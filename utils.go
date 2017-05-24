@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"math"
@@ -9,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ttacon/chalk"
 )
 
 //-----------------------------------------------------------------------------
@@ -249,4 +252,57 @@ func readableInt64(a int64) string {
 		return "+" + ByteSize(math.Abs(float64(a))).String()
 	}
 	return "-" + ByteSize(math.Abs(float64(a))).String()
+}
+
+//-----------------------------------------------------------------------------
+
+// BlueBold outputs a string in blue bold.
+func BlueBold(in string) string {
+	return chalk.Bold.TextStyle(chalk.Blue.Color(in))
+}
+
+// GreenBold outputs a string in green bold.
+func GreenBold(in string) string {
+	return chalk.Bold.TextStyle(chalk.Green.Color(in))
+}
+
+// Green outputs a string in green.
+func Green(in string) string {
+	return chalk.Green.Color(in)
+}
+
+// Red outputs a string in red.
+func Red(in string) string {
+	return chalk.Red.Color(in)
+}
+
+// Yellow outputs a string in yellow.
+func Yellow(in string) string {
+	return chalk.Yellow.Color(in)
+}
+
+// Choice message logging
+func UserChoice(msg string, args ...interface{}) {
+	msg = fmt.Sprintf(msg, args...)
+	fmt.Print(BlueBold(msg))
+}
+
+// GetInput from user
+func GetInput() (string, error) {
+	scanner := bufio.NewReader(os.Stdin)
+	choice, scanErr := scanner.ReadString('\n')
+	return strings.TrimSpace(choice), scanErr
+}
+
+// Accept asks a question and returns the answer
+func Accept(question string) bool {
+	fmt.Printf(BlueBold("%s Y/N : "), question)
+	input, err := GetInput()
+	if err == nil {
+		switch input {
+		case "y", "Y", "yes":
+			return true
+		}
+	}
+	return false
 }

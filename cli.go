@@ -65,9 +65,15 @@ Commands:
 		scan the downloads folder and refreshes the database of known
 		downloads.
 	downloads search:
-		returns all known downloads on which an artist has worked.
+		return all known downloads on which an artist has worked.
 	downloads info:
-		returns information about a specific download
+		return information about a specific download
+	downloads sort:
+		sort over all unsorted downloads, or sort a specific release.
+		sorting allows you to tag which release to keep and which to
+		only seed; selected downloads can be exported to an external
+		folder.
+
 
 Configuration Commands:
 
@@ -94,7 +100,7 @@ Usage:
 	varroa snatch <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa downloads (scan|search <ARTIST>|info <ID>)
+	varroa downloads (scan|search <ARTIST>|info <ID>|sort [<ID>])
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -119,7 +125,8 @@ type varroaArguments struct {
 	decrypt         bool
 	downloadScan    bool
 	downloadSearch  bool
-	downloadInfo  bool
+	downloadInfo    bool
+	downloadSort    bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
@@ -159,9 +166,10 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 			b.artistName = args["<ARTIST>"].(string)
 		}
 		b.downloadInfo = args["info"].(bool)
+		b.downloadSort = args["sort"].(bool)
 	}
 	// arguments
-	if b.refreshMetadata || b.snatch  || b.downloadInfo {
+	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
 			return errors.New("Invalid torrent IDs.")
@@ -185,11 +193,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort {
 		b.canUseDaemon = false
 	}
 	return nil

@@ -64,7 +64,7 @@ func main() {
 			fmt.Println(env.config)
 			return
 		}
-		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo {
+		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort {
 			if !env.config.downloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), NORMAL)
 				return
@@ -96,6 +96,24 @@ func main() {
 					return
 				}
 				fmt.Println(dl.Description())
+				return
+			}
+			if cli.downloadSort {
+				if len(cli.torrentIDs) == 0 {
+					// TODO sort everything
+					fmt.Println("SORTING ALL DOWNLOADS")
+
+				} else {
+					dl, err := env.Downloads.FindByID(uint64(cli.torrentIDs[0]))
+					if err != nil {
+						logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), NORMAL)
+						return
+					}
+					if err := dl.Sort(); err != nil {
+						logThis.Error(errors.Wrap(err, "Error sorting selected download"), NORMAL)
+						return
+					}
+				}
 				return
 			}
 		}
