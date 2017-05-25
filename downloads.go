@@ -6,7 +6,9 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
@@ -19,9 +21,9 @@ type Downloads struct {
 }
 
 func (d *Downloads) String() string {
-	txt := "Downloads:\n"
+	txt := "Downloads in database:\n"
 	for _, dl := range d.Downloads {
-		txt += "\t" + dl.String() + "\n"
+		txt += "\t" + dl.ShortString() + "\n"
 	}
 	return txt
 }
@@ -80,18 +82,22 @@ func (d *Downloads) Scan() error {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
+	s.Prefix = "Scanning"
+	s.Start()
 	for _, entry := range entries {
 		if entry.IsDir() {
 			dl, err := d.FindByFolder(entry.Name())
 			if err != nil {
 				// new entry
-				logThis.Info("Found new download: "+entry.Name(), VERBOSEST)
+				// logThis.Info("Found new download: "+entry.Name(), VERBOSEST)
 				if err := d.Add(entry.Name()); err != nil {
 					logThis.Error(err, NORMAL)
 					continue
 				}
 			} else {
-				logThis.Info("Updating known download: "+dl.Path, VERBOSEST)
+				// logThis.Info("Updating known download: "+dl.Path, VERBOSEST)
 				// TODO might be time-consuming to reload everything...
 				if err := dl.Load(); err != nil {
 					logThis.Error(err, NORMAL)
@@ -101,10 +107,12 @@ func (d *Downloads) Scan() error {
 			knownDownloads = RemoveFromSlice(entry.Name(), knownDownloads)
 		}
 	}
+	s.Stop()
+
 	// remove from db folders that are no longer in the filesystem
 	if len(knownDownloads) != 0 {
 		for _, dl := range knownDownloads {
-			logThis.Info("Removing from download db: "+dl, VERBOSEST)
+			// logThis.Info("Removing from download db: "+dl, VERBOSEST)
 			if err := d.RemoveByFolder(dl); err != nil {
 				logThis.Error(err, NORMAL)
 			}
@@ -124,7 +132,7 @@ func (d *Downloads) LoadAndScan(path string) error {
 }
 
 func (d *Downloads) Add(path string) error {
-	dl := &DownloadFolder{Index: d.MaxIndex + 1, Path: path, Root: d.Root, State: stateUnknown}
+	dl := &DownloadFolder{Index: d.MaxIndex + 1, Path: path, Root: d.Root, State: stateUnsorted}
 	if err := dl.Load(); err != nil {
 		logThis.Error(err, NORMAL)
 		return err
@@ -190,7 +198,7 @@ func (d *Downloads) FindByTrackerID(tracker, id string) error {
 
 func (d *Downloads) Sort(libraryPath string, useHardLinks bool) error {
 	for _, dl := range d.Downloads {
-		if dl.State == stateUnknown || dl.State == stateUnsorted {
+		if dl.State == stateUnsorted {
 			if !Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.Index, dl.Path)) {
 				return nil
 			}

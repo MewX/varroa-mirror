@@ -11,12 +11,13 @@ import (
 )
 
 const (
-	stateUnknown  DownloadState = iota // no metadata
-	stateUnsorted                      // has metadata but is unsorted
+	stateUnsorted DownloadState = iota // has metadata but is unsorted
 	stateAccepted                      // has metadata and has been accepted, but not yet exported to library
 	stateExported                      // has metadata and has been exported to library
 	stateRejected                      // has metadata and is not to be exported to library
 )
+
+var states = []string{"Unsorted", "Accepted", "Exported", "Rejected"}
 
 type DownloadState int
 
@@ -27,10 +28,9 @@ func (ds DownloadState) Colorize(txt string) string {
 	case stateExported:
 		txt = GreenBold(txt)
 	case stateUnsorted:
-		txt = Yellow(txt)
+		txt = Blue(txt)
 	case stateRejected:
-		txt = Red(txt)
-	case stateUnknown:
+		txt = RedBold(txt)
 	}
 	return txt
 }
@@ -55,8 +55,12 @@ type DownloadFolder struct {
 	// TODO? LogFiles           []string // for check-log
 }
 
+func (d *DownloadFolder) ShortString() string {
+	return d.State.Colorize(fmt.Sprintf("[#%d]\t[%s]\t%s", d.Index, states[d.State][:1], d.Path))
+}
+
 func (d *DownloadFolder) String() string {
-	return d.State.Colorize(fmt.Sprintf("Index: %d, Folder: %s, State: %d", d.Index, d.Path, d.State))
+	return d.State.Colorize(fmt.Sprintf("ID #%d: %s [%s]", d.Index, d.Path, states[d.State]))
 }
 
 func (d *DownloadFolder) Description() string {
@@ -172,6 +176,10 @@ func (d *DownloadFolder) Sort(libraryPath string, useHardLinks bool) error {
 		fmt.Println("Sending to MPD.")
 	}
 	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
+
+	if d.HasInfo && Accept("Display known metadata") {
+		fmt.Println(d.Description())
+	}
 
 	validChoice := false
 	errs := 0

@@ -315,6 +315,11 @@ func BlueBold(in string) string {
 	return chalk.Bold.TextStyle(chalk.Blue.Color(in))
 }
 
+// Blue outputs a string in blue.
+func Blue(in string) string {
+	return chalk.Blue.Color(in)
+}
+
 // GreenBold outputs a string in green bold.
 func GreenBold(in string) string {
 	return chalk.Bold.TextStyle(chalk.Green.Color(in))
@@ -323,6 +328,11 @@ func GreenBold(in string) string {
 // Green outputs a string in green.
 func Green(in string) string {
 	return chalk.Green.Color(in)
+}
+
+// RedBold outputs a string in red bold.
+func RedBold(in string) string {
+	return chalk.Bold.TextStyle(chalk.Red.Color(in))
 }
 
 // Red outputs a string in red.
