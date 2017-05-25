@@ -1,13 +1,13 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-
-	"strings"
 	"strconv"
+	"strings"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -164,7 +164,7 @@ func (d *DownloadFolder) Load() error {
 	return nil
 }
 
-func (d *DownloadFolder) Sort() error {
+func (d *DownloadFolder) Sort(libraryPath string, useHardLinks bool) error {
 	fmt.Println("Sorting " + d.Path)
 	// TODO if mpd configured...
 	if Accept("Load release into MPD") {
@@ -193,14 +193,14 @@ func (d *DownloadFolder) Sort() error {
 			d.State = stateUnsorted
 			validChoice = true
 		} else if strings.ToUpper(choice) == "A" {
-
 			fmt.Println(Green("This releasee is ACCEPTED. It will not be removed, but will be ignored in later sorting."))
 			fmt.Println(Green("This can be reverted by sorting its specific download ID."))
 			d.State = stateAccepted
-			if Accept("DO YOU WANT TO EXPORT") {
-				fmt.Println("EXPORTING!!!")
-				// TODO
-
+			if Accept("Do you want to export it now ") {
+				fmt.Println("Exporting files to the library root...")
+				if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(libraryPath, d.Path), useHardLinks); err != nil {
+					return errors.Wrap(err, "Error exporting download "+d.Path)
+				}
 				fmt.Println(Green("This releasee is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
 				d.State = stateExported
 			} else {

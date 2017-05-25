@@ -142,7 +142,28 @@ func (ca *ConfigAutosnatch) String() string {
 	txt += "\tAnnounce channel: " + ca.AnnounceChannel + "\n"
 	if len(ca.BlacklistedUploaders) != 0 {
 		txt += "\tBlacklisted uploaders: " + strings.Join(ca.BlacklistedUploaders, ",") + "\n"
+	} else {
+		txt += "\tNo blacklisted uploaders"
 	}
+	return txt
+}
+
+type ConfigLibrary struct {
+	Directory    string `yaml:"directory"`
+	UseHardLinks bool   `yaml:"use_hard_links"`
+}
+
+func (cl *ConfigLibrary) Check() error {
+	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
+		return errors.New("Library directory does not exist")
+	}
+	return nil
+}
+
+func (cl *ConfigLibrary) String() string {
+	txt := "Library configuration:\n"
+	txt += "\tDirectory: " + cl.Directory + "\n"
+	txt += "\tUse hard links: " + fmt.Sprintf("%v", cl.UseHardLinks) + "\n"
 	return txt
 }
 
@@ -454,6 +475,7 @@ type Config struct {
 	Notifications            *ConfigNotifications
 	GitlabPages              *ConfigGitlabPages `yaml:"gitlab_pages"`
 	Filters                  []*ConfigFilter
+	Library                  *ConfigLibrary
 	autosnatchConfigured     bool
 	statsConfigured          bool
 	webserverConfigured      bool
@@ -463,6 +485,7 @@ type Config struct {
 	pushoverConfigured       bool
 	webhooksConfigured       bool
 	downloadFolderConfigured bool
+	libraryConfigured        bool
 }
 
 func (c *Config) String() string {
@@ -581,6 +604,7 @@ func (c *Config) Check() error {
 	c.downloadFolderConfigured = c.General.DownloadDir != ""
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
+	c.libraryConfigured = c.Library != nil
 
 	// config-wide checks
 	configuredTrackers := c.TrackerLabels()
@@ -638,6 +662,9 @@ func (c *Config) Check() error {
 	}
 	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.General.AutomaticMetadataRetrieval {
 		return errors.New("Webserver configured to serve metadata, but metadata automatic download not configured")
+	}
+	if c.libraryConfigured && !c.downloadFolderConfigured {
+		return errors.New("Library is configured but not the default download directory")
 	}
 
 	// TODO check no duplicates (2 Stats/autosnatch for same tracker, 2 trackers with same name)

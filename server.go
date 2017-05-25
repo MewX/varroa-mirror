@@ -13,8 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	"github.com/subosito/norma"
 	"github.com/russross/blackfriday"
+	"github.com/subosito/norma"
 )
 
 const (

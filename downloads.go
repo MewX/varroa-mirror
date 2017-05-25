@@ -1,14 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"gopkg.in/vmihailenco/msgpack.v2"
-	"strconv"
-	"fmt"
 )
 
 type Downloads struct {
@@ -188,14 +188,14 @@ func (d *Downloads) FindByTrackerID(tracker, id string) error {
 	return nil
 }
 
-func (d *Downloads) Sort() error {
+func (d *Downloads) Sort(libraryPath string, useHardLinks bool) error {
 	for _, dl := range d.Downloads {
 		if dl.State == stateUnknown || dl.State == stateUnsorted {
 			if !Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.Index, dl.Path)) {
 				return nil
 			}
-			if err := dl.Sort(); err != nil {
-				return errors.Wrap(err, "Error sorting download " + strconv.FormatUint(dl.Index, 10))
+			if err := dl.Sort(libraryPath, useHardLinks); err != nil {
+				return errors.Wrap(err, "Error sorting download "+strconv.FormatUint(dl.Index, 10))
 			}
 		}
 	}

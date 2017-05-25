@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -162,9 +164,8 @@ func FileExists(path string) bool {
 }
 
 // CopyFile copies a file from src to dst. If src and dst files exist, and are
-// the same, then return success. Otherwise, attempt to create a hard link
-// between the two files. If that fail, copy the file contents from src to dst.
-func CopyFile(src, dst string) (err error) {
+// the same, then return success. Copy the file contents from src to dst.
+func CopyFile(src, dst string, useHardLinks bool) (err error) {
 	sfi, err := os.Stat(src)
 	if err != nil {
 		return
@@ -187,8 +188,10 @@ func CopyFile(src, dst string) (err error) {
 			return
 		}
 	}
-	err = copyFileContents(src, dst)
-	return
+	if useHardLinks {
+		return os.Link(src, dst)
+	}
+	return copyFileContents(src, dst)
 }
 
 // copyFileContents copies the contents of the file named src to the file named
@@ -215,6 +218,57 @@ func copyFileContents(src, dst string) (err error) {
 		return
 	}
 	err = out.Sync()
+	return
+}
+
+// CopyDir recursively copies a directory tree, attempting to preserve permissions.
+// Source directory must exist, destination directory must *not* exist.
+// Symlinks are ignored and skipped.
+func CopyDir(src, dst string, useHardLinks bool) (err error) {
+	src = filepath.Clean(src)
+	dst = filepath.Clean(dst)
+
+	si, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if !si.IsDir() {
+		return errors.New("Source is not a directory")
+	}
+	_, err = os.Stat(dst)
+	if err != nil && !os.IsNotExist(err) {
+		return
+	}
+	if err == nil {
+		return errors.New("Destination already exists")
+	}
+	err = os.MkdirAll(dst, si.Mode())
+	if err != nil {
+		return
+	}
+	entries, err := ioutil.ReadDir(src)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			err = CopyDir(srcPath, dstPath, useHardLinks)
+			if err != nil {
+				return
+			}
+		} else {
+			// Skip symlinks.
+			if entry.Mode()&os.ModeSymlink != 0 {
+				continue
+			}
+			err = CopyFile(srcPath, dstPath, useHardLinks)
+			if err != nil {
+				return
+			}
+		}
+	}
 	return
 }
 

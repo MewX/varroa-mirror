@@ -179,7 +179,7 @@ func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) e
 		return err
 	}
 	// move to relevant directory
-	if err := CopyFile(r.TorrentFile, filepath.Join(destinationFolder, r.TorrentFile)); err != nil {
+	if err := CopyFile(r.TorrentFile, filepath.Join(destinationFolder, r.TorrentFile), false); err != nil {
 		return errors.Wrap(err, errorCouldNotMoveTorrent)
 	}
 	// cleaning up

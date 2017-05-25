@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,10 @@ func TestConfig(t *testing.T) {
 	c := &Config{}
 	err := c.Load("test/test_complete.yaml")
 	check.Nil(err)
+
+	// setting up
+	os.Mkdir("library", 0777)
+	defer os.Remove("library")
 
 	// general
 	check.Equal("test", c.General.WatchDir)
@@ -85,6 +90,10 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking notifications")
 	check.Equal("tokenpushovertoken", c.Notifications.Pushover.Token)
 	check.Equal("userpushoveruser", c.Notifications.Pushover.User)
+	// library
+	fmt.Println("Checking library")
+	check.Equal("library", c.Library.Directory)
+	check.True(c.Library.UseHardLinks)
 	// webhooks
 	fmt.Println("Checking webhooks")
 	check.Equal("http://some.thing", c.Notifications.WebHooks.Address)
@@ -159,6 +168,7 @@ func TestConfig(t *testing.T) {
 	check.True(c.downloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
+	check.True(c.libraryConfigured)
 
 	// disabling autosnatch
 	check.False(c.Autosnatch[0].disabledAutosnatching)
@@ -184,6 +194,7 @@ func TestConfig(t *testing.T) {
 	check.True(c.downloadFolderConfigured)
 	check.False(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
+	check.False(c.libraryConfigured)
 
 	c = &Config{}
 	err = c.Load("test/test_nostatsnoweb.yaml")
@@ -196,6 +207,7 @@ func TestConfig(t *testing.T) {
 	check.False(c.downloadFolderConfigured)
 	check.False(c.webserverHTTP)
 	check.False(c.webserverHTTPS)
+	check.False(c.libraryConfigured)
 
 	c = &Config{}
 	err = c.Load("test/test_statsnoautosnatch.yaml")
@@ -208,5 +220,6 @@ func TestConfig(t *testing.T) {
 	check.True(c.downloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
+	check.False(c.libraryConfigured)
 
 }

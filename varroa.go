@@ -99,9 +99,13 @@ func main() {
 				return
 			}
 			if cli.downloadSort {
+				if !env.config.libraryConfigured {
+					logThis.Error(errors.New("Cannot sort downloads, library is not configured"), NORMAL)
+					return
+				}
 				if len(cli.torrentIDs) == 0 {
 					fmt.Println("Considering new or unsorted downloads.")
-					if err := env.Downloads.Sort(); err != nil {
+					if err := env.Downloads.Sort(env.config.Library.Directory, env.config.Library.UseHardLinks); err != nil {
 						logThis.Error(errors.Wrap(err, "Error sorting downloads"), NORMAL)
 						return
 					}
@@ -111,7 +115,7 @@ func main() {
 						logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), NORMAL)
 						return
 					}
-					if err := dl.Sort(); err != nil {
+					if err := dl.Sort(env.config.Library.Directory, env.config.Library.UseHardLinks); err != nil {
 						logThis.Error(errors.Wrap(err, "Error sorting selected download"), NORMAL)
 						return
 					}
