@@ -51,6 +51,7 @@ notifications:
 library:
   directory: library
   use_hard_links: true
+  folder_template: $a ($y) $t [$f $q] [$s] [$l $n $e]
 
 autosnatch:
   - tracker: blue

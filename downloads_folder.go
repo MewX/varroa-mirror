@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/subosito/norma"
 )
 
 const (
@@ -168,7 +171,7 @@ func (d *DownloadFolder) Load() error {
 	return nil
 }
 
-func (d *DownloadFolder) Sort(libraryPath string, useHardLinks bool) error {
+func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks bool) error {
 	fmt.Println("Sorting " + d.Path)
 	// TODO if mpd configured...
 	if Accept("Load release into MPD") {
@@ -184,32 +187,39 @@ func (d *DownloadFolder) Sort(libraryPath string, useHardLinks bool) error {
 	validChoice := false
 	errs := 0
 	for !validChoice {
-		UserChoice("[R]eject, [P]ostpone decision, [A]ccept: ")
+		UserChoice("[A]ccept, [R]eject, or [D]efer decision : ")
 		choice, scanErr := GetInput()
 		if scanErr != nil {
 			return scanErr
 		}
 
 		if strings.ToUpper(choice) == "R" {
-			fmt.Println(Red("This release will be considered REJECTED. It will not be removed, but will be ignored in later sorting."))
-			fmt.Println(Red("This can be reverted by sorting its specific download ID (" + strconv.FormatUint(d.Index, 10) + ")."))
+			fmt.Println(RedBold("This release will be considered REJECTED. It will not be removed, but will be ignored in later sorting."))
+			fmt.Println(RedBold("This can be reverted by sorting its specific download ID (" + strconv.FormatUint(d.Index, 10) + ")."))
 			d.State = stateRejected
 			validChoice = true
-		} else if strings.ToUpper(choice) == "P" {
+		} else if strings.ToUpper(choice) == "D" {
 			fmt.Println(Green("Decision about this download is POSTPONED."))
 
 			d.State = stateUnsorted
 			validChoice = true
 		} else if strings.ToUpper(choice) == "A" {
-			fmt.Println(Green("This releasee is ACCEPTED. It will not be removed, but will be ignored in later sorting."))
+			fmt.Println(Green("This release is ACCEPTED. It will not be removed, but will be ignored in later sorting."))
 			fmt.Println(Green("This can be reverted by sorting its specific download ID."))
 			d.State = stateAccepted
+
 			if Accept("Do you want to export it now ") {
 				fmt.Println("Exporting files to the library root...")
-				if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(libraryPath, d.Path), useHardLinks); err != nil {
+
+				newName := d.generatePath(folderTemplate)
+				if !Accept("Export as " + newName) {
+					newName = d.Path
+					// TODO: allow user to edit manually
+				}
+				if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(libraryPath, newName), useHardLinks); err != nil {
 					return errors.Wrap(err, "Error exporting download "+d.Path)
 				}
-				fmt.Println(Green("This releasee is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
+				fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
 				d.State = stateExported
 			} else {
 				fmt.Println("The release was not exported. It can be exported later with the 'downloads export' subcommand.")
@@ -225,4 +235,60 @@ func (d *DownloadFolder) Sort(libraryPath string, useHardLinks bool) error {
 		}
 	}
 	return nil
+}
+
+func (d *DownloadFolder) generatePath(folderTemplate string) string {
+	if folderTemplate == "" || !d.HasInfo {
+		return d.Path
+	}
+
+	// TODO HOW TO DO IT IF MORE THAN 1?
+	info := d.Metadata[d.Trackers[0]]
+	release := info.Release()
+
+	r := strings.NewReplacer(
+		"$a", "{{$a}}",
+		"$t", "{{$t}}",
+		"$y", "{{$y}}",
+		"$q", "{{$q}}",
+		"$f", "{{$f}}",
+		"$s", "{{$s}}",
+		"$l", "{{$l}}",
+		"$n", "{{$n}}",
+		"$e", "{{$e}}",
+	)
+	artists := strings.Join(release.Artists, ", ")
+	// TODO do better.
+	if len(release.Artists) >= 3 {
+		artists = "Various Artists"
+	}
+
+	// replace with all valid epub parameters
+	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$q := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}%s`,
+		artists,
+		release.Year,
+		release.Title,
+		release.Quality,
+		release.Format,
+		release.Source,
+		info.label,
+		"CATALOG_NUMBER",
+		info.edition,
+		r.Replace(folderTemplate))
+
+	var doc bytes.Buffer
+	te := template.Must(template.New("hop").Parse(tmpl))
+	if err := te.Execute(&doc, nil); err != nil {
+		return d.Path
+	}
+	newName := strings.TrimSpace(doc.String())
+	// making sure the path is relative
+	if strings.HasPrefix(newName, "/") {
+		newName = newName[1:]
+	}
+
+	// TODO check it's not more than 250 characters long!
+
+	// making sure the final filename is valid
+	return norma.Sanitize(newName)
 }

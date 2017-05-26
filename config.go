@@ -149,13 +149,17 @@ func (ca *ConfigAutosnatch) String() string {
 }
 
 type ConfigLibrary struct {
-	Directory    string `yaml:"directory"`
-	UseHardLinks bool   `yaml:"use_hard_links"`
+	Directory      string `yaml:"directory"`
+	UseHardLinks   bool   `yaml:"use_hard_links"`
+	FolderTemplate string `yaml:"folder_template"`
 }
 
 func (cl *ConfigLibrary) Check() error {
 	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
 		return errors.New("Library directory does not exist")
+	}
+	if strings.Contains(cl.FolderTemplate, "/") {
+		return errors.New("Library folder template cannot contains subdirectories")
 	}
 	return nil
 }
@@ -164,6 +168,7 @@ func (cl *ConfigLibrary) String() string {
 	txt := "Library configuration:\n"
 	txt += "\tDirectory: " + cl.Directory + "\n"
 	txt += "\tUse hard links: " + fmt.Sprintf("%v", cl.UseHardLinks) + "\n"
+	txt += "\tFolder template: " + cl.FolderTemplate + "\n"
 	return txt
 }
 

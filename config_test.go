@@ -94,6 +94,7 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking library")
 	check.Equal("library", c.Library.Directory)
 	check.True(c.Library.UseHardLinks)
+	check.Equal("$a ($y) $t [$f $q] [$s] [$l $n $e]", c.Library.FolderTemplate)
 	// webhooks
 	fmt.Println("Checking webhooks")
 	check.Equal("http://some.thing", c.Notifications.WebHooks.Address)
