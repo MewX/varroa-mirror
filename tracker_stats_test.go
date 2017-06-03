@@ -24,8 +24,8 @@ func TestStats(t *testing.T) {
 	s6 := &TrackerStats{Up: 1551450749434, Down: 169522649052, Buffer: 1463563402983, WarningBuffer: 2416228600004, Ratio: 9.15187}
 	s7buffer := (90/0.95 - 100) * 1024 * 1024
 	s7 := &TrackerStats{Up: 90 * 1024 * 1024, Down: 100 * 1024 * 1024, Buffer: int64(s7buffer), WarningBuffer: int64((90/0.60 - 100) * 1024 * 1024), Ratio: 0.90}
-	s8buffer := (90/0.95 - 150) * 1024 * 1024
-	s8 := &TrackerStats{Up: 90 * 1024 * 1024, Down: 150 * 1024 * 1024, Buffer: int64(s8buffer), WarningBuffer: int64((90/0.60 - 150) * 1024 * 1024), Ratio: 0.60}
+	s8buffer := (90/0.95 - 145) * 1024 * 1024
+	s8 := &TrackerStats{Up: 90 * 1024 * 1024, Down: 145 * 1024 * 1024, Buffer: int64(s8buffer), WarningBuffer: int64((90/0.60 - 145) * 1024 * 1024), Ratio: 0.62}
 	s9buffer := (90/0.95 - 180) * 1024 * 1024
 	s9 := &TrackerStats{Up: 90 * 1024 * 1024, Down: 180 * 1024 * 1024, Buffer: int64(s9buffer), WarningBuffer: int64((90/0.60 - 180) * 1024 * 1024), Ratio: 0.50}
 
@@ -99,5 +99,5 @@ func TestStats(t *testing.T) {
 
 	acceptable = s9.IsProgressAcceptable(s8, 100)
 	fmt.Println(s9.Progress(s8) + fmt.Sprintf(" | %v", acceptable))
-	verify.True(acceptable)
+	verify.False(acceptable)
 }

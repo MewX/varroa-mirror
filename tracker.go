@@ -30,6 +30,10 @@ const (
 	statusSuccess = "success"
 
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
+
+	// Notable ratios
+	demotionRatio = 0.95
+	warningRatio  = 0.6
 )
 
 func (t *GazelleTracker) apiCallRateLimiter() {
@@ -221,8 +225,8 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 		Class:         s.Response.Personal.Class,
 		Up:            uint64(s.Response.Stats.Uploaded),
 		Down:          uint64(s.Response.Stats.Downloaded),
-		Buffer:        int64(float64(s.Response.Stats.Uploaded)/0.95) - int64(s.Response.Stats.Downloaded),
-		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/0.6) - int64(s.Response.Stats.Downloaded),
+		Buffer:        int64(float64(s.Response.Stats.Uploaded)/demotionRatio) - int64(s.Response.Stats.Downloaded),
+		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/warningRatio) - int64(s.Response.Stats.Downloaded),
 		Ratio:         ratio,
 	}
 	return stats, nil
