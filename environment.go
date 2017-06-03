@@ -196,6 +196,11 @@ func (e *Environment) LoadConfiguration() error {
 	if e.config.downloadFolderConfigured {
 		e.Downloads = &Downloads{Root: e.config.General.DownloadDir}
 	}
+	// init notifications with pushover
+	if e.config.pushoverConfigured {
+		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
+		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
+	}
 	return nil
 }
 
@@ -206,11 +211,6 @@ func (e *Environment) SetUp(autologin bool) error {
 		if err := os.MkdirAll(statsDir, 0777); err != nil {
 			return errors.Wrap(err, errorCreatingStatsDir)
 		}
-	}
-	// init notifications with pushover
-	if e.config.pushoverConfigured {
-		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
-		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
 	}
 	// log in all trackers, assuming labels are unique (configuration was checked)
 	for _, label := range e.config.TrackerLabels() {
@@ -281,7 +281,7 @@ func (e *Environment) Reload() error {
 
 // Notify in a goroutine, or directly.
 func (e *Environment) Notify(msg, tracker, msgType string) error {
-	notity := func() error {
+	notify := func() error {
 		link := ""
 		if e.config.gitlabPagesConfigured {
 			link = e.config.GitlabPages.URL
@@ -308,7 +308,7 @@ func (e *Environment) Notify(msg, tracker, msgType string) error {
 		}
 		return nil
 	}
-	return e.RunOrGo(notity)
+	return e.RunOrGo(notify)
 }
 
 // RunOrGo depending on whether we're in the daemon or not.

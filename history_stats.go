@@ -107,7 +107,7 @@ func (t *TrackerStatsHistory) StatsPerDay(firstTimestamp time.Time) ([]time.Time
 		virtualStats.Down = uint64(downSlope*float64(d.Unix()) + downOffset)
 		bufferSlope := float64((float64(t.TrackerStats[afterIndex].Buffer) - float64(t.TrackerStats[beforeIndex].Buffer)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
 		bufferOffset := float64(t.TrackerStats[beforeIndex].Buffer) - bufferSlope*float64(allTimes[beforeIndex].Unix())
-		virtualStats.Buffer = uint64(bufferSlope*float64(d.Unix()) + bufferOffset)
+		virtualStats.Buffer = int64(bufferSlope*float64(d.Unix()) + bufferOffset)
 		ratioSlope := float64((t.TrackerStats[afterIndex].Ratio - t.TrackerStats[beforeIndex].Ratio) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
 		ratioOffset := t.TrackerStats[beforeIndex].Ratio - ratioSlope*float64(allTimes[beforeIndex].Unix())
 		virtualStats.Ratio = ratioSlope*float64(d.Unix()) + ratioOffset

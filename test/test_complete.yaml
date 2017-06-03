@@ -18,6 +18,7 @@ stats:
   - tracker: blue
     update_period_hour: 1
     max_buffer_decrease_by_period_mb: 500
+    min_ratio: 0.98
   - tracker: purple
     update_period_hour: 12
     max_buffer_decrease_by_period_mb: 2500

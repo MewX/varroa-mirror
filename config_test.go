@@ -71,10 +71,12 @@ func TestConfig(t *testing.T) {
 	check.Equal("blue", s.Tracker)
 	check.Equal(1, s.UpdatePeriodH)
 	check.Equal(500, s.MaxBufferDecreaseMB)
+	check.Equal(0.98, s.MinimumRatio)
 	s = c.Stats[1]
 	check.Equal("purple", s.Tracker)
 	check.Equal(12, s.UpdatePeriodH)
 	check.Equal(2500, s.MaxBufferDecreaseMB)
+	check.Equal(0.60, s.MinimumRatio)
 	// webserver
 	fmt.Println("Checking webserver")
 	check.True(c.WebServer.ServeStats)
