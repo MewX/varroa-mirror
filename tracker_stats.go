@@ -34,9 +34,9 @@ func (s *TrackerStats) Progress(previous *TrackerStats) string {
 	return fmt.Sprintf(progress, readableUInt64(s.Up), readableInt64(dup), readableUInt64(s.Down), readableInt64(ddown), readableInt64(s.Buffer), readableInt64(dbuff), readableInt64(s.WarningBuffer), readableInt64(dwbuff), s.Ratio, dratio)
 }
 
-func (s *TrackerStats) IsProgressAcceptable(previous *TrackerStats, maxDecrease int) bool {
-	if s.Ratio <= warningRatio {
-		logThis.Info("Ratio has dropped below warning level, unacceptable.", NORMAL)
+func (s *TrackerStats) IsProgressAcceptable(previous *TrackerStats, maxDecrease int, minimumRatio float64) bool {
+	if s.Ratio <= minimumRatio {
+		logThis.Info("Ratio has dropped below minimum authorized, unacceptable.", NORMAL)
 		return false
 	}
 	if previous.Ratio == 0 {

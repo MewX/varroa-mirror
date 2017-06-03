@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func manageStats(e *Environment, h *History, tracker *GazelleTracker, maxDecrease int) error {
+func manageStats(e *Environment, h *History, tracker *GazelleTracker, maxDecrease int, minimumRatio float64) error {
 	stats, err := tracker.GetStats()
 	if err != nil {
 		return errors.Wrap(err, errorGettingStats)
@@ -22,8 +22,8 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, maxDecreas
 	// send notification
 	e.Notify("stats: "+stats.Progress(previousStats), tracker.Name, "info")
 	// if something is wrong, send notification and stop
-	if !stats.IsProgressAcceptable(previousStats, maxDecrease) {
-		if stats.Ratio <= warningRatio {
+	if !stats.IsProgressAcceptable(previousStats, maxDecrease, minimumRatio) {
+		if stats.Ratio <= minimumRatio {
 			// unacceptable because of low ratio
 			logThis.Info(tracker.Name+": "+errorBelowWarningRatio, NORMAL)
 			// sending notification
@@ -63,7 +63,7 @@ func updateStats(e *Environment, label string) error {
 	if !ok {
 		return errors.Wrap(err, "Error getting History for "+label)
 	}
-	return manageStats(e, history, tracker, statsConfig.MaxBufferDecreaseMB)
+	return manageStats(e, history, tracker, statsConfig.MaxBufferDecreaseMB, statsConfig.MinimumRatio)
 }
 
 func monitorAllStats(e *Environment) {

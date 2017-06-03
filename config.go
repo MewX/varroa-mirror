@@ -148,8 +148,9 @@ func (ca *ConfigAutosnatch) String() string {
 
 type ConfigStats struct {
 	Tracker             string
-	UpdatePeriodH       int `yaml:"update_period_hour"`
-	MaxBufferDecreaseMB int `yaml:"max_buffer_decrease_by_period_mb"`
+	UpdatePeriodH       int     `yaml:"update_period_hour"`
+	MaxBufferDecreaseMB int     `yaml:"max_buffer_decrease_by_period_mb"`
+	MinimumRatio        float64 `yaml:"min_ratio"`
 }
 
 func (cs *ConfigStats) Check() error {
@@ -159,6 +160,12 @@ func (cs *ConfigStats) Check() error {
 	if cs.UpdatePeriodH == 0 {
 		return errors.New("Missing stats update period (in hours)")
 	}
+	if cs.MinimumRatio == 0 {
+		cs.MinimumRatio = warningRatio
+	}
+	if cs.MinimumRatio < warningRatio {
+		return errors.New("Minimum ratio must be at least 0.60")
+	}
 	return nil
 }
 
@@ -166,6 +173,7 @@ func (cs *ConfigStats) String() string {
 	txt := "Stats configuration for " + cs.Tracker + "\n"
 	txt += "\tUpdate period (hours): " + strconv.Itoa(cs.UpdatePeriodH) + "\n"
 	txt += "\tMaximum buffer decrease (MB): " + strconv.Itoa(cs.MaxBufferDecreaseMB) + "\n"
+	txt += "\tMinimum ratio: " + strconv.FormatFloat(cs.MinimumRatio, 'f', 2, 64) + "\n"
 	return txt
 }
 
@@ -607,7 +615,7 @@ func (c *Config) Check() error {
 			}
 		}
 	}
-	if len(c.Stats) != 0 {
+	if c.statsConfigured {
 		// check all stats point to defined Trackers
 		for _, a := range c.Stats {
 			if !StringInSlice(a.Tracker, configuredTrackers) {

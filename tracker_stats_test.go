@@ -45,59 +45,63 @@ func TestStats(t *testing.T) {
 	verify.InDelta(float64(-0.05), dratio, 0.001)
 
 	// testing acceptability
-	acceptable := s2.IsProgressAcceptable(s1, 100)
+	acceptable := s2.IsProgressAcceptable(s1, 100, 0.6)
 	fmt.Println(s2.Progress(s1) + fmt.Sprintf(" | %v", acceptable))
 	verify.True(acceptable)
 
-	acceptable = s3.IsProgressAcceptable(s2, 100)
+	acceptable = s3.IsProgressAcceptable(s2, 100, 0.6)
 	fmt.Println(s3.Progress(s2) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 
-	acceptable = s5.IsProgressAcceptable(s4, 100)
+	acceptable = s5.IsProgressAcceptable(s4, 100, 0.6)
 	fmt.Println(s5.Progress(s4) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 
-	acceptable = s6.IsProgressAcceptable(s4, 100)
+	acceptable = s6.IsProgressAcceptable(s4, 100, 0.6)
 	fmt.Println(s6.Progress(s4) + fmt.Sprintf(" | %v", acceptable))
 	verify.True(acceptable)
 
-	acceptable = s2.IsProgressAcceptable(s1, 0)
+	acceptable = s2.IsProgressAcceptable(s1, 0, 0.6)
 	fmt.Println(s2.Progress(s1) + fmt.Sprintf(" | %v", acceptable))
 	verify.True(acceptable)
 
-	acceptable = s3.IsProgressAcceptable(s2, 10)
+	acceptable = s3.IsProgressAcceptable(s2, 10, 0.6)
 	fmt.Println(s3.Progress(s2) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 
-	acceptable = s5.IsProgressAcceptable(s4, 10)
+	acceptable = s5.IsProgressAcceptable(s4, 10, 0.6)
 	fmt.Println(s5.Progress(s4) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 
-	acceptable = s6.IsProgressAcceptable(s4, 20)
+	acceptable = s6.IsProgressAcceptable(s4, 20, 0.6)
 	fmt.Println(s6.Progress(s4) + fmt.Sprintf(" | %v", acceptable))
 	verify.True(acceptable)
 
-	acceptable = s1.IsProgressAcceptable(s2, 100)
+	acceptable = s1.IsProgressAcceptable(s2, 100, 0.6)
 	fmt.Println(s1.Progress(s2) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 
-	acceptable = s6.IsProgressAcceptable(s4, 5)
+	acceptable = s6.IsProgressAcceptable(s4, 5, 0.6)
 	fmt.Println(s6.Progress(s4) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 
-	acceptable = s8.IsProgressAcceptable(s7, 5)
+	acceptable = s8.IsProgressAcceptable(s7, 5, 0.6)
 	fmt.Println(s8.Progress(s7) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 
-	acceptable = s8.IsProgressAcceptable(s7, 100)
+	acceptable = s8.IsProgressAcceptable(s7, 100, 0.6)
 	fmt.Println(s8.Progress(s7) + fmt.Sprintf(" | %v", acceptable))
 	verify.True(acceptable)
 
-	acceptable = s9.IsProgressAcceptable(s8, 5)
+	acceptable = s8.IsProgressAcceptable(s7, 100, 0.7)
+	fmt.Println(s8.Progress(s7) + fmt.Sprintf(" | %v", acceptable))
+	verify.False(acceptable)
+
+	acceptable = s9.IsProgressAcceptable(s8, 5, 0.6)
 	fmt.Println(s9.Progress(s8) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 
-	acceptable = s9.IsProgressAcceptable(s8, 100)
+	acceptable = s9.IsProgressAcceptable(s8, 100, 0.6)
 	fmt.Println(s9.Progress(s8) + fmt.Sprintf(" | %v", acceptable))
 	verify.False(acceptable)
 }
