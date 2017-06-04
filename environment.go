@@ -341,8 +341,12 @@ func (e *Environment) GenerateIndex() error {
 	if !e.config.statsConfigured {
 		return nil
 	}
+	theme := knownThemes[darkOrange]
+	if e.config.webserverConfigured {
+		theme = knownThemes[e.config.WebServer.Theme]
+	}
 
-	indexData := &HTMLIndex{Title: strings.ToUpper(varroa), Time: time.Now().Format("2006-01-02 15:04:05"), Version: version}
+	indexData := &HTMLIndex{Title: strings.ToUpper(varroa), Time: time.Now().Format("2006-01-02 15:04:05"), Version: version, Theme: theme}
 	for label, h := range e.History {
 		indexData.CSV = append(indexData.CSV, HTMLLink{Name: label + ".csv", URL: filepath.Base(h.getPath(statsFile + csvExt))})
 

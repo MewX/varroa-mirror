@@ -47,6 +47,7 @@ func TestHTMLIndex(t *testing.T) {
 				},
 			},
 		},
+		Theme: knownThemes[darkOrange],
 	}
 	defer os.Remove(testFile)
 
