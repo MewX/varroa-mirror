@@ -179,10 +179,11 @@ func (cs *ConfigStats) String() string {
 
 type ConfigWebServer struct {
 	ServeStats     bool   `yaml:"serve_stats"`
+	Theme          string `yaml:"theme"`
 	User           string `yaml:"stats_user"`
 	Password       string `yaml:"stats_password"`
 	AllowDownloads bool   `yaml:"allow_downloads"`
-	Token          string
+	Token          string `yaml:"token"`
 	PortHTTP       int    `yaml:"http_port"`
 	PortHTTPS      int    `yaml:"https_port"`
 	Hostname       string `yaml:"https_hostname"`
@@ -208,12 +209,19 @@ func (cw *ConfigWebServer) Check() error {
 	if cw.Password != "" && cw.User == "" || cw.Password == "" && cw.User != "" {
 		return errors.New("If password-protecting the stats webserver, both user & password must be provided")
 	}
+	if cw.Theme == "" {
+		cw.Theme = "dark_orange"
+	}
+	if !StringInSlice(cw.Theme, knownThemeNames) {
+		return errors.New("Unknown theme name")
+	}
 	return nil
 }
 
 func (cw *ConfigWebServer) String() string {
 	txt := "Webserver configuration:\n"
 	txt += "\tServe stats: " + fmt.Sprintf("%v", cw.ServeStats) + "\n"
+	txt += "\tTheme: " + cw.Theme + "\n"
 	txt += "\tUser: " + cw.User + "\n"
 	txt += "\tPassword: " + cw.Password + "\n"
 	txt += "\tAllow downloads: " + fmt.Sprintf("%v", cw.AllowDownloads) + "\n"

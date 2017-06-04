@@ -154,7 +154,7 @@ const (
 		left: 0;
 		bottom: 0;
 		z-index: 1000; /* so the menu or its navicon stays above all content */
-		background: #f57f17; /*#191818;*/
+		background: #f57f17;
 		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
 	}
@@ -162,7 +162,7 @@ const (
 	All anchors inside the menu should be styled like this.
 	*/
 	#menu a {
-		color: #000000; /* #999;*/
+		color: #000000;
 		border: none;
 		padding: 0.6em 0 0.6em 0.6em;
 	}

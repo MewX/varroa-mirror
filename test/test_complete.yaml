@@ -46,6 +46,7 @@ stats:
 
 webserver:
   serve_stats: true
+  theme: dark_green
   stats_user: httpuser
   stats_password: httppassword
   allow_downloads: true

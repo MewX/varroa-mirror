@@ -119,15 +119,9 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 
 	// changing styles for SVG
 	graph.XAxis = timeAxisSVG
-	graph.YAxis.Style = chart.Style{
-		Show:        true,
-		FontColor:   chart.ColorWhite,
-		StrokeColor: chart.ColorWhite,
-	}
-	graph.YAxis.NameStyle = chart.Style{
-		Show:      true,
-		FontColor: chart.ColorWhite,
-	}
+	graph.YAxis.Style = timeAxisSVG.Style
+	graph.YAxis.NameStyle = timeAxisSVG.NameStyle
+
 	series.Style = commonStyleSVG
 	graph.Series[0] = series
 	graph.Background = chart.Style{

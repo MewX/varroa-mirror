@@ -75,6 +75,7 @@ func TestConfig(t *testing.T) {
 	// webserver
 	fmt.Println("Checking webserver")
 	check.True(c.WebServer.ServeStats)
+	check.Equal(darkGreen, c.WebServer.Theme)
 	check.True(c.WebServer.AllowDownloads)
 	check.Equal("httppassword", c.WebServer.Password)
 	check.Equal("httpuser", c.WebServer.User)

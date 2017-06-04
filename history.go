@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/wcharczuk/go-chart/drawing"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -120,6 +121,17 @@ func (h *History) LoadAll() error {
 }
 
 func (h *History) GenerateGraphs(e *Environment) error {
+	// get SVG theme if available
+	if e.config.webserverConfigured {
+		// defaults to dark_orange if not set
+		theme := knownThemes[e.config.WebServer.Theme]
+		commonStyleSVG.StrokeColor = drawing.ColorFromHex(theme.GraphColor[1:])
+		commonStyleSVG.FillColor = drawing.ColorFromHex(theme.GraphColor[1:]).WithAlpha(theme.GraphFillerOpacity)
+		commonStyleSVG.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+		timeAxisSVG.NameStyle.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+		timeAxisSVG.Style.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+		timeAxisSVG.Style.StrokeColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+	}
 	// get first overall timestamp in all history sources
 	firstOverallTimestamp, err := h.getFirstTimestamp()
 	if err != nil {
