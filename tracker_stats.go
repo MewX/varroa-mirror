@@ -9,6 +9,7 @@ import (
 const (
 	userStats     = "%s (%s) | "
 	progress      = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.3f (%.3f)"
+	progressHTML  = "<tr><td>%s (%s)</td><td>%s (%s)</td><td>%s (%s)</td><td>%s (%s)</td><td>%.3f (%.3f)</td></tr>"
 	firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.3f"
 )
 
@@ -32,6 +33,21 @@ func (s *TrackerStats) Progress(previous *TrackerStats) string {
 	}
 	dup, ddown, dbuff, dwbuff, dratio := s.Diff(previous)
 	return fmt.Sprintf(progress, readableUInt64(s.Up), readableInt64(dup), readableUInt64(s.Down), readableInt64(ddown), readableInt64(s.Buffer), readableInt64(dbuff), readableInt64(s.WarningBuffer), readableInt64(dwbuff), s.Ratio, dratio)
+}
+
+func (s *TrackerStats) ProgressParts(previous *TrackerStats) []string {
+	if previous.Ratio == 0 {
+		return []string{readableUInt64(s.Up), readableUInt64(s.Down), readableInt64(s.Buffer), readableInt64(s.WarningBuffer), fmt.Sprintf("%.3f", s.Ratio)}
+
+	}
+	dup, ddown, dbuff, dwbuff, dratio := s.Diff(previous)
+	return []string{
+		fmt.Sprintf("%s (%s)", readableUInt64(s.Up), readableInt64(dup)),
+		fmt.Sprintf("%s (%s)", readableUInt64(s.Down), readableInt64(ddown)),
+		fmt.Sprintf("%s (%s)", readableInt64(s.Buffer), readableInt64(dbuff)),
+		fmt.Sprintf("%s (%s)", readableInt64(s.WarningBuffer), readableInt64(dwbuff)),
+		fmt.Sprintf("%.3f (%.3f)", s.Ratio, dratio),
+	}
 }
 
 func (s *TrackerStats) IsProgressAcceptable(previous *TrackerStats, maxDecrease int, minimumRatio float64) bool {

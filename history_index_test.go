@@ -23,8 +23,11 @@ func TestHTMLIndex(t *testing.T) {
 		CSV:   []HTMLLink{{URL: "1.csv", Name: "trk1"}, {URL: "2.csv", Name: "Trk2"}},
 		Stats: []HTMLStats{
 			{
-				Name:  "BLUE",
-				Stats: "Up: something | Down: something else",
+				Name: "BLUE",
+				TrackerStats: [][]string{
+					{"Up: something", "Down: something else"},
+					{"Up: something", "Down: something else"},
+				},
 				GraphLinks: []HTMLLink{
 					{Name: "up", URL: "#blue_up"},
 					{Name: "down", URL: "#blue_down"},
@@ -35,8 +38,11 @@ func TestHTMLIndex(t *testing.T) {
 				},
 			},
 			{
-				Name:  "PURPLE",
-				Stats: "Up: some amount | Down: another amount",
+				Name: "PURPLE",
+				TrackerStats: [][]string{
+					{"Up: something!", "Down: something else!"},
+					{"Up: something!", "Down: something else!"},
+				},
 				GraphLinks: []HTMLLink{
 					{Name: "up", URL: "#purple_up"},
 					{Name: "down", URL: "#purple_down"},

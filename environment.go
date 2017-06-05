@@ -372,7 +372,27 @@ func (e *Environment) GenerateIndex() error {
 			graphLinks = append(graphLinks, HTMLLink{Name: s.Name, URL: "#" + s.Label})
 			graphs = append(graphs, HTMLLink{Title: label + ": " + s.Name, Name: s.Label, URL: s.Label + svgExt})
 		}
-		stats := HTMLStats{Name: label, Stats: h.TrackerStats[len(h.TrackerStats)-1].String(), Graphs: graphs, GraphLinks: graphLinks}
+		// add previous stats (progress)
+		var lastStats []*TrackerStats
+		var lastStatsStrings [][]string
+		if len(h.TrackerStats) < 25 {
+			lastStats = h.TrackerStats
+		} else {
+			lastStats = h.TrackerStats[len(h.TrackerStats)-25 : len(h.TrackerStats)]
+		}
+		for i, s := range lastStats {
+			if i == 0 {
+				continue
+			}
+			lastStatsStrings = append(lastStatsStrings, s.ProgressParts(lastStats[i-1]))
+		}
+		// reversing
+		for left, right := 0, len(lastStatsStrings)-1; left < right; left, right = left+1, right-1 {
+			lastStatsStrings[left], lastStatsStrings[right] = lastStatsStrings[right], lastStatsStrings[left]
+		}
+		// TODO timestamps: first column for h.TrackerRecords.
+
+		stats := HTMLStats{Name: label, TrackerStats: lastStatsStrings, Graphs: graphs, GraphLinks: graphLinks}
 		indexData.Stats = append(indexData.Stats, stats)
 	}
 	return indexData.ToHTML(filepath.Join(statsDir, htmlIndexFile))

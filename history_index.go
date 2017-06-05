@@ -102,7 +102,28 @@ const (
 		{{range .Stats}}
 		<h1 id="stats-{{.Name}}" >{{.Name}}</h1>
 		<h2  class="content-subhead">{{.Name}} Stats</h2>
-		<p>{{.Stats}}</p>
+		<table class="hourly_statistics_table">
+		    <thead>
+		      <tr>
+			<th>Upload</th>
+			<th>Download</th>
+			<th>Buffer</th>
+			<th>Warning Buffer</th>
+			<th>Ratio</th>
+		      </tr>
+		    </thead>
+		    <tbody>
+		{{range .TrackerStats}}
+		<tr>
+			{{range .}}
+			<td>{{.}}</td>
+			{{end}}
+		</tr>
+		{{end}}
+		</tbody>
+		</table>
+
+
 		<h2 class="content-subhead">{{.Name}} Graphs</h2>
 		<h3 class="content-subhead">Preview</h3>
 		<div class="pure-g">
@@ -112,6 +133,9 @@ const (
 			</div>
 			{{end}}
 		</div>
+
+
+
 		<h3 class="content-subhead">Graphs</h3>
 		{{range .Graphs}}
 
@@ -154,10 +178,10 @@ type HTMLLink struct {
 
 // HTMLStats has all the information for a tracker: stats and graphs.
 type HTMLStats struct {
-	Name       string
-	Stats      string
-	GraphLinks []HTMLLink
-	Graphs     []HTMLLink
+	Name         string
+	TrackerStats [][]string
+	GraphLinks   []HTMLLink
+	Graphs       []HTMLLink
 }
 
 // HTMLIndex provides data for the htmlIndexTemplate.
