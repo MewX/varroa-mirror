@@ -228,6 +228,7 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 		Buffer:        int64(float64(s.Response.Stats.Uploaded)/demotionRatio) - int64(s.Response.Stats.Downloaded),
 		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/warningRatio) - int64(s.Response.Stats.Downloaded),
 		Ratio:         ratio,
+		Timestamp:     time.Now().Unix(),
 	}
 	return stats, nil
 }

@@ -45,11 +45,7 @@ func (t *TrackerStatsHistory) Load(statsFile string) error {
 
 func (t *TrackerStatsHistory) Add(stats *TrackerStats) error {
 	t.TrackerStats = append(t.TrackerStats, stats)
-	// prepare csv fields
-	timestamp := time.Now().Unix()
-	newStats := []string{fmt.Sprintf("%d", timestamp)}
-	newStats = append(newStats, stats.ToSlice()...)
-	t.TrackerStatsRecords = append(t.TrackerStatsRecords, newStats)
+	t.TrackerStatsRecords = append(t.TrackerStatsRecords, stats.ToSlice())
 	// append to file
 	f, err := os.OpenFile(t.TrackerStatsPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -57,7 +53,7 @@ func (t *TrackerStatsHistory) Add(stats *TrackerStats) error {
 	}
 	defer f.Close()
 	w := csv.NewWriter(f)
-	if err := w.Write(newStats); err != nil {
+	if err := w.Write(stats.ToSlice()); err != nil {
 		return err
 	}
 	w.Flush()

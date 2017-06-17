@@ -101,6 +101,7 @@ const (
         <div class="content">
 		{{range .Stats}}
 		<h1 id="stats-{{.Name}}" >{{.Name}}</h1>
+
 		<h2  class="content-subhead">{{.Name}} Stats</h2>
 		<table class="hourly_statistics_table">
 		    <thead>
@@ -122,7 +123,6 @@ const (
 		{{end}}
 		</tbody>
 		</table>
-
 
 		<h2 class="content-subhead">{{.Name}} Graphs</h2>
 		<h3 class="content-subhead">Preview</h3>

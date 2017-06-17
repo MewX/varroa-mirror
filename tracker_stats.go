@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 const (
 	userStats     = "%s (%s) | "
 	progress      = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.3f (%.3f)"
-	progressHTML  = "<tr><td>%s (%s)</td><td>%s (%s)</td><td>%s (%s)</td><td>%s (%s)</td><td>%.3f (%.3f)</td></tr>"
 	firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.3f"
 )
 
@@ -21,6 +21,7 @@ type TrackerStats struct {
 	Buffer        int64
 	WarningBuffer int64
 	Ratio         float64
+	Timestamp     int64
 }
 
 func (s *TrackerStats) Diff(previous *TrackerStats) (int64, int64, int64, int64, float64) {
@@ -42,6 +43,7 @@ func (s *TrackerStats) ProgressParts(previous *TrackerStats) []string {
 	}
 	dup, ddown, dbuff, dwbuff, dratio := s.Diff(previous)
 	return []string{
+		time.Unix(s.Timestamp, 0).Format("2006-01-02 15:04:05"),
 		fmt.Sprintf("%s (%s)", readableUInt64(s.Up), readableInt64(dup)),
 		fmt.Sprintf("%s (%s)", readableUInt64(s.Down), readableInt64(ddown)),
 		fmt.Sprintf("%s (%s)", readableInt64(s.Buffer), readableInt64(dbuff)),
@@ -74,8 +76,8 @@ func (s *TrackerStats) String() string {
 }
 
 func (s *TrackerStats) ToSlice() []string {
-	// up;down;ratio;buffer;warningBuffer
-	return []string{strconv.FormatUint(s.Up, 10), strconv.FormatUint(s.Down, 10), strconv.FormatFloat(s.Ratio, 'f', -1, 64), strconv.FormatInt(s.Buffer, 10), strconv.FormatInt(s.WarningBuffer, 10)}
+	// timestamp;up;down;ratio;buffer;warningBuffer
+	return []string{fmt.Sprintf("%d", s.Timestamp), strconv.FormatUint(s.Up, 10), strconv.FormatUint(s.Down, 10), strconv.FormatFloat(s.Ratio, 'f', -1, 64), strconv.FormatInt(s.Buffer, 10), strconv.FormatInt(s.WarningBuffer, 10)}
 }
 
 func (s *TrackerStats) FromSlice(slice []string) error {
@@ -83,6 +85,11 @@ func (s *TrackerStats) FromSlice(slice []string) error {
 	if len(slice) != 6 {
 		return errors.New("Incorrect entry, cannot load stats")
 	}
+	timestamp, err := strconv.ParseInt(slice[0], 0, 64)
+	if err != nil {
+		return err
+	}
+	s.Timestamp = timestamp
 	up, err := strconv.ParseUint(slice[1], 10, 64)
 	if err != nil {
 		return err
