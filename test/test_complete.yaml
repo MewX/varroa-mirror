@@ -77,6 +77,9 @@ filters:
     unique_in_group: true
     tracker:
     - blue
+    uploader:
+    - best_uploader_ever
+    - this other guy
     excluded_type:
     - Concert Recording
 

@@ -57,7 +57,6 @@
 		padding: 0 2em;
 		max-width: 1000px;
 		margin-bottom: 50px;
-		line-height: 1.6em;
 		color: white;
 	}
 	.header {
@@ -274,6 +273,34 @@
 		box-shadow: 1px 1px 3px #000;
 	}
 	.close:hover { background: #00d9ff; }
+
+	 
+	#stats-table
+	{
+		font-size: 0.8em;
+		font-weight: normal;
+		text-align: left;
+		border-collapse: collapse;
+		border: 1px solid #f57f17;
+	}
+	#stats-table th
+	{
+		padding: 10px;
+		color: white;
+		border-bottom: 1px dashed #f57f17;
+	}
+	#stats-table td
+	{
+		padding: 10px;
+		color: white;
+	}
+	#stats-table tbody tr:hover td
+	{
+		color: white;
+		background: #f57f17;
+	}
+
+
 </style>
   </head>
   <body>
@@ -322,15 +349,15 @@
 		<h1 id="stats-BLUE" >BLUE</h1>
 
 		<h2  class="content-subhead">BLUE Stats</h2>
-		<table class="hourly_statistics_table">
+		<table id="stats-table" summary="Last stats for BLUE">
 		    <thead>
 		      <tr>
-		    <th>Date</th>
-			<th>Upload</th>
-			<th>Download</th>
-			<th>Buffer</th>
-			<th>Warning Buffer</th>
-			<th>Ratio</th>
+				<th>Date</th>
+				<th>Upload</th>
+				<th>Download</th>
+				<th>Buffer</th>
+				<th>Warning Buffer</th>
+				<th>Ratio</th>
 		      </tr>
 		    </thead>
 		    <tbody>
@@ -414,15 +441,15 @@
 		<h1 id="stats-PURPLE" >PURPLE</h1>
 
 		<h2  class="content-subhead">PURPLE Stats</h2>
-		<table class="hourly_statistics_table">
+		<table id="stats-table" summary="Last stats for PURPLE">
 		    <thead>
 		      <tr>
-		    <th>Date</th>
-			<th>Upload</th>
-			<th>Download</th>
-			<th>Buffer</th>
-			<th>Warning Buffer</th>
-			<th>Ratio</th>
+				<th>Date</th>
+				<th>Upload</th>
+				<th>Download</th>
+				<th>Buffer</th>
+				<th>Warning Buffer</th>
+				<th>Ratio</th>
 		      </tr>
 		    </thead>
 		    <tbody>

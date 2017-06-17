@@ -349,6 +349,7 @@ type ConfigFilter struct {
 	WatchDir            string   `yaml:"watch_directory"`
 	UniqueInGroup       bool     `yaml:"unique_in_group"`
 	Tracker             []string `yaml:"tracker"`
+	Uploader            []string `yaml:"uploader"`
 }
 
 func (cf *ConfigFilter) Check() error {
@@ -433,12 +434,8 @@ func (cf *ConfigFilter) String() string {
 	if len(cf.ExcludedReleaseType) != 0 {
 		description += "\tExcluded Type(s): " + strings.Join(cf.ExcludedReleaseType, ", ") + "\n"
 	}
-	if cf.HasCue {
-		description += "\tHas Cue: true\n"
-	}
-	if cf.HasLog {
-		description += "\tHas Log: true\n"
-	}
+	description += "\tHas Cue: " + fmt.Sprintf("%v", cf.HasCue) + "\n"
+	description += "\tHas Log: " + fmt.Sprintf("%v", cf.HasLog) + "\n"
 	if cf.LogScore != 0 {
 		description += "\tMinimum Log Score: " + strconv.Itoa(cf.LogScore) + "\n"
 	}
@@ -456,6 +453,15 @@ func (cf *ConfigFilter) String() string {
 	}
 	if cf.WatchDir != "" {
 		description += "\tSpecial destination folder: " + cf.WatchDir + "\n"
+	}
+	description += "\tUnique in Group: " + fmt.Sprintf("%v", cf.UniqueInGroup) + "\n"
+	if len(cf.Tracker) != 0 {
+		description += "\tTracker(s): " + strings.Join(cf.Tracker, ", ") + "\n"
+	} else {
+		description += "\tTracker(s): All\n"
+	}
+	if len(cf.Uploader) != 0 {
+		description += "\tUploader(s): " + strings.Join(cf.Uploader, ", ") + "\n"
 	}
 	return description
 }
@@ -645,10 +651,11 @@ func (c *Config) Check() error {
 	if c.gitlabPagesConfigured && len(c.Stats) == 0 {
 		return errors.New("GitLab Pages configured to serve stats, but no stats configured")
 	}
-	if len(c.Filters) != 0 && len(c.Autosnatch) == 0 {
+	if len(c.Filters) != 0 && !c.autosnatchConfigured {
 		return errors.New("Filters defined but no autosnatch configuration found")
 	}
 
+	// TODO check filter uploaders not blacklisted
 	// TODO check no duplicates (2 Stats/autosnatch for same tracker, 2 trackers with same name)
 	// TODO warning if autosnatch but no automatic disabling if buffer drops
 
