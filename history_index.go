@@ -106,11 +106,12 @@ const (
 		<table class="hourly_statistics_table">
 		    <thead>
 		      <tr>
-			<th>Upload</th>
-			<th>Download</th>
-			<th>Buffer</th>
-			<th>Warning Buffer</th>
-			<th>Ratio</th>
+				<th>Date</th>
+				<th>Upload</th>
+				<th>Download</th>
+				<th>Buffer</th>
+				<th>Warning Buffer</th>
+				<th>Ratio</th>
 		      </tr>
 		    </thead>
 		    <tbody>

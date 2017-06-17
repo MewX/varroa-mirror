@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -196,10 +195,8 @@ func (h *History) getFirstTimestamp() (time.Time, error) {
 	if len(h.SnatchedReleases) != 0 {
 		firstTimestampSnatches = h.SnatchedReleases[0].Timestamp
 	}
-	if len(h.TrackerStatsRecords) != 0 && len(h.TrackerStatsRecords[0]) > 0 {
-		if timestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64); err == nil {
-			firstTimestampStats = time.Unix(timestamp, 0)
-		}
+	if len(h.TrackerStats) != 0 {
+		firstTimestampStats = time.Unix(h.TrackerStats[0].Timestamp, 0)
 	}
 	// get the earliest non-zero timestamp
 	if firstTimestampSnatches.IsZero() && firstTimestampStats.IsZero() {
