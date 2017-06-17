@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,9 +11,8 @@ import (
 )
 
 type TrackerStatsHistory struct {
-	TrackerStatsPath    string
-	TrackerStatsRecords [][]string
-	TrackerStats        []*TrackerStats
+	TrackerStatsPath string
+	TrackerStats     []*TrackerStats
 }
 
 func (t *TrackerStatsHistory) Load(statsFile string) error {
@@ -30,7 +28,6 @@ func (t *TrackerStatsHistory) Load(statsFile string) error {
 	if err != nil {
 		return err
 	}
-	t.TrackerStatsRecords = trackerStats
 	// load stats to in-memory slice
 	for i, stats := range trackerStats {
 		r := &TrackerStats{}
@@ -45,11 +42,6 @@ func (t *TrackerStatsHistory) Load(statsFile string) error {
 
 func (t *TrackerStatsHistory) Add(stats *TrackerStats) error {
 	t.TrackerStats = append(t.TrackerStats, stats)
-	// prepare csv fields
-	timestamp := time.Now().Unix()
-	newStats := []string{fmt.Sprintf("%d", timestamp)}
-	newStats = append(newStats, stats.ToSlice()...)
-	t.TrackerStatsRecords = append(t.TrackerStatsRecords, newStats)
 	// append to file
 	f, err := os.OpenFile(t.TrackerStatsPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -57,7 +49,7 @@ func (t *TrackerStatsHistory) Add(stats *TrackerStats) error {
 	}
 	defer f.Close()
 	w := csv.NewWriter(f)
-	if err := w.Write(newStats); err != nil {
+	if err := w.Write(stats.ToSlice()); err != nil {
 		return err
 	}
 	w.Flush()
@@ -65,22 +57,19 @@ func (t *TrackerStatsHistory) Add(stats *TrackerStats) error {
 }
 
 func (t *TrackerStatsHistory) StatsPerDay(firstTimestamp time.Time) ([]time.Time, []float64, []float64, []float64, []float64, error) {
-	if len(t.TrackerStatsRecords) == 0 {
+	if len(t.TrackerStats) == 0 {
 		return nil, nil, nil, nil, nil, errors.New(errorNoHistory)
 	}
 	// all snatches should already be available in-memory
 	// get all times
 	allTimes := []time.Time{}
-	for _, record := range t.TrackerStatsRecords {
-		timestamp, err := strconv.ParseInt(record[0], 0, 64)
-		if err != nil {
-			return nil, nil, nil, nil, nil, errors.New(errorInvalidTimestamp)
-		}
-		allTimes = append(allTimes, time.Unix(timestamp, 0))
+	for _, record := range t.TrackerStats {
+		allTimes = append(allTimes, time.Unix(record.Timestamp, 0))
 	}
 	// slice snatches data per day
 	dayTimes := allDaysSince(firstTimestamp)
 	statsAtStartOfDay := []*TrackerStats{}
+	previousVirtualStats := &TrackerStats{}
 	// no sense getting stats for the last dayTimes == start of tomorrow
 	for _, d := range dayTimes[:len(dayTimes)-1] {
 		beforeIndex := -1
@@ -97,22 +86,29 @@ func (t *TrackerStatsHistory) StatsPerDay(firstTimestamp time.Time) ([]time.Time
 				break
 			}
 		}
-		// extrapolation using stats before & after the start of day to get virtual stats at that time
-		virtualStats := &TrackerStats{}
-		upSlope := float64((float64(t.TrackerStats[afterIndex].Up) - float64(t.TrackerStats[beforeIndex].Up)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
-		upOffset := float64(t.TrackerStats[beforeIndex].Up) - upSlope*float64(allTimes[beforeIndex].Unix())
-		virtualStats.Up = uint64(upSlope*float64(d.Unix()) + upOffset)
-		downSlope := float64((float64(t.TrackerStats[afterIndex].Down) - float64(t.TrackerStats[beforeIndex].Down)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
-		downOffset := float64(t.TrackerStats[beforeIndex].Down) - downSlope*float64(allTimes[beforeIndex].Unix())
-		virtualStats.Down = uint64(downSlope*float64(d.Unix()) + downOffset)
-		bufferSlope := float64((float64(t.TrackerStats[afterIndex].Buffer) - float64(t.TrackerStats[beforeIndex].Buffer)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
-		bufferOffset := float64(t.TrackerStats[beforeIndex].Buffer) - bufferSlope*float64(allTimes[beforeIndex].Unix())
-		virtualStats.Buffer = uint64(bufferSlope*float64(d.Unix()) + bufferOffset)
-		ratioSlope := float64((t.TrackerStats[afterIndex].Ratio - t.TrackerStats[beforeIndex].Ratio) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
-		ratioOffset := t.TrackerStats[beforeIndex].Ratio - ratioSlope*float64(allTimes[beforeIndex].Unix())
-		virtualStats.Ratio = ratioSlope*float64(d.Unix()) + ratioOffset
-		// keep the virtual stats in memory
-		statsAtStartOfDay = append(statsAtStartOfDay, virtualStats)
+
+		if beforeIndex == -1 || afterIndex == -1 {
+			// adding previous stats since we don't have stats for this day
+			statsAtStartOfDay = append(statsAtStartOfDay, previousVirtualStats)
+		} else {
+			// extrapolation using stats before & after the start of day to get virtual stats at that time
+			virtualStats := &TrackerStats{}
+			upSlope := float64((float64(t.TrackerStats[afterIndex].Up) - float64(t.TrackerStats[beforeIndex].Up)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
+			upOffset := float64(t.TrackerStats[beforeIndex].Up) - upSlope*float64(allTimes[beforeIndex].Unix())
+			virtualStats.Up = uint64(upSlope*float64(d.Unix()) + upOffset)
+			downSlope := float64((float64(t.TrackerStats[afterIndex].Down) - float64(t.TrackerStats[beforeIndex].Down)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
+			downOffset := float64(t.TrackerStats[beforeIndex].Down) - downSlope*float64(allTimes[beforeIndex].Unix())
+			virtualStats.Down = uint64(downSlope*float64(d.Unix()) + downOffset)
+			bufferSlope := float64((float64(t.TrackerStats[afterIndex].Buffer) - float64(t.TrackerStats[beforeIndex].Buffer)) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
+			bufferOffset := float64(t.TrackerStats[beforeIndex].Buffer) - bufferSlope*float64(allTimes[beforeIndex].Unix())
+			virtualStats.Buffer = int64(bufferSlope*float64(d.Unix()) + bufferOffset)
+			ratioSlope := float64((t.TrackerStats[afterIndex].Ratio - t.TrackerStats[beforeIndex].Ratio) / float64(allTimes[afterIndex].Unix()-allTimes[beforeIndex].Unix()))
+			ratioOffset := t.TrackerStats[beforeIndex].Ratio - ratioSlope*float64(allTimes[beforeIndex].Unix())
+			virtualStats.Ratio = ratioSlope*float64(d.Unix()) + ratioOffset
+			// keep the virtual stats in memory
+			statsAtStartOfDay = append(statsAtStartOfDay, virtualStats)
+			previousVirtualStats = virtualStats
+		}
 	}
 
 	// now calculating differences one day from the other
@@ -140,12 +136,9 @@ func (t *TrackerStatsHistory) StatsPerDay(firstTimestamp time.Time) ([]time.Time
 
 func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Time, updatePeriod int, uploadFile, downloadFile, bufferFile, ratioFile, uploadPerDayFile, downloadPerDayFile, bufferPerDayFile, ratioPerDayFile string) error {
 	// generate tracker stats graphs
-	if len(t.TrackerStatsRecords) <= 2 {
+	if len(t.TrackerStats) <= 2 {
 		// not enough data points yet
 		return errors.New("Empty stats history")
-	}
-	if len(t.TrackerStatsRecords) != len(t.TrackerStats) {
-		return errors.New("Incoherent in-memory stats")
 	}
 	//  generate data slices
 	timestamps := []time.Time{}
@@ -153,12 +146,8 @@ func (t *TrackerStatsHistory) GenerateStatsGraphs(firstOverallTimestamp time.Tim
 	downs := []float64{}
 	buffers := []float64{}
 	ratios := []float64{}
-	for _, stats := range t.TrackerStatsRecords {
-		timestamp, err := strconv.ParseInt(stats[0], 10, 64)
-		if err != nil {
-			return errors.New(errorInvalidTimestamp)
-		}
-		timestamps = append(timestamps, time.Unix(timestamp, 0))
+	for _, stats := range t.TrackerStats {
+		timestamps = append(timestamps, time.Unix(stats.Timestamp, 0))
 	}
 	if len(timestamps) < 2 {
 		return errors.New(errorNotEnoughDataPoints)

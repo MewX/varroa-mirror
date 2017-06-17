@@ -146,6 +146,7 @@ func main() {
 		}
 		// at last, sending signals for shutdown
 		if cli.stop {
+			env.Notify("Stopping daemon!", "varroa daemon", "info")
 			env.StopDaemon(daemonProcess)
 			return
 		}

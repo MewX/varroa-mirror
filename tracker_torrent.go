@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -17,6 +18,7 @@ type TrackerTorrentInfo struct {
 	id       int
 	groupID  int
 	label    string
+	edition  string
 	logScore int
 	artists  map[string]int // concat artists, composers, etc: artist name: id
 	size     uint64
@@ -74,7 +76,7 @@ func (a *TrackerTorrentInfo) Release() *Release {
 		logThis.Error(errors.Wrap(unmarshalErr, "Error parsing torrent info JSON"), NORMAL)
 		return nil
 	}
-	r := &Release{}
+	r := &Release{Timestamp: time.Now()}
 	// for now, using artists, composers, "with" categories
 	for _, el := range gt.Response.Group.MusicInfo.Artists {
 		r.Artists = append(r.Artists, el.Name)

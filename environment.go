@@ -191,6 +191,11 @@ func (e *Environment) LoadConfiguration() error {
 		logThis.Info("Configuration loaded.", VERBOSE)
 	}
 	e.config = newConf
+	// init notifications with pushover
+	if e.config.pushoverConfigured {
+		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
+		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
+	}
 	return nil
 }
 
@@ -202,12 +207,6 @@ func (e *Environment) SetUp(autologin bool) error {
 			return errors.Wrap(err, errorCreatingStatsDir)
 		}
 	}
-	// init notifications with pushover
-	if e.config.pushoverConfigured {
-		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
-		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
-	}
-
 	// log in all trackers, assuming labels are unique (configuration was checked)
 	for _, label := range e.config.TrackerLabels() {
 		config, err := e.config.GetTracker(label)
@@ -277,7 +276,7 @@ func (e *Environment) Reload() error {
 
 // Notify in a goroutine, or directly.
 func (e *Environment) Notify(msg, tracker, msgType string) error {
-	notity := func() error {
+	notify := func() error {
 		link := ""
 		if e.config.gitlabPagesConfigured {
 			link = e.config.GitlabPages.URL
@@ -304,7 +303,7 @@ func (e *Environment) Notify(msg, tracker, msgType string) error {
 		}
 		return nil
 	}
-	return e.RunOrGo(notity)
+	return e.RunOrGo(notify)
 }
 
 // RunOrGo depending on whether we're in the daemon or not.
@@ -342,8 +341,12 @@ func (e *Environment) GenerateIndex() error {
 	if !e.config.statsConfigured {
 		return nil
 	}
+	theme := knownThemes[darkOrange]
+	if e.config.webserverConfigured {
+		theme = knownThemes[e.config.WebServer.Theme]
+	}
 
-	indexData := &HTMLIndex{Title: strings.ToUpper(varroa), Time: time.Now().Format("2006-01-02 15:04:05"), Version: version}
+	indexData := &HTMLIndex{Title: strings.ToUpper(varroa), Time: time.Now().Format("2006-01-02 15:04:05"), Version: version, Theme: theme}
 	for label, h := range e.History {
 		indexData.CSV = append(indexData.CSV, HTMLLink{Name: label + ".csv", URL: filepath.Base(h.getPath(statsFile + csvExt))})
 
@@ -369,7 +372,27 @@ func (e *Environment) GenerateIndex() error {
 			graphLinks = append(graphLinks, HTMLLink{Name: s.Name, URL: "#" + s.Label})
 			graphs = append(graphs, HTMLLink{Title: label + ": " + s.Name, Name: s.Label, URL: s.Label + svgExt})
 		}
-		stats := HTMLStats{Name: label, Stats: h.TrackerStats[len(h.TrackerStats)-1].String(), Graphs: graphs, GraphLinks: graphLinks}
+		// add previous stats (progress)
+		var lastStats []*TrackerStats
+		var lastStatsStrings [][]string
+		if len(h.TrackerStats) < 25 {
+			lastStats = h.TrackerStats
+		} else {
+			lastStats = h.TrackerStats[len(h.TrackerStats)-25 : len(h.TrackerStats)]
+		}
+		for i, s := range lastStats {
+			if i == 0 {
+				continue
+			}
+			lastStatsStrings = append(lastStatsStrings, s.ProgressParts(lastStats[i-1]))
+		}
+		// reversing
+		for left, right := 0, len(lastStatsStrings)-1; left < right; left, right = left+1, right-1 {
+			lastStatsStrings[left], lastStatsStrings[right] = lastStatsStrings[right], lastStatsStrings[left]
+		}
+		// TODO timestamps: first column for h.TrackerRecords.
+
+		stats := HTMLStats{Name: label, TrackerStats: lastStatsStrings, Graphs: graphs, GraphLinks: graphLinks}
 		indexData.Stats = append(indexData.Stats, stats)
 	}
 	return indexData.ToHTML(filepath.Join(statsDir, htmlIndexFile))

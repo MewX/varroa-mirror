@@ -39,12 +39,14 @@ stats:
   - tracker: blue
     update_period_hour: 1
     max_buffer_decrease_by_period_mb: 500
+    min_ratio: 0.98
   - tracker: purple
     update_period_hour: 12
     max_buffer_decrease_by_period_mb: 2500
 
 webserver:
   serve_stats: true
+  theme: dark_green
   stats_user: httpuser
   stats_password: httppassword
   allow_downloads: true
@@ -75,6 +77,9 @@ filters:
     unique_in_group: true
     tracker:
     - blue
+    uploader:
+    - best_uploader_ever
+    - this other guy
     excluded_type:
     - Concert Recording
 
@@ -101,7 +106,6 @@ filters:
     type:
       - Album
       - EP
-
     watch_directory: test
     min_size_mb: 10
     max_size_mb: 500
@@ -116,4 +120,7 @@ filters:
     - Spammy McSpam
     record_label:
     - Warp
+    edition_contains:
+    - Bonus
+    - Anniversary
 

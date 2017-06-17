@@ -66,13 +66,16 @@ func TestConfig(t *testing.T) {
 	check.Equal("blue", s.Tracker)
 	check.Equal(1, s.UpdatePeriodH)
 	check.Equal(500, s.MaxBufferDecreaseMB)
+	check.Equal(0.98, s.MinimumRatio)
 	s = c.Stats[1]
 	check.Equal("purple", s.Tracker)
 	check.Equal(12, s.UpdatePeriodH)
 	check.Equal(2500, s.MaxBufferDecreaseMB)
+	check.Equal(0.60, s.MinimumRatio)
 	// webserver
 	fmt.Println("Checking webserver")
 	check.True(c.WebServer.ServeStats)
+	check.Equal(darkGreen, c.WebServer.Theme)
 	check.True(c.WebServer.AllowDownloads)
 	check.Equal("httppassword", c.WebServer.Password)
 	check.Equal("httpuser", c.WebServer.User)
@@ -122,6 +125,8 @@ func TestConfig(t *testing.T) {
 	check.True(f.PerfectFlac)
 	check.True(f.UniqueInGroup)
 	check.Equal([]string{"blue"}, f.Tracker)
+	check.Equal([]string{"best_uploader_ever", "this other guy"}, f.Uploader)
+	check.Nil(f.Edition)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]
 	check.Equal("test", f.Name)
@@ -146,6 +151,8 @@ func TestConfig(t *testing.T) {
 	check.False(f.PerfectFlac)
 	check.False(f.UniqueInGroup)
 	check.Nil(f.Tracker)
+	check.Nil(f.Uploader)
+	check.Equal([]string{"Bonus", "Anniversary"}, f.Edition)
 
 	check.True(c.autosnatchConfigured)
 	check.True(c.statsConfigured)

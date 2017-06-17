@@ -120,7 +120,6 @@ func NewRelease(parts []string, alternative bool) (*Release, error) {
 	return r, nil
 }
 
-
 func (r *Release) String() string {
 	return fmt.Sprintf(ReleaseString, strings.Join(r.Artists, ","), r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.HasLog, r.LogScore, r.HasCue, r.IsScene, r.Source, r.Tags, r.url, r.torrentURL, r.TorrentID)
 }
@@ -328,6 +327,23 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 	if StringInSlice(info.uploader, blacklistedUploaders) {
 		logThis.Info(filter.Name+": Uploader "+info.uploader+" is blacklisted.", VERBOSE)
 		return false
+	}
+	if len(filter.Uploader) != 0 && !StringInSlice(info.uploader, filter.Uploader) {
+		logThis.Info(filter.Name+": No match for uploader", VERBOSE)
+		return false
+	}
+	if len(filter.Edition) != 0 {
+		found := false
+		for _, w := range filter.Edition {
+			if strings.Contains(strings.ToLower(info.edition), strings.ToLower(w)) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			logThis.Info(filter.Name+": Edition name does not match any creteria.", VERBOSE)
+			return false
+		}
 	}
 	// taking the opportunity to retrieve and save some info
 	r.Size = info.size

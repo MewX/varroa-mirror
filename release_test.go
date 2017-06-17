@@ -241,6 +241,8 @@ func TestRelease(t *testing.T) {
 	f25 := &ConfigFilter{Name: "f25", HasCue: true, HasLog: true, LogScore: 100, Source: []string{"CD"}, ReleaseType: []string{"Album"}, Format: []string{"FLAC"}}
 	f26 := &ConfigFilter{Name: "f26", RecordLabel: []string{"label1", "label2"}}
 	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b", "k"}, AllowScene: true}
+	f28 := &ConfigFilter{Name: "f28", PerfectFlac: true, Edition: []string{"Deluxe", "Bonus"}}
+	f29 := &ConfigFilter{Name: "f29", Uploader: []string{"this_guy", "that_guy"}}
 
 	// checking filters
 	check.NotNil(f0.Check())
@@ -271,6 +273,8 @@ func TestRelease(t *testing.T) {
 	check.Nil(f25.Check())
 	check.Nil(f26.Check())
 	check.Nil(f27.Check())
+	check.Nil(f28.Check())
+	check.Nil(f29.Check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -407,11 +411,13 @@ func TestRelease(t *testing.T) {
 
 	// checking with TorrentInfo
 	i1 := &TrackerTorrentInfo{size: 1234567, logScore: 100, uploader: "that_guy"}
-	i2 := &TrackerTorrentInfo{size: 1234567, logScore: 80}
+	i2 := &TrackerTorrentInfo{size: 1234567, logScore: 80, uploader: "someone else"}
 	i3 := &TrackerTorrentInfo{size: 11, logScore: 80}
 	i4 := &TrackerTorrentInfo{size: 123456789, logScore: 80}
 	i5 := &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
 	i6 := &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
+	i7 := &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition"}
+	i8 := &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster"}
 
 	// log score
 	check.True(r1.HasCompatibleTrackerInfo(f17, []string{}, i1))
@@ -424,6 +430,11 @@ func TestRelease(t *testing.T) {
 	// blacklisted users
 	check.False(r1.HasCompatibleTrackerInfo(f17, []string{"that_guy", "another_one"}, i1))
 
+	// whitelisted users
+	check.False(r1.HasCompatibleTrackerInfo(f29, []string{"that_guy", "another_one"}, i1))
+	check.True(r1.HasCompatibleTrackerInfo(f29, []string{"another_one"}, i1))
+	check.False(r1.HasCompatibleTrackerInfo(f29, []string{"another_one"}, i2))
+
 	// labels
 	check.True(r1.HasCompatibleTrackerInfo(f26, []string{}, i5))
 	check.False(r1.HasCompatibleTrackerInfo(f26, []string{}, i6))
@@ -432,4 +443,7 @@ func TestRelease(t *testing.T) {
 	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i3))
 	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i4))
 
+	// edition
+	check.True(r1.HasCompatibleTrackerInfo(f28, []string{}, i7))
+	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i8))
 }

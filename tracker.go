@@ -30,6 +30,10 @@ const (
 	statusSuccess = "success"
 
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
+
+	// Notable ratios
+	demotionRatio = 0.95
+	warningRatio  = 0.6
 )
 
 func (t *GazelleTracker) apiCallRateLimiter() {
@@ -221,9 +225,10 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 		Class:         s.Response.Personal.Class,
 		Up:            uint64(s.Response.Stats.Uploaded),
 		Down:          uint64(s.Response.Stats.Downloaded),
-		Buffer:        uint64(float64(s.Response.Stats.Uploaded)/0.95) - uint64(s.Response.Stats.Downloaded),
-		WarningBuffer: uint64(float64(s.Response.Stats.Uploaded)/0.6) - uint64(s.Response.Stats.Downloaded),
+		Buffer:        int64(float64(s.Response.Stats.Uploaded)/demotionRatio) - int64(s.Response.Stats.Downloaded),
+		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/warningRatio) - int64(s.Response.Stats.Downloaded),
 		Ratio:         ratio,
+		Timestamp:     time.Now().Unix(),
 	}
 	return stats, nil
 }
@@ -262,7 +267,7 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 	if err != nil {
 		metadataJSON = data // falling back to complete json
 	}
-	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, groupID: gt.Response.Group.ID, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: uploader, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
+	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, groupID: gt.Response.Group.ID, edition: gt.Response.Torrent.RemasterTitle, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: uploader, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
 	return info, nil
 }
 
