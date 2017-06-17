@@ -67,7 +67,6 @@ const (
 		padding: 0 2em;
 		max-width: 1000px;
 		margin-bottom: 50px;
-		line-height: 1.6em;
 		color: {{.IndexFontColor}};
 	}
 	.header {
@@ -313,6 +312,34 @@ const (
 		box-shadow: 1px 1px 3px #000;
 	}
 	.close:hover { background: #00d9ff; }
+
+	/* table */
+	#stats-table
+	{
+		font-size: 0.8em;
+		font-weight: normal;
+		text-align: left;
+		border-collapse: collapse;
+		border: 1px solid {{.GraphColor}};
+	}
+	#stats-table th
+	{
+		padding: 10px;
+		color: {{.IndexFontColor}};
+		border-bottom: 1px dashed {{.GraphColor}};
+	}
+	#stats-table td
+	{
+		padding: 10px;
+		color: {{.IndexFontColor}};
+	}
+	#stats-table tbody tr:hover td
+	{
+		color: {{.IndexFontColor}};
+		background: {{.GraphColor}};
+	}
+
+
 `
 )
 
@@ -344,7 +371,7 @@ var (
 	}
 	darkGreenTheme = HistoryTheme{
 		GraphTransparentBackground: true,
-		GraphColor:                 "#00ff00",
+		GraphColor:                 "#00aa00",
 		GraphFillerOpacity:         80,
 		GraphAxisColor:             "#fff",
 		IndexBackgroundColor:       "#222",

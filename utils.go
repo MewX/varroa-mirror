@@ -241,3 +241,9 @@ func readableInt64(a int64) string {
 	}
 	return "-" + ByteSize(math.Abs(float64(a))).String()
 }
+func readableFloat64(a float64) string {
+	if a >= 0 {
+		return "+" + ByteSize(math.Abs(a)).String()
+	}
+	return "-" + ByteSize(math.Abs(a)).String()
+}
