@@ -102,6 +102,7 @@ func (s *SnatchHistory) SnatchedPerDay(firstTimestamp time.Time) ([]time.Time, [
 	dayTimes := allDaysSince(firstTimestamp)
 	snatchesPerDay := []float64{}
 	sizePerDay := []float64{}
+
 	for _, t := range dayTimes {
 		snatchesPerDay = append(snatchesPerDay, 0)
 		sizePerDay = append(sizePerDay, 0)
@@ -128,6 +129,42 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time, siz
 		// no additional snatch since the graphs were last generated, nothing needs to be done
 		return errors.New(errorNoFurtherSnatches)
 	}
+	// keep total number of snatches as reference for later
+	s.LastGeneratedPerDay = len(s.SnatchedReleases)
+
+	// generate filters chart
+	filterHits := map[string]float64{}
+	for _, r := range s.SnatchedReleases {
+		filterHits[r.Filter]++
+	}
+	pieSlices := []chart.Value{}
+	for k, v := range filterHits {
+		pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
+	}
+	if err := writePieChart(pieSlices, "Total snatches by filter", totalByFilter); err != nil {
+		return err
+	}
+
+	// generate top 10 tags chart
+	popularTags := map[string]int{}
+	for _, r := range s.SnatchedReleases {
+		for _, t := range r.Tags {
+			popularTags[t]++
+		}
+	}
+	top10tags := []chart.Value{}
+	for k, v := range popularTags {
+		top10tags = append(top10tags, chart.Value{Label: k, Value: float64(v)})
+	}
+	sort.Slice(top10tags, func(i, j int) bool { return top10tags[i].Value > top10tags[j].Value })
+	if len(top10tags) > 10 {
+		top10tags = top10tags[:10]
+	}
+	if err := writePieChart(top10tags, "Top tags", topTags); err != nil {
+		return err
+	}
+
+	// generate snatches/day stats
 	// get slices of relevant data
 	timestamps, numberOfSnatchesPerDay, sizeSnatchedPerDay, err := s.SnatchedPerDay(firstOverallTimestamp)
 	if err != nil {
@@ -163,43 +200,5 @@ func (s *SnatchHistory) GenerateDailyGraphs(firstOverallTimestamp time.Time, siz
 	if err := writeTimeSeriesChart(sizeSnatchedSeries, "Size snatched/day (Gb)", sizeSnatchedFile, true); err != nil {
 		return err
 	}
-	if err := writeTimeSeriesChart(numberSnatchedSeries, "Snatches/day", numberSnatched, true); err != nil {
-		return err
-	}
-
-	// generate filters chart
-	filterHits := map[string]float64{}
-	for _, r := range s.SnatchedReleases {
-		filterHits[r.Filter]++
-	}
-	pieSlices := []chart.Value{}
-	for k, v := range filterHits {
-		pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
-	}
-	if err := writePieChart(pieSlices, "Total snatches by filter", totalByFilter); err != nil {
-		return err
-	}
-
-	// generate top 10 tags chart
-	popularTags := map[string]int{}
-	for _, r := range s.SnatchedReleases {
-		for _, t := range r.Tags {
-			popularTags[t]++
-		}
-	}
-	top10tags := []chart.Value{}
-	for k, v := range popularTags {
-		top10tags = append(top10tags, chart.Value{Label: k, Value: float64(v)})
-	}
-	sort.Slice(top10tags, func(i, j int) bool { return top10tags[i].Value > top10tags[j].Value })
-	if len(top10tags) > 10 {
-		top10tags = top10tags[:10]
-	}
-	if err := writePieChart(top10tags, "Top tags", topTags); err != nil {
-		return err
-	}
-
-	// keep total number of snatches as reference for later
-	s.LastGeneratedPerDay = len(s.SnatchedReleases)
-	return nil
+	return writeTimeSeriesChart(numberSnatchedSeries, "Snatches/day", numberSnatched, true)
 }
