@@ -116,12 +116,20 @@ const (
 		    </thead>
 		    <tbody>
 		{{range .TrackerStats}}
-		<tr>
-			{{range .}}
-			<td>{{.}}</td>
+			{{range $index, $value := .}}
+				{{if eq $index 0 }}
+					{{if eq $value "+"}}
+					<tr class="good-stats">
+					{{else}}
+					<tr class="bad-stats">
+					{{end}}
+				{{else}}
+				<td>{{.}}</td>
+				{{end}}
 			{{end}}
-		</tr>
+			</tr>
 		{{end}}
+
 		</tbody>
 		</table>
 

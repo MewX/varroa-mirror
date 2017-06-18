@@ -338,6 +338,13 @@ const (
 		color: {{.IndexFontColor}};
 		background: {{.GraphColor}};
 	}
+	.good-stats {
+
+	}
+	.bad-stats {
+		font-weight: bold;
+		border: 2px dashed red;
+	}
 
 
 `
