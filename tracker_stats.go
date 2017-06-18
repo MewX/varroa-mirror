@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 const (
@@ -20,6 +21,7 @@ type TrackerStats struct {
 	Buffer        int64
 	WarningBuffer int64
 	Ratio         float64
+	Timestamp     int64
 }
 
 func (s *TrackerStats) Diff(previous *TrackerStats) (int64, int64, int64, int64, float64) {
@@ -32,6 +34,23 @@ func (s *TrackerStats) Progress(previous *TrackerStats) string {
 	}
 	dup, ddown, dbuff, dwbuff, dratio := s.Diff(previous)
 	return fmt.Sprintf(progress, readableUInt64(s.Up), readableInt64(dup), readableUInt64(s.Down), readableInt64(ddown), readableInt64(s.Buffer), readableInt64(dbuff), readableInt64(s.WarningBuffer), readableInt64(dwbuff), s.Ratio, dratio)
+}
+
+func (s *TrackerStats) ProgressParts(previous *TrackerStats) []string {
+	if previous.Ratio == 0 {
+		return []string{"+", time.Unix(s.Timestamp, 0).Format("2006-01-02 15:04"), readableUInt64(s.Up), readableUInt64(s.Down), readableInt64(s.Buffer), readableInt64(s.WarningBuffer), fmt.Sprintf("%.3f", s.Ratio)}
+
+	}
+	dup, ddown, dbuff, dwbuff, dratio := s.Diff(previous)
+	return []string{
+		readableInt64Sign(dbuff),
+		time.Unix(s.Timestamp, 0).Format("2006-01-02 15:04"),
+		fmt.Sprintf("%s (%s)", readableUInt64(s.Up), readableInt64(dup)),
+		fmt.Sprintf("%s (%s)", readableUInt64(s.Down), readableInt64(ddown)),
+		fmt.Sprintf("%s (%s)", readableInt64(s.Buffer), readableInt64(dbuff)),
+		fmt.Sprintf("%s (%s)", readableInt64(s.WarningBuffer), readableInt64(dwbuff)),
+		fmt.Sprintf("%.3f (%s)", s.Ratio, readableFloat64(dratio)),
+	}
 }
 
 func (s *TrackerStats) IsProgressAcceptable(previous *TrackerStats, maxDecrease int, minimumRatio float64) bool {
@@ -58,8 +77,8 @@ func (s *TrackerStats) String() string {
 }
 
 func (s *TrackerStats) ToSlice() []string {
-	// up;down;ratio;buffer;warningBuffer
-	return []string{strconv.FormatUint(s.Up, 10), strconv.FormatUint(s.Down, 10), strconv.FormatFloat(s.Ratio, 'f', -1, 64), strconv.FormatInt(s.Buffer, 10), strconv.FormatInt(s.WarningBuffer, 10)}
+	// timestamp;up;down;ratio;buffer;warningBuffer
+	return []string{fmt.Sprintf("%d", s.Timestamp), strconv.FormatUint(s.Up, 10), strconv.FormatUint(s.Down, 10), strconv.FormatFloat(s.Ratio, 'f', -1, 64), strconv.FormatInt(s.Buffer, 10), strconv.FormatInt(s.WarningBuffer, 10)}
 }
 
 func (s *TrackerStats) FromSlice(slice []string) error {
@@ -67,6 +86,11 @@ func (s *TrackerStats) FromSlice(slice []string) error {
 	if len(slice) != 6 {
 		return errors.New("Incorrect entry, cannot load stats")
 	}
+	timestamp, err := strconv.ParseInt(slice[0], 0, 64)
+	if err != nil {
+		return err
+	}
+	s.Timestamp = timestamp
 	up, err := strconv.ParseUint(slice[1], 10, 64)
 	if err != nil {
 		return err

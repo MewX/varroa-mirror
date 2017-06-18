@@ -206,10 +206,11 @@ func (cs *ConfigStats) String() string {
 type ConfigWebServer struct {
 	ServeMetadata  bool   `yaml:"serve_metadata"`
 	ServeStats     bool   `yaml:"serve_stats"`
+	Theme          string `yaml:"theme"`
 	User           string `yaml:"stats_user"`
 	Password       string `yaml:"stats_password"`
 	AllowDownloads bool   `yaml:"allow_downloads"`
-	Token          string
+	Token          string `yaml:"token"`
 	PortHTTP       int    `yaml:"http_port"`
 	PortHTTPS      int    `yaml:"https_port"`
 	Hostname       string `yaml:"https_hostname"`
@@ -235,12 +236,19 @@ func (cw *ConfigWebServer) Check() error {
 	if cw.Password != "" && cw.User == "" || cw.Password == "" && cw.User != "" {
 		return errors.New("If password-protecting the stats webserver, both user & password must be provided")
 	}
+	if cw.Theme == "" {
+		cw.Theme = "dark_orange"
+	}
+	if !StringInSlice(cw.Theme, knownThemeNames) {
+		return errors.New("Unknown theme name")
+	}
 	return nil
 }
 
 func (cw *ConfigWebServer) String() string {
 	txt := "Webserver configuration:\n"
 	txt += "\tServe stats: " + fmt.Sprintf("%v", cw.ServeStats) + "\n"
+	txt += "\tTheme: " + cw.Theme + "\n"
 	txt += "\tUser: " + cw.User + "\n"
 	txt += "\tPassword: " + cw.Password + "\n"
 	txt += "\tAllow downloads: " + fmt.Sprintf("%v", cw.AllowDownloads) + "\n"
@@ -368,6 +376,7 @@ type ConfigFilter struct {
 	WatchDir            string   `yaml:"watch_directory"`
 	UniqueInGroup       bool     `yaml:"unique_in_group"`
 	Tracker             []string `yaml:"tracker"`
+	Uploader            []string `yaml:"uploader"`
 }
 
 func (cf *ConfigFilter) Check() error {
@@ -452,12 +461,8 @@ func (cf *ConfigFilter) String() string {
 	if len(cf.ExcludedReleaseType) != 0 {
 		description += "\tExcluded Type(s): " + strings.Join(cf.ExcludedReleaseType, ", ") + "\n"
 	}
-	if cf.HasCue {
-		description += "\tHas Cue: true\n"
-	}
-	if cf.HasLog {
-		description += "\tHas Log: true\n"
-	}
+	description += "\tHas Cue: " + fmt.Sprintf("%v", cf.HasCue) + "\n"
+	description += "\tHas Log: " + fmt.Sprintf("%v", cf.HasLog) + "\n"
 	if cf.LogScore != 0 {
 		description += "\tMinimum Log Score: " + strconv.Itoa(cf.LogScore) + "\n"
 	}
@@ -475,6 +480,15 @@ func (cf *ConfigFilter) String() string {
 	}
 	if cf.WatchDir != "" {
 		description += "\tSpecial destination folder: " + cf.WatchDir + "\n"
+	}
+	description += "\tUnique in Group: " + fmt.Sprintf("%v", cf.UniqueInGroup) + "\n"
+	if len(cf.Tracker) != 0 {
+		description += "\tTracker(s): " + strings.Join(cf.Tracker, ", ") + "\n"
+	} else {
+		description += "\tTracker(s): All\n"
+	}
+	if len(cf.Uploader) != 0 {
+		description += "\tUploader(s): " + strings.Join(cf.Uploader, ", ") + "\n"
 	}
 	return description
 }
@@ -667,7 +681,7 @@ func (c *Config) Check() error {
 	if c.gitlabPagesConfigured && len(c.Stats) == 0 {
 		return errors.New("GitLab Pages configured to serve stats, but no stats configured")
 	}
-	if len(c.Filters) != 0 && len(c.Autosnatch) == 0 {
+	if len(c.Filters) != 0 && !c.autosnatchConfigured {
 		return errors.New("Filters defined but no autosnatch configuration found")
 	}
 	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.downloadFolderConfigured {
@@ -680,6 +694,7 @@ func (c *Config) Check() error {
 		return errors.New("Library is configured but not the default download directory")
 	}
 
+	// TODO check filter uploaders not blacklisted
 	// TODO check no duplicates (2 Stats/autosnatch for same tracker, 2 trackers with same name)
 	// TODO warning if autosnatch but no automatic disabling if buffer drops
 

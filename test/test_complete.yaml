@@ -26,6 +26,7 @@ stats:
 webserver:
   serve_stats: true
   serve_metadata: true
+  theme: dark_green
   stats_user: httpuser
   stats_password: httppassword
   allow_downloads: true
@@ -81,6 +82,9 @@ filters:
     unique_in_group: true
     tracker:
     - blue
+    uploader:
+    - best_uploader_ever
+    - this other guy
     excluded_type:
     - Concert Recording
 

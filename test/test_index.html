@@ -10,7 +10,9 @@
 	body {
 	    	background-color: #37474f;
 	}
-
+	p {
+		color: white;
+	}
 	.legend {
 		text-align: center;
 	}
@@ -55,19 +57,22 @@
 		padding: 0 2em;
 		max-width: 1000px;
 		margin-bottom: 50px;
-		line-height: 1.6em;
+		color: white;
 	}
 	.header {
 		margin: 0;
 		text-align: center;
 		padding: 2.5em 2em 0;
 		border-bottom: 1px solid #eee;
+		color: white;
 	 }
 	.header h1 {
 		margin: 0.2em 0;
 		font-size: 3em;
 		font-weight: 300;
+		color: white;
 	}
+
 	.header h2 {
 		font-weight: 300;
 		color: #ccc;
@@ -82,7 +87,7 @@
 	.content-subhead {
 	    	margin: 50px 0 20px 0;
 	    	font-weight: 300;
-	    	color: #ddd;  
+	    	color: #ddd;
 	}
 	 
 	#menu {
@@ -93,13 +98,13 @@
 		left: 0;
 		bottom: 0;
 		z-index: 1000;  
-		background: #f57f17;  
+		background: #f57f17;
 		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
 	}
 	 
 	#menu a {
-		color: #000000;  
+		color: #000000;
 		border: none;
 		padding: 0.6em 0 0.6em 0.6em;
 	}
@@ -119,13 +124,13 @@
 	 
 	#menu .pure-menu li a:hover,
 	#menu .pure-menu li a:focus {
-	    	background: #bc5100;  
+	    	background: #bc5100;
 	}
 
 	 
 	#menu .pure-menu-selected,
 	#menu .pure-menu-heading {
-		background: #ffb04c;  
+		background: #ffb04c;
 	}
 	 
 	#menu .pure-menu-selected a {
@@ -134,7 +139,7 @@
 	 
 	#menu .pure-menu-heading {
 		font-size: 110%;
-		color: #fff;
+		color: #ffffff;
 		margin: 0;
 	}
 
@@ -268,6 +273,41 @@
 		box-shadow: 1px 1px 3px #000;
 	}
 	.close:hover { background: #00d9ff; }
+
+	 
+	#stats-table
+	{
+		font-size: 0.8em;
+		font-weight: normal;
+		text-align: left;
+		border-collapse: collapse;
+		border: 1px solid #f57f17;
+	}
+	#stats-table th
+	{
+		padding: 10px;
+		color: white;
+		border-bottom: 1px dashed #f57f17;
+	}
+	#stats-table td
+	{
+		padding: 10px;
+		color: white;
+	}
+	#stats-table tbody tr:hover td
+	{
+		color: white;
+		background: #f57f17;
+	}
+	.good-stats {
+
+	}
+	.bad-stats {
+		font-weight: bold;
+		border: 2px dashed red;
+	}
+
+
 </style>
   </head>
   <body>
@@ -309,13 +349,56 @@
             	<h1 id="title">VARROA MUSICA</h1>
            	<p>Last updated: 2017-04-23 13:22:19</p>
            	<p>Raw data: <a href="1.csv">[trk1]</a> <a href="2.csv">[Trk2]</a> </p>
-           	<p>Version: </p>
+           	<p></p>
         </div>
         <div class="content">
 		
 		<h1 id="stats-BLUE" >BLUE</h1>
+
 		<h2  class="content-subhead">BLUE Stats</h2>
-		<p>Up: something | Down: something else</p>
+		<table id="stats-table" summary="Last stats for BLUE">
+		    <thead>
+		      <tr>
+				<th>Date</th>
+				<th>Upload</th>
+				<th>Download</th>
+				<th>Buffer</th>
+				<th>Warning Buffer</th>
+				<th>Ratio</th>
+		      </tr>
+		    </thead>
+		    <tbody>
+		
+			
+				
+					
+					<tr class="bad-stats">
+					
+				
+			
+				
+				<td>Down: something else</td>
+				
+			
+			</tr>
+		
+			
+				
+					
+					<tr class="bad-stats">
+					
+				
+			
+				
+				<td>Down: something else</td>
+				
+			
+			</tr>
+		
+
+		</tbody>
+		</table>
+
 		<h2 class="content-subhead">BLUE Graphs</h2>
 		<h3 class="content-subhead">Preview</h3>
 		<div class="pure-g">
@@ -329,6 +412,9 @@
 			</div>
 			
 		</div>
+
+
+
 		<h3 class="content-subhead">Graphs</h3>
 		
 
@@ -371,8 +457,51 @@
 		
 		
 		<h1 id="stats-PURPLE" >PURPLE</h1>
+
 		<h2  class="content-subhead">PURPLE Stats</h2>
-		<p>Up: some amount | Down: another amount</p>
+		<table id="stats-table" summary="Last stats for PURPLE">
+		    <thead>
+		      <tr>
+				<th>Date</th>
+				<th>Upload</th>
+				<th>Download</th>
+				<th>Buffer</th>
+				<th>Warning Buffer</th>
+				<th>Ratio</th>
+		      </tr>
+		    </thead>
+		    <tbody>
+		
+			
+				
+					
+					<tr class="bad-stats">
+					
+				
+			
+				
+				<td>Down: something else!</td>
+				
+			
+			</tr>
+		
+			
+				
+					
+					<tr class="bad-stats">
+					
+				
+			
+				
+				<td>Down: something else!</td>
+				
+			
+			</tr>
+		
+
+		</tbody>
+		</table>
+
 		<h2 class="content-subhead">PURPLE Graphs</h2>
 		<h3 class="content-subhead">Preview</h3>
 		<div class="pure-g">
@@ -386,6 +515,9 @@
 			</div>
 			
 		</div>
+
+
+
 		<h3 class="content-subhead">Graphs</h3>
 		
 

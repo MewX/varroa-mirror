@@ -6,10 +6,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/wcharczuk/go-chart/drawing"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -120,6 +120,17 @@ func (h *History) LoadAll() error {
 }
 
 func (h *History) GenerateGraphs(e *Environment) error {
+	// get SVG theme if available
+	if e.config.webserverConfigured {
+		// defaults to dark_orange if not set
+		theme := knownThemes[e.config.WebServer.Theme]
+		commonStyleSVG.StrokeColor = drawing.ColorFromHex(theme.GraphColor[1:])
+		commonStyleSVG.FillColor = drawing.ColorFromHex(theme.GraphColor[1:]).WithAlpha(theme.GraphFillerOpacity)
+		commonStyleSVG.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+		timeAxisSVG.NameStyle.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+		timeAxisSVG.Style.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+		timeAxisSVG.Style.StrokeColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+	}
 	// get first overall timestamp in all history sources
 	firstOverallTimestamp, err := h.getFirstTimestamp()
 	if err != nil {
@@ -184,10 +195,8 @@ func (h *History) getFirstTimestamp() (time.Time, error) {
 	if len(h.SnatchedReleases) != 0 {
 		firstTimestampSnatches = h.SnatchedReleases[0].Timestamp
 	}
-	if len(h.TrackerStatsRecords) != 0 && len(h.TrackerStatsRecords[0]) > 0 {
-		if timestamp, err := strconv.ParseInt(h.TrackerStatsRecords[0][0], 0, 64); err == nil {
-			firstTimestampStats = time.Unix(timestamp, 0)
-		}
+	if len(h.TrackerStats) != 0 {
+		firstTimestampStats = time.Unix(h.TrackerStats[0].Timestamp, 0)
 	}
 	// get the earliest non-zero timestamp
 	if firstTimestampSnatches.IsZero() && firstTimestampStats.IsZero() {
