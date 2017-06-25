@@ -133,6 +133,11 @@ func main() {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		}
+		if cli.info {
+			if err := showTorrentInfo(env, tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+				logThis.Error(errors.Wrap(err, errorShowingTorrentInfo), NORMAL)
+			}
+		}
 		if cli.checkLog {
 			if err := checkLog(tracker, []string{cli.logFile}); err != nil {
 				logThis.Error(errors.Wrap(err, errorCheckingLog), NORMAL)

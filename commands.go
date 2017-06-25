@@ -136,6 +136,10 @@ func awaitOrders(e *Environment) {
 			if err := snatchTorrents(e, tracker, orders.Args); err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
+		case "info":
+			if err := showTorrentInfo(e, tracker, orders.Args); err != nil {
+				logThis.Error(errors.Wrap(err, errorShowingTorrentInfo), NORMAL)
+			}
 		case "check-log":
 			if err := checkLog(tracker, orders.Args); err != nil {
 				logThis.Error(errors.Wrap(err, errorCheckingLog), NORMAL)
@@ -242,6 +246,68 @@ func snatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string)
 			return errors.New("Error snatching torrent with ID #" + id)
 		} else {
 			logThis.Info("Successfully snatched torrent "+release.ShortString(), NORMAL)
+		}
+	}
+	return nil
+}
+
+func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
+	if len(IDStrings) == 0 {
+		return errors.New("Error: no ID provided")
+	}
+
+	// get info
+	for _, id := range IDStrings {
+		logThis.Info(fmt.Sprintf("Info about %s / %s: \n", tracker.Name, id), NORMAL)
+		// get release info from ID
+		info, err := tracker.GetTorrentInfo(id)
+		if err != nil {
+			logThis.Error(errors.Wrap(err, fmt.Sprintf("Could not get info about torrent %s on %s, may not exist", id, tracker.Name)), NORMAL)
+			continue
+		}
+		release := info.Release()
+		// TODO better output, might need to add a new info.FullString()
+		logThis.Info(release.String(), NORMAL)
+		logThis.Info(info.String(), NORMAL)
+
+		// find if in history
+		if e.History[tracker.Name].HasRelease(release) {
+			logThis.Info("This torrent has been snatched with varroa.", NORMAL)
+			// TODO check the files are there!!! maybe display when the metadata was last updated
+
+		} else {
+			logThis.Info("This torrent has not been snatched with varroa.", NORMAL)
+		}
+		// TODO say if it's been ever snatched, from torrentInfo.Torrent.Snatched!!!
+
+		// check and print if info/release triggers filters
+		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
+		if err != nil {
+			logThis.Info("Cannot find autosnatch configuration for tracker "+tracker.Name, NORMAL)
+
+		} else {
+			logThis.Info("Showing autosnatch filters results for this release:", NORMAL)
+			for _, filter := range e.config.Filters {
+				// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
+				if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
+					logThis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), NORMAL)
+					continue
+				}
+				// checking if a filter is triggered
+				if release.Satisfies(filter) && release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
+					// checking if duplicate
+					if !filter.AllowDuplicates && e.History[tracker.Name].HasDupe(release) {
+						logThis.Info(infoNotSnatchingDuplicate, NORMAL)
+						continue
+					}
+					// checking if a torrent from the same group has already been downloaded
+					if filter.UniqueInGroup && e.History[tracker.Name].HasReleaseFromGroup(release) {
+						logThis.Info(infoNotSnatchingUniqueInGroup, NORMAL)
+						continue
+					}
+					logThis.Info(filter.Name+": OK!", NORMAL)
+				}
+			}
 		}
 	}
 	return nil

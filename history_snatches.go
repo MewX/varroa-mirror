@@ -78,6 +78,16 @@ func (s *SnatchHistory) HasDupe(r *Release) bool {
 	return false
 }
 
+func (s *SnatchHistory) HasRelease(r *Release) bool {
+	// check if a torrent is already in history
+	for _, hr := range s.SnatchedReleases {
+		if r.IsEqual(hr) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *SnatchHistory) HasReleaseFromGroup(r *Release) bool {
 	// check if a torrent of the same torrent group is already in history
 	for _, hr := range s.SnatchedReleases {
