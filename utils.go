@@ -248,10 +248,3 @@ func readableInt64Sign(a int64) string {
 	}
 	return "-"
 }
-
-func readableFloat64(a float64) string {
-	if a >= 0 {
-		return "+" + ByteSize(math.Abs(a)).String()
-	}
-	return "-" + ByteSize(math.Abs(a)).String()
-}
