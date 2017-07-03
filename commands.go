@@ -258,7 +258,7 @@ func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 	// get info
 	for _, id := range IDStrings {
-		logThis.Info(fmt.Sprintf("Info about %s / %s: \n", tracker.Name, id), NORMAL)
+		logThis.Info(fmt.Sprintf("+ Info about %s / %s: \n", tracker.Name, id), NORMAL)
 		// get release info from ID
 		info, err := tracker.GetTorrentInfo(id)
 		if err != nil {
@@ -268,25 +268,32 @@ func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 		release := info.Release()
 		// TODO better output, might need to add a new info.FullString()
 		logThis.Info(release.String(), NORMAL)
-		logThis.Info(info.String(), NORMAL)
+		logThis.Info(info.String()+"\n", NORMAL)
 
 		// find if in history
 		if e.History[tracker.Name].HasRelease(release) {
-			logThis.Info("This torrent has been snatched with varroa.", NORMAL)
-			// TODO check the files are there!!! maybe display when the metadata was last updated
-
+			logThis.Info("+ This torrent has been snatched with varroa.", NORMAL)
 		} else {
-			logThis.Info("This torrent has not been snatched with varroa.", NORMAL)
+			logThis.Info("+ This torrent has not been snatched with varroa.", NORMAL)
 		}
-		// TODO say if it's been ever snatched, from torrentInfo.Torrent.Snatched!!!
+
+		// checking the files are still there (if snatched with or without varroa)
+		if e.config.downloadFolderConfigured {
+			releaseFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
+			if DirectoryExists(releaseFolder) {
+				logThis.Info(fmt.Sprintf("Files seem to still be in the download directory: %s", releaseFolder), NORMAL)
+				// TODO maybe display when the metadata was last updated?
+			} else {
+				logThis.Info("However the files are nowhere to be found.", NORMAL)
+			}
+		}
 
 		// check and print if info/release triggers filters
 		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
 		if err != nil {
 			logThis.Info("Cannot find autosnatch configuration for tracker "+tracker.Name, NORMAL)
-
 		} else {
-			logThis.Info("Showing autosnatch filters results for this release:", NORMAL)
+			logThis.Info("+ Showing autosnatch filters results for this release:\n", NORMAL)
 			for _, filter := range e.config.Filters {
 				// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
 				if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
