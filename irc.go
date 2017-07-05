@@ -59,12 +59,12 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 				if release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
 					// checking if duplicate
 					if !filter.AllowDuplicates && e.History[tracker.Name].HasDupe(release) {
-						logThis.Info(infoNotSnatchingDuplicate, VERBOSE)
+						logThis.Info(filter.Name+": "+infoNotSnatchingDuplicate, VERBOSE)
 						continue
 					}
 					// checking if a torrent from the same group has already been downloaded
 					if filter.UniqueInGroup && e.History[tracker.Name].HasReleaseFromGroup(release) {
-						logThis.Info(infoNotSnatchingUniqueInGroup, VERBOSE)
+						logThis.Info(filter.Name+": "+infoNotSnatchingUniqueInGroup, VERBOSE)
 						continue
 					}
 					logThis.Info(" -> "+release.ShortString()+" triggered filter "+filter.Name+", snatching.", NORMAL)

@@ -346,7 +346,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			}
 		}
 		if !found {
-			logThis.Info(filter.Name+": Edition name does not match any creteria.", VERBOSE)
+			logThis.Info(filter.Name+": Edition name does not match any criteria.", VERBOSE)
 			return false
 		}
 	}
