@@ -86,7 +86,7 @@ Usage:
 	varroa stats
 	varroa refresh-metadata <TRACKER> <ID>...
 	varroa check-log <TRACKER> <LOG_FILE>
-	varroa snatch <TRACKER> <ID>...
+	varroa snatch [--fl] <TRACKER> <ID>...
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
@@ -95,6 +95,7 @@ Usage:
 
 Options:
  	-h, --help             Show this screen.
+ 	--fl                   Use personal Freeleech torrent if available.
   	--version              Show version.
 `
 )
@@ -113,6 +114,7 @@ type varroaArguments struct {
 	showConfig      bool
 	encrypt         bool
 	decrypt         bool
+	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
@@ -155,6 +157,9 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if err != nil {
 			return errors.New("Invalid torrent IDs, must be integers.")
 		}
+	}
+	if b.snatch {
+		b.useFLToken = args["--fl"].(bool)
 	}
 	if b.checkLog {
 		logPath := args["<LOG_FILE>"].(string)
@@ -199,6 +204,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	if b.snatch {
 		out.Command = "snatch"
 		out.Args = IntSliceToStringSlice(b.torrentIDs)
+		out.Args = append(out.Args, fmt.Sprintf("%v", b.useFLToken))
 	}
 	if b.info {
 		out.Command = "info"

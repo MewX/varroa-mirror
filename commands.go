@@ -133,7 +133,11 @@ func awaitOrders(e *Environment) {
 				logThis.Error(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		case "snatch":
-			if err := snatchTorrents(e, tracker, orders.Args); err != nil {
+			useFLTokens := false
+			if orders.Args[len(orders.Args)-1] == "true" {
+				useFLTokens = true
+			}
+			if err := snatchTorrents(e, tracker, orders.Args[:len(orders.Args)-1], useFLTokens); err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		case "info":
@@ -236,13 +240,13 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 	return nil
 }
 
-func snatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
+func snatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string, useFLToken bool) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
 	// snatch
 	for _, id := range IDStrings {
-		if release, err := snatchFromID(e, tracker, id); err != nil {
+		if release, err := snatchFromID(e, tracker, id, useFLToken); err != nil {
 			return errors.New("Error snatching torrent with ID #" + id)
 		} else {
 			logThis.Info("Successfully snatched torrent "+release.ShortString(), NORMAL)
