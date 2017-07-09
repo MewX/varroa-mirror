@@ -49,7 +49,7 @@ func (s *TrackerStats) ProgressParts(previous *TrackerStats) []string {
 		fmt.Sprintf("%s (%s)", readableUInt64(s.Down), readableInt64(ddown)),
 		fmt.Sprintf("%s (%s)", readableInt64(s.Buffer), readableInt64(dbuff)),
 		fmt.Sprintf("%s (%s)", readableInt64(s.WarningBuffer), readableInt64(dwbuff)),
-		fmt.Sprintf("%.3f (%s)", s.Ratio, readableFloat64(dratio)),
+		fmt.Sprintf("%.3f (%+.3f)", s.Ratio, dratio),
 	}
 }
 

@@ -202,6 +202,11 @@ func (r *Release) IsDupe(o Release) bool {
 	return false
 }
 
+// IsEqual returns true if both release have the same torrentID && groupID.
+func (r *Release) IsEqual(o Release) bool {
+	return r.TorrentID == o.TorrentID && r.IsInSameGroup(o)
+}
+
 // IsInSameGroup returns true if both release are in the same torrentgroup.
 func (r *Release) IsInSameGroup(o Release) bool {
 	return r.GroupID == o.GroupID
@@ -341,7 +346,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			}
 		}
 		if !found {
-			logThis.Info(filter.Name+": Edition name does not match any creteria.", VERBOSE)
+			logThis.Info(filter.Name+": Edition name does not match any criteria.", VERBOSE)
 			return false
 		}
 	}

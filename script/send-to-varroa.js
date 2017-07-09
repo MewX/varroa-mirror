@@ -34,6 +34,8 @@ const userPage = window.location.href.match('user.php\\?id=' + userid);
 const top10Page = window.location.href.match('top10.php');
 const torrentPage = window.location.href.match('torrents.php$');
 const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
+// Check if tokens are available
+const FLTokensAvailable = areFLTokensAvailable();
 // Misc strings
 const vmUnknown = 'Pinging VM...';
 const vmOK = 'VM is up.';
@@ -44,8 +46,10 @@ const vmLinkInfo = 'Send to varroa musica';
 
 let obsElem;
 let linkLabel = 'VM';
+let linkLabelFL = 'VM FL';
 if (top10Page) {
 	linkLabel = '[' + linkLabel + ']';
+	linkLabelFL = '[' + linkLabelFL + ']';
 }
 let isWebSocketConnected = false;
 let vmStatusDiv = null;
@@ -97,7 +101,10 @@ function addLinks() {
 	for (let i = 0; i < alltorrents.length; i++) {
 		if (linkregex.exec(alltorrents[i])) {
 			const id = RegExp.$1;
-			createLink(alltorrents[i], id);
+			createLink(alltorrents[i], id, false);
+			if (FLTokensAvailable) {
+				createLink(alltorrents[i], id, true);
+			}
 		}
 	}
 
@@ -107,7 +114,10 @@ function addLinks() {
 			mutation.addedNodes.forEach(node => {
 				if (linkregex.exec(node.querySelector('a'))) {
 					const id = RegExp.$1;
-					createLink(node.querySelector('a'), id);
+					createLink(node.querySelector('a'), id, false);
+					if (FLTokensAvailable) {
+						createLink(node.querySelector('a'), id, true);
+					}
 				}
 			});
 		});
@@ -199,15 +209,31 @@ function newSocket() {
 	};
 }
 
-function createLink(linkelement, id) {
-	const link = document.createElement('varroa_' + id);
+function createLink(linkelement, id, useFLToken) {
+	let link = '';
+	if (useFLToken) {
+		link = document.createElement('varroa_fl_' + id);
+	} else {
+		link = document.createElement('varroa_' + id);
+	}
 	link.appendChild(document.createElement('a'));
-	link.firstChild.appendChild(document.createTextNode(linkLabel));
+	if (useFLToken) {
+		link.firstChild.appendChild(document.createTextNode(linkLabelFL));
+	} else {
+		link.firstChild.appendChild(document.createTextNode(linkLabel));
+	}
 	link.appendChild(document.createTextNode(divider));
 	if (settings.https === true && isWebSocketConnected) {
-		link.addEventListener('click', getTorrent, false);
+		if (useFLToken) {
+			link.addEventListener('click', getTorrentWithFLToken, false);
+		} else {
+			link.addEventListener('click', getTorrent, false);
+		}
 	} else {
 		link.firstChild.href = 'http://' + settings.url + ':' + settings.port + '/get/' + id + '?token=' + settings.token + '&site=' + settings.site;
+		if (useFLToken) {
+			link.firstChild.href += '&fltoken=true';
+		}
 	}
 	link.firstChild.target = '_blank';
 	link.firstChild.title = vmLinkInfo;
@@ -215,13 +241,21 @@ function createLink(linkelement, id) {
 }
 
 function getTorrent() {
+	getTorrentAux(this.nodeName, 'varroa_', 'false');
+}
+
+function getTorrentWithFLToken() {
+	getTorrentAux(this.nodeName, 'varroa_fl_', 'true');
+}
+
+function getTorrentAux(nodename, prefix, useFLToken) {
 	if (isWebSocketConnected) {
-		const id = this.nodeName.toLowerCase().replace('varroa_', '');
+		const id = nodename.toLowerCase().replace(prefix, '');
 		console.log('Getting torrent with id: ' + id);
 		const get = {
 			Command: 'get',
 			Token: settings.token,
-			Args: [id],
+			Args: [id, useFLToken],
 			Site: settings.site
 		};
 		sock.send(JSON.stringify(get));
@@ -229,6 +263,14 @@ function getTorrent() {
 	} else {
 		setVMStatus(vmCannotGet);
 	}
+}
+
+function areFLTokensAvailable() {
+	const tokens = document.getElementById('fl_tokens');
+	if (tokens.length === 0) {
+		return false;
+	}
+	return parseInt(tokens.getElementsByClassName('stat')[0].getElementsByTagName('a')[0].innerHTML, 10) > 0;
 }
 
 // -- Status -------------------------------------------------------------------

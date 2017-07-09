@@ -490,6 +490,9 @@ func (cf *ConfigFilter) String() string {
 	if len(cf.Uploader) != 0 {
 		description += "\tUploader(s): " + strings.Join(cf.Uploader, ", ") + "\n"
 	}
+	if len(cf.Edition) != 0 {
+		description += "\tEdition contains: " + strings.Join(cf.Edition, ", ") + "\n"
+	}
 	return description
 }
 

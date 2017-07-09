@@ -87,8 +87,10 @@ const (
 	// command check-log errors
 	errorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"
-	// command snatch erros
+	// command snatch errors
 	errorSnatchingTorrent = "Error snatching torrent"
+	// command info errors
+	errorShowingTorrentInfo = "Error displaying torrent info"
 	// command refresh-metadata errors
 	errorRefreshingMetadata = "Error refreshing metadata"
 	errorCannotFindID       = "Error with ID#%s, not found in history or in downloads directory."
