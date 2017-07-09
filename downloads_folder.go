@@ -20,7 +20,7 @@ const (
 	stateRejected                      // has metadata and is not to be exported to library
 )
 
-var states = []string{"Unsorted", "Accepted", "Exported", "Rejected"}
+var downloadFolderStates = []string{"unsorted", "accepted", "exported", "rejected"}
 
 type DownloadState int
 
@@ -36,6 +36,20 @@ func (ds DownloadState) Colorize(txt string) string {
 		txt = RedBold(txt)
 	}
 	return txt
+}
+
+func (ds DownloadState) Get(txt string) DownloadState {
+	switch txt {
+	case "accepted":
+		return stateAccepted
+	case "exported":
+		return stateExported
+	case "unsorted":
+		return stateUnsorted
+	case "rejected":
+		return stateRejected
+	}
+	return -1
 }
 
 //-----------------------
@@ -59,11 +73,11 @@ type DownloadFolder struct {
 }
 
 func (d *DownloadFolder) ShortString() string {
-	return d.State.Colorize(fmt.Sprintf("[#%d]\t[%s]\t%s", d.Index, states[d.State][:1], d.Path))
+	return d.State.Colorize(fmt.Sprintf("[#%d]\t[%s]\t%s", d.Index, downloadFolderStates[d.State][:1], d.Path))
 }
 
 func (d *DownloadFolder) String() string {
-	return d.State.Colorize(fmt.Sprintf("ID #%d: %s [%s]", d.Index, d.Path, states[d.State]))
+	return d.State.Colorize(fmt.Sprintf("ID #%d: %s [%s]", d.Index, d.Path, downloadFolderStates[d.State]))
 }
 
 func (d *DownloadFolder) Description() string {

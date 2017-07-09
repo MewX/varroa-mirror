@@ -64,7 +64,7 @@ func main() {
 			fmt.Println(env.config)
 			return
 		}
-		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort {
+		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList {
 			if !env.config.downloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), NORMAL)
 				return
@@ -80,6 +80,17 @@ func main() {
 			}
 			if cli.downloadSearch {
 				hits := env.Downloads.FindByArtist(cli.artistName)
+				if len(hits) == 0 {
+					fmt.Println("Nothing found.")
+				} else {
+					for _, dl := range hits {
+						fmt.Println(dl)
+					}
+				}
+				return
+			}
+			if cli.downloadList {
+				hits := env.Downloads.FindByState(cli.downloadState)
 				if len(hits) == 0 {
 					fmt.Println("Nothing found.")
 				} else {

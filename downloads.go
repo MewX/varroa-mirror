@@ -209,3 +209,18 @@ func (d *Downloads) Sort(libraryPath, folderTemplate string, useHardLinks bool) 
 	}
 	return nil
 }
+
+func (d *Downloads) FindByState(state string) []*DownloadFolder {
+	if !StringInSlice(state, downloadFolderStates) {
+		logThis.Info("Invalid state", NORMAL)
+	}
+
+	dlState := DownloadState(-1).Get(state)
+	hits := []*DownloadFolder{}
+	for _, dl := range d.Downloads {
+		if dl.State == dlState {
+			hits = append(hits, dl)
+		}
+	}
+	return hits
+}

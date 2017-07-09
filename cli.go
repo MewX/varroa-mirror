@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-
 	"fmt"
+	"strings"
 
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
@@ -68,13 +68,16 @@ Commands:
 		downloads.
 	downloads search:
 		return all known downloads on which an artist has worked.
-	downloads info:
-		return information about a specific download
+	downloads metadata:
+		return information about a specific download. Takes downloads
+		db ID as argument.
 	downloads sort:
-		sort over all unsorted downloads, or sort a specific release.
+		sort all unsorted downloads, or sort a specific release.
 		sorting allows you to tag which release to keep and which to
 		only seed; selected downloads can be exported to an external
 		folder.
+	downloads list:
+		list downloads by state: unsorted, accepted, exported, rejected.
 
 
 Configuration Commands:
@@ -103,7 +106,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa downloads (scan|search <ARTIST>|info <ID>|sort [<ID>])
+	varroa downloads (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>)
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -132,6 +135,8 @@ type varroaArguments struct {
 	downloadSearch  bool
 	downloadInfo    bool
 	downloadSort    bool
+	downloadList    bool
+	downloadState   string
 	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
@@ -161,8 +166,8 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
 	b.snatch = args["snatch"].(bool)
-	b.info = args["info"].(bool)
 	b.backup = args["backup"].(bool)
+	b.info = args["info"].(bool)
 	b.showConfig = args["show-config"].(bool)
 	b.encrypt = args["encrypt"].(bool)
 	b.decrypt = args["decrypt"].(bool)
@@ -172,8 +177,9 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if b.downloadSearch {
 			b.artistName = args["<ARTIST>"].(string)
 		}
-		b.downloadInfo = args["info"].(bool)
+		b.downloadInfo = args["metadata"].(bool)
 		b.downloadSort = args["sort"].(bool)
+		b.downloadList = args["list"].(bool)
 	}
 	// arguments
 	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
@@ -184,6 +190,12 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.torrentIDs, err = StringSliceToIntSlice(IDs)
 		if err != nil {
 			return errors.New("Invalid torrent IDs, must be integers.")
+		}
+	}
+	if b.downloadList {
+		b.downloadState = args["<STATE>"].(string)
+		if !StringInSlice(b.downloadState, downloadFolderStates) {
+			return errors.New("Invalid download state, must be among: " + strings.Join(downloadFolderStates, ", "))
 		}
 	}
 	if b.snatch {
@@ -203,11 +215,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.info {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList {
 		b.canUseDaemon = false
 	}
 	return nil
