@@ -44,7 +44,7 @@ type OutgoingJSON struct {
 }
 
 // TODO: see if this could also be used by irc
-func snatchFromID(e *Environment, tracker *GazelleTracker, id string, useFLToken bool) (*Release, error) {
+func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useFLToken bool) (*Release, error) {
 	// get torrent info
 	info, err := tracker.GetTorrentInfo(id)
 	if err != nil {
@@ -205,7 +205,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			release, err := snatchFromID(e, tracker, id, useFLToken)
+			release, err := manualSnatchFromID(e, tracker, id, useFLToken)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
@@ -334,7 +334,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 								if err != nil {
 									answer = OutgoingJSON{Status: responseError, Message: "Error, incorrect information from script."}
 								} else {
-									release, err := snatchFromID(e, tracker, torrentID, useFLToken)
+									release, err := manualSnatchFromID(e, tracker, torrentID, useFLToken)
 									if err != nil {
 										logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
 										answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}

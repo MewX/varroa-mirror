@@ -246,7 +246,7 @@ func snatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string,
 	}
 	// snatch
 	for _, id := range IDStrings {
-		if release, err := snatchFromID(e, tracker, id, useFLToken); err != nil {
+		if release, err := manualSnatchFromID(e, tracker, id, useFLToken); err != nil {
 			return errors.New("Error snatching torrent with ID #" + id)
 		} else {
 			logThis.Info("Successfully snatched torrent "+release.ShortString(), NORMAL)
