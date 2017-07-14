@@ -58,6 +58,8 @@ Commands:
 		returns its score.
 	snatch:
 		snatch all torrents with IDs given as arguments.
+	info:
+		output info about the torrent IDs given as argument.
 	backup:
 		backup user files (stats, history, configuration file) to a
 		timestamped zip file. Automatically triggered every day.
@@ -84,7 +86,8 @@ Usage:
 	varroa stats
 	varroa refresh-metadata <TRACKER> <ID>...
 	varroa check-log <TRACKER> <LOG_FILE>
-	varroa snatch <TRACKER> <ID>...
+	varroa snatch [--fl] <TRACKER> <ID>...
+	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
 	varroa (encrypt|decrypt)
@@ -92,6 +95,7 @@ Usage:
 
 Options:
  	-h, --help             Show this screen.
+ 	--fl                   Use personal Freeleech torrent if available.
   	--version              Show version.
 `
 )
@@ -105,10 +109,12 @@ type varroaArguments struct {
 	refreshMetadata bool
 	checkLog        bool
 	snatch          bool
+	info            bool
 	backup          bool
 	showConfig      bool
 	encrypt         bool
 	decrypt         bool
+	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
@@ -136,12 +142,13 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
 	b.snatch = args["snatch"].(bool)
+	b.info = args["info"].(bool)
 	b.backup = args["backup"].(bool)
 	b.showConfig = args["show-config"].(bool)
 	b.encrypt = args["encrypt"].(bool)
 	b.decrypt = args["decrypt"].(bool)
 	// arguments
-	if b.refreshMetadata || b.snatch {
+	if b.refreshMetadata || b.snatch || b.info {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
 			return errors.New("Invalid torrent IDs.")
@@ -151,6 +158,9 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 			return errors.New("Invalid torrent IDs, must be integers.")
 		}
 	}
+	if b.snatch {
+		b.useFLToken = args["--fl"].(bool)
+	}
 	if b.checkLog {
 		logPath := args["<LOG_FILE>"].(string)
 		if !FileExists(logPath) {
@@ -158,14 +168,14 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		b.logFile = logPath
 	}
-	if b.refreshMetadata || b.snatch || b.checkLog {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.info {
 		b.trackerLabel = args["<TRACKER>"].(string)
 	}
 
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.info {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
@@ -193,6 +203,11 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	if b.snatch {
 		out.Command = "snatch"
+		out.Args = IntSliceToStringSlice(b.torrentIDs)
+		out.FLToken = b.useFLToken
+	}
+	if b.info {
+		out.Command = "info"
 		out.Args = IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.checkLog {

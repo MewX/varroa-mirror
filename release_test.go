@@ -444,6 +444,7 @@ func TestRelease(t *testing.T) {
 	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i4))
 
 	// edition
+	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i6))
 	check.True(r1.HasCompatibleTrackerInfo(f28, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i8))
 }

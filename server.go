@@ -32,6 +32,7 @@ type IncomingJSON struct {
 	Token   string
 	Command string
 	Args    []string
+	FLToken bool
 	Site    string
 }
 
@@ -42,7 +43,7 @@ type OutgoingJSON struct {
 }
 
 // TODO: see if this could also be used by irc
-func snatchFromID(e *Environment, tracker *GazelleTracker, id string) (*Release, error) {
+func snatchFromID(e *Environment, tracker *GazelleTracker, id string, useFLToken bool) (*Release, error) {
 	// get torrent info
 	info, err := tracker.GetTorrentInfo(id)
 	if err != nil {
@@ -55,6 +56,9 @@ func snatchFromID(e *Environment, tracker *GazelleTracker, id string) (*Release,
 		release = &Release{TorrentID: id}
 	}
 	release.torrentURL = tracker.URL + "/torrents.php?action=download&id=" + id
+	if useFLToken {
+		release.torrentURL += "&usetoken=1"
+	}
 	release.TorrentFile = norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
 
 	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
@@ -79,7 +83,7 @@ func snatchFromID(e *Environment, tracker *GazelleTracker, id string) (*Release,
 	return release, nil
 }
 
-func validateGet(r *http.Request, config *Config) (string, string, error) {
+func validateGet(r *http.Request, config *Config) (string, string, bool, error) {
 	queryParameters := r.URL.Query()
 	// get torrent ID
 	id, ok := mux.Vars(r)["id"]
@@ -87,7 +91,7 @@ func validateGet(r *http.Request, config *Config) (string, string, error) {
 		// if it's not in URL, try to get from query parameters
 		queryID, ok2 := queryParameters["id"]
 		if !ok2 {
-			return "", "", errors.New(errorNoID)
+			return "", "", false, errors.New(errorNoID)
 		}
 		id = queryID[0]
 	}
@@ -97,7 +101,7 @@ func validateGet(r *http.Request, config *Config) (string, string, error) {
 		// if it's not in URL, try to get from query parameters
 		queryTrackerLabel, ok2 := queryParameters["site"]
 		if !ok2 {
-			return "", "", errors.New(errorNoID)
+			return "", "", false, errors.New(errorNoID)
 		}
 		trackerLabel = queryTrackerLabel[0]
 	}
@@ -107,14 +111,21 @@ func validateGet(r *http.Request, config *Config) (string, string, error) {
 		// try to get token from "pass" parameter instead
 		token, ok = queryParameters["pass"]
 		if !ok {
-			return "", "", errors.New(errorNoToken)
+			return "", "", false, errors.New(errorNoToken)
 		}
 	}
 	if token[0] != config.WebServer.Token {
-		return "", "", errors.New(errorWrongToken)
+		return "", "", false, errors.New(errorWrongToken)
 	}
 
-	return trackerLabel, id, nil
+	// checking FL token use
+	useFLToken := false
+	useIt, ok := queryParameters["fltoken"]
+	if ok && useIt[0] == "true" {
+		useFLToken = true
+		logThis.Info("Snatching using FL Token if possible.", VERBOSE)
+	}
+	return trackerLabel, id, useFLToken, nil
 }
 
 func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server) {
@@ -172,7 +183,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			w.Write(file)
 		}
 		getTorrent := func(w http.ResponseWriter, r *http.Request) {
-			trackerLabel, id, err := validateGet(r, e.config)
+			trackerLabel, id, useFLToken, err := validateGet(r, e.config)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, "Error parsing request"), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
@@ -185,7 +196,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			release, err := snatchFromID(e, tracker, id)
+			release, err := snatchFromID(e, tracker, id, useFLToken)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
@@ -261,7 +272,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 						} else {
 							// snatching
 							for _, id := range incoming.Args {
-								release, err := snatchFromID(e, tracker, id)
+								release, err := snatchFromID(e, tracker, id, incoming.FLToken)
 								if err != nil {
 									logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
 									answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}

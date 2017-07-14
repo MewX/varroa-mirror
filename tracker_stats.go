@@ -38,17 +38,18 @@ func (s *TrackerStats) Progress(previous *TrackerStats) string {
 
 func (s *TrackerStats) ProgressParts(previous *TrackerStats) []string {
 	if previous.Ratio == 0 {
-		return []string{time.Unix(s.Timestamp, 0).Format("2006-01-02 15:04"), readableUInt64(s.Up), readableUInt64(s.Down), readableInt64(s.Buffer), readableInt64(s.WarningBuffer), fmt.Sprintf("%.3f", s.Ratio)}
+		return []string{"+", time.Unix(s.Timestamp, 0).Format("2006-01-02 15:04"), readableUInt64(s.Up), readableUInt64(s.Down), readableInt64(s.Buffer), readableInt64(s.WarningBuffer), fmt.Sprintf("%.3f", s.Ratio)}
 
 	}
 	dup, ddown, dbuff, dwbuff, dratio := s.Diff(previous)
 	return []string{
+		readableInt64Sign(dbuff),
 		time.Unix(s.Timestamp, 0).Format("2006-01-02 15:04"),
 		fmt.Sprintf("%s (%s)", readableUInt64(s.Up), readableInt64(dup)),
 		fmt.Sprintf("%s (%s)", readableUInt64(s.Down), readableInt64(ddown)),
 		fmt.Sprintf("%s (%s)", readableInt64(s.Buffer), readableInt64(dbuff)),
 		fmt.Sprintf("%s (%s)", readableInt64(s.WarningBuffer), readableInt64(dwbuff)),
-		fmt.Sprintf("%.3f (%s)", s.Ratio, readableFloat64(dratio)),
+		fmt.Sprintf("%.3f (%+.3f)", s.Ratio, dratio),
 	}
 }
 

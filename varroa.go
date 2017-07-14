@@ -129,8 +129,13 @@ func main() {
 			}
 		}
 		if cli.snatch {
-			if err := snatchTorrents(env, tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+			if err := snatchTorrents(env, tracker, IntSliceToStringSlice(cli.torrentIDs), cli.useFLToken); err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
+			}
+		}
+		if cli.info {
+			if err := showTorrentInfo(env, tracker, IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+				logThis.Error(errors.Wrap(err, errorShowingTorrentInfo), NORMAL)
 			}
 		}
 		if cli.checkLog {
