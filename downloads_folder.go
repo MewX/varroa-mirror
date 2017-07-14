@@ -258,8 +258,43 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 
 	// TODO HOW TO DO IT IF MORE THAN 1?
 	info := d.Metadata[d.Trackers[0]]
-	release := info.Release()
 
+	gt := info.FullInfo()
+	if gt == nil {
+		return d.Path // nothing useful here
+	}
+	// parsing info that needs to be worked on before use
+	artists := []string{}
+	// for now, using artists, composers, "with" categories
+	for _, el := range gt.Response.Group.MusicInfo.Artists {
+		artists = append(artists, el.Name)
+	}
+	for _, el := range gt.Response.Group.MusicInfo.With {
+		artists = append(artists, el.Name)
+	}
+	for _, el := range gt.Response.Group.MusicInfo.Composers {
+		artists = append(artists, el.Name)
+	}
+	artistsShort := strings.Join(artists, ", ")
+	// TODO do better.
+	if len(artists) >= 3 {
+		artistsShort = "Various Artists"
+	}
+	year := gt.Response.Group.Year
+	if gt.Response.Torrent.Remastered {
+		year = gt.Response.Torrent.RemasterYear
+	}
+
+	/*
+		ReleaseType = getGazelleReleaseType(gt.Response.Group.ReleaseType)
+		HasLog = gt.Response.Torrent.HasLog
+		HasCue = gt.Response.Torrent.HasCue
+		IsScene = gt.Response.Torrent.Scene
+		Size = uint64(gt.Response.Torrent.Size)
+		LogScore = gt.Response.Torrent.LogScore
+	*/
+
+	// TODO ADD RELEASETYPE (album/ep/etc)
 	r := strings.NewReplacer(
 		"$a", "{{$a}}",
 		"$t", "{{$t}}",
@@ -270,24 +305,21 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 		"$l", "{{$l}}",
 		"$n", "{{$n}}",
 		"$e", "{{$e}}",
+		"{", "ÆÆ", // otherwise golang's template throws a fit
+		"}", "¢¢", // assuming these character sequences will probably not cause conflicts.
 	)
-	artists := strings.Join(release.Artists, ", ")
-	// TODO do better.
-	if len(release.Artists) >= 3 {
-		artists = "Various Artists"
-	}
 
 	// replace with all valid epub parameters
 	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$q := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}%s`,
-		artists,
-		release.Year,
-		release.Title,
-		release.Quality,
-		release.Format,
-		release.Source,
-		info.label,
-		"CATALOG_NUMBER",
-		info.edition,
+		artistsShort,
+		year,
+		gt.Response.Group.Name,            // title
+		gt.Response.Torrent.Encoding,      // quality
+		gt.Response.Torrent.Format,        // format
+		gt.Response.Torrent.Media,         // source
+		gt.Response.Group.RecordLabel,     // label
+		gt.Response.Group.CatalogueNumber, // catalog number
+		gt.Response.Torrent.RemasterTitle, // edition
 		r.Replace(folderTemplate))
 
 	var doc bytes.Buffer
@@ -296,6 +328,14 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 		return d.Path
 	}
 	newName := strings.TrimSpace(doc.String())
+
+	// recover brackets
+	r2 := strings.NewReplacer(
+		"ÆÆ", "{",
+		"¢¢", "}",
+	)
+	newName = r2.Replace(newName)
+
 	// making sure the path is relative
 	if strings.HasPrefix(newName, "/") {
 		newName = newName[1:]

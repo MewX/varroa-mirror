@@ -202,6 +202,15 @@ var (
 		Filter:      "",
 		Metadata:    ReleaseMetadata{},
 	}
+	// torrent infos
+	i1 = &TrackerTorrentInfo{size: 1234567, logScore: 100, uploader: "that_guy"}
+	i2 = &TrackerTorrentInfo{size: 1234567, logScore: 80, uploader: "someone else"}
+	i3 = &TrackerTorrentInfo{size: 11, logScore: 80}
+	i4 = &TrackerTorrentInfo{size: 123456789, logScore: 80}
+	i5 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
+	i6 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
+	i7 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition"}
+	i8 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster"}
 )
 
 func TestRelease(t *testing.T) {
@@ -410,14 +419,6 @@ func TestRelease(t *testing.T) {
 	check.False(r5.Satisfies(f27))
 
 	// checking with TorrentInfo
-	i1 := &TrackerTorrentInfo{size: 1234567, logScore: 100, uploader: "that_guy"}
-	i2 := &TrackerTorrentInfo{size: 1234567, logScore: 80, uploader: "someone else"}
-	i3 := &TrackerTorrentInfo{size: 11, logScore: 80}
-	i4 := &TrackerTorrentInfo{size: 123456789, logScore: 80}
-	i5 := &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
-	i6 := &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
-	i7 := &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition"}
-	i8 := &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster"}
 
 	// log score
 	check.True(r1.HasCompatibleTrackerInfo(f17, []string{}, i1))

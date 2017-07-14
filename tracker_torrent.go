@@ -76,7 +76,7 @@ func (a *TrackerTorrentInfo) ArtistNames() []string {
 	return artistNames
 }
 
-func (a *TrackerTorrentInfo) Release() *Release {
+func (a *TrackerTorrentInfo) FullInfo() *GazelleTorrent {
 	if len(a.fullJSON) == 0 {
 		return nil // nothing useful here
 	}
@@ -84,6 +84,14 @@ func (a *TrackerTorrentInfo) Release() *Release {
 	if unmarshalErr := json.Unmarshal(a.fullJSON, &gt.Response); unmarshalErr != nil {
 		logThis.Error(errors.Wrap(unmarshalErr, "Error parsing torrent info JSON"), NORMAL)
 		return nil
+	}
+	return &gt
+}
+
+func (a *TrackerTorrentInfo) Release() *Release {
+	gt := a.FullInfo()
+	if gt == nil {
+		return nil // nothing useful here
 	}
 	r := &Release{Timestamp: time.Now()}
 	// for now, using artists, composers, "with" categories
