@@ -204,7 +204,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	if b.snatch {
 		out.Command = "snatch"
 		out.Args = IntSliceToStringSlice(b.torrentIDs)
-		out.Args = append(out.Args, fmt.Sprintf("%v", b.useFLToken))
+		out.FLToken = b.useFLToken
 	}
 	if b.info {
 		out.Command = "info"

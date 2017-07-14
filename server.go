@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -33,6 +32,7 @@ type IncomingJSON struct {
 	Token   string
 	Command string
 	Args    []string
+	FLToken bool
 	Site    string
 }
 
@@ -271,22 +271,15 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 							answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
 						} else {
 							// snatching
-							if len(incoming.Args) != 2 {
-								answer = OutgoingJSON{Status: responseError, Message: "Error, not enough information from script."}
-							} else {
-								torrentID := incoming.Args[0]
-								useFLToken, err := strconv.ParseBool(incoming.Args[1])
+							for _, id := range incoming.Args {
+								release, err := snatchFromID(e, tracker, id, incoming.FLToken)
 								if err != nil {
-									answer = OutgoingJSON{Status: responseError, Message: "Error, incorrect information from script."}
+									logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
+									answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
 								} else {
-									release, err := snatchFromID(e, tracker, torrentID, useFLToken)
-									if err != nil {
-										logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
-										answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
-									} else {
-										answer = OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent " + release.ShortString()}
-									}
+									answer = OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent " + release.ShortString()}
 								}
+								// TODO send responses for all IDs (only 1 from GM Script for now anyway)
 							}
 						}
 					case statsCommand:

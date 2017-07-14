@@ -133,11 +133,7 @@ func awaitOrders(e *Environment) {
 				logThis.Error(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
 			}
 		case "snatch":
-			useFLTokens := false
-			if orders.Args[len(orders.Args)-1] == "true" {
-				useFLTokens = true
-			}
-			if err := snatchTorrents(e, tracker, orders.Args[:len(orders.Args)-1], useFLTokens); err != nil {
+			if err := snatchTorrents(e, tracker, orders.Args, orders.FLToken); err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 			}
 		case "info":

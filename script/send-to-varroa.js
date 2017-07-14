@@ -241,11 +241,11 @@ function createLink(linkelement, id, useFLToken) {
 }
 
 function getTorrent() {
-	getTorrentAux(this.nodeName, 'varroa_', 'false');
+	getTorrentAux(this.nodeName, 'varroa_', false);
 }
 
 function getTorrentWithFLToken() {
-	getTorrentAux(this.nodeName, 'varroa_fl_', 'true');
+	getTorrentAux(this.nodeName, 'varroa_fl_', true);
 }
 
 function getTorrentAux(nodename, prefix, useFLToken) {
@@ -255,8 +255,9 @@ function getTorrentAux(nodename, prefix, useFLToken) {
 		const get = {
 			Command: 'get',
 			Token: settings.token,
-			Args: [id, useFLToken],
-			Site: settings.site
+			Args: [id],
+			Site: settings.site,
+			FLToken: useFLToken
 		};
 		sock.send(JSON.stringify(get));
 		setVMStatus(vmGet + id);
@@ -267,7 +268,7 @@ function getTorrentAux(nodename, prefix, useFLToken) {
 
 function areFLTokensAvailable() {
 	const tokens = document.getElementById('fl_tokens');
-	if (tokens.length === 0) {
+	if (tokens === null) {
 		return false;
 	}
 	return parseInt(tokens.getElementsByClassName('stat')[0].getElementsByTagName('a')[0].innerHTML, 10) > 0;
