@@ -280,10 +280,35 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 	if len(artists) >= 3 {
 		artistsShort = "Various Artists"
 	}
-	year := gt.Response.Group.Year
+	originalYear := gt.Response.Group.Year
+/*	year := gt.Response.Group.Year
 	if gt.Response.Torrent.Remastered {
 		year = gt.Response.Torrent.RemasterYear
-	}
+	}*/
+
+	// TODO PUT year IN IDENTIFYING INFO is REMASTER!
+
+	// usual edition specifiers, shortened
+	editionReplacer := strings.NewReplacer(
+		"Reissue", "RE",
+		"Repress", "RP",
+		"Remaster", "RM",
+		"Remastered", "RM",
+		"Limited Edition", "LTD",
+		"Deluxe", "DLX",
+		"Deluxe Edition", "DLX",
+		"Special Editon", "SE",
+		"Bonus Tracks", "Bonus",
+		"Bonus Tracks Edition", "Bonus",
+		"Promo", "PR",
+		"Test Pressing", "TP",
+		"Self Released", "SR",
+		"Box Set", "Box set",
+		"Compact Disc Recordable", "CDr",
+		"Japan Edition", "Japan",
+		"Japan Release", "Japan",
+	)
+	editionName := editionReplacer.Replace(gt.Response.Torrent.RemasterTitle)
 
 	/*
 		ReleaseType = getGazelleReleaseType(gt.Response.Group.ReleaseType)
@@ -312,14 +337,14 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 	// replace with all valid epub parameters
 	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$q := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}%s`,
 		artistsShort,
-		year,
+		originalYear,
 		gt.Response.Group.Name,            // title
 		gt.Response.Torrent.Encoding,      // quality
 		gt.Response.Torrent.Format,        // format
 		gt.Response.Torrent.Media,         // source
 		gt.Response.Group.RecordLabel,     // label
 		gt.Response.Group.CatalogueNumber, // catalog number
-		gt.Response.Torrent.RemasterTitle, // edition
+		editionName,                       // edition
 		r.Replace(folderTemplate))
 
 	var doc bytes.Buffer

@@ -32,13 +32,15 @@ func TestDLPath(t *testing.T) {
 		},
 	}
 	gt1.Response.Group.Name = "RELEASE 1"
-	gt1.Response.Group.Year = 2017
+	gt1.Response.Group.Year = 1987
 	gt1.Response.Group.RecordLabel = "LABEL 1"
 	gt1.Response.Group.ReleaseType = 5 // EP
 	gt1.Response.Torrent.Format = "FLAC"
 	gt1.Response.Torrent.Encoding = "Lossless"
 	gt1.Response.Torrent.Media = "WEB"
+	gt1.Response.Torrent.Remastered = true
 	gt1.Response.Torrent.RemasterTitle = "Deluxe"
+	gt1.Response.Torrent.RemasterYear = 2017
 	metadataJSONgt1, err := json.MarshalIndent(gt1.Response, "", "    ")
 	check.Nil(err)
 
@@ -69,14 +71,15 @@ func TestDLPath(t *testing.T) {
 	// check other cases
 	check.Equal("Artist A, Artist B", d2.generatePath("$a"))
 	check.Equal("RELEASE 1", d2.generatePath("$t"))
-	check.Equal("2017", d2.generatePath("$y"))
+	check.Equal("1987", d2.generatePath("$y"))
 	check.Equal("FLAC", d2.generatePath("$f"))
 	check.Equal("Lossless", d2.generatePath("$q"))
 	check.Equal("WEB", d2.generatePath("$s"))
 	check.Equal("LABEL 1", d2.generatePath("$l"))
 	check.Equal("CATNUM", d2.generatePath("$n"))
-	check.Equal("Deluxe", d2.generatePath("$e"))
-	check.Equal("Artist A, Artist B (2017) RELEASE 1 [FLAC Lossless] [WEB]", d2.generatePath("$a ($y) $t [$f $q] [$s]"))
-	check.Equal("Artist A, Artist B (2017) RELEASE 1 [FLAC Lossless] [WEB] {Deluxe, LABEL 1-CATNUM}", d2.generatePath("$a ($y) $t [$f $q] [$s] {$e, $l-$n}"))
+	check.Equal("DLX", d2.generatePath("$e"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC Lossless] [WEB]", d2.generatePath("$a ($y) $t [$f $q] [$s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC Lossless] [WEB] {DLX, LABEL 1-CATNUM}", d2.generatePath("$a ($y) $t [$f $q] [$s] {$e, $l-$n}"))
+	check.Equal("DLXDLX", d2.generatePath("$e/$e")) // sanitized to remove "/"
 
 }
