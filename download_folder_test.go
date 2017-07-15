@@ -1,10 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
-
-	"encoding/json"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -18,9 +17,9 @@ func TestDLPath(t *testing.T) {
 	logThis = LogThis{env: env}
 
 	// test API JSON responses
-	gt1 := &GazelleTorrent{}
-	gt1.Response.Group.CatalogueNumber = "CATNUM"
-	gt1.Response.Group.MusicInfo.Artists = []struct {
+	gt := &GazelleTorrent{}
+	gt.Response.Group.CatalogueNumber = "CATNUM"
+	gt.Response.Group.MusicInfo.Artists = []struct {
 		ID   int    `json:"id"`
 		Name string `json:"name"`
 	}{
@@ -31,29 +30,51 @@ func TestDLPath(t *testing.T) {
 			"Artist B",
 		},
 	}
-	gt1.Response.Group.Name = "RELEASE 1"
-	gt1.Response.Group.Year = 1987
-	gt1.Response.Group.RecordLabel = "LABEL 1"
-	gt1.Response.Group.ReleaseType = 5 // EP
-	gt1.Response.Torrent.Format = "FLAC"
-	gt1.Response.Torrent.Encoding = "Lossless"
-	gt1.Response.Torrent.Media = "WEB"
-	gt1.Response.Torrent.Remastered = true
-	gt1.Response.Torrent.RemasterTitle = "Deluxe"
-	gt1.Response.Torrent.RemasterYear = 2017
-	metadataJSONgt1, err := json.MarshalIndent(gt1.Response, "", "    ")
+	gt.Response.Group.Name = "RELEASE 1"
+	gt.Response.Group.Year = 1987
+	gt.Response.Group.RecordLabel = "LABEL 1"
+	gt.Response.Group.ReleaseType = 5 // EP
+	gt.Response.Torrent.Format = "FLAC"
+	gt.Response.Torrent.Encoding = "Lossless"
+	gt.Response.Torrent.Media = "WEB"
+	gt.Response.Torrent.Remastered = true
+	gt.Response.Torrent.RemasterTitle = "Deluxe"
+	gt.Response.Torrent.RemasterYear = 2017
+	gt.Response.Torrent.HasLog = true
+	gt.Response.Torrent.HasCue = true
+	gt.Response.Torrent.LogScore = 100
+	metadataJSONgt1, err := json.MarshalIndent(gt.Response, "", "    ")
+	check.Nil(err)
+
+	gt.Response.Torrent.Media = "CD"
+	metadataJSONgt2, err := json.MarshalIndent(gt.Response, "", "    ")
+	check.Nil(err)
+
+	gt.Response.Torrent.Format = "MP3"
+	gt.Response.Torrent.Encoding = "V0 (VBR)"
+	gt.Response.Torrent.RemasterTitle = "Bonus Tracks"
+	metadataJSONgt3, err := json.MarshalIndent(gt.Response, "", "    ")
+	check.Nil(err)
+
+	gt.Response.Torrent.Format = "FLAC"
+	gt.Response.Torrent.Encoding = "24bit Lossless"
+	gt.Response.Torrent.RemasterTitle = "Remaster"
+	gt.Response.Torrent.Media = "Vinyl"
+	metadataJSONgt4, err := json.MarshalIndent(gt.Response, "", "    ")
+	check.Nil(err)
+
+	gt.Response.Torrent.Grade = "Gold"
+	gt.Response.Torrent.Media = "CD"
+	gt.Response.Torrent.Encoding = "Lossless"
+	metadataJSONgt5, err := json.MarshalIndent(gt.Response, "", "    ")
 	check.Nil(err)
 
 	// torrent infos
-	info1 := TrackerTorrentInfo{
-		groupID:  10,
-		label:    "label",
-		edition:  "edition",
-		logScore: 100,
-		artists:  map[string]int{"Artist A": 1, "Artist B": 2},
-		folder:   "original_torrent_path",
-	}
-	info1.fullJSON = metadataJSONgt1
+	info1 := TrackerTorrentInfo{fullJSON: metadataJSONgt1}
+	info2 := TrackerTorrentInfo{fullJSON: metadataJSONgt2}
+	info3 := TrackerTorrentInfo{fullJSON: metadataJSONgt3}
+	info4 := TrackerTorrentInfo{fullJSON: metadataJSONgt4}
+	info5 := TrackerTorrentInfo{fullJSON: metadataJSONgt5}
 
 	// test DownloadFolders
 	d1 := &DownloadFolder{Path: "original_path", HasInfo: false}
@@ -62,6 +83,22 @@ func TestDLPath(t *testing.T) {
 	d2.init()
 	d2.Trackers = append(d2.Trackers, "BLUE")
 	d2.Metadata["BLUE"] = info1
+	d3 := &DownloadFolder{Path: "original_path", HasInfo: true}
+	d3.init()
+	d3.Trackers = append(d3.Trackers, "BLUE")
+	d3.Metadata["BLUE"] = info2
+	d4 := &DownloadFolder{Path: "original_path", HasInfo: true}
+	d4.init()
+	d4.Trackers = append(d4.Trackers, "BLUE")
+	d4.Metadata["BLUE"] = info3
+	d5 := &DownloadFolder{Path: "original_path", HasInfo: true}
+	d5.init()
+	d5.Trackers = append(d5.Trackers, "BLUE")
+	d5.Metadata["BLUE"] = info4
+	d6 := &DownloadFolder{Path: "original_path", HasInfo: true}
+	d6.init()
+	d6.Trackers = append(d6.Trackers, "BLUE")
+	d6.Metadata["BLUE"] = info5
 
 	// checking cases where no new name can be generated
 	check.Equal("original_path", d1.generatePath("$a"))
@@ -73,13 +110,20 @@ func TestDLPath(t *testing.T) {
 	check.Equal("RELEASE 1", d2.generatePath("$t"))
 	check.Equal("1987", d2.generatePath("$y"))
 	check.Equal("FLAC", d2.generatePath("$f"))
-	check.Equal("Lossless", d2.generatePath("$q"))
+	check.Equal("V0", d4.generatePath("$f"))
+	check.Equal("FLAC24", d5.generatePath("$f"))
 	check.Equal("WEB", d2.generatePath("$s"))
 	check.Equal("LABEL 1", d2.generatePath("$l"))
 	check.Equal("CATNUM", d2.generatePath("$n"))
 	check.Equal("DLX", d2.generatePath("$e"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC Lossless] [WEB]", d2.generatePath("$a ($y) $t [$f $q] [$s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC Lossless] [WEB] {DLX, LABEL 1-CATNUM}", d2.generatePath("$a ($y) $t [$f $q] [$s] {$e, $l-$n}"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB]", d2.generatePath("$a ($y) $t [$f] [$s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB] {DLX, LABEL 1-CATNUM}", d2.generatePath("$a ($y) $t [$f] [$s] {$e, $l-$n}"))
 	check.Equal("DLXDLX", d2.generatePath("$e/$e")) // sanitized to remove "/"
+	check.Equal("2017 DLX CATNUM EP", d2.generatePath("$id"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 DLX CATNUM EP} [FLAC WEB]", d2.generatePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 DLX CATNUM EP} [FLAC CD+]", d3.generatePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 Bonus CATNUM EP} [V0 CD]", d4.generatePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 RM CATNUM EP} [FLAC24 Vinyl]", d5.generatePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 RM CATNUM EP} [FLAC CD++]", d6.generatePath("$a ($y) $t {$id} [$f $s]"))
 
 }

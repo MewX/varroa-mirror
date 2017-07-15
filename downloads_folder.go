@@ -3,11 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/pkg/errors"
 	"github.com/subosito/norma"
@@ -281,10 +281,6 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 		artistsShort = "Various Artists"
 	}
 	originalYear := gt.Response.Group.Year
-/*	year := gt.Response.Group.Year
-	if gt.Response.Torrent.Remastered {
-		year = gt.Response.Torrent.RemasterYear
-	}*/
 
 	// TODO PUT year IN IDENTIFYING INFO is REMASTER!
 
@@ -310,21 +306,53 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 	)
 	editionName := editionReplacer.Replace(gt.Response.Torrent.RemasterTitle)
 
-	/*
-		ReleaseType = getGazelleReleaseType(gt.Response.Group.ReleaseType)
-		HasLog = gt.Response.Torrent.HasLog
-		HasCue = gt.Response.Torrent.HasCue
-		IsScene = gt.Response.Torrent.Scene
-		Size = uint64(gt.Response.Torrent.Size)
-		LogScore = gt.Response.Torrent.LogScore
-	*/
+	// identifying info
+	id := ""
+	if gt.Response.Torrent.Remastered {
+		id += fmt.Sprintf("%d ", gt.Response.Torrent.RemasterYear)
+	}
+	id += editionName + " "
+	// adding catalog number, or if not specified, the record label
+	if gt.Response.Group.CatalogueNumber != "" {
+		id += gt.Response.Group.CatalogueNumber + " "
+	} else {
+		id += gt.Response.Group.RecordLabel + " "
+	}
+	id += getGazelleReleaseType(gt.Response.Group.ReleaseType)
 
-	// TODO ADD RELEASETYPE (album/ep/etc)
+	// format
+	format := ""
+	switch gt.Response.Torrent.Encoding {
+	case "Lossless":
+		format = "FLAC"
+	case "24bit Lossless":
+		format = "FLAC24"
+	case "V0 (VBR)":
+		format = "V0"
+	case "V2 (VBR)":
+		format = "V2"
+	case "320":
+		format = "320"
+	default:
+		format = "UnF"
+	}
+
+	// source
+	source := gt.Response.Torrent.Media
+	if source == "CD" && format == "FLAC" {
+		if gt.Response.Torrent.HasLog && gt.Response.Torrent.HasCue && (gt.Response.Torrent.LogScore == 100 || gt.Response.Torrent.Grade == "Silver") {
+			source += "+"
+		}
+		if gt.Response.Torrent.Grade == "Gold" {
+			source += "+"
+		}
+	}
+
 	r := strings.NewReplacer(
+		"$id", "{{$id}}",
 		"$a", "{{$a}}",
 		"$t", "{{$t}}",
 		"$y", "{{$y}}",
-		"$q", "{{$q}}",
 		"$f", "{{$f}}",
 		"$s", "{{$s}}",
 		"$l", "{{$l}}",
@@ -335,16 +363,16 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 	)
 
 	// replace with all valid epub parameters
-	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$q := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}%s`,
+	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
 		artistsShort,
 		originalYear,
-		gt.Response.Group.Name,            // title
-		gt.Response.Torrent.Encoding,      // quality
-		gt.Response.Torrent.Format,        // format
-		gt.Response.Torrent.Media,         // source
+		gt.Response.Group.Name, // title
+		format,
+		source,
 		gt.Response.Group.RecordLabel,     // label
 		gt.Response.Group.CatalogueNumber, // catalog number
 		editionName,                       // edition
+		id,                                // identifying info
 		r.Replace(folderTemplate))
 
 	var doc bytes.Buffer
