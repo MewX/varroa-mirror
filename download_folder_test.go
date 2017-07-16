@@ -69,12 +69,20 @@ func TestDLPath(t *testing.T) {
 	metadataJSONgt5, err := json.MarshalIndent(gt.Response, "", "    ")
 	check.Nil(err)
 
+	gt.Response.Torrent.Grade = "Silver"
+	gt.Response.Torrent.RemasterYear = 1987
+	gt.Response.Torrent.RemasterTitle = "Promo"
+	gt.Response.Group.ReleaseType = 1
+	metadataJSONgt6, err := json.MarshalIndent(gt.Response, "", "    ")
+	check.Nil(err)
+
 	// torrent infos
 	info1 := TrackerTorrentInfo{fullJSON: metadataJSONgt1}
 	info2 := TrackerTorrentInfo{fullJSON: metadataJSONgt2}
 	info3 := TrackerTorrentInfo{fullJSON: metadataJSONgt3}
 	info4 := TrackerTorrentInfo{fullJSON: metadataJSONgt4}
 	info5 := TrackerTorrentInfo{fullJSON: metadataJSONgt5}
+	info6 := TrackerTorrentInfo{fullJSON: metadataJSONgt6}
 
 	// test DownloadFolders
 	d1 := &DownloadFolder{Path: "original_path", HasInfo: false}
@@ -99,31 +107,37 @@ func TestDLPath(t *testing.T) {
 	d6.init()
 	d6.Trackers = append(d6.Trackers, "BLUE")
 	d6.Metadata["BLUE"] = info5
+	d7 := &DownloadFolder{Path: "original_path", HasInfo: true}
+	d7.init()
+	d7.Trackers = append(d7.Trackers, "BLUE")
+	d7.Metadata["BLUE"] = info6
 
 	// checking cases where no new name can be generated
-	check.Equal("original_path", d1.generatePath("$a"))
-	check.Equal("original_path", d1.generatePath(""))
-	check.Equal("original_path", d2.generatePath(""))
+	check.Equal("original_path", d1.generatePath("BLUE", "$a"))
+	check.Equal("original_path", d1.generatePath("BLUE", ""))
+	check.Equal("original_path", d2.generatePath("BLUE", ""))
+	check.Equal("original_path", d2.generatePath("YELLOW", "$a"))
 
 	// check other cases
-	check.Equal("Artist A, Artist B", d2.generatePath("$a"))
-	check.Equal("RELEASE 1", d2.generatePath("$t"))
-	check.Equal("1987", d2.generatePath("$y"))
-	check.Equal("FLAC", d2.generatePath("$f"))
-	check.Equal("V0", d4.generatePath("$f"))
-	check.Equal("FLAC24", d5.generatePath("$f"))
-	check.Equal("WEB", d2.generatePath("$s"))
-	check.Equal("LABEL 1", d2.generatePath("$l"))
-	check.Equal("CATNUM", d2.generatePath("$n"))
-	check.Equal("DLX", d2.generatePath("$e"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB]", d2.generatePath("$a ($y) $t [$f] [$s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB] {DLX, LABEL 1-CATNUM}", d2.generatePath("$a ($y) $t [$f] [$s] {$e, $l-$n}"))
-	check.Equal("DLXDLX", d2.generatePath("$e/$e")) // sanitized to remove "/"
-	check.Equal("2017 DLX CATNUM EP", d2.generatePath("$id"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 DLX CATNUM EP} [FLAC WEB]", d2.generatePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 DLX CATNUM EP} [FLAC CD+]", d3.generatePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 Bonus CATNUM EP} [V0 CD]", d4.generatePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 RM CATNUM EP} [FLAC24 Vinyl]", d5.generatePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 RM CATNUM EP} [FLAC CD++]", d6.generatePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B", d2.generatePath("BLUE", "$a"))
+	check.Equal("RELEASE 1", d2.generatePath("BLUE", "$t"))
+	check.Equal("1987", d2.generatePath("BLUE", "$y"))
+	check.Equal("FLAC", d2.generatePath("BLUE", "$f"))
+	check.Equal("V0", d4.generatePath("BLUE", "$f"))
+	check.Equal("FLAC24", d5.generatePath("BLUE", "$f"))
+	check.Equal("WEB", d2.generatePath("BLUE", "$s"))
+	check.Equal("LABEL 1", d2.generatePath("BLUE", "$l"))
+	check.Equal("CATNUM", d2.generatePath("BLUE", "$n"))
+	check.Equal("DLX", d2.generatePath("BLUE", "$e"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB]", d2.generatePath("BLUE", "$a ($y) $t [$f] [$s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB] {DLX, LABEL 1-CATNUM}", d2.generatePath("BLUE", "$a ($y) $t [$f] [$s] {$e, $l-$n}"))
+	check.Equal("DLXDLX", d2.generatePath("BLUE", "$e/$e")) // sanitized to remove "/"
+	check.Equal("2017 DLX CATNUM EP", d2.generatePath("BLUE", "$id"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 DLX CATNUM EP} [FLAC WEB]", d2.generatePath("BLUE", "$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 DLX CATNUM EP} [FLAC CD+]", d3.generatePath("BLUE", "$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 Bonus CATNUM EP} [V0 CD]", d4.generatePath("BLUE", "$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 RM CATNUM EP} [FLAC24 Vinyl]", d5.generatePath("BLUE", "$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017 RM CATNUM EP} [FLAC CD++]", d6.generatePath("BLUE", "$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR CATNUM} [FLAC CD+]", d7.generatePath("BLUE", "$a ($y) $t {$id} [$f $s]"))
 
 }

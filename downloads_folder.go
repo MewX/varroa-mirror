@@ -225,7 +225,8 @@ func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks b
 			if Accept("Do you want to export it now ") {
 				fmt.Println("Exporting files to the library root...")
 
-				newName := d.generatePath(folderTemplate)
+				// TODO HOW TO DO IT IF MORE THAN 1?
+				newName := d.generatePath(d.Trackers[0], folderTemplate)
 				if !Accept("Export as " + newName) {
 					newName = d.Path
 					// TODO: allow user to edit manually
@@ -251,13 +252,15 @@ func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks b
 	return nil
 }
 
-func (d *DownloadFolder) generatePath(folderTemplate string) string {
+func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 	if folderTemplate == "" || !d.HasInfo {
 		return d.Path
 	}
-
-	// TODO HOW TO DO IT IF MORE THAN 1?
-	info := d.Metadata[d.Trackers[0]]
+	info, ok := d.Metadata[tracker]
+	if !ok {
+		logThis.Info("Could not find metadata for tracker " + tracker, NORMAL)
+		return d.Path
+	}
 
 	gt := info.FullInfo()
 	if gt == nil {
@@ -265,11 +268,8 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 	}
 	// parsing info that needs to be worked on before use
 	artists := []string{}
-	// for now, using artists, composers, "with" categories
+	// for now, using artists, composers categories
 	for _, el := range gt.Response.Group.MusicInfo.Artists {
-		artists = append(artists, el.Name)
-	}
-	for _, el := range gt.Response.Group.MusicInfo.With {
 		artists = append(artists, el.Name)
 	}
 	for _, el := range gt.Response.Group.MusicInfo.Composers {
@@ -281,8 +281,6 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 		artistsShort = "Various Artists"
 	}
 	originalYear := gt.Response.Group.Year
-
-	// TODO PUT year IN IDENTIFYING INFO is REMASTER!
 
 	// usual edition specifiers, shortened
 	editionReplacer := strings.NewReplacer(
@@ -308,17 +306,20 @@ func (d *DownloadFolder) generatePath(folderTemplate string) string {
 
 	// identifying info
 	id := ""
-	if gt.Response.Torrent.Remastered {
+	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterYear != originalYear {
 		id += fmt.Sprintf("%d ", gt.Response.Torrent.RemasterYear)
 	}
 	id += editionName + " "
 	// adding catalog number, or if not specified, the record label
 	if gt.Response.Group.CatalogueNumber != "" {
-		id += gt.Response.Group.CatalogueNumber + " "
+		id += gt.Response.Group.CatalogueNumber
 	} else {
-		id += gt.Response.Group.RecordLabel + " "
+		id += gt.Response.Group.RecordLabel
 	}
-	id += getGazelleReleaseType(gt.Response.Group.ReleaseType)
+	if gt.Response.Group.ReleaseType != 1 {
+		// adding release type if not album
+		id += " " + getGazelleReleaseType(gt.Response.Group.ReleaseType)
+	}
 
 	// format
 	format := ""
