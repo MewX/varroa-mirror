@@ -314,7 +314,7 @@ const (
 	.close:hover { background: #00d9ff; }
 
 	/* table */
-	#stats-table
+	.stats-table
 	{
 		font-size: 0.8em;
 		font-weight: normal;
@@ -322,18 +322,18 @@ const (
 		border-collapse: collapse;
 		border: 1px solid {{.GraphColor}};
 	}
-	#stats-table th
+	.stats-table th
 	{
 		padding: 10px;
 		color: {{.IndexFontColor}};
 		border-bottom: 1px dashed {{.GraphColor}};
 	}
-	#stats-table td
+	.stats-table td
 	{
 		padding: 10px;
 		color: {{.IndexFontColor}};
 	}
-	#stats-table tbody tr:hover td
+	.stats-table tbody tr:hover td
 	{
 		color: {{.IndexFontColor}};
 		background: {{.GraphColor}};

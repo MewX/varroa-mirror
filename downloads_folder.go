@@ -258,7 +258,7 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 	}
 	info, ok := d.Metadata[tracker]
 	if !ok {
-		logThis.Info("Could not find metadata for tracker " + tracker, NORMAL)
+		logThis.Info("Could not find metadata for tracker "+tracker, NORMAL)
 		return d.Path
 	}
 

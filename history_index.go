@@ -103,7 +103,7 @@ const (
 		<h1 id="stats-{{.Name}}" >{{.Name}}</h1>
 
 		<h2  class="content-subhead">{{.Name}} Stats</h2>
-		<table id="stats-table" summary="Last stats for {{.Name}}">
+		<table class="stats-table" summary="Last stats for {{.Name}}">
 		    <thead>
 		      <tr>
 				<th>Date</th>
