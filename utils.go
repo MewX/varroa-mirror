@@ -377,3 +377,85 @@ func Accept(question string) bool {
 	}
 	return false
 }
+
+// RemoveDuplicates in []string
+func RemoveDuplicates(options *[]string, otherStringsToClean ...string) {
+	found := make(map[string]bool)
+	// specifically remove other strings from values
+	for _, o := range otherStringsToClean {
+		found[o] = true
+	}
+	j := 0
+	for i, x := range *options {
+		if !found[x] && x != "" {
+			found[x] = true
+			(*options)[j] = (*options)[i]
+			j++
+		}
+	}
+	*options = (*options)[:j]
+}
+
+// SelectOption among several, or input a new one, and return user input.
+func SelectOption(title, usage string, options []string) (string, error) {
+	UserChoice(title)
+	if usage != "" {
+		fmt.Println(Green(usage))
+	}
+
+	// remove duplicates from options and display them
+	RemoveDuplicates(&options)
+	for i, o := range options {
+		fmt.Printf("%d. %s\n", i+1, o)
+	}
+
+	var choice string
+	errs := 0
+	validChoice := false
+	for !validChoice {
+		if len(options) > 1 {
+			UserChoice("Choose option [1-%d], or [E]dit: ", len(options))
+		} else {
+			UserChoice("[E]dit manually, or [A]ccept: ")
+		}
+		choice, scanErr := GetInput()
+		if scanErr != nil {
+			return "", scanErr
+		}
+
+		if strings.ToUpper(choice) == "E" {
+			var edited string
+			var scanErr error
+			UserChoice("Enter the new value: ")
+			edited, scanErr = GetInput()
+
+			if scanErr != nil {
+				return "", scanErr
+			}
+			if edited == "" {
+				RedBold("Empty value!")
+			} else {
+				if Accept("Confirm: " + edited) {
+					return edited, nil
+				}
+				RedBold("Not confirmed.")
+			}
+		} else if strings.ToUpper(choice) == "A" {
+			if len(options) == 1 {
+				return options[0], nil
+			}
+		} else if index, err := strconv.Atoi(choice); err == nil && 0 < index && index <= len(options) {
+			return options[index-1], nil
+		}
+
+		if !validChoice {
+			RedBold("Invalid choice.")
+			errs++
+			if errs > 10 {
+				RedBold("Too many errors")
+				return "", errors.New("Invalid choice")
+			}
+		}
+	}
+	return choice, nil
+}

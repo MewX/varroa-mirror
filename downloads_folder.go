@@ -225,17 +225,26 @@ func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks b
 			if Accept("Do you want to export it now ") {
 				fmt.Println("Exporting files to the library root...")
 
-				// TODO HOW TO DO IT IF MORE THAN 1?
-				newName := d.generatePath(d.Trackers[0], folderTemplate)
-				if !Accept("Export as " + newName) {
-					newName = d.Path
-					// TODO: allow user to edit manually
+				// getting candidates for new folder name
+				candidates := []string{d.Path}
+				for _, t := range d.Trackers {
+					candidates = append(candidates, d.generatePath(t, folderTemplate))
 				}
-				if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(libraryPath, newName), useHardLinks); err != nil {
-					return errors.Wrap(err, "Error exporting download "+d.Path)
+				// select or input a new name
+				newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
+				if err != nil || DirectoryExists(filepath.Join(d.Root, newName)) {
+					return errors.Wrap(err, "Error generating new release folder name")
 				}
-				fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
-				d.State = stateExported
+				// TODO normalize/sanitize newName?
+				if Accept("Export as " + newName) {
+					if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(libraryPath, newName), useHardLinks); err != nil {
+						return errors.Wrap(err, "Error exporting download "+d.Path)
+					}
+					fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
+					d.State = stateExported
+				} else {
+					fmt.Println("The release was not exported. It can be exported later with the 'downloads export' subcommand.")
+				}
 			} else {
 				fmt.Println("The release was not exported. It can be exported later with the 'downloads export' subcommand.")
 			}
@@ -305,21 +314,24 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 	editionName := editionReplacer.Replace(gt.Response.Torrent.RemasterTitle)
 
 	// identifying info
-	id := ""
+	idElements := []string{}
 	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterYear != originalYear {
-		id += fmt.Sprintf("%d ", gt.Response.Torrent.RemasterYear)
+		idElements = append(idElements, fmt.Sprintf("%d", gt.Response.Torrent.RemasterYear))
 	}
-	id += editionName + " "
+	if editionName != "" {
+		idElements = append(idElements, editionName)
+	}
 	// adding catalog number, or if not specified, the record label
 	if gt.Response.Group.CatalogueNumber != "" {
-		id += gt.Response.Group.CatalogueNumber
-	} else {
-		id += gt.Response.Group.RecordLabel
+		idElements = append(idElements, gt.Response.Group.CatalogueNumber)
+	} else if gt.Response.Group.RecordLabel != "" {
+		idElements = append(idElements, gt.Response.Group.RecordLabel)
 	}
 	if gt.Response.Group.ReleaseType != 1 {
 		// adding release type if not album
-		id += " " + getGazelleReleaseType(gt.Response.Group.ReleaseType)
+		idElements = append(idElements, getGazelleReleaseType(gt.Response.Group.ReleaseType))
 	}
+	id := strings.Join(idElements, " ")
 
 	// format
 	format := ""
