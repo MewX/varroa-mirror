@@ -10,7 +10,6 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
-	"github.com/subosito/norma"
 )
 
 const (
@@ -402,13 +401,6 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 	)
 	newName = r2.Replace(newName)
 
-	// making sure the path is relative
-	if strings.HasPrefix(newName, "/") {
-		newName = newName[1:]
-	}
-
-	// TODO check it's not more than 250 characters long!
-
 	// making sure the final filename is valid
-	return norma.Sanitize(newName)
+	return SanitizeFolder(newName)
 }

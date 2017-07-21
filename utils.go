@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/subosito/norma"
 	"github.com/ttacon/chalk"
 )
 
@@ -123,6 +124,18 @@ func checkErrors(errs ...error) error {
 }
 
 //-----------------------------------------------------------------------------
+
+func SanitizeFolder(path string) string {
+	// making sure the path is relative
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+
+	// TODO check it's not more than 250 characters long!
+
+	// making sure the final filename is valid
+	return norma.Sanitize(path)
+}
 
 // DirectoryExists checks if a directory exists.
 func DirectoryExists(path string) (res bool) {
@@ -411,8 +424,7 @@ func SelectOption(title, usage string, options []string) (string, error) {
 
 	var choice string
 	errs := 0
-	validChoice := false
-	for !validChoice {
+	for {
 		if len(options) > 1 {
 			UserChoice("Choose option [1-%d], or [E]dit: ", len(options))
 		} else {
@@ -435,6 +447,7 @@ func SelectOption(title, usage string, options []string) (string, error) {
 			if edited == "" {
 				RedBold("Empty value!")
 			} else {
+				edited = SanitizeFolder(edited)
 				if Accept("Confirm: " + edited) {
 					return edited, nil
 				}
@@ -448,14 +461,14 @@ func SelectOption(title, usage string, options []string) (string, error) {
 			return options[index-1], nil
 		}
 
-		if !validChoice {
-			RedBold("Invalid choice.")
-			errs++
-			if errs > 10 {
-				RedBold("Too many errors")
-				return "", errors.New("Invalid choice")
-			}
+		// if we get here, wrong choice
+		RedBold("Invalid choice.")
+		errs++
+		if errs > 10 {
+			RedBold("Too many errors")
+			return "", errors.New("Invalid choice")
 		}
+
 	}
 	return choice, nil
 }
