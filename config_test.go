@@ -109,6 +109,11 @@ func TestConfig(t *testing.T) {
 	check.Equal("gitlabuser", c.GitlabPages.User)
 	check.Equal("anotherpassword", c.GitlabPages.Password)
 	check.Equal("https://something.gitlab.io/repo", c.GitlabPages.URL)
+	// mpd
+	fmt.Println("Checking mpd")
+	check.Equal("localhost:1234", c.MPD.Server)
+	check.Equal("optional", c.MPD.Password)
+	check.Equal("../varroa/test", c.MPD.Library)
 	// filters
 	fmt.Println("Checking filters")
 	check.Equal(2, len(c.Filters))

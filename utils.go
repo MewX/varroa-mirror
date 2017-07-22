@@ -163,15 +163,9 @@ func AbsoluteFileExists(path string) (res bool) {
 
 // FileExists checks if a path is valid
 func FileExists(path string) bool {
-	var absolutePath string
-	if filepath.IsAbs(path) {
-		absolutePath = path
-	} else {
-		currentDir, err := os.Getwd()
-		if err != nil {
-			return false
-		}
-		absolutePath = filepath.Join(currentDir, path)
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return false
 	}
 	return AbsoluteFileExists(absolutePath)
 }
@@ -365,7 +359,7 @@ func Yellow(in string) string {
 	return chalk.Yellow.Color(in)
 }
 
-// Choice message logging
+// UserChoice message logging
 func UserChoice(msg string, args ...interface{}) {
 	msg = fmt.Sprintf(msg, args...)
 	fmt.Print(BlueBold(msg))
@@ -422,7 +416,6 @@ func SelectOption(title, usage string, options []string) (string, error) {
 		fmt.Printf("%d. %s\n", i+1, o)
 	}
 
-	var choice string
 	errs := 0
 	for {
 		if len(options) > 1 {
@@ -470,5 +463,4 @@ func SelectOption(title, usage string, options []string) (string, error) {
 		}
 
 	}
-	return choice, nil
 }

@@ -184,12 +184,18 @@ func (d *DownloadFolder) Load() error {
 	return nil
 }
 
-func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks bool) error {
+func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks bool, mpd *ConfigMPD) error {
 	fmt.Println("Sorting " + d.Path)
-	// TODO if mpd configured...
-	if Accept("Load release into MPD") {
-		//TODO
+	// if mpd configured, allow playing the release...
+	if mpd != nil && Accept("Load release into MPD") {
 		fmt.Println("Sending to MPD.")
+		mpdClient := MPD{}
+		if err := mpdClient.Connect(mpd); err == nil {
+			defer mpdClient.DisableAndDisconnect(d.Root, d.Path)
+			if err := mpdClient.SendAndPlay(d.Root, d.Path); err != nil {
+				fmt.Println(RedBold("Error sending to MPD."))
+			}
+		}
 	}
 	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
 
@@ -333,7 +339,7 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 	id := strings.Join(idElements, " ")
 
 	// format
-	format := ""
+	var format string
 	switch gt.Response.Torrent.Encoding {
 	case "Lossless":
 		format = "FLAC"

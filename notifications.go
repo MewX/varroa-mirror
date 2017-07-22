@@ -47,6 +47,9 @@ func (whj *WebHookJSON) Send(address string, token string) error {
 	}
 
 	req, err := http.NewRequest("POST", address, bytes.NewBuffer(hook))
+	if err != nil {
+		return errors.Wrap(err, "Error preparing webhook request")
+	}
 	req.Header.Set("X-Varroa-Event", whj.Type)
 	req.Header.Set("X-Varroa-Token", token)
 	req.Header.Set("Content-Type", "application/json")

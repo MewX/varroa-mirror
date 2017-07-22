@@ -351,6 +351,37 @@ func (cg *ConfigGitlabPages) String() string {
 	return txt
 }
 
+type ConfigMPD struct {
+	Server   string
+	Password string
+	Library  string
+}
+
+func (cm *ConfigMPD) String() string {
+	txt := "MPD configuration:\n"
+	txt += "\tMPD Library: " + cm.Library + "\n"
+	txt += "\tMPD Server: " + cm.Server + "\n"
+	txt += "\tMPD Server password: " + cm.Password + "\n"
+	return txt
+}
+
+func (cm *ConfigMPD) Check() error {
+	if cm.Server == "" {
+		return errors.New("Server name must be provided")
+	} else {
+		// check it's server:port
+		r := regexp.MustCompile(ircServerPattern)
+		hits := r.FindAllStringSubmatch(cm.Server, -1)
+		if len(hits) != 1 {
+			return errors.New("MPD server must be in the form: server.hostname:port")
+		}
+	}
+	if cm.Library == "" || !DirectoryExists(cm.Library) {
+		return errors.New("A valid MPD Library path must be provided")
+	}
+	return nil
+}
+
 type ConfigFilter struct {
 	Name                string   `yaml:"name"`
 	Artist              []string `yaml:"artist"`
@@ -506,6 +537,7 @@ type Config struct {
 	GitlabPages              *ConfigGitlabPages `yaml:"gitlab_pages"`
 	Filters                  []*ConfigFilter
 	Library                  *ConfigLibrary
+	MPD                      *ConfigMPD
 	autosnatchConfigured     bool
 	statsConfigured          bool
 	webserverConfigured      bool
@@ -516,6 +548,7 @@ type Config struct {
 	webhooksConfigured       bool
 	downloadFolderConfigured bool
 	libraryConfigured        bool
+	mpdConfigured            bool
 }
 
 func (c *Config) String() string {
@@ -543,6 +576,9 @@ func (c *Config) String() string {
 	}
 	if c.webhooksConfigured {
 		txt += c.Notifications.WebHooks.String() + "\n"
+	}
+	if c.mpdConfigured {
+		txt += c.MPD.String() + "\n"
 	}
 	return txt
 }
@@ -617,6 +653,12 @@ func (c *Config) Check() error {
 			return errors.Wrap(err, "Error reading Gitlab Pages configuration")
 		}
 	}
+	// mpd checks
+	if c.MPD != nil {
+		if err := c.MPD.Check(); err != nil {
+			return errors.Wrap(err, "Error reading MPD configuration")
+		}
+	}
 	// filter checks
 	for _, t := range c.Filters {
 		if err := t.Check(); err != nil {
@@ -635,6 +677,7 @@ func (c *Config) Check() error {
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
 	c.libraryConfigured = c.Library != nil
+	c.mpdConfigured = c.MPD != nil
 
 	// config-wide checks
 	configuredTrackers := c.TrackerLabels()
@@ -695,6 +738,9 @@ func (c *Config) Check() error {
 	}
 	if c.libraryConfigured && !c.downloadFolderConfigured {
 		return errors.New("Library is configured but not the default download directory")
+	}
+	if c.mpdConfigured && !c.downloadFolderConfigured {
+		return errors.New("To use the MPD server, a valid download directory must be provided")
 	}
 
 	// TODO check filter uploaders not blacklisted
