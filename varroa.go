@@ -69,13 +69,21 @@ func main() {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), NORMAL)
 				return
 			}
-			if err := env.Downloads.LoadAndScan(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
-				logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
+			// if scanning, load&scan&save
+			if cli.downloadScan {
+				fmt.Println(Green("Scanning downloads for new releases and updated metadata."))
+				if err := env.Downloads.LoadAndScan(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+					logThis.Error(errors.Wrap(err, errorLoadingDownloadsDB), NORMAL)
+					return
+				}
+				defer env.Downloads.Save()
+				fmt.Println(env.Downloads.String())
 				return
 			}
-			defer env.Downloads.Save()
-			if cli.downloadScan {
-				fmt.Println(env.Downloads.String())
+			// other operations only require loading
+			fmt.Println(Green("Loading downloads database (scan to update)."))
+			if err := env.Downloads.Load(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+				logThis.Error(errors.Wrap(err, errorLoadingDownloadsDB), NORMAL)
 				return
 			}
 			if cli.downloadSearch {
@@ -84,7 +92,7 @@ func main() {
 					fmt.Println("Nothing found.")
 				} else {
 					for _, dl := range hits {
-						fmt.Println(dl)
+						fmt.Println(dl.ShortString())
 					}
 				}
 				return
@@ -95,7 +103,7 @@ func main() {
 					fmt.Println("Nothing found.")
 				} else {
 					for _, dl := range hits {
-						fmt.Println(dl)
+						fmt.Println(dl.ShortString())
 					}
 				}
 				return

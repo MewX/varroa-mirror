@@ -123,7 +123,7 @@ func (d *Downloads) Scan() error {
 
 func (d *Downloads) LoadAndScan(path string) error {
 	if err := d.Load(path); err != nil {
-		return errors.New("Error loading downloads database")
+		return errors.New(errorLoadingDownloadsDB)
 	}
 	if err := d.Scan(); err != nil {
 		return errors.New("Error scanning downloads")

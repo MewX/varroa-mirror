@@ -187,4 +187,6 @@ const (
 	errorCouldNotCreateForm       = "Could not create form for log"
 	errorCouldNotReadLog          = "Could not read log"
 	errorGazelleRateLimitExceeded = "rate limit exceeded"
+	// downloads db errors
+	errorLoadingDownloadsDB = "Error loading downloads database"
 )

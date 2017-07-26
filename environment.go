@@ -188,8 +188,6 @@ func (e *Environment) LoadConfiguration() error {
 	if len(e.config.Trackers) != 0 {
 		// if trackers are configured, the configuration had been loaded previously
 		logThis.Info("Configuration reloaded.", NORMAL)
-	} else {
-		logThis.Info("Configuration loaded.", VERBOSE)
 	}
 	e.config = newConf
 	// init downloads configuration
