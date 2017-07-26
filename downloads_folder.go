@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -128,6 +129,17 @@ func (d *DownloadFolder) Load() error {
 	}
 	// init if necessary
 	d.init()
+
+	// detect if sound files are present, leave otherwise
+	if err := filepath.Walk(filepath.Join(d.Root, d.Path), func(path string, f os.FileInfo, err error) error {
+		if StringInSlice(strings.ToLower(filepath.Ext(path)), []string{mp3Ext, flacExt}) {
+			// stop walking the directory as soon as a track is found
+			return errors.New(foundMusic)
+		}
+		return nil
+	}); err == nil || err.Error() != foundMusic {
+		return errors.New("Error: no music found in " + d.Path)
+	}
 
 	// check if tracker metadata is present
 	if DirectoryExists(filepath.Join(d.Root, d.Path, metadataDir)) {

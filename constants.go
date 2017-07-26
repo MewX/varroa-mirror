@@ -44,6 +44,8 @@ const (
 	msgpackExt   = ".db"
 	jsonExt      = ".json"
 	torrentExt   = ".torrent"
+	mp3Ext       = ".mp3"
+	flacExt      = ".flac"
 
 	// information
 	infoUserFilesArchived         = "User files backed up."
@@ -189,4 +191,5 @@ const (
 	errorGazelleRateLimitExceeded = "rate limit exceeded"
 	// downloads db errors
 	errorLoadingDownloadsDB = "Error loading downloads database"
+	foundMusic              = "Found music"
 )

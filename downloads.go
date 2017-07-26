@@ -93,14 +93,13 @@ func (d *Downloads) Scan() error {
 				// new entry
 				// logThis.Info("Found new download: "+entry.Name(), VERBOSEST)
 				if err := d.Add(entry.Name()); err != nil {
-					logThis.Error(err, NORMAL)
+					logThis.Error(err, VERBOSEST)
 					continue
 				}
 			} else {
 				// logThis.Info("Updating known download: "+dl.Path, VERBOSEST)
-				// TODO might be time-consuming to reload everything...
 				if err := dl.Load(); err != nil {
-					logThis.Error(err, NORMAL)
+					logThis.Error(err, VERBOSEST)
 					continue
 				}
 			}
@@ -134,7 +133,6 @@ func (d *Downloads) LoadAndScan(path string) error {
 func (d *Downloads) Add(path string) error {
 	dl := &DownloadFolder{Index: d.MaxIndex + 1, Path: path, Root: d.Root, State: stateUnsorted}
 	if err := dl.Load(); err != nil {
-		logThis.Error(err, NORMAL)
 		return err
 	}
 	d.Downloads = append(d.Downloads, dl)
