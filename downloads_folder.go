@@ -68,12 +68,14 @@ type DownloadFolder struct {
 	HasDescription     bool
 	HasInfo            bool
 	ReleaseInfo        map[string][]byte
+}
 
-	// TODO? LogFiles           []string // for check-log
+func (d *DownloadFolder) RawShortString() string {
+	return fmt.Sprintf("[#%d]\t[%s]\t%s", d.Index, downloadFolderStates[d.State][:1], d.Path)
 }
 
 func (d *DownloadFolder) ShortString() string {
-	return d.State.Colorize(fmt.Sprintf("[#%d]\t[%s]\t%s", d.Index, downloadFolderStates[d.State][:1], d.Path))
+	return d.State.Colorize(d.RawShortString())
 }
 
 func (d *DownloadFolder) String() string {
@@ -388,17 +390,19 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 		"$l", "{{$l}}",
 		"$n", "{{$n}}",
 		"$e", "{{$e}}",
+		"$g", "{{$g}}",
 		"{", "ÆÆ", // otherwise golang's template throws a fit
 		"}", "¢¢", // assuming these character sequences will probably not cause conflicts.
 	)
 
 	// replace with all valid epub parameters
-	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
+	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
 		artistsShort,
 		originalYear,
 		gt.Response.Group.Name, // title
 		format,
-		source,
+		gt.Response.Torrent.Media, // original source
+		source,	// source with indicator if 100%/log/cue or Silver/gold
 		gt.Response.Group.RecordLabel,     // label
 		gt.Response.Group.CatalogueNumber, // catalog number
 		editionName,                       // edition
