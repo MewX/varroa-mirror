@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"testing"
 	"time"
 
@@ -15,7 +14,6 @@ func TestHTMLIndex(t *testing.T) {
 	check := assert.New(t)
 
 	// setting up
-	testFile := "test/generated_index.html"
 	expectedFile := "test/test_index.html"
 	data := HTMLIndex{
 		Title: "VARROA MUSICA",
@@ -55,15 +53,14 @@ func TestHTMLIndex(t *testing.T) {
 		},
 		Theme: knownThemes[darkOrange],
 	}
-	defer os.Remove(testFile)
 
 	// generating index
-	check.Nil(data.ToHTML(testFile))
+	dataBytes, err := data.ToHTML()
+	check.Nil(err)
 
 	// comparing with expected
 	expected, err := ioutil.ReadFile(expectedFile)
 	check.Nil(err)
-	generated, err := ioutil.ReadFile(testFile)
-	check.Nil(err)
-	check.Equal(expected, generated)
+	check.Equal(len(expected), len(dataBytes))
+	check.Equal(expected, dataBytes)
 }

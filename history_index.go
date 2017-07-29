@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"os"
+
+	"bufio"
+	"bytes"
 
 	"github.com/pkg/errors"
 )
@@ -204,16 +206,19 @@ type HTMLIndex struct {
 }
 
 // ToHTML executes the template and save the result to a file.
-func (hi *HTMLIndex) ToHTML(file string) error {
+func (hi *HTMLIndex) ToHTML() ([]byte, error) {
 	t, err := template.New("index").Parse(fmt.Sprintf(htlmIndexTemplate, hi.Theme.CSS(), indexJS))
 	if err != nil {
-		return errors.Wrap(err, "Error generating template for index")
+		return []byte{}, errors.Wrap(err, "Error generating template for index")
 	}
 	// open file
-	f, err := os.OpenFile(file, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
-	if err != nil {
-		return errors.Wrap(err, "Error opening index file tor writing")
+	b := new(bytes.Buffer)
+	writer := bufio.NewWriter(b)
+	// write to []byte
+	if err := t.Execute(writer, hi); err != nil {
+		return []byte{}, errors.Wrap(err, "Error executing template for index")
 	}
-	// write to file
-	return t.Execute(f, hi)
+	// flushing is very important.
+	writer.Flush()
+	return b.Bytes(), nil
 }

@@ -402,7 +402,7 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 		gt.Response.Group.Name, // title
 		format,
 		gt.Response.Torrent.Media, // original source
-		source,	// source with indicator if 100%/log/cue or Silver/gold
+		source, // source with indicator if 100%/log/cue or Silver/gold
 		gt.Response.Group.RecordLabel,     // label
 		gt.Response.Group.CatalogueNumber, // catalog number
 		editionName,                       // edition

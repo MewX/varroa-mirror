@@ -32,6 +32,7 @@ type Environment struct {
 	notification     *Notification
 	serverHTTP       *http.Server
 	serverHTTPS      *http.Server
+	serverData       *ServerData
 	Trackers         map[string]*GazelleTracker
 	History          map[string]*History
 	Downloads        *Downloads
@@ -57,6 +58,7 @@ func NewEnvironment() *Environment {
 	e.notification = &Notification{}
 	e.serverHTTP = &http.Server{}
 	e.serverHTTPS = &http.Server{}
+	e.serverData = &ServerData{}
 	// make maps
 	e.Trackers = make(map[string]*GazelleTracker)
 	e.History = make(map[string]*History)
@@ -100,7 +102,7 @@ func quitDaemon(sig os.Signal) error {
 	return daemon.ErrStop
 }
 
-// Wait for the daemon to stop.
+// WaitForDaemonStop and clean exit
 func (e *Environment) WaitForDaemonStop() {
 	if err := daemon.ServeSignals(); err != nil {
 		logThis.Error(errors.Wrap(err, errorServingSignals), NORMAL)
@@ -198,6 +200,14 @@ func (e *Environment) LoadConfiguration() error {
 	if e.config.pushoverConfigured {
 		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
 		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
+	}
+	if e.config.statsConfigured {
+		theme := knownThemes[darkOrange]
+		if e.config.webserverConfigured {
+			theme = knownThemes[e.config.WebServer.Theme]
+		}
+		e.serverData.theme = theme
+		e.serverData.index = HTMLIndex{Title: strings.ToUpper(varroa), Version: version, Theme: theme}
 	}
 	return nil
 }
@@ -344,61 +354,7 @@ func (e *Environment) GenerateIndex() error {
 	if !e.config.statsConfigured {
 		return nil
 	}
-	theme := knownThemes[darkOrange]
-	if e.config.webserverConfigured {
-		theme = knownThemes[e.config.WebServer.Theme]
-	}
-
-	indexData := &HTMLIndex{Title: strings.ToUpper(varroa), Time: time.Now().Format("2006-01-02 15:04:05"), Version: version, Theme: theme}
-	for label, h := range e.History {
-		indexData.CSV = append(indexData.CSV, HTMLLink{Name: label + ".csv", URL: filepath.Base(h.getPath(statsFile + csvExt))})
-
-		statsNames := []struct {
-			Name  string
-			Label string
-		}{
-			{Name: "Buffer", Label: label + "_" + bufferStatsFile},
-			{Name: "Upload", Label: label + "_" + uploadStatsFile},
-			{Name: "Download", Label: label + "_" + downloadStatsFile},
-			{Name: "Ratio", Label: label + "_" + ratioStatsFile},
-			{Name: "Buffer/day", Label: label + "_" + bufferPerDayStatsFile},
-			{Name: "Upload/day", Label: label + "_" + uploadPerDayStatsFile},
-			{Name: "Download/day", Label: label + "_" + downloadPerDayStatsFile},
-			{Name: "Ratio/day", Label: label + "_" + ratioPerDayStatsFile},
-			{Name: "Snatches/day", Label: label + "_" + numberSnatchedPerDayFile},
-			{Name: "Size Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
-		}
-		// add graphs + links
-		graphLinks := []HTMLLink{}
-		graphs := []HTMLLink{}
-		for _, s := range statsNames {
-			graphLinks = append(graphLinks, HTMLLink{Name: s.Name, URL: "#" + s.Label})
-			graphs = append(graphs, HTMLLink{Title: label + ": " + s.Name, Name: s.Label, URL: s.Label + svgExt})
-		}
-		// add previous stats (progress)
-		var lastStats []*TrackerStats
-		var lastStatsStrings [][]string
-		if len(h.TrackerStats) < 25 {
-			lastStats = h.TrackerStats
-		} else {
-			lastStats = h.TrackerStats[len(h.TrackerStats)-25 : len(h.TrackerStats)]
-		}
-		for i, s := range lastStats {
-			if i == 0 {
-				continue
-			}
-			lastStatsStrings = append(lastStatsStrings, s.ProgressParts(lastStats[i-1]))
-		}
-		// reversing
-		for left, right := 0, len(lastStatsStrings)-1; left < right; left, right = left+1, right-1 {
-			lastStatsStrings[left], lastStatsStrings[right] = lastStatsStrings[right], lastStatsStrings[left]
-		}
-		// TODO timestamps: first column for h.TrackerRecords.
-
-		stats := HTMLStats{Name: label, TrackerStats: lastStatsStrings, Graphs: graphs, GraphLinks: graphLinks}
-		indexData.Stats = append(indexData.Stats, stats)
-	}
-	return indexData.ToHTML(filepath.Join(statsDir, htmlIndexFile))
+	return e.serverData.SaveIndex(e, filepath.Join(statsDir, htmlIndexFile))
 }
 
 // DeployToGitlabPages with git wrapper

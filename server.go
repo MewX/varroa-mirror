@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	"github.com/russross/blackfriday"
 	"github.com/subosito/norma"
 )
 
@@ -227,36 +225,22 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			response := []byte{}
 			id, ok := mux.Vars(r)["id"]
 			if !ok {
-				list := "<h1>Downloads</h1><ul>"
-				for _, d := range e.Downloads.Downloads {
-					list += fmt.Sprintf(`<li><a href="downloads/%d">%s</a></li>`, d.Index, d.Path)
+				list, err := e.serverData.DownloadsList(e)
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
 				}
-				list += "</ul>"
-				response = []byte(list)
+				response = list
 			} else {
-				// display individual download metadata
-				downloadID, err := strconv.ParseUint(id, 10, 64)
-				if err != nil {
-					logThis.Error(errors.New("Error parsing download ID"), NORMAL)
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
-				// find Download
-				dl, err := e.Downloads.FindByID(downloadID)
-				if err != nil {
-					logThis.Error(errors.New("Error finding download ID "+id+" in db."), NORMAL)
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
 
-				if dl.HasDescription {
-					// TODO if more than 1 tracker, make things prettier
-					for _, rinfo := range dl.ReleaseInfo {
-						response = append(response, blackfriday.MarkdownCommon(rinfo)...)
-					}
-				} else {
-					response = []byte(dl.String())
+				info, err := e.serverData.DownloadsInfo(e, id)
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error loading downloads info"), NORMAL)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
 				}
+				response = info
 			}
 			// write response
 			w.WriteHeader(http.StatusOK)
