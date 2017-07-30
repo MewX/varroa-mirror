@@ -1,14 +1,120 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/russross/blackfriday"
+)
+
+// adapted from https://purecss.io/layouts/side-menu/
+// color palette from https://material.io/color/#!/?view.left=0&view.right=0&primary.color=F57F17&secondary.color=37474F&primary.text.color=000000&secondary.text.color=ffffff
+const (
+	indexJS = `
+(function (window, document) {
+    var layout   = document.getElementById('layout'),
+	menu     = document.getElementById('menu'),
+	menuLink = document.getElementById('menuLink'),
+	content  = document.getElementById('main');
+
+    function toggleClass(element, className) {
+	var classes = element.className.split(/\s+/),
+	    length = classes.length,
+	    i = 0;
+
+	for(; i < length; i++) {
+	  if (classes[i] === className) {
+	    classes.splice(i, 1);
+	    break;
+	  }
+	}
+	// The className is not found
+	if (length === classes.length) {
+	    classes.push(className);
+	}
+
+	element.className = classes.join(' ');
+    }
+
+    function toggleAll(e) {
+	var active = 'active';
+
+	e.preventDefault();
+	toggleClass(layout, active);
+	toggleClass(menu, active);
+	toggleClass(menuLink, active);
+    }
+
+    menuLink.onclick = function (e) {
+	toggleAll(e);
+    };
+
+    content.onclick = function(e) {
+	if (menu.className.indexOf('active') !== -1) {
+	    toggleAll(e);
+	}
+    };
+}(this, this.document));
+	`
+
+	htlmTemplate = `
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>varroa musica</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
+    <style>
+       {{.CSS}}
+    </style>
+  </head>
+  <body>
+
+	<div id="layout">
+		<!-- Menu toggle -->
+		<a href="#menu" id="menuLink" class="menu-link">
+			<!-- Hamburger icon -->
+			<span></span>
+		</a>
+
+		<div id="menu">
+			<div class="pure-menu">
+				<ul class="pure-menu-list">
+					<li class="pure-menu-item"><a class="pure-menu-link" href="#title">{{.Title}}</a></li>
+			{{range .Stats}}
+				<li class="pure-menu-heading">{{.Name}}</li>
+				<li class="pure-menu-item"> <a class="pure-menu-link" href="#stats-{{ .Name }}">Stats</a></li>
+				{{range .GraphLinks}}
+				<li class="pure-menu-item"> <a class="pure-menu-link" href="{{ .URL }}">{{ .Name }}</a></li>
+				{{end}}
+			{{end}}
+				</ul>
+			</div>
+		</div>
+
+		<div id="main">
+		  <div class="header">
+				<h1 id="title">{{.Title}}</h1>
+				<p>Last updated: {{.Time}}</p>
+				<p>Raw data: {{range .CSV}}<a href="{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
+				<p>{{.Version}}</p>
+		  </div>
+		  <div class="content">
+			{{.MainContent}}
+		  </div>
+		</div>
+
+	</div>
+
+	<script>{{.Script}}</script>
+
+  </body>
+</html>
+`
 )
 
 type ServerData struct {
@@ -68,7 +174,13 @@ func (sc *ServerData) Index(e *Environment) ([]byte, error) {
 		stats := HTMLStats{Name: label, TrackerStats: lastStatsStrings, Graphs: graphs, GraphLinks: graphLinks}
 		sc.index.Stats = append(sc.index.Stats, stats)
 	}
-	return sc.index.ToHTML()
+
+	err := sc.index.SetMainContentStats()
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating stats page")
+	}
+	// building and returning complete page
+	return sc.index.MainPage()
 }
 
 func (sc *ServerData) SaveIndex(e *Environment, file string) error {
@@ -83,14 +195,19 @@ func (sc *ServerData) SaveIndex(e *Environment, file string) error {
 
 func (sc *ServerData) DownloadsList(e *Environment) ([]byte, error) {
 	// TODO
-
-	list := "<h1>Downloads</h1><ul>"
-	for _, d := range e.Downloads.Downloads {
-		list += fmt.Sprintf(`<li><a href="downloads/%d">%s</a></li>`, d.Index, d.RawShortString())
+	main, err := sc.index.MainPage()
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating main page")
 	}
-	list += "</ul>"
+	//fmt.Println(string(main))
 
-	return []byte(list), nil
+	/*	list := "<h1>Downloads</h1><ul>"
+		*	for _, d := range e.Downloads.Downloads {
+					list += fmt.Sprintf(`<li><a href="downloads/%d">%s</a></li>`, d.Index, d.RawShortString())
+				}
+				list += "</ul>"
+	*/
+	return main, nil // []byte(list), nil
 
 }
 

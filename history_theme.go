@@ -410,7 +410,7 @@ var (
 	}
 )
 
-func (ht HistoryTheme) CSS() string {
+func (ht HistoryTheme) CSS() template.CSS {
 	var doc bytes.Buffer
 	tCSS, err := template.New("css").Parse(CSSTemplate)
 	if err != nil {
@@ -419,5 +419,5 @@ func (ht HistoryTheme) CSS() string {
 	if err := tCSS.Execute(&doc, ht); err != nil {
 		return ""
 	}
-	return doc.String()
+	return template.CSS(doc.String())
 }

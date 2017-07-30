@@ -207,7 +207,7 @@ func (e *Environment) LoadConfiguration() error {
 			theme = knownThemes[e.config.WebServer.Theme]
 		}
 		e.serverData.theme = theme
-		e.serverData.index = HTMLIndex{Title: strings.ToUpper(varroa), Version: version, Theme: theme}
+		e.serverData.index = HTMLIndex{Title: strings.ToUpper(varroa), Version: version, CSS: theme.CSS(), Script: indexJS}
 	}
 	return nil
 }
