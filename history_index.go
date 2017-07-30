@@ -90,12 +90,13 @@ const (
 		<h1>Downloads</h1>
 		<ul>
 		{{range .Downloads.Downloads}}
-			<li><a href="downloads/{{.Index}}">{{.Path}}</a></li>
+			<li>
+				[{{.ShortState}}] <a href="downloads/{{.Index}}">{{.Path}}</a>
+			</li>
 		{{end}}
 		</ul>
 `
 	htlmDownloadsInfoTemplate = `
-		<h1>Download!!!</h1>
 		{{.DownloadInfo}}
 `
 )

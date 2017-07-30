@@ -70,6 +70,10 @@ type DownloadFolder struct {
 	ReleaseInfo        map[string][]byte
 }
 
+func (d *DownloadFolder) ShortState() string {
+	return downloadFolderStates[d.State][:1]
+}
+
 func (d *DownloadFolder) RawShortString() string {
 	return fmt.Sprintf("[#%d]\t[%s]\t%s", d.Index, downloadFolderStates[d.State][:1], d.Path)
 }

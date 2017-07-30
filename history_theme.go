@@ -69,6 +69,27 @@ const (
 		margin-bottom: 50px;
 		color: {{.IndexFontColor}};
 	}
+	.content ul {
+   	 	list-style: none;
+    	padding: 0;
+    	margin: 0;
+	}
+	.content li {
+		padding-left: 16px;
+	}
+	.content li:before {
+		content: "↪";
+		padding-right: 8px;
+		color: {{.IndexMenuColor}};
+	}
+	.content a {
+		text-decoration: none;
+		color: #ccc;
+	}
+	.content a:hover {
+		text-decoration: underline;
+		text-decoration-style: dashed;
+	}
 	.header {
 		margin: 0;
 		text-align: center;
