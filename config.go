@@ -543,6 +543,7 @@ type Config struct {
 	webserverConfigured      bool
 	webserverHTTP            bool
 	webserverHTTPS           bool
+	webserverMetadata        bool
 	gitlabPagesConfigured    bool
 	pushoverConfigured       bool
 	webhooksConfigured       bool
@@ -678,6 +679,7 @@ func (c *Config) Check() error {
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
 	c.libraryConfigured = c.Library != nil
 	c.mpdConfigured = c.MPD != nil
+	c.webserverMetadata = c.downloadFolderConfigured && c.webserverConfigured && c.WebServer.ServeMetadata
 
 	// config-wide checks
 	configuredTrackers := c.TrackerLabels()

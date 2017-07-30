@@ -1,6 +1,7 @@
 package main
 
 import (
+	"html/template"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
@@ -84,14 +85,17 @@ const (
 		<div id="menu">
 			<div class="pure-menu">
 				<ul class="pure-menu-list">
-					<li class="pure-menu-item"><a class="pure-menu-link" href="#title">{{.Title}}</a></li>
-			{{range .Stats}}
-				<li class="pure-menu-heading">{{.Name}}</li>
-				<li class="pure-menu-item"> <a class="pure-menu-link" href="#stats-{{ .Name }}">Stats</a></li>
-				{{range .GraphLinks}}
-				<li class="pure-menu-item"> <a class="pure-menu-link" href="{{ .URL }}">{{ .Name }}</a></li>
+					<li class="pure-menu-item"><a class="pure-menu-link" href="/#title">{{.Title}}</a></li>
+				{{if .ShowDownloads }}
+					<li class="pure-menu-item"><a class="pure-menu-link" href="/downloads">Downloads</a></li>
 				{{end}}
-			{{end}}
+				{{range .Stats}}
+					<li class="pure-menu-heading">{{.Name}}</li>
+					<li class="pure-menu-item"> <a class="pure-menu-link" href="/#stats-{{ .Name }}">Stats</a></li>
+					{{range .GraphLinks}}
+					<li class="pure-menu-item"> <a class="pure-menu-link" href="/{{ .URL }}">{{ .Name }}</a></li>
+					{{end}}
+				{{end}}
 				</ul>
 			</div>
 		</div>
@@ -100,7 +104,7 @@ const (
 		  <div class="header">
 				<h1 id="title">{{.Title}}</h1>
 				<p>Last updated: {{.Time}}</p>
-				<p>Raw data: {{range .CSV}}<a href="{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
+				<p>Raw data: {{range .CSV}}<a href="/{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
 				<p>{{.Version}}</p>
 		  </div>
 		  <div class="content">
@@ -122,9 +126,16 @@ type ServerData struct {
 	theme HistoryTheme
 }
 
-func (sc *ServerData) Index(e *Environment) ([]byte, error) {
+func (sc *ServerData) update(e *Environment) {
 	// updating time
 	sc.index.Time = time.Now().Format("2006-01-02 15:04:05")
+	// rebuilding
+	sc.index.CSV = []HTMLLink{}
+	sc.index.Stats = []HTMLStats{}
+	if e.config.webserverMetadata {
+		sc.index.Downloads = *e.Downloads
+		sc.index.ShowDownloads = true
+	}
 	// gathering data
 	for label, h := range e.History {
 		sc.index.CSV = append(sc.index.CSV, HTMLLink{Name: label + ".csv", URL: filepath.Base(h.getPath(statsFile + csvExt))})
@@ -174,9 +185,12 @@ func (sc *ServerData) Index(e *Environment) ([]byte, error) {
 		stats := HTMLStats{Name: label, TrackerStats: lastStatsStrings, Graphs: graphs, GraphLinks: graphLinks}
 		sc.index.Stats = append(sc.index.Stats, stats)
 	}
+}
 
-	err := sc.index.SetMainContentStats()
-	if err != nil {
+func (sc *ServerData) Index(e *Environment) ([]byte, error) {
+	// updating
+	sc.update(e)
+	if err := sc.index.SetMainContentStats(); err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating stats page")
 	}
 	// building and returning complete page
@@ -187,32 +201,26 @@ func (sc *ServerData) SaveIndex(e *Environment, file string) error {
 	// building index
 	data, err := sc.Index(e)
 	if err != nil {
-		return nil
+		return err
 	}
 	// write to file
-	return ioutil.WriteFile(file, data, 0644)
+	return ioutil.WriteFile(file, data, 0666)
 }
 
 func (sc *ServerData) DownloadsList(e *Environment) ([]byte, error) {
-	// TODO
-	main, err := sc.index.MainPage()
-	if err != nil {
-		return []byte{}, errors.Wrap(err, "Error generating main page")
+	// updating
+	sc.update(e)
+	// getting downloads
+	if err := sc.index.SetMainContentDownloadsList(); err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating downloads list page")
 	}
-	//fmt.Println(string(main))
-
-	/*	list := "<h1>Downloads</h1><ul>"
-		*	for _, d := range e.Downloads.Downloads {
-					list += fmt.Sprintf(`<li><a href="downloads/%d">%s</a></li>`, d.Index, d.RawShortString())
-				}
-				list += "</ul>"
-	*/
-	return main, nil // []byte(list), nil
-
+	// building and returning complete page
+	return sc.index.MainPage()
 }
 
 func (sc *ServerData) DownloadsInfo(e *Environment, id string) ([]byte, error) {
-	// TODO
+	// updating
+	sc.update(e)
 
 	// display individual download metadata
 	downloadID, err := strconv.ParseUint(id, 10, 64)
@@ -224,16 +232,21 @@ func (sc *ServerData) DownloadsInfo(e *Environment, id string) ([]byte, error) {
 	if err != nil {
 		return []byte{}, errors.New("Error finding download ID " + id + " in db.")
 	}
-
-	response := []byte{}
+	// get description
+	sc.index.DownloadInfo = ""
 	if dl.HasDescription {
 		// TODO if more than 1 tracker, make things prettier
 		for _, rinfo := range dl.ReleaseInfo {
-			response = append(response, blackfriday.MarkdownCommon(rinfo)...)
+			sc.index.DownloadInfo += template.HTML(blackfriday.MarkdownCommon(rinfo))
 		}
 	} else {
-		response = []byte(dl.RawShortString())
+		sc.index.DownloadInfo = template.HTML(dl.RawShortString())
 	}
-	return response, nil
 
+	// getting info
+	if err := sc.index.SetMainContentDownloadsInfo(); err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating downloads info page")
+	}
+	// building and returning complete page
+	return sc.index.MainPage()
 }

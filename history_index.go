@@ -17,8 +17,7 @@ import (
 // adapted from https://purecss.io/layouts/side-menu/
 // color palette from https://material.io/color/#!/?view.left=0&view.right=0&primary.color=F57F17&secondary.color=37474F&primary.text.color=000000&secondary.text.color=ffffff
 const (
-	htlmIndexTemplate = `
-        <div class="content">
+	htlmStatsTemplate = `
 		{{range .Stats}}
 		<h1 id="stats-{{.Name}}" >{{.Name}}</h1>
 
@@ -86,7 +85,18 @@ const (
 
 		{{end}}
 		{{end}}
-        </div>
+`
+	htlmDownloadsListTemplate = `
+		<h1>Downloads</h1>
+		<ul>
+		{{range .Downloads.Downloads}}
+			<li><a href="downloads/{{.Index}}">{{.Path}}</a></li>
+		{{end}}
+		</ul>
+`
+	htlmDownloadsInfoTemplate = `
+		<h1>Download!!!</h1>
+		{{.DownloadInfo}}
 `
 )
 
@@ -107,19 +117,22 @@ type HTMLStats struct {
 
 // HTMLIndex provides data for the htmlIndexTemplate.
 type HTMLIndex struct {
-	Title       string
-	Time        string
-	Version     string
-	CSV         []HTMLLink
-	Stats       []HTMLStats
-	CSS         template.CSS
-	Script      string
-	MainContent template.HTML
+	Title         string
+	Time          string
+	Version       string
+	CSV           []HTMLLink
+	Stats         []HTMLStats
+	CSS           template.CSS
+	Script        string
+	ShowDownloads bool
+	Downloads     Downloads
+	DownloadInfo  template.HTML
+	MainContent   template.HTML
 }
 
 // IndexStats executes the template and save the result to a file.
 func (hi *HTMLIndex) IndexStats() ([]byte, error) {
-	t, err := template.New("index").Parse(htlmIndexTemplate)
+	t, err := template.New("index").Parse(htlmStatsTemplate)
 	if err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating template for index")
 	}
@@ -141,6 +154,66 @@ func (hi *HTMLIndex) SetMainContentStats() error {
 		return err
 	}
 	hi.MainContent = template.HTML(stats)
+	return nil
+}
+
+func (hi *HTMLIndex) IndexDownloadsList() ([]byte, error) {
+	if len(hi.Downloads.Downloads) == 0 {
+		return []byte{}, errors.New("Error generating downloads list: nothing found")
+	}
+
+	t, err := template.New("index_dl").Parse(htlmDownloadsListTemplate)
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating template for index")
+	}
+	// open file
+	b := new(bytes.Buffer)
+	writer := bufio.NewWriter(b)
+	// write to []byte
+	if err := t.Execute(writer, hi); err != nil {
+		return []byte{}, errors.Wrap(err, "Error executing template for index")
+	}
+	// flushing is very important.
+	writer.Flush()
+	return b.Bytes(), nil
+}
+
+func (hi *HTMLIndex) SetMainContentDownloadsList() error {
+	dlList, err := hi.IndexDownloadsList()
+	if err != nil {
+		return err
+	}
+	hi.MainContent = template.HTML(dlList)
+	return nil
+}
+
+func (hi *HTMLIndex) IndexDownloadsInfo() ([]byte, error) {
+	if len(hi.DownloadInfo) == 0 {
+		return []byte{}, errors.New("Error generating downloads info: nothing found")
+	}
+
+	t, err := template.New("index_dlinfo").Parse(htlmDownloadsInfoTemplate)
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating template for index")
+	}
+	// open file
+	b := new(bytes.Buffer)
+	writer := bufio.NewWriter(b)
+	// write to []byte
+	if err := t.Execute(writer, hi); err != nil {
+		return []byte{}, errors.Wrap(err, "Error executing template for index")
+	}
+	// flushing is very important.
+	writer.Flush()
+	return b.Bytes(), nil
+}
+
+func (hi *HTMLIndex) SetMainContentDownloadsInfo() error {
+	dlInfo, err := hi.IndexDownloadsInfo()
+	if err != nil {
+		return err
+	}
+	hi.MainContent = template.HTML(dlInfo)
 	return nil
 }
 
