@@ -130,12 +130,7 @@ type HTMLIndex struct {
 	MainContent   template.HTML
 }
 
-// IndexStats executes the template and save the result to a file.
-func (hi *HTMLIndex) IndexStats() ([]byte, error) {
-	t, err := template.New("index").Parse(htlmStatsTemplate)
-	if err != nil {
-		return []byte{}, errors.Wrap(err, "Error generating template for index")
-	}
+func (hi *HTMLIndex) execute(t *template.Template) ([]byte, error) {
 	// open file
 	b := new(bytes.Buffer)
 	writer := bufio.NewWriter(b)
@@ -146,6 +141,15 @@ func (hi *HTMLIndex) IndexStats() ([]byte, error) {
 	// flushing is very important.
 	writer.Flush()
 	return b.Bytes(), nil
+}
+
+// IndexStats executes the template and save the result to a file.
+func (hi *HTMLIndex) IndexStats() ([]byte, error) {
+	t, err := template.New("index").Parse(htlmStatsTemplate)
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating template for index")
+	}
+	return hi.execute(t)
 }
 
 func (hi *HTMLIndex) SetMainContentStats() error {
@@ -166,16 +170,7 @@ func (hi *HTMLIndex) IndexDownloadsList() ([]byte, error) {
 	if err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating template for index")
 	}
-	// open file
-	b := new(bytes.Buffer)
-	writer := bufio.NewWriter(b)
-	// write to []byte
-	if err := t.Execute(writer, hi); err != nil {
-		return []byte{}, errors.Wrap(err, "Error executing template for index")
-	}
-	// flushing is very important.
-	writer.Flush()
-	return b.Bytes(), nil
+	return hi.execute(t)
 }
 
 func (hi *HTMLIndex) SetMainContentDownloadsList() error {
@@ -196,16 +191,7 @@ func (hi *HTMLIndex) IndexDownloadsInfo() ([]byte, error) {
 	if err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating template for index")
 	}
-	// open file
-	b := new(bytes.Buffer)
-	writer := bufio.NewWriter(b)
-	// write to []byte
-	if err := t.Execute(writer, hi); err != nil {
-		return []byte{}, errors.Wrap(err, "Error executing template for index")
-	}
-	// flushing is very important.
-	writer.Flush()
-	return b.Bytes(), nil
+	return hi.execute(t)
 }
 
 func (hi *HTMLIndex) SetMainContentDownloadsInfo() error {
@@ -226,15 +212,10 @@ func (hi *HTMLIndex) MainPage() ([]byte, error) {
 	if err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating template for index")
 	}
-	// open file
-	b := new(bytes.Buffer)
-	writer := bufio.NewWriter(b)
-	// write to []byte
-	if err := t.Execute(writer, hi); err != nil {
-		return []byte{}, errors.Wrap(err, "Error executing template for index")
+	pageBytes, err := hi.execute(t)
+	if err != nil {
+		return []byte{}, err
 	}
-	// flushing is very important.
-	writer.Flush()
 
 	// minify output
 	m := minify.New()
@@ -242,9 +223,9 @@ func (hi *HTMLIndex) MainPage() ([]byte, error) {
 	m.AddFunc("text/html", html.Minify)
 	m.AddFunc("text/javascript", js.Minify)
 	m.AddFunc("image/svg+xml", svg.Minify)
-	min, err := m.Bytes("text/html", b.Bytes())
+	min, err := m.Bytes("text/html", pageBytes)
 	if err != nil {
-		return b.Bytes(), nil
+		return pageBytes, nil
 	}
 	return min, nil
 }
