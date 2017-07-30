@@ -10,6 +10,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
+	"github.com/sevlyar/go-daemon"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -85,7 +86,9 @@ func (d *Downloads) Scan() error {
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
 	s.Prefix = "Scanning"
-	s.Start()
+	if !daemon.WasReborn() {
+		s.Start()
+	}
 	for _, entry := range entries {
 		if entry.IsDir() {
 			dl, err := d.FindByFolder(entry.Name())
@@ -106,7 +109,9 @@ func (d *Downloads) Scan() error {
 			knownDownloads = RemoveFromSlice(entry.Name(), knownDownloads)
 		}
 	}
-	s.Stop()
+	if !daemon.WasReborn() {
+		s.Stop()
+	}
 
 	// remove from db folders that are no longer in the filesystem
 	if len(knownDownloads) != 0 {
