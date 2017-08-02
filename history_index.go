@@ -91,7 +91,7 @@ const (
 		<ul>
 		{{range .Downloads.Downloads}}
 			<li>
-				[{{.ShortState}}] <a href="downloads/{{.Index}}">{{.Path}}</a>
+				[{{.ShortState}}] <a href="downloads/{{.Index}}">{{.Path}}</a>{{ if .HasTrackerMetadata}} *** {{ end }}
 			</li>
 		{{end}}
 		</ul>

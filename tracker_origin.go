@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TrackerOriginJSON contains the list of trackers of origin for a release.
 type TrackerOriginJSON struct {
 	Path    string                 `json:"-"`
 	Origins map[string]*OriginJSON `json:"known_origins"`
@@ -61,7 +62,20 @@ func (toc *TrackerOriginJSON) load() error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, &toc)
+	if err := json.Unmarshal(b, &toc); err != nil || len(toc.Origins) == 0 {
+		// if it fails, try loading as the old format
+		old := &OriginJSON{}
+		if err := json.Unmarshal(b, &old); err != nil || old.Tracker == "" {
+			return errors.New("Cannot parse " + originJSONFile + " in " + toc.Path)
+		}
+		// copy into new format
+		if toc.Origins == nil {
+			toc.Origins = make(map[string]*OriginJSON)
+		}
+		toc.Origins[old.Tracker] = old
+		return nil
+	}
+	return nil
 }
 
 func (toc *TrackerOriginJSON) write() error {

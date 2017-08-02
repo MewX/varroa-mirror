@@ -75,5 +75,5 @@ func TestHTMLIndex(t *testing.T) {
 	check.Equal(len(expected), len(d))
 	check.Equal(expected, d)
 
-	//ioutil.WriteFile("test/generated.html", d, 0666)
+	// ioutil.WriteFile("test/generated.html", d, 0666)
 }
