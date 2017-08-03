@@ -34,6 +34,7 @@ const (
 	historyFile               = "history"
 	statsFile                 = "stats"
 	downloadsDBFile           = "downloads"
+	defaultFolderTemplate     = "$a ($y) $t {$id} [$f $s]"
 
 	// file extensions
 	yamlExt      = ".yaml"

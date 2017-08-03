@@ -62,7 +62,7 @@ func (d *Downloads) Load(path string) error {
 }
 
 func (d *Downloads) Save() error {
-	// saving to msgpack
+	// saving to msgpack, won't save TrackerTorrentInfo though...
 	b, err := msgpack.Marshal(d.Downloads)
 	if err != nil {
 		return err

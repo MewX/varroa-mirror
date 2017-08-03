@@ -186,7 +186,7 @@ func (d *DownloadFolder) Load() error {
 					}
 					// getting release info from json
 					infoJSON := filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+trackerMetadataFile)
-					if !FileExists(releaseMD) {
+					if !FileExists(infoJSON) {
 						// if not present, try the old format
 						infoJSON = filepath.Join(d.Root, d.Path, metadataDir, "Release.json")
 					}
@@ -211,6 +211,10 @@ func (d *DownloadFolder) Load() error {
 }
 
 func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks bool, mpd *ConfigMPD) error {
+	// reading metadata
+	if err := d.Load(); err != nil {
+		return err
+	}
 	fmt.Println("Sorting " + d.Path)
 	// if mpd configured, allow playing the release...
 	if mpd != nil && Accept("Load release into MPD") {
@@ -254,11 +258,10 @@ func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks b
 			d.State = stateAccepted
 
 			if Accept("Do you want to export it now ") {
-				fmt.Println("Exporting files to the library root...")
-
 				// getting candidates for new folder name
 				candidates := []string{d.Path}
 				for _, t := range d.Trackers {
+					candidates = append(candidates, d.generatePath(t, defaultFolderTemplate))
 					candidates = append(candidates, d.generatePath(t, folderTemplate))
 				}
 				// select or input a new name
@@ -268,6 +271,7 @@ func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks b
 				}
 				// TODO normalize/sanitize newName?
 				if Accept("Export as " + newName) {
+					fmt.Println("Exporting files to the library root...")
 					if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(libraryPath, newName), useHardLinks); err != nil {
 						return errors.Wrap(err, "Error exporting download "+d.Path)
 					}
@@ -301,7 +305,6 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 		logThis.Info("Could not find metadata for tracker "+tracker, NORMAL)
 		return d.Path
 	}
-
 	gt := info.FullInfo()
 	if gt == nil {
 		return d.Path // nothing useful here
@@ -355,14 +358,18 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 	// adding catalog number, or if not specified, the record label
 	if gt.Response.Group.CatalogueNumber != "" {
 		idElements = append(idElements, gt.Response.Group.CatalogueNumber)
-	} else if gt.Response.Group.RecordLabel != "" {
-		idElements = append(idElements, gt.Response.Group.RecordLabel)
+	} else {
+		if gt.Response.Torrent.RemasterRecordLabel != "" {
+			idElements = append(idElements, gt.Response.Torrent.RemasterRecordLabel)
+		} else if gt.Response.Group.RecordLabel != "" {
+			idElements = append(idElements, gt.Response.Group.RecordLabel)
+		}
 	}
 	if gt.Response.Group.ReleaseType != 1 {
 		// adding release type if not album
 		idElements = append(idElements, getGazelleReleaseType(gt.Response.Group.ReleaseType))
 	}
-	id := strings.Join(idElements, " ")
+	id := strings.Join(idElements, ", ")
 
 	// format
 	var format string
