@@ -87,12 +87,14 @@ const (
 		{{end}}
 `
 	htlmDownloadsListTemplate = `
-		<h1>Downloads</h1>
+		<h1>Downloads with full tracker metadata</h1>
 		<ul>
 		{{range .Downloads.Downloads}}
+			{{ if .HasDescription}}
 			<li>
-				[{{.ShortState}}] <a href="downloads/{{.Index}}">{{.Path}}</a>{{ if .HasTrackerMetadata}} *** {{ end }}
+				[{{.ShortState}}] <a href="downloads/{{.Index}}">{{.Path}}</a>
 			</li>
+			{{ end }}
 		{{end}}
 		</ul>
 `

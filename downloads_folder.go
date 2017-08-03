@@ -171,6 +171,10 @@ func (d *DownloadFolder) Load() error {
 
 					// getting release.md info
 					releaseMD := filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+summaryFile)
+					if !FileExists(releaseMD) {
+						// if not present, try the old format
+						releaseMD = filepath.Join(d.Root, d.Path, metadataDir, "Release.md")
+					}
 					if FileExists(releaseMD) {
 						bytes, err := ioutil.ReadFile(releaseMD)
 						if err != nil {
@@ -182,6 +186,10 @@ func (d *DownloadFolder) Load() error {
 					}
 					// getting release info from json
 					infoJSON := filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+trackerMetadataFile)
+					if !FileExists(releaseMD) {
+						// if not present, try the old format
+						infoJSON = filepath.Join(d.Root, d.Path, metadataDir, "Release.json")
+					}
 					if FileExists(infoJSON) {
 						info := TrackerTorrentInfo{}
 						if err := info.Load(infoJSON); err != nil {
