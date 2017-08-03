@@ -70,8 +70,6 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	if err := e.History[tracker.Name].AddSnatch(release, "remote"); err != nil {
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
-	// send notification
-	e.Notify("Snatched with web interface: "+release.ShortString(), tracker.Name, "info")
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
 		if e.inDaemon {
