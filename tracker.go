@@ -154,7 +154,7 @@ func (t *GazelleTracker) Login() error {
 func (t *GazelleTracker) get(url string) ([]byte, error) {
 	data, err := t.callJSONAPI(t.client, url)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorJSONAPI), NORMAL)
+		logThis.Error(errors.Wrap(err, errorJSONAPI), VERBOSEST)
 		// if error, try once again after logging in again
 		if loginErr := t.Login(); loginErr == nil {
 			return t.callJSONAPI(t.client, url)

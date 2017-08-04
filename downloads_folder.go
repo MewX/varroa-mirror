@@ -152,13 +152,13 @@ func (d *DownloadFolder) Load() error {
 		d.HasTrackerMetadata = true
 
 		// find origin.json
-		if FileExists(filepath.Join(d.Root, d.Path, metadataDir, originJSONFile)) {
-			d.HasOriginJSON = true
-
-			origin := TrackerOriginJSON{Path: filepath.Join(d.Root, d.Path, metadataDir, originJSONFile)}
+		originFile := filepath.Join(d.Root, d.Path, metadataDir, originJSONFile)
+		if FileExists(originFile) {
+			origin := TrackerOriginJSON{Path: originFile}
 			if err := origin.load(); err != nil {
 				logThis.Error(err, NORMAL)
 			} else {
+				d.HasOriginJSON = true
 				for tracker, o := range origin.Origins {
 					if !StringInSlice(tracker, d.Trackers) {
 						d.Trackers = append(d.Trackers, tracker)
@@ -210,29 +210,48 @@ func (d *DownloadFolder) Load() error {
 	return nil
 }
 
-func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks bool, mpd *ConfigMPD) error {
+func (d *DownloadFolder) Sort(e *Environment) error {
 	// reading metadata
 	if err := d.Load(); err != nil {
 		return err
 	}
 	fmt.Println("Sorting " + d.Path)
 	// if mpd configured, allow playing the release...
-	if mpd != nil && Accept("Load release into MPD") {
+	if e.config.MPD != nil && Accept("Load release into MPD") {
 		fmt.Println("Sending to MPD.")
 		mpdClient := MPD{}
-		if err := mpdClient.Connect(mpd); err == nil {
+		if err := mpdClient.Connect(e.config.MPD); err == nil {
 			defer mpdClient.DisableAndDisconnect(d.Root, d.Path)
 			if err := mpdClient.SendAndPlay(d.Root, d.Path); err != nil {
 				fmt.Println(RedBold("Error sending to MPD."))
 			}
 		}
 	}
-	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
+	// try to refresh metadata
+	if d.HasOriginJSON && Accept("Try to refresh metadata from tracker") {
+		for _, t := range d.Trackers {
+			tracker, err := e.Tracker(t)
+			if err != nil {
+				logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
+				continue
+			}
+			if err := refreshMetadata(e, tracker, []string{strconv.Itoa(d.ID[t])}); err != nil {
+				logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
+				continue
+			}
+			// reading metadata again
+			if err := d.Load(); err != nil {
+				return err
+			}
+		}
+	}
 
-	if d.HasInfo && Accept("Display known metadata") {
+	// offer to display metadata
+	if d.HasDescription && Accept("Display known metadata") {
 		fmt.Println(d.Description())
 	}
 
+	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
 	validChoice := false
 	errs := 0
 	for !validChoice {
@@ -262,7 +281,7 @@ func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks b
 				candidates := []string{d.Path}
 				for _, t := range d.Trackers {
 					candidates = append(candidates, d.generatePath(t, defaultFolderTemplate))
-					candidates = append(candidates, d.generatePath(t, folderTemplate))
+					candidates = append(candidates, d.generatePath(t, e.config.Library.FolderTemplate))
 				}
 				// select or input a new name
 				newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
@@ -272,7 +291,7 @@ func (d *DownloadFolder) Sort(libraryPath, folderTemplate string, useHardLinks b
 				// TODO normalize/sanitize newName?
 				if Accept("Export as " + newName) {
 					fmt.Println("Exporting files to the library root...")
-					if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(libraryPath, newName), useHardLinks); err != nil {
+					if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(e.config.Library.Directory, newName), e.config.Library.UseHardLinks); err != nil {
 						return errors.Wrap(err, "Error exporting download "+d.Path)
 					}
 					fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sorting."))

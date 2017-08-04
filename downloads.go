@@ -199,13 +199,13 @@ func (d *Downloads) FindByTrackerID(tracker, id string) error {
 	return nil
 }
 
-func (d *Downloads) Sort(libraryPath, folderTemplate string, useHardLinks bool, mpd *ConfigMPD) error {
+func (d *Downloads) Sort(e *Environment) error {
 	for _, dl := range d.Downloads {
 		if dl.State == stateUnsorted {
 			if !Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.Index, dl.Path)) {
 				return nil
 			}
-			if err := dl.Sort(libraryPath, folderTemplate, useHardLinks, mpd); err != nil {
+			if err := dl.Sort(e); err != nil {
 				return errors.Wrap(err, "Error sorting download "+strconv.FormatUint(dl.Index, 10))
 			}
 		}

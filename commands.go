@@ -183,21 +183,20 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 	// find ids in history
 	var found []string
 	for _, r := range e.History[tracker.Name].SnatchedReleases {
-		if StringInSlice(r.TorrentID, IDStrings) {
+		if len(found) != len(IDStrings) && StringInSlice(r.TorrentID, IDStrings) {
+			found = append(found, r.TorrentID)
 			logThis.Info("Found release with ID "+r.TorrentID+" in history: "+r.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from RED.
 			info, err := tracker.GetTorrentInfo(r.TorrentID)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
-				break
+				continue
 			}
 			if e.inDaemon {
 				go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			} else {
 				r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			}
-			found = append(found, r.TorrentID)
-			break
 		}
 	}
 	if len(found) != len(IDStrings) {

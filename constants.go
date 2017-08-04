@@ -151,7 +151,7 @@ const (
 	// irc errors
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"
 	errorConnectingToIRC        = "Error connecting to IRC"
-	errorCouldNotGetTorrentInfo = "Error retrieving torrent info from tracker"
+	errorCouldNotGetTorrentInfo = "Error retrieving torrent info from tracker (release may have been deleted)"
 	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder"
 	errorDownloadingTorrent     = "Error downloading torrent"
 	errorRemovingTempFile       = "Error removing temporary file %s"
