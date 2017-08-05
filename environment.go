@@ -91,7 +91,7 @@ func (e *Environment) Daemonize(args []string) error {
 	if child != nil {
 		logThis.Info("Starting daemon...", NORMAL)
 	} else {
-		logThis.Info("+ varroa musica daemon started", NORMAL)
+		logThis.Info("+ varroa musica daemon started ("+version+")", NORMAL)
 		// now in the daemon
 		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
 		e.inDaemon = true
