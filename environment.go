@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -41,6 +42,7 @@ type Environment struct {
 	websocketOutput bool
 	sendBackToCLI   chan string
 	sendToWebsocket chan string
+	mutex           sync.RWMutex
 }
 
 // NewEnvironment prepares a new Environment.
@@ -255,7 +257,9 @@ func (e *Environment) Reload() error {
 	}
 	if e.config.autosnatchConfigured {
 		for _, a := range e.config.Autosnatch {
+			e.mutex.Lock()
 			a.disabledAutosnatching = false
+			e.mutex.Unlock()
 		}
 		logThis.Info("Autosnatching enabled.", NORMAL)
 	}

@@ -39,7 +39,9 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, maxDecreas
 		if err != nil {
 			logThis.Error(errors.Wrap(err, "Cannot find autosnatch configuration for tracker "+tracker.Name), NORMAL)
 		} else {
+			e.mutex.Lock()
 			autosnatchConfig.disabledAutosnatching = true
+			e.mutex.Unlock()
 		}
 	}
 	// save to CSV
