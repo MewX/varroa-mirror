@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -226,4 +228,62 @@ func (d *Downloads) FindByState(state string) []*DownloadFolder {
 		}
 	}
 	return hits
+}
+
+func (d *Downloads) Clean() error {
+	// prepare directory for cleaned folders if necessary
+	cleanDir := filepath.Join(d.Root, downloadsCleanDir)
+	if !DirectoryExists(cleanDir) {
+		if err := os.MkdirAll(cleanDir, 0777); err != nil {
+			return errors.Wrap(err, errorCreatingDownloadsCleanDir)
+		}
+	}
+
+	// don't walk, we only want the top-level directories here
+	toBeMoved := []os.FileInfo{}
+
+	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
+	s.Prefix = "Scanning"
+	if !daemon.WasReborn() {
+		s.Start()
+	}
+
+	// don't walk, we only want the top-level directories here
+	entries, err := ioutil.ReadDir(d.Root)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.Name() != downloadsCleanDir && entry.IsDir() {
+			// read at most 2 entries insinde entry
+			f, err := os.Open(filepath.Join(d.Root, entry.Name()))
+			if err != nil {
+				logThis.Error(errors.Wrap(err, "Error opening "+entry.Name()), VERBOSE)
+				continue
+			}
+			contents, err := f.Readdir(2)
+			f.Close()
+
+			if err != nil {
+				if err == io.EOF {
+					toBeMoved = append(toBeMoved, entry)
+				} else {
+					logThis.Error(errors.Wrap(err, "Error listing contents of "+entry.Name()), VERBOSE)
+				}
+			} else if len(contents) == 1 && contents[0].IsDir() && contents[0].Name() == metadataDir {
+				toBeMoved = append(toBeMoved, entry)
+			}
+		}
+	}
+	if !daemon.WasReborn() {
+		s.Stop()
+	}
+
+	// clean
+	for _, r := range toBeMoved {
+		if err := os.Rename(filepath.Join(d.Root, r.Name()), filepath.Join(cleanDir, r.Name())); err != nil {
+			return errors.Wrap(err, errorCleaningDownloads+r.Name())
+		}
+	}
+	return nil
 }

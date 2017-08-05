@@ -106,7 +106,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa downloads (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>)
+	varroa downloads (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean)
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -137,6 +137,7 @@ type varroaArguments struct {
 	downloadSort    bool
 	downloadList    bool
 	downloadState   string
+	downloadClean   bool
 	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
@@ -180,6 +181,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.downloadInfo = args["metadata"].(bool)
 		b.downloadSort = args["sort"].(bool)
 		b.downloadList = args["list"].(bool)
+		b.downloadClean = args["clean"].(bool)
 	}
 	// arguments
 	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
@@ -215,11 +217,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean {
 		b.canUseDaemon = false
 	}
 	return nil

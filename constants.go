@@ -10,6 +10,7 @@ const (
 	// directories & files
 	statsDir                  = "stats"
 	metadataDir               = "TrackerMetadata"
+	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
 	originJSONFile            = "origin.json"
 	trackerMetadataFile       = "release.json"
@@ -100,12 +101,13 @@ const (
 	// command backup errors
 	errorArchiving = "Error while archiving user files"
 	// set up errors
-	errorCreatingStatsDir   = "Error creating stats directory"
-	errorSettingUp          = "Error setting up"
-	errorLoadingConfig      = "Error loading configuration"
-	errorGettingPassphrase  = "Error getting passphrase"
-	errorPassphraseNotFound = "Error retrieving passphrase for daemon"
-	errorSettingEnv         = "Could not set env variable"
+	errorCreatingStatsDir          = "Error creating stats directory"
+	errorCreatingDownloadsCleanDir = "Error creating directory for useless folders in downloads directory"
+	errorSettingUp                 = "Error setting up"
+	errorLoadingConfig             = "Error loading configuration"
+	errorGettingPassphrase         = "Error getting passphrase"
+	errorPassphraseNotFound        = "Error retrieving passphrase for daemon"
+	errorSettingEnv                = "Could not set env variable"
 	// webserver errors
 	errorShuttingDownServer      = "Error shutting down web server"
 	errorServing                 = "Error launching web interface"
@@ -193,4 +195,5 @@ const (
 	// downloads db errors
 	errorLoadingDownloadsDB = "Error loading downloads database"
 	foundMusic              = "Found music"
+	errorCleaningDownloads  = "Error cleaning up download: "
 )

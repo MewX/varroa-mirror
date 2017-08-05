@@ -64,9 +64,18 @@ func main() {
 			fmt.Println(env.config)
 			return
 		}
-		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList {
+		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
 			if !env.config.downloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), NORMAL)
+				return
+			}
+			// simple operation, only requires access to download folder, since it will clean unindexed folders
+			if cli.downloadClean {
+				if err := env.Downloads.Clean(); err != nil {
+					logThis.Error(err, NORMAL)
+				} else {
+					fmt.Println("Downloads directory cleaned of empty folders & folders containing only tracker metadata.")
+				}
 				return
 			}
 			// if scanning, load&scan&save
