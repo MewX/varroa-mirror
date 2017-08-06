@@ -36,6 +36,8 @@ format:
     - go get gopkg.in/yaml.v2
     - go get github.com/pkg/errors
     - go get github.com/ttacon/chalk
+    - go get github.com/tdewolff/minify
+    - go get github.com/briandowns/spinner
     - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
@@ -61,6 +63,8 @@ compiled_varroa_dev:
     - go get gopkg.in/yaml.v2
     - go get github.com/pkg/errors
     - go get github.com/ttacon/chalk
+    - go get github.com/tdewolff/minify
+    - go get github.com/briandowns/spinner
     - go build -o varroa
 #    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
@@ -93,6 +97,8 @@ compiled_varroa_released_version:
     - go get gopkg.in/yaml.v2
     - go get github.com/pkg/errors
     - go get github.com/ttacon/chalk
+    - go get github.com/tdewolff/minify
+    - go get github.com/briandowns/spinner
     - go build -o varroa
   artifacts:
     paths: 
