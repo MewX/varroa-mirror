@@ -90,6 +90,12 @@ const (
 		text-decoration: underline;
 		text-decoration-style: dashed;
 	}
+	.content p img {
+		display: block;
+		max-width: 80%;
+		margin-left: auto;
+        margin-right: auto;
+	}
 	.header {
 		margin: 0;
 		text-align: center;

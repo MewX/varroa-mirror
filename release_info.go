@@ -22,8 +22,6 @@ const (
 	// TODO: add last.fm/discogs/etc info too?
 	mdTemplate = `# %s - %s (%d)
 
-**Cover:**
-
 ![cover](%s)
 
 **Tags:** %s
