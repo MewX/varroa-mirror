@@ -78,7 +78,9 @@ Commands:
 		folder.
 	downloads list:
 		list downloads by state: unsorted, accepted, exported, rejected.
-
+	downloads clean:
+		clean up the downloads directory by moving all empty folders,
+		and folders with only tracker metadata, to a dedicated subfolder.
 
 Configuration Commands:
 

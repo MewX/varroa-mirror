@@ -78,21 +78,16 @@ func main() {
 				}
 				return
 			}
-			// if scanning, load&scan&save
-			if cli.downloadScan {
-				fmt.Println(Green("Scanning downloads for new releases and updated metadata."))
-				if err := env.Downloads.LoadAndScan(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
-					logThis.Error(errors.Wrap(err, errorLoadingDownloadsDB), NORMAL)
-					return
-				}
-				defer env.Downloads.Save()
-				fmt.Println(env.Downloads.String())
+			// scanning
+			fmt.Println(Green("Scanning downloads for new releases and updated metadata."))
+			if err := env.Downloads.LoadAndScan(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+				logThis.Error(errors.Wrap(err, errorLoadingDownloadsDB), NORMAL)
 				return
 			}
-			// other operations only require loading
-			fmt.Println(Green("Loading downloads database (scan to update)."))
-			if err := env.Downloads.Load(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
-				logThis.Error(errors.Wrap(err, errorLoadingDownloadsDB), NORMAL)
+			defer env.Downloads.Save()
+
+			if cli.downloadScan {
+				fmt.Println(env.Downloads.String())
 				return
 			}
 			if cli.downloadSearch {
