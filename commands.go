@@ -35,7 +35,7 @@ func sendOrders(cli *varroaArguments) error {
 Loop:
 	for {
 		// read answer
-		buf := make([]byte, 512)
+		buf := make([]byte, 2048)
 		n, err := conn.Read(buf[:])
 		if err != nil {
 			return errors.Wrap(err, errorReadingFromSocket)
@@ -283,7 +283,7 @@ func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 				logThis.Info(fmt.Sprintf("Files seem to still be in the download directory: %s", releaseFolder), NORMAL)
 				// TODO maybe display when the metadata was last updated?
 			} else {
-				logThis.Info("However the files are nowhere to be found.", NORMAL)
+				logThis.Info("The files could not be found in the download directory.", NORMAL)
 			}
 		}
 
