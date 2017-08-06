@@ -158,10 +158,6 @@ func awaitOrders(e *Environment) {
 }
 
 func generateStats(e *Environment) error {
-	// generate index.html
-	if err := e.GenerateIndex(); err != nil {
-		logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
-	}
 	atLeastOneError := false
 	for t, h := range e.History {
 		logThis.Info("Generating stats for "+t, VERBOSE)
@@ -169,6 +165,10 @@ func generateStats(e *Environment) error {
 			logThis.Error(errors.Wrap(err, errorGeneratingGraphs), VERBOSE)
 			atLeastOneError = true
 		}
+	}
+	// generate index.html
+	if err := e.GenerateIndex(); err != nil {
+		logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
 	}
 	if atLeastOneError {
 		return errors.New(errorGeneratingGraphs)

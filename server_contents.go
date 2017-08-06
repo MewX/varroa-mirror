@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/russross/blackfriday"
@@ -103,7 +102,7 @@ const (
 		<div id="main">
 		  <div class="header">
 				<h1 id="title">{{.Title}}</h1>
-				<p>Last updated: {{.Time}}</p>
+				<p>Graphs last updated: {{.Time}}</p>
 				<p>Raw data: {{range .CSV}}<a href="/{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
 				<p>{{.Version}}</p>
 		  </div>
@@ -128,7 +127,9 @@ type ServerData struct {
 
 func (sc *ServerData) update(e *Environment) {
 	// updating time
-	sc.index.Time = time.Now().Format("2006-01-02 15:04:05")
+	e.mutex.RLock()
+	sc.index.Time = e.graphsLastUpdated
+	e.mutex.RUnlock()
 	// rebuilding
 	sc.index.CSV = []HTMLLink{}
 	sc.index.Stats = []HTMLStats{}

@@ -169,6 +169,10 @@ func (h *History) GenerateGraphs(e *Environment) error {
 			dailyStatsOK = false
 		}
 	}
+	// updating generation time
+	e.mutex.Lock()
+	e.graphsLastUpdated = time.Now().Format("2006-01-02 15:04:05")
+	e.mutex.Unlock()
 	if statsOK && dailyStatsOK {
 		// combine graphs into overallStatsFile
 		return combineAllPNGs(h.getPath(overallStatsFile),

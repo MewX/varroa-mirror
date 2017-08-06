@@ -38,11 +38,12 @@ type Environment struct {
 	History          map[string]*History
 	Downloads        *Downloads
 
-	expectedOutput  bool
-	websocketOutput bool
-	sendBackToCLI   chan string
-	sendToWebsocket chan string
-	mutex           sync.RWMutex
+	graphsLastUpdated string
+	expectedOutput    bool
+	websocketOutput   bool
+	sendBackToCLI     chan string
+	sendToWebsocket   chan string
+	mutex             sync.RWMutex
 }
 
 // NewEnvironment prepares a new Environment.
@@ -77,6 +78,8 @@ func NewEnvironment() *Environment {
 	e.websocketOutput = false
 	e.sendBackToCLI = make(chan string, 10)
 	e.sendToWebsocket = make(chan string, 10)
+	// default graphs update time
+	e.graphsLastUpdated = "unknown"
 	return e
 }
 
