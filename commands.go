@@ -6,7 +6,9 @@ import (
 	"html"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -349,6 +351,73 @@ func archiveUserFiles() error {
 }
 
 func automaticBackup() {
-	gocron.Every(1).Day().At("00:00").Do(archiveUserFiles)
-	<-gocron.Start()
+	s := gocron.NewScheduler()
+	s.Every(1).Day().At("00:00").Do(archiveUserFiles)
+	<-s.Start()
+}
+
+func parseQuota(cmdOut string) (float32, int64, error) {
+	output := strings.TrimSpace(cmdOut)
+	if output == "" {
+		return -1, -1, errors.New("No quota defined for user")
+	}
+	lines := strings.Split(output, "\n")
+	if len(lines) != 3 {
+		return -1, -1, errors.New("Unexpected quota output")
+	}
+	relevantParts := []string{}
+	for _, p := range strings.Split(lines[2], " ") {
+		if strings.TrimSpace(p) != "" {
+			relevantParts = append(relevantParts, p)
+		}
+	}
+	used, err := strconv.Atoi(relevantParts[1])
+	if err != nil {
+		return -1, -1, errors.New("Error parsing quota output")
+	}
+	quota, err := strconv.Atoi(relevantParts[2])
+	if err != nil {
+		return -1, -1, errors.New("Error parsing quota output")
+	}
+	return 100 * float32(used) / float32(quota), int64(quota - used), nil
+}
+
+func checkQuota(e *Environment) error {
+	// parse quota -u $(whoami)
+	cmdOut, err := exec.Command("quota", "-u", "$(whoami)", "-w").Output()
+	if err != nil {
+		return err
+	}
+	pc, remaining, err := parseQuota(string(cmdOut))
+	if err != nil {
+		return err
+	}
+	logThis.Info(fmt.Sprintf(currentUsage, pc, readableInt64(remaining)), NORMAL)
+	// send warning if this is worrying
+	if pc >= 98 {
+		logThis.Info(veryLowDiskSpace, NORMAL)
+		e.Notify(veryLowDiskSpace, varroa, "info")
+	} else if pc >= 95 {
+		logThis.Info(lowDiskSpace, NORMAL)
+		e.Notify(lowDiskSpace, varroa, "info")
+	}
+	return nil
+}
+
+func automaticQuotaCheck(e *Environment) {
+	// checking quota is available
+	_, err := exec.LookPath("quota")
+	if err != nil {
+		logThis.Info("The command 'quota' is not available on this system, not able to check disk usage", NORMAL)
+		return
+	}
+	// first check
+	if err := checkQuota(e); err != nil {
+		logThis.Error(err, NORMAL)
+		return
+	}
+	// scheduler for subsequent checks
+	s := gocron.NewScheduler()
+	s.Every(1).Hour().Do(checkQuota(e))
+	<-s.Start()
 }

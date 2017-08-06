@@ -196,4 +196,8 @@ const (
 	errorLoadingDownloadsDB = "Error loading downloads database"
 	foundMusic              = "Found music"
 	errorCleaningDownloads  = "Error cleaning up download: "
+	// disk space usage
+	currentUsage     = "Current disk usage: %.2f%% used, remaining: %s"
+	lowDiskSpace     = "Warning: low disk space available (<5%)"
+	veryLowDiskSpace = "Warning: very low disk space available (<2%)"
 )
