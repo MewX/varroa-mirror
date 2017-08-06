@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -350,12 +351,6 @@ func archiveUserFiles() error {
 	return err
 }
 
-func automaticBackup() {
-	s := gocron.NewScheduler()
-	s.Every(1).Day().At("00:00").Do(archiveUserFiles)
-	<-s.Start()
-}
-
 func parseQuota(cmdOut string) (float32, int64, error) {
 	output := strings.TrimSpace(cmdOut)
 	if output == "" {
@@ -379,12 +374,17 @@ func parseQuota(cmdOut string) (float32, int64, error) {
 	if err != nil {
 		return -1, -1, errors.New("Error parsing quota output")
 	}
-	return 100 * float32(used) / float32(quota), int64(quota - used), nil
+	// assuming blocks of 1kb
+	return 100 * float32(used) / float32(quota), int64(quota - used)*1024, nil
 }
 
 func checkQuota(e *Environment) error {
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
 	// parse quota -u $(whoami)
-	cmdOut, err := exec.Command("quota", "-u", "$(whoami)", "-w").Output()
+	cmdOut, err := exec.Command("quota", "-u", u.Username, "-w").Output()
 	if err != nil {
 		return err
 	}
@@ -404,20 +404,28 @@ func checkQuota(e *Environment) error {
 	return nil
 }
 
-func automaticQuotaCheck(e *Environment) {
-	// checking quota is available
+func automatedTasks(e *Environment) {
+	// new scheduler
+	s := gocron.NewScheduler()
+
+	// 1. every day, backup user files
+	s.Every(1).Day().At("00:00").Do(archiveUserFiles)
+
+	// 2. checking quota is available
 	_, err := exec.LookPath("quota")
 	if err != nil {
 		logThis.Info("The command 'quota' is not available on this system, not able to check disk usage", NORMAL)
 		return
+	} else {
+		// first check
+		if err := checkQuota(e); err != nil {
+			logThis.Error(err, NORMAL)
+			return
+		} else {
+			// scheduler for subsequent quota checks
+			s.Every(1).Hour().Do(checkQuota, e)
+		}
 	}
-	// first check
-	if err := checkQuota(e); err != nil {
-		logThis.Error(err, NORMAL)
-		return
-	}
-	// scheduler for subsequent checks
-	s := gocron.NewScheduler()
-	s.Every(1).Hour().Do(checkQuota(e))
+	// launch scheduler
 	<-s.Start()
 }

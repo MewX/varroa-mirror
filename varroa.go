@@ -272,6 +272,5 @@ func goGoRoutines(e *Environment) {
 	}
 	// background goroutines
 	go awaitOrders(e)
-	go automaticBackup()
-	go automaticQuotaCheck(e)
+	go automatedTasks(e)
 }
