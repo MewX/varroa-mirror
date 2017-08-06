@@ -20,5 +20,5 @@ func TestQuota(t *testing.T) {
 	ratio, remaining, err := parseQuota(testQuotaOutput)
 	check.Nil(err)
 	check.Equal(float32(84.27867), ratio)
-	check.Equal(int64(49455024), remaining)
+	check.Equal(int64(1024*49455024), remaining)
 }

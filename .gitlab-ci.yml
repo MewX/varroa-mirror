@@ -38,6 +38,8 @@ format:
     - go get github.com/ttacon/chalk
     - go get github.com/tdewolff/minify
     - go get github.com/briandowns/spinner
+    - go get github.com/fhs/gompd/mpd
+    - go get github.com/russross/blackfriday
     - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
@@ -65,6 +67,8 @@ compiled_varroa_dev:
     - go get github.com/ttacon/chalk
     - go get github.com/tdewolff/minify
     - go get github.com/briandowns/spinner
+    - go get github.com/fhs/gompd/mpd
+    - go get github.com/russross/blackfriday
     - go build -o varroa
 #    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
@@ -99,6 +103,8 @@ compiled_varroa_released_version:
     - go get github.com/ttacon/chalk
     - go get github.com/tdewolff/minify
     - go get github.com/briandowns/spinner
+    - go get github.com/fhs/gompd/mpd
+    - go get github.com/russross/blackfriday
     - go build -o varroa
   artifacts:
     paths: 
