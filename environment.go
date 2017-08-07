@@ -386,9 +386,13 @@ func (e *Environment) DeployToGitlabPages() error {
 			return err
 		}
 	}
-	// add overall stats and other files
-	if err := git.Add("*"+svgExt, "*"+csvExt, filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
+	// add main files
+	if err := git.Add(filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile), "*"+csvExt); err != nil {
 		return errors.Wrap(err, errorGitAdd)
+	}
+	// add the graphs, if it fails,
+	if err := git.Add("*" + svgExt); err != nil {
+		logThis.Error(errors.Wrap(err, errorGitAdd+", not all graphs are generated yet."), NORMAL)
 	}
 	// commit
 	if err := git.Commit("varroa musica stats update."); err != nil {
