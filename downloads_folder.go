@@ -166,9 +166,6 @@ func (d *DownloadFolder) Load() error {
 					// updating
 					d.ID[tracker] = o.ID
 					d.GroupID[tracker] = o.GroupID
-
-					// TODO only update if file has changed!!! or if state == unsorted
-
 					// getting release.md info
 					releaseMD := filepath.Join(d.Root, d.Path, metadataDir, tracker+"_"+summaryFile)
 					if !FileExists(releaseMD) {
@@ -205,8 +202,6 @@ func (d *DownloadFolder) Load() error {
 	}
 
 	// TODO external way to detect d.State? hidden file? ex: find if .rejected/.exported in root?
-	// TODO scan for log files (using walk, for multi-disc releases)?
-
 	return nil
 }
 
@@ -275,32 +270,12 @@ func (d *DownloadFolder) Sort(e *Environment) error {
 			fmt.Println(Green("This release is ACCEPTED. It will not be removed, but will be ignored in later sorting."))
 			fmt.Println(Green("This can be reverted by sorting its specific download ID."))
 			d.State = stateAccepted
-
 			if Accept("Do you want to export it now ") {
-				// getting candidates for new folder name
-				candidates := []string{d.Path}
-				for _, t := range d.Trackers {
-					candidates = append(candidates, d.generatePath(t, defaultFolderTemplate))
-					candidates = append(candidates, d.generatePath(t, e.config.Library.FolderTemplate))
-				}
-				// select or input a new name
-				newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
-				if err != nil || DirectoryExists(filepath.Join(d.Root, newName)) {
-					return errors.Wrap(err, "Error generating new release folder name")
-				}
-				// TODO normalize/sanitize newName?
-				if Accept("Export as " + newName) {
-					fmt.Println("Exporting files to the library root...")
-					if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(e.config.Library.Directory, newName), e.config.Library.UseHardLinks); err != nil {
-						return errors.Wrap(err, "Error exporting download "+d.Path)
-					}
-					fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
-					d.State = stateExported
-				} else {
-					fmt.Println("The release was not exported. It can be exported later with the 'downloads export' subcommand.")
+				if err := d.export(e.config); err != nil {
+					return err
 				}
 			} else {
-				fmt.Println("The release was not exported. It can be exported later with the 'downloads export' subcommand.")
+				fmt.Println("The release was not exported. It can be exported later by sorting again.")
 			}
 			validChoice = true
 		}
@@ -311,6 +286,34 @@ func (d *DownloadFolder) Sort(e *Environment) error {
 				return errors.New("Error sorting download, too many incorrect choices")
 			}
 		}
+	}
+	return nil
+}
+
+func (d *DownloadFolder) export(config *Config) error {
+	// getting candidates for new folder name
+	candidates := []string{d.Path}
+	for _, t := range d.Trackers {
+		candidates = append(candidates, d.generatePath(t, defaultFolderTemplate))
+		candidates = append(candidates, d.generatePath(t, config.Library.FolderTemplate))
+	}
+	// select or input a new name
+	newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
+	// sanitizing in case of user input
+	newName = SanitizeFolder(newName)
+	if err != nil || DirectoryExists(filepath.Join(config.Library.Directory, newName)) {
+		return errors.Wrap(err, "Error generating new release folder name")
+	}
+	// export
+	if Accept("Export as " + newName) {
+		fmt.Println("Exporting files to the library root...")
+		if err := CopyDir(filepath.Join(d.Root, d.Path), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
+			return errors.Wrap(err, "Error exporting download "+d.Path)
+		}
+		fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
+		d.State = stateExported
+	} else {
+		fmt.Println("The release was not exported. It can be exported later with the 'downloads export' subcommand.")
 	}
 	return nil
 }

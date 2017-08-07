@@ -375,7 +375,7 @@ func parseQuota(cmdOut string) (float32, int64, error) {
 		return -1, -1, errors.New("Error parsing quota output")
 	}
 	// assuming blocks of 1kb
-	return 100 * float32(used) / float32(quota), int64(quota - used)*1024, nil
+	return 100 * float32(used) / float32(quota), int64(quota-used) * 1024, nil
 }
 
 func checkQuota(e *Environment) error {

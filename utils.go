@@ -446,10 +446,8 @@ func SelectOption(title, usage string, options []string) (string, error) {
 				}
 				RedBold("Not confirmed.")
 			}
-		} else if strings.ToUpper(choice) == "A" {
-			if len(options) == 1 {
-				return options[0], nil
-			}
+		} else if strings.ToUpper(choice) == "A" && len(options) == 1 {
+			return options[0], nil
 		} else if index, err := strconv.Atoi(choice); err == nil && 0 < index && index <= len(options) {
 			return options[index-1], nil
 		}
