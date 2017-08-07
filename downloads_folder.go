@@ -218,7 +218,7 @@ func (d *DownloadFolder) Sort(e *Environment) error {
 		if err := mpdClient.Connect(e.config.MPD); err == nil {
 			defer mpdClient.DisableAndDisconnect(d.Root, d.Path)
 			if err := mpdClient.SendAndPlay(d.Root, d.Path); err != nil {
-				fmt.Println(RedBold("Error sending to MPD."))
+				fmt.Println(RedBold("Error sending to MPD: " + err.Error()))
 			}
 		}
 	}

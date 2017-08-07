@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"fmt"
+
 	"github.com/fhs/gompd/mpd"
 	"github.com/pkg/errors"
 )
@@ -73,7 +75,7 @@ func (m *MPD) Enable(path string) error {
 		return errors.New("Error resolving symbolic link target.")
 	}
 	if path != target {
-		return errors.New("The MPD library symlink already exists, and points to an unexpected directory.")
+		return errors.New(fmt.Sprintf("The MPD library symlink %s already exists, and points to an unexpected directory.", varroaMPDSubdir))
 	}
 	// symlink exists and points to the right directory
 	return nil
@@ -157,11 +159,11 @@ func (m *MPD) SendAndPlay(dlFolder, release string) error {
 	}
 	// update
 	if err := m.Update(); err != nil {
-		return err
+		return errors.Wrap(err, "Error updating MPD database")
 	}
 	// add
 	if err := m.Add(varroaMPDSubdir); err != nil {
-		return err
+		return errors.Wrap(err, "Error adding release to MPD playlist")
 	}
 	// play
 	return m.Play()
