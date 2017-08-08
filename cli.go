@@ -72,10 +72,10 @@ Commands:
 		return information about a specific download. Takes downloads
 		db ID as argument.
 	downloads sort:
-		sort all unsorted downloads, or sort a specific release.
-		sorting allows you to tag which release to keep and which to
-		only seed; selected downloads can be exported to an external
-		folder.
+		sort all unsorted downloads, or sort a specific release
+		(identified by its db ID). sorting allows you to tag which
+		release to keep and which to only seed; selected downloads
+		can be exported to an external folder.
 	downloads list:
 		list downloads by state: unsorted, accepted, exported, rejected.
 	downloads clean:
