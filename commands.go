@@ -343,8 +343,31 @@ func archiveUserFiles() error {
 			return errors.Wrap(err, errorArchiving)
 		}
 	}
+
+	// find all .csv + .db files, save them along with the configuration file
+	f, err := os.Open(statsDir)
+	if err != nil {
+		return errors.Wrap(err, "Error opening "+statsDir)
+	}
+	contents, err := f.Readdirnames(-1)
+	f.Close()
+
+	backupFiles := []string{}
+	if FileExists(defaultConfigurationFile) {
+		backupFiles = append(backupFiles, defaultConfigurationFile)
+	}
+	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+	if FileExists(encryptedConfigurationFile) {
+		backupFiles = append(backupFiles, encryptedConfigurationFile)
+	}
+	for _, c := range contents {
+		if filepath.Ext(c) == msgpackExt || filepath.Ext(c) == csvExt {
+			backupFiles = append(backupFiles, filepath.Join(statsDir, c))
+		}
+	}
+
 	// generate file
-	err := archiver.Zip.Make(filepath.Join(archivesDir, archiveName), []string{statsDir, defaultConfigurationFile})
+	err = archiver.Zip.Make(filepath.Join(archivesDir, archiveName), backupFiles)
 	if err != nil {
 		logThis.Error(errors.Wrap(err, errorArchiving), NORMAL)
 	}
