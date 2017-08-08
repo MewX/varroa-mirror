@@ -177,6 +177,7 @@ type ConfigStats struct {
 	UpdatePeriodH       int     `yaml:"update_period_hour"`
 	MaxBufferDecreaseMB int     `yaml:"max_buffer_decrease_by_period_mb"`
 	MinimumRatio        float64 `yaml:"min_ratio"`
+	TargetRatio         float64 `yaml:"target_ratio"`
 }
 
 func (cs *ConfigStats) Check() error {
@@ -190,7 +191,16 @@ func (cs *ConfigStats) Check() error {
 		cs.MinimumRatio = warningRatio
 	}
 	if cs.MinimumRatio < warningRatio {
-		return errors.New("Minimum ratio must be at least 0.60")
+		return errors.New(fmt.Sprintf("Minimum ratio must be at least %.2f", warningRatio))
+	}
+	if cs.TargetRatio == 0 {
+		cs.TargetRatio = defaultTargetRatio
+	}
+	if cs.TargetRatio < warningRatio {
+		return errors.New(fmt.Sprintf("Target ratio must be higher than %.2f", warningRatio))
+	}
+	if cs.TargetRatio < cs.MinimumRatio {
+		return errors.New(fmt.Sprintf("Target ratio must be higher than minimum ratio (%.2f)", cs.MinimumRatio))
 	}
 	return nil
 }
@@ -200,6 +210,7 @@ func (cs *ConfigStats) String() string {
 	txt += "\tUpdate period (hours): " + strconv.Itoa(cs.UpdatePeriodH) + "\n"
 	txt += "\tMaximum buffer decrease (MB): " + strconv.Itoa(cs.MaxBufferDecreaseMB) + "\n"
 	txt += "\tMinimum ratio: " + strconv.FormatFloat(cs.MinimumRatio, 'f', 2, 64) + "\n"
+	txt += "\tTarget ratio: " + strconv.FormatFloat(cs.TargetRatio, 'f', 2, 64) + "\n"
 	return txt
 }
 

@@ -77,13 +77,13 @@ func (s *TrackerStats) String() string {
 }
 
 func (s *TrackerStats) ToSlice() []string {
-	// timestamp;up;down;ratio;buffer;warningBuffer
-	return []string{fmt.Sprintf("%d", s.Timestamp), strconv.FormatUint(s.Up, 10), strconv.FormatUint(s.Down, 10), strconv.FormatFloat(s.Ratio, 'f', -1, 64), strconv.FormatInt(s.Buffer, 10), strconv.FormatInt(s.WarningBuffer, 10)}
+	// timestamp;up;down;ratio
+	return []string{fmt.Sprintf("%d", s.Timestamp), strconv.FormatUint(s.Up, 10), strconv.FormatUint(s.Down, 10), strconv.FormatFloat(s.Ratio, 'f', -1, 64)}
 }
 
-func (s *TrackerStats) FromSlice(slice []string) error {
-	// slice contains timestamp, which is ignored
-	if len(slice) != 6 {
+func (s *TrackerStats) FromSlice(slice []string, config *ConfigStats) error {
+	// timestamp, up, down, ratio
+	if len(slice) < 4 {
 		return errors.New("Incorrect entry, cannot load stats")
 	}
 	timestamp, err := strconv.ParseInt(slice[0], 0, 64)
@@ -106,15 +106,8 @@ func (s *TrackerStats) FromSlice(slice []string) error {
 		return err
 	}
 	s.Ratio = ratio
-	buffer, err := strconv.ParseInt(slice[4], 10, 64)
-	if err != nil {
-		return err
-	}
-	s.Buffer = buffer
-	warningBuffer, err := strconv.ParseInt(slice[5], 10, 64)
-	if err != nil {
-		return err
-	}
-	s.WarningBuffer = warningBuffer
+	// recalculate buffer/warningbuffer
+	s.Buffer = int64(float64(s.Up)/config.TargetRatio) - int64(s.Down)
+	s.WarningBuffer = int64(float64(s.Up)/config.MinimumRatio) - int64(s.Down)
 	return nil
 }

@@ -37,6 +37,10 @@ const (
 	downloadsDBFile           = "downloads"
 	defaultFolderTemplate     = "$a ($y) $t {$id} [$f $s]"
 
+	// Notable ratios
+	defaultTargetRatio = 1.0
+	warningRatio       = 0.6
+
 	// file extensions
 	yamlExt      = ".yaml"
 	encryptedExt = ".enc"

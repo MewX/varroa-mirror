@@ -30,10 +30,6 @@ const (
 	statusSuccess = "success"
 
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
-
-	// Notable ratios
-	demotionRatio = 0.95
-	warningRatio  = 0.6
 )
 
 func (t *GazelleTracker) apiCallRateLimiter() {
@@ -193,7 +189,7 @@ func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) e
 	return nil
 }
 
-func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
+func (t *GazelleTracker) GetStats(config *ConfigStats) (*TrackerStats, error) {
 	if t.userID == 0 {
 		data, err := t.get(t.URL + "/ajax.php?action=index")
 		if err != nil {
@@ -225,8 +221,8 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 		Class:         s.Response.Personal.Class,
 		Up:            uint64(s.Response.Stats.Uploaded),
 		Down:          uint64(s.Response.Stats.Downloaded),
-		Buffer:        int64(float64(s.Response.Stats.Uploaded)/demotionRatio) - int64(s.Response.Stats.Downloaded),
-		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/warningRatio) - int64(s.Response.Stats.Downloaded),
+		Buffer:        int64(float64(s.Response.Stats.Uploaded)/config.TargetRatio) - int64(s.Response.Stats.Downloaded),
+		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/config.MinimumRatio) - int64(s.Response.Stats.Downloaded),
 		Ratio:         ratio,
 		Timestamp:     time.Now().Unix(),
 	}

@@ -242,10 +242,14 @@ func (e *Environment) SetUp(autologin bool) error {
 		go tracker.apiCallRateLimiter()
 		e.Trackers[label] = tracker
 
+		statsConfig, err := e.config.GetStats(label)
+		if err != nil {
+			return errors.Wrap(err, "Error loading stats config for "+label)
+		}
 		// load history for this tracker
 		h := &History{Tracker: label}
 		// load relevant history
-		if err := h.LoadAll(); err != nil {
+		if err := h.LoadAll(statsConfig); err != nil {
 			return errors.Wrap(err, "Error loading history for tracker "+label)
 		}
 		e.History[label] = h

@@ -15,27 +15,59 @@ type TrackerStatsHistory struct {
 	TrackerStats     []*TrackerStats
 }
 
-func (t *TrackerStatsHistory) Load(statsFile string) error {
+func (t *TrackerStatsHistory) Load(statsFile string, statsConfig *ConfigStats) error {
 	t.TrackerStatsPath = statsFile
 	// load tracker stats
 	f, err := os.OpenFile(t.TrackerStatsPath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 	w := csv.NewReader(f)
 	trackerStats, err := w.ReadAll()
 	if err != nil {
 		return err
 	}
+
+	if len(trackerStats) == 0 {
+		return nil
+	}
+
+	// detecting the old CSV format that included buffer & warning buffer values
+	saveStats := false
+	if len(trackerStats[0]) == 6 {
+		logThis.Info(fmt.Sprintf("The CSV file %s seems to use an old format. Migrating to new format.", t.TrackerStatsPath), NORMAL)
+		// closing file
+		f.Close()
+		// flag to resave the stats
+		saveStats = true
+		// moving it to backup name
+		if err := os.Rename(t.TrackerStatsPath, t.TrackerStatsPath+"_old"); err != nil {
+			return errors.New("Error while trying to migrate CSV formats")
+		}
+	}
+
 	// load stats to in-memory slice
 	for i, stats := range trackerStats {
 		r := &TrackerStats{}
-		if err := r.FromSlice(stats); err != nil {
+		if err := r.FromSlice(stats, statsConfig); err != nil {
 			logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
 		} else {
 			t.TrackerStats = append(t.TrackerStats, r)
 		}
+	}
+
+	// if necessary, resave the whole file
+	if saveStats {
+		// since the file was renamed, the original filename should not exist anymore.
+		// adding the stats will create a new file.
+		for _, s := range t.TrackerStats {
+			if err := t.Add(s); err != nil {
+				return errors.New("Error migrating the CSV file to the new format: backup was previously made to " + t.TrackerStatsPath + "_old")
+			}
+		}
+		logThis.Info(fmt.Sprintf("The CSV file %s for stats has been migrated, the old file has been renamed %s_old", t.TrackerStatsPath, t.TrackerStatsPath), NORMAL)
+	} else {
+		f.Close()
 	}
 	return nil
 }
