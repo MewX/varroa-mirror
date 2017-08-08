@@ -233,7 +233,7 @@ func (e *Environment) SetUp(autologin bool) error {
 		}
 		tracker := &GazelleTracker{Name: config.Name, URL: config.URL, User: config.User, Password: config.Password, limiter: make(chan bool, allowedAPICallsByPeriod)}
 		if autologin {
-			if err := tracker.Login(); err != nil {
+			if err = tracker.Login(); err != nil {
 				return errors.Wrap(err, "Error logging in tracker "+label)
 			}
 			logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)

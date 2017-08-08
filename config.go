@@ -168,7 +168,7 @@ func (cl *ConfigLibrary) String() string {
 	txt := "Library configuration:\n"
 	txt += "\tDirectory: " + cl.Directory + "\n"
 	txt += "\tUse hard links: " + fmt.Sprintf("%v", cl.UseHardLinks) + "\n"
-	txt += "\tFolder template: " + cl.FolderTemplate + "\n"
+	txt += "\tFolder name template: " + cl.FolderTemplate + "\n"
 	return txt
 }
 
@@ -259,6 +259,7 @@ func (cw *ConfigWebServer) Check() error {
 func (cw *ConfigWebServer) String() string {
 	txt := "Webserver configuration:\n"
 	txt += "\tServe stats: " + fmt.Sprintf("%v", cw.ServeStats) + "\n"
+	txt += "\tServe metadata: " + fmt.Sprintf("%v", cw.ServeMetadata) + "\n"
 	txt += "\tTheme: " + cw.Theme + "\n"
 	txt += "\tUser: " + cw.User + "\n"
 	txt += "\tPassword: " + cw.Password + "\n"
