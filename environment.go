@@ -44,6 +44,7 @@ type Environment struct {
 	sendBackToCLI     chan string
 	sendToWebsocket   chan string
 	mutex             sync.RWMutex
+	git               *Git
 }
 
 // NewEnvironment prepares a new Environment.
@@ -214,6 +215,10 @@ func (e *Environment) LoadConfiguration() error {
 		e.serverData.theme = theme
 		e.serverData.index = HTMLIndex{Title: strings.ToUpper(varroa), Version: version, CSS: theme.CSS(), Script: indexJS}
 	}
+	// git
+	if e.config.gitlabPagesConfigured {
+		e.git = NewGit(statsDir, e.config.GitlabPages.User, e.config.GitlabPages.User+"+varroa@musica")
+	}
 	return nil
 }
 
@@ -373,16 +378,15 @@ func (e *Environment) DeployToGitlabPages() error {
 	if !e.config.gitlabPagesConfigured {
 		return nil
 	}
-	git := NewGit(statsDir, e.config.GitlabPages.User, e.config.GitlabPages.User+"+varroa@musica")
-	if git == nil {
+	if e.git == nil {
 		return errors.New("Error setting up git")
 	}
 	// make sure we're going back to cwd
-	defer git.getBack()
+	defer e.git.getBack()
 
 	// init repository if necessary
-	if !git.Exists() {
-		if err := git.Init(); err != nil {
+	if !e.git.Exists() {
+		if err := e.git.Init(); err != nil {
 			return errors.Wrap(err, errorGitInit)
 		}
 		// create .gitlab-ci.yml
@@ -391,24 +395,24 @@ func (e *Environment) DeployToGitlabPages() error {
 		}
 	}
 	// add main files
-	if err := git.Add(filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile), "*"+csvExt); err != nil {
+	if err := e.git.Add(filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile), "*"+csvExt); err != nil {
 		return errors.Wrap(err, errorGitAdd)
 	}
 	// add the graphs, if it fails,
-	if err := git.Add("*" + svgExt); err != nil {
+	if err := e.git.Add("*" + svgExt); err != nil {
 		logThis.Error(errors.Wrap(err, errorGitAdd+", not all graphs are generated yet."), NORMAL)
 	}
 	// commit
-	if err := git.Commit("varroa musica stats update."); err != nil {
+	if err := e.git.Commit("varroa musica stats update."); err != nil {
 		return errors.Wrap(err, errorGitCommit)
 	}
 	// push
-	if !git.HasRemote("origin") {
-		if err := git.AddRemote("origin", e.config.GitlabPages.GitHTTPS); err != nil {
+	if !e.git.HasRemote("origin") {
+		if err := e.git.AddRemote("origin", e.config.GitlabPages.GitHTTPS); err != nil {
 			return errors.Wrap(err, errorGitAddRemote)
 		}
 	}
-	if err := git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
+	if err := e.git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
 		return errors.Wrap(err, errorGitPush)
 	}
 	logThis.Info("Pushed new stats to "+e.config.GitlabPages.URL, NORMAL)

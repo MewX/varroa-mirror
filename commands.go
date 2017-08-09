@@ -433,8 +433,11 @@ func automatedTasks(e *Environment) {
 
 	// 1. every day, backup user files
 	s.Every(1).Day().At("00:00").Do(archiveUserFiles)
-
-	// 2. checking quota is available
+	// 2. a little later, also compress the git repository if gitlab pages are configured
+	if e.config.gitlabPagesConfigured {
+		s.Every(1).Day().At("00:05").Do(e.git.Compress)
+	}
+	// 3. checking quota is available
 	_, err := exec.LookPath("quota")
 	if err != nil {
 		logThis.Info("The command 'quota' is not available on this system, not able to check disk usage", NORMAL)
