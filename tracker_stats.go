@@ -108,6 +108,6 @@ func (s *TrackerStats) FromSlice(slice []string, config *ConfigStats) error {
 	s.Ratio = ratio
 	// recalculate buffer/warningbuffer
 	s.Buffer = int64(float64(s.Up)/config.TargetRatio) - int64(s.Down)
-	s.WarningBuffer = int64(float64(s.Up)/config.MinimumRatio) - int64(s.Down)
+	s.WarningBuffer = int64(float64(s.Up)/warningRatio) - int64(s.Down)
 	return nil
 }

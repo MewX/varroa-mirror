@@ -65,7 +65,7 @@ Commands:
 		timestamped zip file. Automatically triggered every day.
 	downloads scan:
 		scan the downloads folder and refreshes the database of known
-		downloads.
+		downloads. list the downloads and show the ID for each release.
 	downloads search:
 		return all known downloads on which an artist has worked.
 	downloads metadata:
@@ -108,7 +108,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa downloads (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean)
+	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean)
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -174,7 +174,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.showConfig = args["show-config"].(bool)
 	b.encrypt = args["encrypt"].(bool)
 	b.decrypt = args["decrypt"].(bool)
-	if args["downloads"].(bool) {
+	if args["downloads"].(bool) || args["dl"].(bool) {
 		b.downloadScan = args["scan"].(bool)
 		b.downloadSearch = args["search"].(bool)
 		if b.downloadSearch {

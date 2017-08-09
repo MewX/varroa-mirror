@@ -222,7 +222,7 @@ func (t *GazelleTracker) GetStats(config *ConfigStats) (*TrackerStats, error) {
 		Up:            uint64(s.Response.Stats.Uploaded),
 		Down:          uint64(s.Response.Stats.Downloaded),
 		Buffer:        int64(float64(s.Response.Stats.Uploaded)/config.TargetRatio) - int64(s.Response.Stats.Downloaded),
-		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/config.MinimumRatio) - int64(s.Response.Stats.Downloaded),
+		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/warningRatio) - int64(s.Response.Stats.Downloaded),
 		Ratio:         ratio,
 		Timestamp:     time.Now().Unix(),
 	}
