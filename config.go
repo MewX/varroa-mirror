@@ -142,7 +142,33 @@ func (ca *ConfigAutosnatch) String() string {
 	txt += "\tAnnounce channel: " + ca.AnnounceChannel + "\n"
 	if len(ca.BlacklistedUploaders) != 0 {
 		txt += "\tBlacklisted uploaders: " + strings.Join(ca.BlacklistedUploaders, ",") + "\n"
+	} else {
+		txt += "\tNo blacklisted uploaders"
 	}
+	return txt
+}
+
+type ConfigLibrary struct {
+	Directory      string `yaml:"directory"`
+	UseHardLinks   bool   `yaml:"use_hard_links"`
+	FolderTemplate string `yaml:"folder_template"`
+}
+
+func (cl *ConfigLibrary) Check() error {
+	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
+		return errors.New("Library directory does not exist")
+	}
+	if strings.Contains(cl.FolderTemplate, "/") {
+		return errors.New("Library folder template cannot contains subdirectories")
+	}
+	return nil
+}
+
+func (cl *ConfigLibrary) String() string {
+	txt := "Library configuration:\n"
+	txt += "\tDirectory: " + cl.Directory + "\n"
+	txt += "\tUse hard links: " + fmt.Sprintf("%v", cl.UseHardLinks) + "\n"
+	txt += "\tFolder name template: " + cl.FolderTemplate + "\n"
 	return txt
 }
 
@@ -151,6 +177,7 @@ type ConfigStats struct {
 	UpdatePeriodH       int     `yaml:"update_period_hour"`
 	MaxBufferDecreaseMB int     `yaml:"max_buffer_decrease_by_period_mb"`
 	MinimumRatio        float64 `yaml:"min_ratio"`
+	TargetRatio         float64 `yaml:"target_ratio"`
 }
 
 func (cs *ConfigStats) Check() error {
@@ -164,7 +191,16 @@ func (cs *ConfigStats) Check() error {
 		cs.MinimumRatio = warningRatio
 	}
 	if cs.MinimumRatio < warningRatio {
-		return errors.New("Minimum ratio must be at least 0.60")
+		return errors.New(fmt.Sprintf("Minimum ratio must be at least %.2f", warningRatio))
+	}
+	if cs.TargetRatio == 0 {
+		cs.TargetRatio = defaultTargetRatio
+	}
+	if cs.TargetRatio < warningRatio {
+		return errors.New(fmt.Sprintf("Target ratio must be higher than %.2f", warningRatio))
+	}
+	if cs.TargetRatio < cs.MinimumRatio {
+		return errors.New(fmt.Sprintf("Target ratio must be higher than minimum ratio (%.2f)", cs.MinimumRatio))
 	}
 	return nil
 }
@@ -174,10 +210,12 @@ func (cs *ConfigStats) String() string {
 	txt += "\tUpdate period (hours): " + strconv.Itoa(cs.UpdatePeriodH) + "\n"
 	txt += "\tMaximum buffer decrease (MB): " + strconv.Itoa(cs.MaxBufferDecreaseMB) + "\n"
 	txt += "\tMinimum ratio: " + strconv.FormatFloat(cs.MinimumRatio, 'f', 2, 64) + "\n"
+	txt += "\tTarget ratio: " + strconv.FormatFloat(cs.TargetRatio, 'f', 2, 64) + "\n"
 	return txt
 }
 
 type ConfigWebServer struct {
+	ServeMetadata  bool   `yaml:"serve_metadata"`
 	ServeStats     bool   `yaml:"serve_stats"`
 	Theme          string `yaml:"theme"`
 	User           string `yaml:"stats_user"`
@@ -190,7 +228,7 @@ type ConfigWebServer struct {
 }
 
 func (cw *ConfigWebServer) Check() error {
-	if !cw.ServeStats && !cw.AllowDownloads {
+	if !cw.ServeStats && !cw.AllowDownloads && !cw.ServeMetadata {
 		return errors.New("Webserver configured, but not serving stats or allowing remote downloads")
 	}
 	if cw.AllowDownloads && cw.Token == "" {
@@ -221,6 +259,7 @@ func (cw *ConfigWebServer) Check() error {
 func (cw *ConfigWebServer) String() string {
 	txt := "Webserver configuration:\n"
 	txt += "\tServe stats: " + fmt.Sprintf("%v", cw.ServeStats) + "\n"
+	txt += "\tServe metadata: " + fmt.Sprintf("%v", cw.ServeMetadata) + "\n"
 	txt += "\tTheme: " + cw.Theme + "\n"
 	txt += "\tUser: " + cw.User + "\n"
 	txt += "\tPassword: " + cw.Password + "\n"
@@ -322,6 +361,37 @@ func (cg *ConfigGitlabPages) String() string {
 	txt += "\tPassword: " + cg.Password + "\n"
 	txt += "\tURL: " + cg.URL + "\n"
 	return txt
+}
+
+type ConfigMPD struct {
+	Server   string
+	Password string
+	Library  string
+}
+
+func (cm *ConfigMPD) String() string {
+	txt := "MPD configuration:\n"
+	txt += "\tMPD Library: " + cm.Library + "\n"
+	txt += "\tMPD Server: " + cm.Server + "\n"
+	txt += "\tMPD Server password: " + cm.Password + "\n"
+	return txt
+}
+
+func (cm *ConfigMPD) Check() error {
+	if cm.Server == "" {
+		return errors.New("Server name must be provided")
+	} else {
+		// check it's server:port
+		r := regexp.MustCompile(ircServerPattern)
+		hits := r.FindAllStringSubmatch(cm.Server, -1)
+		if len(hits) != 1 {
+			return errors.New("MPD server must be in the form: server.hostname:port")
+		}
+	}
+	if cm.Library == "" || !DirectoryExists(cm.Library) {
+		return errors.New("A valid MPD Library path must be provided")
+	}
+	return nil
 }
 
 type ConfigFilter struct {
@@ -478,15 +548,20 @@ type Config struct {
 	Notifications            *ConfigNotifications
 	GitlabPages              *ConfigGitlabPages `yaml:"gitlab_pages"`
 	Filters                  []*ConfigFilter
+	Library                  *ConfigLibrary
+	MPD                      *ConfigMPD
 	autosnatchConfigured     bool
 	statsConfigured          bool
 	webserverConfigured      bool
 	webserverHTTP            bool
 	webserverHTTPS           bool
+	webserverMetadata        bool
 	gitlabPagesConfigured    bool
 	pushoverConfigured       bool
 	webhooksConfigured       bool
 	downloadFolderConfigured bool
+	libraryConfigured        bool
+	mpdConfigured            bool
 }
 
 func (c *Config) String() string {
@@ -514,6 +589,9 @@ func (c *Config) String() string {
 	}
 	if c.webhooksConfigured {
 		txt += c.Notifications.WebHooks.String() + "\n"
+	}
+	if c.mpdConfigured {
+		txt += c.MPD.String() + "\n"
 	}
 	return txt
 }
@@ -588,6 +666,12 @@ func (c *Config) Check() error {
 			return errors.Wrap(err, "Error reading Gitlab Pages configuration")
 		}
 	}
+	// mpd checks
+	if c.MPD != nil {
+		if err := c.MPD.Check(); err != nil {
+			return errors.Wrap(err, "Error reading MPD configuration")
+		}
+	}
 	// filter checks
 	for _, t := range c.Filters {
 		if err := t.Check(); err != nil {
@@ -605,6 +689,9 @@ func (c *Config) Check() error {
 	c.downloadFolderConfigured = c.General.DownloadDir != ""
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
+	c.libraryConfigured = c.Library != nil
+	c.mpdConfigured = c.MPD != nil
+	c.webserverMetadata = c.downloadFolderConfigured && c.webserverConfigured && c.WebServer.ServeMetadata
 
 	// config-wide checks
 	configuredTrackers := c.TrackerLabels()
@@ -656,6 +743,18 @@ func (c *Config) Check() error {
 	}
 	if len(c.Filters) != 0 && !c.autosnatchConfigured {
 		return errors.New("Filters defined but no autosnatch configuration found")
+	}
+	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.downloadFolderConfigured {
+		return errors.New("Webserver configured to serve metadata, but download folder not configured")
+	}
+	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.General.AutomaticMetadataRetrieval {
+		return errors.New("Webserver configured to serve metadata, but metadata automatic download not configured")
+	}
+	if c.libraryConfigured && !c.downloadFolderConfigured {
+		return errors.New("Library is configured but not the default download directory")
+	}
+	if c.mpdConfigured && !c.downloadFolderConfigured {
+		return errors.New("To use the MPD server, a valid download directory must be provided")
 	}
 
 	// TODO check filter uploaders not blacklisted

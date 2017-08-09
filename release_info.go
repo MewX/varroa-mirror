@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"net/url"
-
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 )
@@ -23,8 +21,6 @@ const (
 	// TODO: lineage: Discogs: XXX; Qobuz: XXX; etc...
 	// TODO: add last.fm/discogs/etc info too?
 	mdTemplate = `# %s - %s (%d)
-
-**Cover:**
 
 ![cover](%s)
 
@@ -135,7 +131,7 @@ func (ri *ReleaseInfo) fromGazelleInfo(tracker *GazelleTracker, info GazelleTorr
 	for _, a := range allArtists {
 		ri.Artists = append(ri.Artists, ReleaseInfoArtist{ID: a.ID, Name: html.UnescapeString(a.Name)})
 	}
-	ri.CoverPath = filepath.Join(url.PathEscape(info.Response.Torrent.FilePath), metadataDir, url.PathEscape(tracker.Name+"_"+trackerCoverFile+filepath.Ext(info.Response.Group.WikiImage)))
+	ri.CoverPath = info.Response.Group.WikiImage
 	ri.Tags = info.Response.Group.Tags
 	ri.ReleaseType = getGazelleReleaseType(info.Response.Group.ReleaseType)
 	ri.Format = info.Response.Torrent.Format

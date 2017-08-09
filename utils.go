@@ -1,14 +1,20 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/subosito/norma"
+	"github.com/ttacon/chalk"
 )
 
 //-----------------------------------------------------------------------------
@@ -99,6 +105,15 @@ func CommonInStringSlices(X, Y []string) []string {
 	return ret
 }
 
+func RemoveFromSlice(r string, s []string) []string {
+	for i, v := range s {
+		if v == r {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
+}
+
 func checkErrors(errs ...error) error {
 	for _, err := range errs {
 		if err != nil {
@@ -109,6 +124,18 @@ func checkErrors(errs ...error) error {
 }
 
 //-----------------------------------------------------------------------------
+
+func SanitizeFolder(path string) string {
+	// making sure the path is relative
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+
+	// TODO check it's not more than 250 characters long!
+
+	// making sure the final filename is valid
+	return norma.Sanitize(path)
+}
 
 // DirectoryExists checks if a directory exists.
 func DirectoryExists(path string) (res bool) {
@@ -136,23 +163,16 @@ func AbsoluteFileExists(path string) (res bool) {
 
 // FileExists checks if a path is valid
 func FileExists(path string) bool {
-	var absolutePath string
-	if filepath.IsAbs(path) {
-		absolutePath = path
-	} else {
-		currentDir, err := os.Getwd()
-		if err != nil {
-			return false
-		}
-		absolutePath = filepath.Join(currentDir, path)
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return false
 	}
 	return AbsoluteFileExists(absolutePath)
 }
 
 // CopyFile copies a file from src to dst. If src and dst files exist, and are
-// the same, then return success. Otherwise, attempt to create a hard link
-// between the two files. If that fail, copy the file contents from src to dst.
-func CopyFile(src, dst string) (err error) {
+// the same, then return success. Copy the file contents from src to dst.
+func CopyFile(src, dst string, useHardLinks bool) (err error) {
 	sfi, err := os.Stat(src)
 	if err != nil {
 		return
@@ -175,8 +195,10 @@ func CopyFile(src, dst string) (err error) {
 			return
 		}
 	}
-	err = copyFileContents(src, dst)
-	return
+	if useHardLinks {
+		return os.Link(src, dst)
+	}
+	return copyFileContents(src, dst)
 }
 
 // copyFileContents copies the contents of the file named src to the file named
@@ -203,6 +225,57 @@ func copyFileContents(src, dst string) (err error) {
 		return
 	}
 	err = out.Sync()
+	return
+}
+
+// CopyDir recursively copies a directory tree, attempting to preserve permissions.
+// Source directory must exist, destination directory must *not* exist.
+// Symlinks are ignored and skipped.
+func CopyDir(src, dst string, useHardLinks bool) (err error) {
+	src = filepath.Clean(src)
+	dst = filepath.Clean(dst)
+
+	si, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if !si.IsDir() {
+		return errors.New("Source is not a directory")
+	}
+	_, err = os.Stat(dst)
+	if err != nil && !os.IsNotExist(err) {
+		return
+	}
+	if err == nil {
+		return errors.New("Destination already exists")
+	}
+	err = os.MkdirAll(dst, si.Mode())
+	if err != nil {
+		return
+	}
+	entries, err := ioutil.ReadDir(src)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			err = CopyDir(srcPath, dstPath, useHardLinks)
+			if err != nil {
+				return
+			}
+		} else {
+			// Skip symlinks.
+			if entry.Mode()&os.ModeSymlink != 0 {
+				continue
+			}
+			err = CopyFile(srcPath, dstPath, useHardLinks)
+			if err != nil {
+				return
+			}
+		}
+	}
 	return
 }
 
@@ -247,4 +320,145 @@ func readableInt64Sign(a int64) string {
 		return "+"
 	}
 	return "-"
+}
+
+//-----------------------------------------------------------------------------
+
+// BlueBold outputs a string in blue bold.
+func BlueBold(in string) string {
+	return chalk.Bold.TextStyle(chalk.Blue.Color(in))
+}
+
+// Blue outputs a string in blue.
+func Blue(in string) string {
+	return chalk.Blue.Color(in)
+}
+
+// GreenBold outputs a string in green bold.
+func GreenBold(in string) string {
+	return chalk.Bold.TextStyle(chalk.Green.Color(in))
+}
+
+// Green outputs a string in green.
+func Green(in string) string {
+	return chalk.Green.Color(in)
+}
+
+// RedBold outputs a string in red bold.
+func RedBold(in string) string {
+	return chalk.Bold.TextStyle(chalk.Red.Color(in))
+}
+
+// Red outputs a string in red.
+func Red(in string) string {
+	return chalk.Red.Color(in)
+}
+
+// Yellow outputs a string in yellow.
+func Yellow(in string) string {
+	return chalk.Yellow.Color(in)
+}
+
+// UserChoice message logging
+func UserChoice(msg string, args ...interface{}) {
+	msg = fmt.Sprintf(msg, args...)
+	fmt.Print(BlueBold(msg))
+}
+
+// GetInput from user
+func GetInput() (string, error) {
+	scanner := bufio.NewReader(os.Stdin)
+	choice, scanErr := scanner.ReadString('\n')
+	return strings.TrimSpace(choice), scanErr
+}
+
+// Accept asks a question and returns the answer
+func Accept(question string) bool {
+	fmt.Printf(BlueBold("%s Y/N : "), question)
+	input, err := GetInput()
+	if err == nil {
+		switch input {
+		case "y", "Y", "yes":
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveDuplicates in []string
+func RemoveDuplicates(options *[]string, otherStringsToClean ...string) {
+	found := make(map[string]bool)
+	// specifically remove other strings from values
+	for _, o := range otherStringsToClean {
+		found[o] = true
+	}
+	j := 0
+	for i, x := range *options {
+		if !found[x] && x != "" {
+			found[x] = true
+			(*options)[j] = (*options)[i]
+			j++
+		}
+	}
+	*options = (*options)[:j]
+}
+
+// SelectOption among several, or input a new one, and return user input.
+func SelectOption(title, usage string, options []string) (string, error) {
+	UserChoice(title)
+	if usage != "" {
+		fmt.Println(Green(usage))
+	}
+
+	// remove duplicates from options and display them
+	RemoveDuplicates(&options)
+	for i, o := range options {
+		fmt.Printf("%d. %s\n", i+1, o)
+	}
+
+	errs := 0
+	for {
+		if len(options) > 1 {
+			UserChoice("Choose option [1-%d], or [E]dit: ", len(options))
+		} else {
+			UserChoice("[E]dit manually, or [A]ccept: ")
+		}
+		choice, scanErr := GetInput()
+		if scanErr != nil {
+			return "", scanErr
+		}
+
+		if strings.ToUpper(choice) == "E" {
+			var edited string
+			var scanErr error
+			UserChoice("Enter the new value: ")
+			edited, scanErr = GetInput()
+
+			if scanErr != nil {
+				return "", scanErr
+			}
+			if edited == "" {
+				RedBold("Empty value!")
+			} else {
+				edited = SanitizeFolder(edited)
+				if Accept("Confirm: " + edited) {
+					return edited, nil
+				}
+				RedBold("Not confirmed.")
+			}
+		} else if strings.ToUpper(choice) == "A" && len(options) == 1 {
+			return options[0], nil
+		} else if index, err := strconv.Atoi(choice); err == nil && 0 < index && index <= len(options) {
+			return options[index-1], nil
+		}
+
+		// if we get here, wrong choice
+		RedBold("Invalid choice.")
+		errs++
+		if errs > 10 {
+			RedBold("Too many errors")
+			return "", errors.New("Invalid choice")
+		}
+
+	}
 }

@@ -1,109 +1,28 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
-	"os"
+
+	"bufio"
+	"bytes"
 
 	"github.com/pkg/errors"
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/css"
+	"github.com/tdewolff/minify/html"
+	"github.com/tdewolff/minify/js"
+	"github.com/tdewolff/minify/svg"
 )
 
 // adapted from https://purecss.io/layouts/side-menu/
 // color palette from https://material.io/color/#!/?view.left=0&view.right=0&primary.color=F57F17&secondary.color=37474F&primary.text.color=000000&secondary.text.color=ffffff
 const (
-	indexJS = `
-(function (window, document) {
-    var layout   = document.getElementById('layout'),
-	menu     = document.getElementById('menu'),
-	menuLink = document.getElementById('menuLink'),
-	content  = document.getElementById('main');
-
-    function toggleClass(element, className) {
-	var classes = element.className.split(/\s+/),
-	    length = classes.length,
-	    i = 0;
-
-	for(; i < length; i++) {
-	  if (classes[i] === className) {
-	    classes.splice(i, 1);
-	    break;
-	  }
-	}
-	// The className is not found
-	if (length === classes.length) {
-	    classes.push(className);
-	}
-
-	element.className = classes.join(' ');
-    }
-
-    function toggleAll(e) {
-	var active = 'active';
-
-	e.preventDefault();
-	toggleClass(layout, active);
-	toggleClass(menu, active);
-	toggleClass(menuLink, active);
-    }
-
-    menuLink.onclick = function (e) {
-	toggleAll(e);
-    };
-
-    content.onclick = function(e) {
-	if (menu.className.indexOf('active') !== -1) {
-	    toggleAll(e);
-	}
-    };
-}(this, this.document));
-	`
-	htlmIndexTemplate = `
-<!doctype html>
-<html lang="en">
-  <head>
-    <title>varroa musica</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
-    <style>%s</style>
-  </head>
-  <body>
-
-<div id="layout">
-    <!-- Menu toggle -->
-    <a href="#menu" id="menuLink" class="menu-link">
-        <!-- Hamburger icon -->
-        <span></span>
-    </a>
-
-    <div id="menu">
-        <div class="pure-menu">
-            <ul class="pure-menu-list">
-            	<li class="pure-menu-item"><a class="pure-menu-link" href="#title">{{.Title}}</a></li>
-		{{range .Stats}}
-			<li class="pure-menu-heading">{{.Name}}</li>
-			<li class="pure-menu-item"> <a class="pure-menu-link" href="#stats-{{ .Name }}">Stats</a></li>
-			{{range .GraphLinks}}
-			<li class="pure-menu-item"> <a class="pure-menu-link" href="{{ .URL }}">{{ .Name }}</a></li>
-			{{end}}
-		{{end}}
-            </ul>
-        </div>
-    </div>
-
-    <div id="main">
-        <div class="header">
-            	<h1 id="title">{{.Title}}</h1>
-           	<p>Last updated: {{.Time}}</p>
-           	<p>Raw data: {{range .CSV}}<a href="{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
-           	<p>{{.Version}}</p>
-        </div>
-        <div class="content">
+	htlmStatsTemplate = `
 		{{range .Stats}}
 		<h1 id="stats-{{.Name}}" >{{.Name}}</h1>
 
 		<h2  class="content-subhead">{{.Name}} Stats</h2>
-		<table id="stats-table" summary="Last stats for {{.Name}}">
+		<table class="stats-table" summary="Last stats for {{.Name}}">
 		    <thead>
 		      <tr>
 				<th>Date</th>
@@ -144,7 +63,6 @@ const (
 		</div>
 
 
-
 		<h3 class="content-subhead">Graphs</h3>
 		{{range .Graphs}}
 
@@ -167,14 +85,21 @@ const (
 
 		{{end}}
 		{{end}}
-        </div>
-    </div>
-</div>
-
-<script>%s</script>
-
-</body>
-</html>
+`
+	htlmDownloadsListTemplate = `
+		<h1>Downloads with full tracker metadata</h1>
+		<ul>
+		{{range .Downloads.Downloads}}
+			{{ if .HasDescription}}
+			<li>
+				[{{.ShortState}}] <a href="downloads/{{.Index}}">{{.Path}}</a>
+			</li>
+			{{ end }}
+		{{end}}
+		</ul>
+`
+	htlmDownloadsInfoTemplate = `
+		{{.DownloadInfo}}
 `
 )
 
@@ -195,25 +120,115 @@ type HTMLStats struct {
 
 // HTMLIndex provides data for the htmlIndexTemplate.
 type HTMLIndex struct {
-	Title   string
-	Time    string
-	Version string
-	CSV     []HTMLLink
-	Stats   []HTMLStats
-	Theme   HistoryTheme
+	Title         string
+	Time          string
+	Version       string
+	CSV           []HTMLLink
+	Stats         []HTMLStats
+	CSS           template.CSS
+	Script        string
+	ShowDownloads bool
+	Downloads     Downloads
+	DownloadInfo  template.HTML
+	MainContent   template.HTML
 }
 
-// ToHTML executes the template and save the result to a file.
-func (hi *HTMLIndex) ToHTML(file string) error {
-	t, err := template.New("index").Parse(fmt.Sprintf(htlmIndexTemplate, hi.Theme.CSS(), indexJS))
-	if err != nil {
-		return errors.Wrap(err, "Error generating template for index")
-	}
+func (hi *HTMLIndex) execute(t *template.Template) ([]byte, error) {
 	// open file
-	f, err := os.OpenFile(file, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
-	if err != nil {
-		return errors.Wrap(err, "Error opening index file tor writing")
+	b := new(bytes.Buffer)
+	writer := bufio.NewWriter(b)
+	// write to []byte
+	if err := t.Execute(writer, hi); err != nil {
+		return []byte{}, errors.Wrap(err, "Error executing template for index")
 	}
-	// write to file
-	return t.Execute(f, hi)
+	// flushing is very important.
+	writer.Flush()
+	return b.Bytes(), nil
+}
+
+// IndexStats executes the template and save the result to a file.
+func (hi *HTMLIndex) IndexStats() ([]byte, error) {
+	t, err := template.New("index").Parse(htlmStatsTemplate)
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating template for index")
+	}
+	return hi.execute(t)
+}
+
+func (hi *HTMLIndex) SetMainContentStats() error {
+	stats, err := hi.IndexStats()
+	if err != nil {
+		return err
+	}
+	hi.MainContent = template.HTML(stats)
+	return nil
+}
+
+func (hi *HTMLIndex) IndexDownloadsList() ([]byte, error) {
+	if len(hi.Downloads.Downloads) == 0 {
+		return []byte{}, errors.New("Error generating downloads list: nothing found")
+	}
+
+	t, err := template.New("index_dl").Parse(htlmDownloadsListTemplate)
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating template for index")
+	}
+	return hi.execute(t)
+}
+
+func (hi *HTMLIndex) SetMainContentDownloadsList() error {
+	dlList, err := hi.IndexDownloadsList()
+	if err != nil {
+		return err
+	}
+	hi.MainContent = template.HTML(dlList)
+	return nil
+}
+
+func (hi *HTMLIndex) IndexDownloadsInfo() ([]byte, error) {
+	if len(hi.DownloadInfo) == 0 {
+		return []byte{}, errors.New("Error generating downloads info: nothing found")
+	}
+
+	t, err := template.New("index_dlinfo").Parse(htlmDownloadsInfoTemplate)
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating template for index")
+	}
+	return hi.execute(t)
+}
+
+func (hi *HTMLIndex) SetMainContentDownloadsInfo() error {
+	dlInfo, err := hi.IndexDownloadsInfo()
+	if err != nil {
+		return err
+	}
+	hi.MainContent = template.HTML(dlInfo)
+	return nil
+}
+
+func (hi *HTMLIndex) MainPage() ([]byte, error) {
+	if len(hi.MainContent) == 0 {
+		return []byte{}, errors.New("Error generating template for index: no main content")
+	}
+
+	t, err := template.New("index_main").Parse(htlmTemplate)
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Error generating template for index")
+	}
+	pageBytes, err := hi.execute(t)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	// minify output
+	m := minify.New()
+	m.AddFunc("text/css", css.Minify)
+	m.AddFunc("text/html", html.Minify)
+	m.AddFunc("text/javascript", js.Minify)
+	m.AddFunc("image/svg+xml", svg.Minify)
+	min, err := m.Bytes("text/html", pageBytes)
+	if err != nil {
+		return pageBytes, nil
+	}
+	return min, nil
 }

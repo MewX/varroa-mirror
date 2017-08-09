@@ -14,6 +14,53 @@ trackers:
     password: secretpassword
     url:  https://purple.cd
 
+stats:
+  - tracker: blue
+    update_period_hour: 1
+    max_buffer_decrease_by_period_mb: 500
+    min_ratio: 0.98
+    target_ratio: 1.20
+  - tracker: purple
+    update_period_hour: 12
+    max_buffer_decrease_by_period_mb: 2500
+
+webserver:
+  serve_stats: true
+  serve_metadata: true
+  theme: dark_green
+  stats_user: httpuser
+  stats_password: httppassword
+  allow_downloads: true
+  token: thisisatoken
+  http_port: 1234
+  https_port: 1235
+  https_hostname: server.that.is.mine.com
+
+gitlab_pages:
+  git_https: https://gitlab.com/something/repo.git
+  user: gitlabuser
+  password: anotherpassword
+
+notifications:
+  pushover:
+    token: tokenpushovertoken
+    user: userpushoveruser
+  webhooks:
+    address: http://some.thing
+    token: tokenwebhooktoken
+    trackers:
+    - blue
+
+library:
+  directory: library
+  use_hard_links: true
+  folder_template: $a ($y) $t [$f $q] [$s] [$l $n $e]
+
+mpd:
+  server: localhost:1234
+  password: optional
+  library: ../varroa/test
+
 autosnatch:
   - tracker: blue
     irc_server: irc.server.net:6697
@@ -34,42 +81,6 @@ autosnatch:
     bot_name: bobot
     announcer: bolivar
     announce_channel: "#announce"
-
-stats:
-  - tracker: blue
-    update_period_hour: 1
-    max_buffer_decrease_by_period_mb: 500
-    min_ratio: 0.98
-  - tracker: purple
-    update_period_hour: 12
-    max_buffer_decrease_by_period_mb: 2500
-
-webserver:
-  serve_stats: true
-  theme: dark_green
-  stats_user: httpuser
-  stats_password: httppassword
-  allow_downloads: true
-  token: thisisatoken
-  http_port: 1234
-  https_port: 1235
-  https_hostname: server.that.is.mine.com
-
-notifications:
-  pushover:
-    token: tokenpushovertoken
-    user: userpushoveruser
-  webhooks:
-    address: http://some.thing
-    token: tokenwebhooktoken
-    trackers:
-    - blue
-
-
-gitlab_pages:
-  git_https: https://gitlab.com/something/repo.git
-  user: gitlabuser
-  password: anotherpassword
 
 filters:
   - name: perfect

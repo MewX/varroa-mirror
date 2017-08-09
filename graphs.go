@@ -9,6 +9,8 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/svg"
 	"github.com/wcharczuk/go-chart"
 	"github.com/wcharczuk/go-chart/drawing"
 )
@@ -73,9 +75,20 @@ func writePieChart(values []chart.Value, title, filename string) error {
 	if err := pie.Render(chart.SVG, bufferSVG); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filename+svgExt, bufferSVG.Bytes(), 0644); err != nil {
-		return err
+	// try to minify output
+	m := minify.New()
+	m.AddFunc("image/svg+xml", svg.Minify)
+	min, err := m.Bytes("image/svg+xml", bufferSVG.Bytes())
+	if err != nil {
+		if err := ioutil.WriteFile(filename+svgExt, bufferSVG.Bytes(), 0644); err != nil {
+			return err
+		}
+	} else {
+		if err := ioutil.WriteFile(filename+svgExt, min, 0644); err != nil {
+			return err
+		}
 	}
+
 	// generate PNG
 	bufferPNG := bytes.NewBuffer([]byte{})
 	if err := pie.Render(chart.PNG, bufferPNG); err != nil {
@@ -141,7 +154,14 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 	if err := graph.Render(chart.SVG, bufferSVG); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filename+svgExt, bufferSVG.Bytes(), 0644)
+	// try to minify output
+	m := minify.New()
+	m.AddFunc("image/svg+xml", svg.Minify)
+	min, err := m.Bytes("image/svg+xml", bufferSVG.Bytes())
+	if err != nil {
+		return ioutil.WriteFile(filename+svgExt, bufferSVG.Bytes(), 0644)
+	}
+	return ioutil.WriteFile(filename+svgExt, min, 0644)
 }
 
 func combineAllPNGs(combined string, graphs ...string) error {

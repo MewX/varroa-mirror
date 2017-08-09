@@ -2,7 +2,7 @@ package main
 
 const (
 	varroa        = "varroa musica"
-	version       = "v17"
+	version       = "v18"
 	varroaVersion = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
@@ -10,6 +10,7 @@ const (
 	// directories & files
 	statsDir                  = "stats"
 	metadataDir               = "TrackerMetadata"
+	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
 	originJSONFile            = "origin.json"
 	trackerMetadataFile       = "release.json"
@@ -33,6 +34,12 @@ const (
 	htmlIndexFile             = "index.html"
 	historyFile               = "history"
 	statsFile                 = "stats"
+	downloadsDBFile           = "downloads"
+	defaultFolderTemplate     = "$a ($y) $t {$id} [$f $s]"
+
+	// Notable ratios
+	defaultTargetRatio = 1.0
+	warningRatio       = 0.6
 
 	// file extensions
 	yamlExt      = ".yaml"
@@ -43,6 +50,8 @@ const (
 	msgpackExt   = ".db"
 	jsonExt      = ".json"
 	torrentExt   = ".torrent"
+	mp3Ext       = ".mp3"
+	flacExt      = ".flac"
 
 	// information
 	infoUserFilesArchived         = "User files backed up."
@@ -96,12 +105,13 @@ const (
 	// command backup errors
 	errorArchiving = "Error while archiving user files"
 	// set up errors
-	errorCreatingStatsDir   = "Error creating stats directory"
-	errorSettingUp          = "Error setting up"
-	errorLoadingConfig      = "Error loading configuration"
-	errorGettingPassphrase  = "Error getting passphrase"
-	errorPassphraseNotFound = "Error retrieving passphrase for daemon"
-	errorSettingEnv         = "Could not set env variable"
+	errorCreatingStatsDir          = "Error creating stats directory"
+	errorCreatingDownloadsCleanDir = "Error creating directory for useless folders in downloads directory"
+	errorSettingUp                 = "Error setting up"
+	errorLoadingConfig             = "Error loading configuration"
+	errorGettingPassphrase         = "Error getting passphrase"
+	errorPassphraseNotFound        = "Error retrieving passphrase for daemon"
+	errorSettingEnv                = "Could not set env variable"
 	// webserver errors
 	errorShuttingDownServer      = "Error shutting down web server"
 	errorServing                 = "Error launching web interface"
@@ -147,7 +157,7 @@ const (
 	// irc errors
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"
 	errorConnectingToIRC        = "Error connecting to IRC"
-	errorCouldNotGetTorrentInfo = "Error retrieving torrent info from tracker"
+	errorCouldNotGetTorrentInfo = "Error retrieving torrent info from tracker (release may have been deleted)"
 	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder"
 	errorDownloadingTorrent     = "Error downloading torrent"
 	errorRemovingTempFile       = "Error removing temporary file %s"
@@ -186,4 +196,12 @@ const (
 	errorCouldNotCreateForm       = "Could not create form for log"
 	errorCouldNotReadLog          = "Could not read log"
 	errorGazelleRateLimitExceeded = "rate limit exceeded"
+	// downloads db errors
+	errorLoadingDownloadsDB = "Error loading downloads database"
+	foundMusic              = "Found music"
+	errorCleaningDownloads  = "Error cleaning up download: "
+	// disk space usage
+	currentUsage     = "Current disk usage: %.2f%% used, remaining: %s"
+	lowDiskSpace     = "Warning: low disk space available (<5%)"
+	veryLowDiskSpace = "Warning: very low disk space available (<2%)"
 )

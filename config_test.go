@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,10 @@ func TestConfig(t *testing.T) {
 	c := &Config{}
 	err := c.Load("test/test_complete.yaml")
 	check.Nil(err)
+
+	// setting up
+	os.Mkdir("library", 0777)
+	defer os.Remove("library")
 
 	// general
 	check.Equal("test", c.General.WatchDir)
@@ -67,16 +72,19 @@ func TestConfig(t *testing.T) {
 	check.Equal(1, s.UpdatePeriodH)
 	check.Equal(500, s.MaxBufferDecreaseMB)
 	check.Equal(0.98, s.MinimumRatio)
+	check.Equal(1.20, s.TargetRatio)
 	s = c.Stats[1]
 	check.Equal("purple", s.Tracker)
 	check.Equal(12, s.UpdatePeriodH)
 	check.Equal(2500, s.MaxBufferDecreaseMB)
 	check.Equal(0.60, s.MinimumRatio)
+	check.Equal(1.0, s.TargetRatio)
 	// webserver
 	fmt.Println("Checking webserver")
 	check.True(c.WebServer.ServeStats)
 	check.Equal(darkGreen, c.WebServer.Theme)
 	check.True(c.WebServer.AllowDownloads)
+	check.True(c.WebServer.ServeMetadata)
 	check.Equal("httppassword", c.WebServer.Password)
 	check.Equal("httpuser", c.WebServer.User)
 	check.Equal("thisisatoken", c.WebServer.Token)
@@ -87,6 +95,11 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking notifications")
 	check.Equal("tokenpushovertoken", c.Notifications.Pushover.Token)
 	check.Equal("userpushoveruser", c.Notifications.Pushover.User)
+	// library
+	fmt.Println("Checking library")
+	check.Equal("library", c.Library.Directory)
+	check.True(c.Library.UseHardLinks)
+	check.Equal("$a ($y) $t [$f $q] [$s] [$l $n $e]", c.Library.FolderTemplate)
 	// webhooks
 	fmt.Println("Checking webhooks")
 	check.Equal("http://some.thing", c.Notifications.WebHooks.Address)
@@ -98,6 +111,11 @@ func TestConfig(t *testing.T) {
 	check.Equal("gitlabuser", c.GitlabPages.User)
 	check.Equal("anotherpassword", c.GitlabPages.Password)
 	check.Equal("https://something.gitlab.io/repo", c.GitlabPages.URL)
+	// mpd
+	fmt.Println("Checking mpd")
+	check.Equal("localhost:1234", c.MPD.Server)
+	check.Equal("optional", c.MPD.Password)
+	check.Equal("../varroa/test", c.MPD.Library)
 	// filters
 	fmt.Println("Checking filters")
 	check.Equal(2, len(c.Filters))
@@ -163,6 +181,7 @@ func TestConfig(t *testing.T) {
 	check.True(c.downloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
+	check.True(c.libraryConfigured)
 
 	// disabling autosnatch
 	check.False(c.Autosnatch[0].disabledAutosnatching)
@@ -188,6 +207,7 @@ func TestConfig(t *testing.T) {
 	check.True(c.downloadFolderConfigured)
 	check.False(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
+	check.False(c.libraryConfigured)
 
 	c = &Config{}
 	err = c.Load("test/test_nostatsnoweb.yaml")
@@ -200,6 +220,7 @@ func TestConfig(t *testing.T) {
 	check.False(c.downloadFolderConfigured)
 	check.False(c.webserverHTTP)
 	check.False(c.webserverHTTPS)
+	check.False(c.libraryConfigured)
 
 	c = &Config{}
 	err = c.Load("test/test_statsnoautosnatch.yaml")
@@ -212,5 +233,6 @@ func TestConfig(t *testing.T) {
 	check.True(c.downloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
+	check.False(c.libraryConfigured)
 
 }

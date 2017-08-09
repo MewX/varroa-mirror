@@ -156,3 +156,17 @@ func (g *Git) Push(remoteName, remoteURL, remoteUser, remotePassword string) err
 	}
 	return err
 }
+
+// Compress the git repository
+func (g *Git) Compress() error {
+	g.goToRepositoryRoot()
+	defer g.getBack()
+	// garbage collection
+	_, err := exec.Command(git, "gc", "--aggressive", "--prune=all").Output()
+	if err != nil {
+		return err
+	}
+	// repack
+	_, err = exec.Command(git, "repack", "-Ad").Output()
+	return err
+}

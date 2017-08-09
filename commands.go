@@ -6,7 +6,10 @@ import (
 	"html"
 	"net"
 	"os"
+	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,7 +38,7 @@ func sendOrders(cli *varroaArguments) error {
 Loop:
 	for {
 		// read answer
-		buf := make([]byte, 512)
+		buf := make([]byte, 2048)
 		n, err := conn.Read(buf[:])
 		if err != nil {
 			return errors.Wrap(err, errorReadingFromSocket)
@@ -158,10 +161,6 @@ func awaitOrders(e *Environment) {
 }
 
 func generateStats(e *Environment) error {
-	// generate index.html
-	if err := e.GenerateIndex(); err != nil {
-		logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
-	}
 	atLeastOneError := false
 	for t, h := range e.History {
 		logThis.Info("Generating stats for "+t, VERBOSE)
@@ -169,6 +168,10 @@ func generateStats(e *Environment) error {
 			logThis.Error(errors.Wrap(err, errorGeneratingGraphs), VERBOSE)
 			atLeastOneError = true
 		}
+	}
+	// generate index.html
+	if err := e.GenerateIndex(); err != nil {
+		logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
 	}
 	if atLeastOneError {
 		return errors.New(errorGeneratingGraphs)
@@ -183,21 +186,20 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 	// find ids in history
 	var found []string
 	for _, r := range e.History[tracker.Name].SnatchedReleases {
-		if StringInSlice(r.TorrentID, IDStrings) {
+		if len(found) != len(IDStrings) && StringInSlice(r.TorrentID, IDStrings) {
+			found = append(found, r.TorrentID)
 			logThis.Info("Found release with ID "+r.TorrentID+" in history: "+r.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from RED.
 			info, err := tracker.GetTorrentInfo(r.TorrentID)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
-				break
+				continue
 			}
 			if e.inDaemon {
 				go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			} else {
 				r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			}
-			found = append(found, r.TorrentID)
-			break
 		}
 	}
 	if len(found) != len(IDStrings) {
@@ -211,7 +213,7 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 		// try to find even if not in history
 		if e.config.downloadFolderConfigured {
 			for _, m := range missing {
-				// get data from RED.
+				// get data from tracker.
 				info, err := tracker.GetTorrentInfo(m)
 				if err != nil {
 					logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
@@ -242,7 +244,7 @@ func snatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string,
 	}
 	// snatch
 	for _, id := range IDStrings {
-		if release, err := snatchFromID(e, tracker, id, useFLToken); err != nil {
+		if release, err := manualSnatchFromID(e, tracker, id, useFLToken); err != nil {
 			return errors.New("Error snatching torrent with ID #" + id)
 		} else {
 			logThis.Info("Successfully snatched torrent "+release.ShortString(), NORMAL)
@@ -284,7 +286,7 @@ func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 				logThis.Info(fmt.Sprintf("Files seem to still be in the download directory: %s", releaseFolder), NORMAL)
 				// TODO maybe display when the metadata was last updated?
 			} else {
-				logThis.Info("However the files are nowhere to be found.", NORMAL)
+				logThis.Info("The files could not be found in the download directory.", NORMAL)
 			}
 		}
 
@@ -341,15 +343,115 @@ func archiveUserFiles() error {
 			return errors.Wrap(err, errorArchiving)
 		}
 	}
+
+	// find all .csv + .db files, save them along with the configuration file
+	f, err := os.Open(statsDir)
+	if err != nil {
+		return errors.Wrap(err, "Error opening "+statsDir)
+	}
+	contents, err := f.Readdirnames(-1)
+	f.Close()
+
+	backupFiles := []string{}
+	if FileExists(defaultConfigurationFile) {
+		backupFiles = append(backupFiles, defaultConfigurationFile)
+	}
+	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+	if FileExists(encryptedConfigurationFile) {
+		backupFiles = append(backupFiles, encryptedConfigurationFile)
+	}
+	for _, c := range contents {
+		if filepath.Ext(c) == msgpackExt || filepath.Ext(c) == csvExt {
+			backupFiles = append(backupFiles, filepath.Join(statsDir, c))
+		}
+	}
+
 	// generate file
-	err := archiver.Zip.Make(filepath.Join(archivesDir, archiveName), []string{statsDir, defaultConfigurationFile})
+	err = archiver.Zip.Make(filepath.Join(archivesDir, archiveName), backupFiles)
 	if err != nil {
 		logThis.Error(errors.Wrap(err, errorArchiving), NORMAL)
 	}
 	return err
 }
 
-func automaticBackup() {
-	gocron.Every(1).Day().At("00:00").Do(archiveUserFiles)
-	<-gocron.Start()
+func parseQuota(cmdOut string) (float32, int64, error) {
+	output := strings.TrimSpace(cmdOut)
+	if output == "" {
+		return -1, -1, errors.New("No quota defined for user")
+	}
+	lines := strings.Split(output, "\n")
+	if len(lines) != 3 {
+		return -1, -1, errors.New("Unexpected quota output")
+	}
+	relevantParts := []string{}
+	for _, p := range strings.Split(lines[2], " ") {
+		if strings.TrimSpace(p) != "" {
+			relevantParts = append(relevantParts, p)
+		}
+	}
+	used, err := strconv.Atoi(relevantParts[1])
+	if err != nil {
+		return -1, -1, errors.New("Error parsing quota output")
+	}
+	quota, err := strconv.Atoi(relevantParts[2])
+	if err != nil {
+		return -1, -1, errors.New("Error parsing quota output")
+	}
+	// assuming blocks of 1kb
+	return 100 * float32(used) / float32(quota), int64(quota-used) * 1024, nil
+}
+
+func checkQuota(e *Environment) error {
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+	// parse quota -u $(whoami)
+	cmdOut, err := exec.Command("quota", "-u", u.Username, "-w").Output()
+	if err != nil {
+		return err
+	}
+	pc, remaining, err := parseQuota(string(cmdOut))
+	if err != nil {
+		return err
+	}
+	logThis.Info(fmt.Sprintf(currentUsage, pc, readableInt64(remaining)), NORMAL)
+	// send warning if this is worrying
+	if pc >= 98 {
+		logThis.Info(veryLowDiskSpace, NORMAL)
+		e.Notify(veryLowDiskSpace, varroa, "info")
+	} else if pc >= 95 {
+		logThis.Info(lowDiskSpace, NORMAL)
+		e.Notify(lowDiskSpace, varroa, "info")
+	}
+	return nil
+}
+
+func automatedTasks(e *Environment) {
+	// new scheduler
+	s := gocron.NewScheduler()
+
+	// 1. every day, backup user files
+	s.Every(1).Day().At("00:00").Do(archiveUserFiles)
+	// 2. a little later, also compress the git repository if gitlab pages are configured
+	if e.config.gitlabPagesConfigured {
+		s.Every(1).Day().At("00:05").Do(e.git.Compress)
+	}
+	// 3. checking quota is available
+	_, err := exec.LookPath("quota")
+	if err != nil {
+		logThis.Info("The command 'quota' is not available on this system, not able to check disk usage", NORMAL)
+		return
+	} else {
+		// first check
+		if err := checkQuota(e); err != nil {
+			logThis.Error(err, NORMAL)
+			return
+		} else {
+			// scheduler for subsequent quota checks
+			s.Every(1).Hour().Do(checkQuota, e)
+		}
+	}
+	// launch scheduler
+	<-s.Start()
 }

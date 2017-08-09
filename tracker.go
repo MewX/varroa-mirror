@@ -30,10 +30,6 @@ const (
 	statusSuccess = "success"
 
 	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
-
-	// Notable ratios
-	demotionRatio = 0.95
-	warningRatio  = 0.6
 )
 
 func (t *GazelleTracker) apiCallRateLimiter() {
@@ -154,7 +150,7 @@ func (t *GazelleTracker) Login() error {
 func (t *GazelleTracker) get(url string) ([]byte, error) {
 	data, err := t.callJSONAPI(t.client, url)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorJSONAPI), NORMAL)
+		logThis.Error(errors.Wrap(err, errorJSONAPI), VERBOSEST)
 		// if error, try once again after logging in again
 		if loginErr := t.Login(); loginErr == nil {
 			return t.callJSONAPI(t.client, url)
@@ -183,7 +179,7 @@ func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) e
 		return err
 	}
 	// move to relevant directory
-	if err := CopyFile(r.TorrentFile, filepath.Join(destinationFolder, r.TorrentFile)); err != nil {
+	if err := CopyFile(r.TorrentFile, filepath.Join(destinationFolder, r.TorrentFile), false); err != nil {
 		return errors.Wrap(err, errorCouldNotMoveTorrent)
 	}
 	// cleaning up
@@ -193,7 +189,7 @@ func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) e
 	return nil
 }
 
-func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
+func (t *GazelleTracker) GetStats(config *ConfigStats) (*TrackerStats, error) {
 	if t.userID == 0 {
 		data, err := t.get(t.URL + "/ajax.php?action=index")
 		if err != nil {
@@ -225,7 +221,7 @@ func (t *GazelleTracker) GetStats() (*TrackerStats, error) {
 		Class:         s.Response.Personal.Class,
 		Up:            uint64(s.Response.Stats.Uploaded),
 		Down:          uint64(s.Response.Stats.Downloaded),
-		Buffer:        int64(float64(s.Response.Stats.Uploaded)/demotionRatio) - int64(s.Response.Stats.Downloaded),
+		Buffer:        int64(float64(s.Response.Stats.Uploaded)/config.TargetRatio) - int64(s.Response.Stats.Downloaded),
 		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/warningRatio) - int64(s.Response.Stats.Downloaded),
 		Ratio:         ratio,
 		Timestamp:     time.Now().Unix(),
@@ -238,36 +234,10 @@ func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
-	var gt GazelleTorrent
-	if unmarshalErr := json.Unmarshal(data, &gt); unmarshalErr != nil {
+	info := &TrackerTorrentInfo{}
+	if unmarshalErr := info.LoadFromBytes(data, true); err != nil {
 		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
-
-	artists := map[string]int{}
-	// for now, using artists, composers, "with" categories
-	for _, el := range gt.Response.Group.MusicInfo.Artists {
-		artists[el.Name] = el.ID
-	}
-	for _, el := range gt.Response.Group.MusicInfo.With {
-		artists[el.Name] = el.ID
-	}
-	for _, el := range gt.Response.Group.MusicInfo.Composers {
-		artists[el.Name] = el.ID
-	}
-	label := gt.Response.Group.RecordLabel
-	if gt.Response.Torrent.Remastered {
-		label = gt.Response.Torrent.RemasterRecordLabel
-	}
-	// keeping a copy of uploader before anonymizing
-	uploader := gt.Response.Torrent.Username
-	// json for metadata, anonymized
-	gt.Response.Torrent.Username = ""
-	gt.Response.Torrent.UserID = 0
-	metadataJSON, err := json.MarshalIndent(gt.Response, "", "    ")
-	if err != nil {
-		metadataJSON = data // falling back to complete json
-	}
-	info := &TrackerTorrentInfo{id: gt.Response.Torrent.ID, groupID: gt.Response.Group.ID, edition: gt.Response.Torrent.RemasterTitle, label: label, logScore: gt.Response.Torrent.LogScore, artists: artists, size: uint64(gt.Response.Torrent.Size), uploader: uploader, coverURL: gt.Response.Group.WikiImage, folder: gt.Response.Torrent.FilePath, fullJSON: metadataJSON}
 	return info, nil
 }
 

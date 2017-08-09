@@ -43,7 +43,7 @@ type OutgoingJSON struct {
 }
 
 // TODO: see if this could also be used by irc
-func snatchFromID(e *Environment, tracker *GazelleTracker, id string, useFLToken bool) (*Release, error) {
+func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useFLToken bool) (*Release, error) {
 	// get torrent info
 	info, err := tracker.GetTorrentInfo(id)
 	if err != nil {
@@ -70,8 +70,6 @@ func snatchFromID(e *Environment, tracker *GazelleTracker, id string, useFLToken
 	if err := e.History[tracker.Name].AddSnatch(release, "remote"); err != nil {
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
-	// send notification
-	e.Notify("Snatched with web interface: "+release.ShortString(), tracker.Name, "info")
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
 		if e.inDaemon {
@@ -132,6 +130,14 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 	if !e.config.webserverConfigured {
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
+	}
+	if e.config.WebServer.ServeMetadata {
+		if err := e.Downloads.Load(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
+			return
+		}
+		// scan on startup in goroutine
+		go e.Downloads.Scan()
 	}
 
 	rtr := mux.NewRouter()
@@ -196,7 +202,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			release, err := snatchFromID(e, tracker, id, useFLToken)
+			release, err := manualSnatchFromID(e, tracker, id, useFLToken)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
@@ -205,6 +211,38 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			// write response
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(fmt.Sprintf(autoCloseTab, release.ShortString())))
+		}
+		getMetadata := func(w http.ResponseWriter, r *http.Request) {
+			// if not configured, return error
+			if !e.config.WebServer.ServeMetadata {
+				logThis.Error(errors.New("Error, not configured to serve metadata"), NORMAL)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			response := []byte{}
+			id, ok := mux.Vars(r)["id"]
+			if !ok {
+				list, err := e.serverData.DownloadsList(e)
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				response = list
+			} else {
+
+				info, err := e.serverData.DownloadsInfo(e, id)
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error loading downloads info"), NORMAL)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				response = info
+			}
+			// write response
+			w.WriteHeader(http.StatusOK)
+			w.Write(response)
 		}
 		upgrader := websocket.Upgrader{
 			// allows connection to websocket from anywhere
@@ -272,7 +310,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 						} else {
 							// snatching
 							for _, id := range incoming.Args {
-								release, err := snatchFromID(e, tracker, id, incoming.FLToken)
+								release, err := manualSnatchFromID(e, tracker, id, incoming.FLToken)
 								if err != nil {
 									logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
 									answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
@@ -301,6 +339,8 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 		}
 		// interface for remotely ordering downloads
 		rtr.HandleFunc("/get/{id:[0-9]+}", getTorrent).Methods("GET")
+		rtr.HandleFunc("/downloads", getMetadata).Methods("GET")
+		rtr.HandleFunc("/downloads/{id:[0-9]+}", getMetadata).Methods("GET")
 		rtr.HandleFunc("/getStats/{name:[\\w]+.svg}", getStats).Methods("GET")
 		rtr.HandleFunc("/getStats/{name:[\\w]+.png}", getStats).Methods("GET")
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
@@ -314,7 +354,6 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
 		}
 	}
-
 	// serve
 	if e.config.webserverHTTP {
 		go func() {

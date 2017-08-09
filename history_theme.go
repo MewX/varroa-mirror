@@ -69,6 +69,33 @@ const (
 		margin-bottom: 50px;
 		color: {{.IndexFontColor}};
 	}
+	.content ul {
+   	 	list-style: none;
+    	padding: 0;
+    	margin: 0;
+	}
+	.content li {
+		padding-left: 16px;
+	}
+	.content li:before {
+		content: "↪";
+		padding-right: 8px;
+		color: {{.IndexMenuColor}};
+	}
+	.content a {
+		text-decoration: none;
+		color: #ccc;
+	}
+	.content a:hover {
+		text-decoration: underline;
+		text-decoration-style: dashed;
+	}
+	.content p img {
+		display: block;
+		max-width: 80%;
+		margin-left: auto;
+        margin-right: auto;
+	}
 	.header {
 		margin: 0;
 		text-align: center;
@@ -314,7 +341,7 @@ const (
 	.close:hover { background: #00d9ff; }
 
 	/* table */
-	#stats-table
+	.stats-table
 	{
 		font-size: 0.8em;
 		font-weight: normal;
@@ -322,18 +349,18 @@ const (
 		border-collapse: collapse;
 		border: 1px solid {{.GraphColor}};
 	}
-	#stats-table th
+	.stats-table th
 	{
 		padding: 10px;
 		color: {{.IndexFontColor}};
 		border-bottom: 1px dashed {{.GraphColor}};
 	}
-	#stats-table td
+	.stats-table td
 	{
 		padding: 10px;
 		color: {{.IndexFontColor}};
 	}
-	#stats-table tbody tr:hover td
+	.stats-table tbody tr:hover td
 	{
 		color: {{.IndexFontColor}};
 		background: {{.GraphColor}};
@@ -410,7 +437,7 @@ var (
 	}
 )
 
-func (ht HistoryTheme) CSS() string {
+func (ht HistoryTheme) CSS() template.CSS {
 	var doc bytes.Buffer
 	tCSS, err := template.New("css").Parse(CSSTemplate)
 	if err != nil {
@@ -419,5 +446,5 @@ func (ht HistoryTheme) CSS() string {
 	if err := tCSS.Execute(&doc, ht); err != nil {
 		return ""
 	}
-	return doc.String()
+	return template.CSS(doc.String())
 }

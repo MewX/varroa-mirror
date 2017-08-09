@@ -68,6 +68,9 @@ func TestGit(t *testing.T) {
 	hasRemote = git.HasRemote("origin")
 	check.True(hasRemote)
 
+	// check compress
+	check.Nil(git.Compress())
+
 	// how to test push?
 
 }

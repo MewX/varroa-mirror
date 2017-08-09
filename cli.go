@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-
 	"fmt"
+	"strings"
 
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
@@ -63,6 +63,24 @@ Commands:
 	backup:
 		backup user files (stats, history, configuration file) to a
 		timestamped zip file. Automatically triggered every day.
+	downloads scan:
+		scan the downloads folder and refreshes the database of known
+		downloads. list the downloads and show the ID for each release.
+	downloads search:
+		return all known downloads on which an artist has worked.
+	downloads metadata:
+		return information about a specific download. Takes downloads
+		db ID as argument.
+	downloads sort:
+		sort all unsorted downloads, or sort a specific release
+		(identified by its db ID). sorting allows you to tag which
+		release to keep and which to only seed; selected downloads
+		can be exported to an external folder.
+	downloads list:
+		list downloads by state: unsorted, accepted, exported, rejected.
+	downloads clean:
+		clean up the downloads directory by moving all empty folders,
+		and folders with only tracker metadata, to a dedicated subfolder.
 
 Configuration Commands:
 
@@ -90,6 +108,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
+	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean)
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -114,10 +133,18 @@ type varroaArguments struct {
 	showConfig      bool
 	encrypt         bool
 	decrypt         bool
+	downloadScan    bool
+	downloadSearch  bool
+	downloadInfo    bool
+	downloadSort    bool
+	downloadList    bool
+	downloadState   string
+	downloadClean   bool
 	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
+	artistName      string
 	requiresDaemon  bool
 	canUseDaemon    bool
 }
@@ -142,13 +169,24 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
 	b.snatch = args["snatch"].(bool)
-	b.info = args["info"].(bool)
 	b.backup = args["backup"].(bool)
+	b.info = args["info"].(bool)
 	b.showConfig = args["show-config"].(bool)
 	b.encrypt = args["encrypt"].(bool)
 	b.decrypt = args["decrypt"].(bool)
+	if args["downloads"].(bool) || args["dl"].(bool) {
+		b.downloadScan = args["scan"].(bool)
+		b.downloadSearch = args["search"].(bool)
+		if b.downloadSearch {
+			b.artistName = args["<ARTIST>"].(string)
+		}
+		b.downloadInfo = args["metadata"].(bool)
+		b.downloadSort = args["sort"].(bool)
+		b.downloadList = args["list"].(bool)
+		b.downloadClean = args["clean"].(bool)
+	}
 	// arguments
-	if b.refreshMetadata || b.snatch || b.info {
+	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
 			return errors.New("Invalid torrent IDs.")
@@ -156,6 +194,12 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.torrentIDs, err = StringSliceToIntSlice(IDs)
 		if err != nil {
 			return errors.New("Invalid torrent IDs, must be integers.")
+		}
+	}
+	if b.downloadList {
+		b.downloadState = args["<STATE>"].(string)
+		if !StringInSlice(b.downloadState, downloadFolderStates) {
+			return errors.New("Invalid download state, must be among: " + strings.Join(downloadFolderStates, ", "))
 		}
 	}
 	if b.snatch {
@@ -175,11 +219,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.info {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean {
 		b.canUseDaemon = false
 	}
 	return nil

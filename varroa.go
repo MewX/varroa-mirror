@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 )
@@ -31,35 +32,126 @@ func main() {
 			}
 			return
 		}
-		if cli.showConfig {
-			// loading configuration
-			if err := env.LoadConfiguration(); err != nil {
-				logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
-				return
+		if cli.encrypt || cli.decrypt {
+			// now dealing with encrypt/decrypt commands, which both require the passphrase from user
+			if err := env.GetPassphrase(); err != nil {
+				logThis.Error(errors.Wrap(err, "Error getting passphrase"), NORMAL)
 			}
+			if cli.encrypt {
+				if err := env.config.Encrypt(defaultConfigurationFile, env.configPassphrase); err != nil {
+					logThis.Info(err.Error(), NORMAL)
+					return
+				}
+				logThis.Info(infoEncrypted, NORMAL)
+			}
+			if cli.decrypt {
+				if err := env.config.DecryptTo(defaultConfigurationFile, env.configPassphrase); err != nil {
+					logThis.Error(err, NORMAL)
+					return
+				}
+				logThis.Info(infoDecrypted, NORMAL)
+			}
+			return
+		}
+		// commands that require the configuration
+		// loading configuration
+		if err := env.LoadConfiguration(); err != nil {
+			logThis.Error(errors.Wrap(err, errorLoadingConfig), NORMAL)
+			return
+		}
+		if cli.showConfig {
 			fmt.Print("Found in configuration file: \n\n")
 			fmt.Println(env.config)
 			return
 		}
-		// now dealing with encrypt/decrypt commands, which both require the passphrase from user
-		if err := env.GetPassphrase(); err != nil {
-			logThis.Error(errors.Wrap(err, "Error getting passphrase"), NORMAL)
-		}
-		if cli.encrypt {
-			if err := env.config.Encrypt(defaultConfigurationFile, env.configPassphrase); err != nil {
-				logThis.Info(err.Error(), NORMAL)
+		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
+			if !env.config.downloadFolderConfigured {
+				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), NORMAL)
 				return
 			}
-			logThis.Info(infoEncrypted, NORMAL)
-		}
-		if cli.decrypt {
-			if err := env.config.DecryptTo(defaultConfigurationFile, env.configPassphrase); err != nil {
-				logThis.Error(err, NORMAL)
+			// simple operation, only requires access to download folder, since it will clean unindexed folders
+			if cli.downloadClean {
+				if err := env.Downloads.Clean(); err != nil {
+					logThis.Error(err, NORMAL)
+				} else {
+					fmt.Println("Downloads directory cleaned of empty folders & folders containing only tracker metadata.")
+				}
 				return
 			}
-			logThis.Info(infoDecrypted, NORMAL)
+			// scanning
+			fmt.Println(Green("Scanning downloads for new releases and updated metadata."))
+			if err := env.Downloads.LoadAndScan(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+				logThis.Error(errors.Wrap(err, errorLoadingDownloadsDB), NORMAL)
+				return
+			}
+			defer env.Downloads.Save()
+
+			if cli.downloadScan {
+				fmt.Println(env.Downloads.String())
+				return
+			}
+			if cli.downloadSearch {
+				hits := env.Downloads.FindByArtist(cli.artistName)
+				if len(hits) == 0 {
+					fmt.Println("Nothing found.")
+				} else {
+					for _, dl := range hits {
+						fmt.Println(dl.ShortString())
+					}
+				}
+				return
+			}
+			if cli.downloadList {
+				hits := env.Downloads.FindByState(cli.downloadState)
+				if len(hits) == 0 {
+					fmt.Println("Nothing found.")
+				} else {
+					for _, dl := range hits {
+						fmt.Println(dl.ShortString())
+					}
+				}
+				return
+			}
+			if cli.downloadInfo {
+				dl, err := env.Downloads.FindByID(uint64(cli.torrentIDs[0]))
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), NORMAL)
+					return
+				}
+				fmt.Println(dl.Description())
+				return
+			}
+			if cli.downloadSort {
+				// setting up to load history, etc.
+				if err := env.SetUp(false); err != nil {
+					logThis.Error(errors.Wrap(err, errorSettingUp), NORMAL)
+					return
+				}
+
+				if !env.config.libraryConfigured {
+					logThis.Error(errors.New("Cannot sort downloads, library is not configured"), NORMAL)
+					return
+				}
+				if len(cli.torrentIDs) == 0 {
+					fmt.Println("Considering new or unsorted downloads.")
+					if err := env.Downloads.Sort(env); err != nil {
+						logThis.Error(errors.Wrap(err, "Error sorting downloads"), NORMAL)
+						return
+					}
+				} else {
+					dl, err := env.Downloads.FindByID(uint64(cli.torrentIDs[0]))
+					if err != nil {
+						logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), NORMAL)
+						return
+					}
+					if err := dl.Sort(env); err != nil {
+						logThis.Error(errors.Wrap(err, "Error sorting selected download"), NORMAL)
+						return
+					}
+				}
+				return
+			}
 		}
-		return
 	}
 
 	// loading configuration
@@ -175,5 +267,5 @@ func goGoRoutines(e *Environment) {
 	}
 	// background goroutines
 	go awaitOrders(e)
-	go automaticBackup()
+	go automatedTasks(e)
 }

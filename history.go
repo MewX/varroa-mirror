@@ -106,11 +106,11 @@ func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
 	}
 }
 
-func (h *History) LoadAll() error {
+func (h *History) LoadAll(statsConfig *ConfigStats) error {
 	// make sure we're using the latest format, convert if necessary
 	h.migrateOldFormats(h.getPath(statsFile), h.getPath(historyFile))
 
-	if err := h.TrackerStatsHistory.Load(h.getPath(statsFile) + csvExt); err != nil {
+	if err := h.TrackerStatsHistory.Load(h.getPath(statsFile)+csvExt, statsConfig); err != nil {
 		return err
 	}
 	if err := h.SnatchHistory.Load(h.getPath(historyFile) + msgpackExt); err != nil {
@@ -169,6 +169,10 @@ func (h *History) GenerateGraphs(e *Environment) error {
 			dailyStatsOK = false
 		}
 	}
+	// updating generation time
+	e.mutex.Lock()
+	e.graphsLastUpdated = time.Now().Format("2006-01-02 15:04:05")
+	e.mutex.Unlock()
 	if statsOK && dailyStatsOK {
 		// combine graphs into overallStatsFile
 		return combineAllPNGs(h.getPath(overallStatsFile),
