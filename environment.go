@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
@@ -193,10 +191,6 @@ func (e *Environment) LoadConfiguration() error {
 			return err
 		}
 	}
-	if len(e.config.Trackers) != 0 {
-		// if trackers are configured, the configuration had been loaded previously
-		logThis.Info("Configuration reloaded.", NORMAL)
-	}
 	e.config = newConf
 	// init downloads configuration
 	if e.config.downloadFolderConfigured {
@@ -258,47 +252,6 @@ func (e *Environment) SetUp(autologin bool) error {
 			return errors.Wrap(err, "Error loading history for tracker "+label)
 		}
 		e.History[label] = h
-	}
-	return nil
-}
-
-// Reload the configuration file, restart autosnatching, and try to restart the web server
-func (e *Environment) Reload() error {
-	if err := e.LoadConfiguration(); err != nil {
-		return errors.Wrap(err, errorLoadingConfig)
-	}
-	if e.config.autosnatchConfigured {
-		for _, a := range e.config.Autosnatch {
-			e.mutex.Lock()
-			a.disabledAutosnatching = false
-			e.mutex.Unlock()
-		}
-		logThis.Info("Autosnatching enabled.", NORMAL)
-	}
-	// if server up
-	thingsWentOK := true
-	serverWasUp := false
-	if e.serverHTTP.Addr != "" {
-		serverWasUp = true
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := e.serverHTTP.Shutdown(ctx); err != nil {
-			logThis.Error(errors.Wrap(err, errorShuttingDownServer), NORMAL)
-			thingsWentOK = false
-		}
-	}
-	if e.serverHTTPS.Addr != "" {
-		serverWasUp = true
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := e.serverHTTPS.Shutdown(ctx); err != nil {
-			logThis.Error(errors.Wrap(err, errorShuttingDownServer), NORMAL)
-			thingsWentOK = false
-		}
-	}
-	if serverWasUp && thingsWentOK {
-		// launch server again
-		go webServer(e, e.serverHTTP, e.serverHTTPS)
 	}
 	return nil
 }

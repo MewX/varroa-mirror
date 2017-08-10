@@ -127,10 +127,6 @@ func awaitOrders(e *Environment) {
 		case "stop":
 			logThis.Info("Stopping daemon...", NORMAL)
 			stopEverything = true
-		case "reload":
-			if err := e.Reload(); err != nil {
-				logThis.Error(errors.Wrap(err, errorReloading), NORMAL)
-			}
 		case "refresh-metadata":
 			if err := refreshMetadata(e, tracker, orders.Args); err != nil {
 				logThis.Error(errors.Wrap(err, errorRefreshingMetadata), NORMAL)

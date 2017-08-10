@@ -90,7 +90,7 @@ func monitorAllStats(e *Environment) {
 	}
 	// deploy
 	if err := e.DeployToGitlabPages(); err != nil {
-		logThis.Error(errors.Wrap(err, "Error deploying to Gitlab Pages"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorDeploying), NORMAL)
 	}
 
 	// preparing
@@ -124,7 +124,7 @@ func monitorAllStats(e *Environment) {
 		}
 		// deploy
 		if err := e.DeployToGitlabPages(); err != nil {
-			logThis.Error(errors.Wrap(err, "Error deploying to Gitlab Pages"), NORMAL)
+			logThis.Error(errors.Wrap(err, errorDeploying), NORMAL)
 		}
 	}
 }

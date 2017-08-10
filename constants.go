@@ -90,8 +90,6 @@ const (
 	errorWritingToSocket   = "Error writing to unix socket"
 	errorReadingFromSocket = "Error reading from unix socket"
 	errorCreatingSocket    = "Error creating unix socket"
-	// command reload errors
-	errorReloading = "Error reloading"
 	// command check-log errors
 	errorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"
@@ -113,7 +111,6 @@ const (
 	errorPassphraseNotFound        = "Error retrieving passphrase for daemon"
 	errorSettingEnv                = "Could not set env variable"
 	// webserver errors
-	errorShuttingDownServer      = "Error shutting down web server"
 	errorServing                 = "Error launching web interface"
 	errorWrongToken              = "Error receiving download order from https: wrong token"
 	errorNoToken                 = "Error receiving download order from https: no token"
@@ -122,7 +119,6 @@ const (
 	errorUnknownCommand          = "Error: unknown websocket command: "
 	errorIncomingWebSocketJSON   = "Error parsing websocket input"
 	errorIncorrectWebServerToken = "Error validating token for web server, ignoring."
-	errorWritingToWebSocket      = "Error writing to websocket"
 	errorCreatingWebSocket       = "Error creating websocket"
 	// certificates errors
 	errorOpenSSL               = "openssl is not available on this system. "
@@ -154,6 +150,7 @@ const (
 	errorGitCommit    = "Error running git commit"
 	errorGitAddRemote = "Error running git remote add"
 	errorGitPush      = "Error running git push"
+	errorDeploying    = "Error deploying to Gitlab Pages"
 	// irc errors
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"
 	errorConnectingToIRC        = "Error connecting to IRC"
@@ -182,7 +179,7 @@ const (
 	errorGeneratingGraphs      = "Error generating graphs (may require more data)"
 	errorGeneratingDailyGraphs = "Error generating daily graphs (at least 24h worth of data required): "
 	errorNotEnoughDataPoints   = "Not enough data points (yet) to generate graph"
-	errorBufferDrop            = "Buffer drop too important, stopping autosnatching. Reload to start again."
+	errorBufferDrop            = "Buffer drop too important, stopping autosnatching. Restart to start again."
 	errorBelowWarningRatio     = "Ratio below warning level, stopping autosnatching."
 	// tracker errors
 	errorUnknownTorrentURL        = "Unknown torrent URL"

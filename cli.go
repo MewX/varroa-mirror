@@ -28,6 +28,8 @@ Description:
 	- be remotely controlled from your browser with a GreaseMonkey script.
 	- send notifications to your Android device about stats and snatches.
 	- check local logs agains logchecker.php
+	- sort downloads, export them to your library, automatically rename
+	  folders using tracker metadata
 
 Daemon Commands:
 
@@ -39,9 +41,6 @@ Daemon Commands:
 		starts the daemon.
 	stop:
 		stops it.
-	reload:
-		reloads the configuration file (allows updating filters without
-		restarting the daemon).
 
 Commands:
 
@@ -100,7 +99,7 @@ Configuration Commands:
 		decrypts your encrypted configuration file.
 
 Usage:
-	varroa (start|reload|stop)
+	varroa (start|stop)
 	varroa stats
 	varroa refresh-metadata <TRACKER> <ID>...
 	varroa check-log <TRACKER> <LOG_FILE>
@@ -123,7 +122,6 @@ type varroaArguments struct {
 	builtin         bool
 	start           bool
 	stop            bool
-	reload          bool
 	stats           bool
 	refreshMetadata bool
 	checkLog        bool
@@ -164,7 +162,6 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// commands
 	b.start = args["start"].(bool)
 	b.stop = args["stop"].(bool)
-	b.reload = args["reload"].(bool)
 	b.stats = args["stats"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
@@ -233,9 +230,6 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	out := IncomingJSON{Site: b.trackerLabel}
 	if b.stats {
 		out.Command = "stats"
-	}
-	if b.reload {
-		out.Command = "reload"
 	}
 	if b.stop {
 		// to cleanly close the unix socket
