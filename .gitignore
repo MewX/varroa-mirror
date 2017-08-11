@@ -9,6 +9,7 @@ config*.yaml
 *.txt
 *.pem
 *.enc
+*.png
 log
 TODO
 node_modules

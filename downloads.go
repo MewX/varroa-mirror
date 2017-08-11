@@ -189,6 +189,22 @@ func (d *Downloads) FindByArtist(artist string) []*DownloadFolder {
 	return hits
 }
 
+func (d *Downloads) FindAllArtists() []string {
+	allArtists := []string{}
+	for _, dl := range d.Downloads {
+		if dl.HasInfo {
+			for _, info := range dl.Metadata {
+				for _, a := range info.ArtistNames() {
+					if !StringInSlice(a, allArtists) {
+						allArtists = append(allArtists, a)
+					}
+				}
+			}
+		}
+	}
+	return allArtists
+}
+
 func (d *Downloads) FindByInfoHash(infoHash string) error {
 	// TODO ?
 

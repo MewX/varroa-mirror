@@ -107,7 +107,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean)
+	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean|fuse <MOUNT_POINT>)
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -138,11 +138,13 @@ type varroaArguments struct {
 	downloadList    bool
 	downloadState   string
 	downloadClean   bool
+	downloadFuse    bool
 	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
 	artistName      string
+	mountPoint      string
 	requiresDaemon  bool
 	canUseDaemon    bool
 }
@@ -181,6 +183,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.downloadSort = args["sort"].(bool)
 		b.downloadList = args["list"].(bool)
 		b.downloadClean = args["clean"].(bool)
+		b.downloadFuse = args["fuse"].(bool)
 	}
 	// arguments
 	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
@@ -192,6 +195,15 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if err != nil {
 			return errors.New("Invalid torrent IDs, must be integers.")
 		}
+	}
+	if b.downloadFuse {
+		b.mountPoint = args["<MOUNT_POINT>"].(string)
+		if !DirectoryExists(b.mountPoint) {
+			return errors.New("Fuse mount point does not exist")
+		}
+
+		// TODO : check it's empty!!
+
 	}
 	if b.downloadList {
 		b.downloadState = args["<STATE>"].(string)
@@ -216,11 +228,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean || b.downloadFuse {
 		b.canUseDaemon = false
 	}
 	return nil
