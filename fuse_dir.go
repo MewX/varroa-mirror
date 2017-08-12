@@ -17,6 +17,7 @@ import (
 type Dir struct {
 	fs            *FS
 	category      string
+	label         string
 	tag           string
 	artist        string
 	release       string
@@ -24,7 +25,7 @@ type Dir struct {
 }
 
 func (d *Dir) String() string {
-	return fmt.Sprintf("DIR mount %s, category %s, artist %s, release %s, release subdirectory %s", d.fs.mountPoint, d.category, d.artist, d.release, d.releaseSubdir)
+	return fmt.Sprintf("DIR mount %s, category %s, tag %s, label %s, artist %s, release %s, release subdirectory %s", d.fs.mountPoint, d.category, d.tag, d.label, d.artist, d.release, d.releaseSubdir)
 }
 
 var _ = fs.Node(&Dir{})
@@ -45,7 +46,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	// if top directory, show categories
 	if d.category == "" {
 		switch name {
-		case "artists", "tags":
+		case "artists", "tags", "record labels":
 			return &Dir{category: name, fs: d.fs}, nil
 		default:
 			fmt.Println("Lookup unknown category: " + name)
@@ -66,9 +67,9 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		for _, f := range fileInfos {
 			if f.Name() == name {
 				if f.IsDir() {
-					return &Dir{category: d.category, tag: d.tag, artist: d.artist, release: d.release, releaseSubdir: filepath.Join(d.releaseSubdir, name), fs: d.fs}, nil
+					return &Dir{category: d.category, tag: d.tag, label: d.label, artist: d.artist, release: d.release, releaseSubdir: filepath.Join(d.releaseSubdir, name), fs: d.fs}, nil
 				} else {
-					return &File{category: d.category, tag: d.tag, artist: d.artist, release: d.release, releaseSubdir: d.releaseSubdir, name: name, fs: d.fs}, nil
+					return &File{category: d.category, tag: d.tag, label: d.label, artist: d.artist, release: d.release, releaseSubdir: d.releaseSubdir, name: name, fs: d.fs}, nil
 				}
 			}
 		}
@@ -94,6 +95,22 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			filteredReleases = filteredReleases.FilterTag(d.tag)
 		}
 	}
+	if d.category == "record labels" {
+		// labels is an extra layer compared to "artists"
+		if d.label == "" {
+			// name is a label
+			allLabels := d.fs.releases.AllLabels()
+			if StringInSlice(name, allLabels) {
+				return &Dir{category: d.category, label: name, fs: d.fs}, nil
+			} else {
+				fmt.Println("Unknown label " + name)
+				return nil, fuse.EIO
+			}
+		} else {
+			// if we have a label, filter all releases with that record label
+			filteredReleases = filteredReleases.FilterRecordLabel(d.label)
+		}
+	}
 
 	// if no artist is selected, return all artists for the filtered releases
 	if d.artist == "" {
@@ -101,7 +118,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// find name among all artists.
 		allArtists := filteredReleases.AllArtists()
 		if StringInSlice(name, allArtists) {
-			return &Dir{category: d.category, tag: d.tag, artist: name, fs: d.fs}, nil
+			return &Dir{category: d.category, tag: d.tag, label: d.label, artist: name, fs: d.fs}, nil
 		} else {
 			fmt.Println("Unknown artist " + name)
 			return nil, fuse.EIO
@@ -114,7 +131,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// find release among releases of d.artist
 		releasePaths := filteredReleases.FilterArtist(d.artist).FolderNames()
 		if StringInSlice(name, releasePaths) {
-			return &Dir{category: d.category, tag: d.tag, artist: d.artist, release: name, fs: d.fs}, nil
+			return &Dir{category: d.category, tag: d.tag, label: d.label, artist: d.artist, release: name, fs: d.fs}, nil
 		} else {
 			fmt.Println("Unknown release " + name)
 			return nil, fuse.EIO
@@ -127,6 +144,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 var categories = []fuse.Dirent{
 	{Name: "artists", Type: fuse.DT_Dir},
 	{Name: "tags", Type: fuse.DT_Dir},
+	{Name: "record labels", Type: fuse.DT_Dir},
 }
 
 var _ = fs.HandleReadDirAller(&Dir{})
@@ -178,6 +196,21 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		} else {
 			// if we have a tag, filter all releases with that tag
 			filteredReleases = filteredReleases.FilterTag(d.tag)
+		}
+	}
+	if d.category == "record labels" {
+		// labels is an extra layer compared to "artists"
+		if d.label == "" {
+			// return all labels as directories
+			allLabelsDirents := []fuse.Dirent{}
+			allLabels := d.fs.releases.AllLabels()
+			for _, a := range allLabels {
+				allLabelsDirents = append(allLabelsDirents, fuse.Dirent{Name: a, Type: fuse.DT_Dir})
+			}
+			return allLabelsDirents, nil
+		} else {
+			// if we have a tag, filter all releases with that tag
+			filteredReleases = filteredReleases.FilterRecordLabel(d.label)
 		}
 	}
 

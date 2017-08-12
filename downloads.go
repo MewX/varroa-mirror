@@ -189,6 +189,10 @@ func (d *Downloads) AllTags() []string {
 	return d.Releases.AllTags()
 }
 
+func (d *Downloads) AllLabels() []string {
+	return d.Releases.AllRecordLabels()
+}
+
 func (d *Downloads) FindByInfoHash(infoHash string) error {
 	// TODO ?
 

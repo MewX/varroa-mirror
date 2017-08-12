@@ -57,6 +57,19 @@ func (dfs DownloadFolders) FilterTag(tag string) DownloadFolders {
 	})
 }
 
+func (dfs DownloadFolders) FilterRecordLabel(recordLabel string) DownloadFolders {
+	return dfs.filter(func(dl *DownloadFolder) bool {
+		if dl.HasInfo {
+			for _, info := range dl.Metadata {
+				if info.label == recordLabel {
+					return true
+				}
+			}
+		}
+		return false
+	})
+}
+
 func (dfs *DownloadFolders) FilterSortedState(state DownloadState) DownloadFolders {
 	return dfs.filter(func(dl *DownloadFolder) bool { return dl.State == state })
 }
@@ -99,6 +112,20 @@ func (dfs DownloadFolders) AllTags() []string {
 		}
 	}
 	return AllTags
+}
+
+func (dfs DownloadFolders) AllRecordLabels() []string {
+	AllLabels := []string{}
+	for _, dl := range dfs {
+		if dl.HasInfo {
+			for _, info := range dl.Metadata {
+				if !StringInSlice(info.label, AllLabels) {
+					AllLabels = append(AllLabels, info.label)
+				}
+			}
+		}
+	}
+	return AllLabels
 }
 
 func (dfs DownloadFolders) FolderNames() []string {
