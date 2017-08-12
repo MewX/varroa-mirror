@@ -35,7 +35,6 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	if !FileExists(fullPath) {
 		return errors.New("Cannot find file " + fullPath)
 	}
-	fmt.Println("FullPath: " + fullPath)
 
 	// open the file
 	r, err := os.Open(fullPath)
@@ -53,7 +52,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = 0555 // readonly
 	a.Atime = fi.ModTime()
 
-	// TODO make only 1 call
+	// TODO make only 1 call!
 
 	var stat syscall.Stat_t
 	if err := syscall.Stat(fullPath, &stat); err != nil {
@@ -62,9 +61,6 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Inode = stat.Ino
 	a.Atime = time.Unix(stat.Atim.Sec, stat.Atim.Nsec)
 	a.Ctime = time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec)
-
-	fmt.Printf("FILE Attr OK\n")
-
 	return nil
 }
 
@@ -72,9 +68,6 @@ var _ = fs.NodeOpener(&File{})
 
 func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
 	fmt.Printf("FILE Open %s.\n", f.String())
-	if !req.Flags.IsReadOnly() {
-		fmt.Printf("SHOULD BE READ ONLY\n")
-	}
 
 	fullPath := filepath.Join(f.fs.mountPoint, f.release, f.releaseSubdir, f.name)
 	if !FileExists(fullPath) {
@@ -138,8 +131,6 @@ func (fh *FileHandle) Flush(ctx context.Context, req *fuse.FlushRequest) error {
 		fmt.Printf("There is no file handler.\n")
 		return fuse.EIO
 	}
-
 	fmt.Printf("Entered Flush with path: %s\n", fh.r.Name())
-
 	return fh.r.Sync()
 }
