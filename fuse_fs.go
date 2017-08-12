@@ -13,7 +13,7 @@ import (
 
 type FS struct {
 	mountPoint string
-	downloads  *Downloads
+	releases   *Downloads
 }
 
 var _ = fs.FS(&FS{})
@@ -33,7 +33,7 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 
 	var stat syscall.Statfs_t
 	if err := syscall.Statfs(wd, &stat); err != nil {
-		return errors.Wrap(err, "Error getting stats call for " + wd)
+		return errors.Wrap(err, "Error getting stats call for "+wd)
 	}
 	resp.Blocks = stat.Blocks
 	resp.Bfree = stat.Bfree
@@ -57,7 +57,7 @@ func mount(path, mountpoint string, downloads *Downloads) error {
 	}
 	defer c.Close()
 
-	filesys := &FS{mountPoint: path, downloads: downloads}
+	filesys := &FS{mountPoint: path, releases: downloads}
 	if err := fs.Serve(c, filesys); err != nil {
 		return errors.Wrap(err, "Error serving fuse filesystem")
 	}

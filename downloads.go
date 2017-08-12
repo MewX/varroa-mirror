@@ -17,15 +17,15 @@ import (
 )
 
 type Downloads struct {
-	Root      string
-	DBFile    string
-	MaxIndex  uint64
-	Downloads []*DownloadFolder
+	Root     string
+	DBFile   string
+	MaxIndex uint64
+	Releases DownloadFolders
 }
 
 func (d *Downloads) String() string {
 	txt := "Downloads in database:\n"
-	for _, dl := range d.Downloads {
+	for _, dl := range d.Releases {
 		txt += "\t" + dl.ShortString() + "\n"
 	}
 	return txt
@@ -50,12 +50,12 @@ func (d *Downloads) Load(path string) error {
 		return nil
 	}
 	// load releases from history to in-memory slice
-	err = msgpack.Unmarshal(bytes, &d.Downloads)
+	err = msgpack.Unmarshal(bytes, &d.Releases)
 	if err != nil {
 		logThis.Error(errors.Wrap(err, "Error loading releases from history file"), NORMAL)
 	}
 	// get max index
-	for _, dl := range d.Downloads {
+	for _, dl := range d.Releases {
 		if dl.Index > d.MaxIndex {
 			d.MaxIndex = dl.Index
 		}
@@ -65,7 +65,7 @@ func (d *Downloads) Load(path string) error {
 
 func (d *Downloads) Save() error {
 	// saving to msgpack, won't save TrackerTorrentInfo though...
-	b, err := msgpack.Marshal(d.Downloads)
+	b, err := msgpack.Marshal(d.Releases)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (d *Downloads) Save() error {
 func (d *Downloads) Scan() error {
 	// list of loaded folders
 	knownDownloads := []string{}
-	for _, dl := range d.Downloads {
+	for _, dl := range d.Releases {
 		knownDownloads = append(knownDownloads, dl.Path)
 	}
 
@@ -93,7 +93,7 @@ func (d *Downloads) Scan() error {
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
-			dl, err := d.FindByFolder(entry.Name())
+			dl, err := d.FindByFolderName(entry.Name())
 			if err != nil {
 				// new entry
 				// logThis.Info("Found new download: "+entry.Name(), VERBOSEST)
@@ -142,67 +142,51 @@ func (d *Downloads) Add(path string) error {
 	if err := dl.Load(); err != nil {
 		return err
 	}
-	d.Downloads = append(d.Downloads, dl)
+	d.Releases = append(d.Releases, dl)
 	d.MaxIndex += 1
 	return nil
 }
 
 func (d *Downloads) FindByID(id uint64) (*DownloadFolder, error) {
-	for _, dl := range d.Downloads {
-		if dl.Index == id {
-			return dl, nil
-		}
-	}
-	return nil, errors.New("ID not found")
+	return d.Releases.FindByID(id)
 }
 
-func (d *Downloads) FindByFolder(folder string) (*DownloadFolder, error) {
-	for _, dl := range d.Downloads {
-		if dl.Path == folder {
-			return dl, nil
-		}
-	}
-	return nil, errors.New("folder not found")
+func (d *Downloads) FindByFolderName(folder string) (*DownloadFolder, error) {
+	return d.Releases.FindByPath(folder)
 }
 
 func (d *Downloads) RemoveByFolder(folder string) error {
-	for i, v := range d.Downloads {
+	for i, v := range d.Releases {
 		if v.Path == folder {
-			d.Downloads = append(d.Downloads[:i], d.Downloads[i+1:]...)
+			d.Releases = append(d.Releases[:i], d.Releases[i+1:]...)
 			return nil
 		}
 	}
 	return errors.New("Folder not found in DB.")
 }
 
-func (d *Downloads) FindByArtist(artist string) []*DownloadFolder {
-	hits := []*DownloadFolder{}
-	for _, dl := range d.Downloads {
-		if dl.HasInfo {
-			for _, info := range dl.Metadata {
-				if StringInSlice(artist, info.ArtistNames()) {
-					hits = append(hits, dl)
-				}
-			}
-		}
-	}
-	return hits
+func (d Downloads) FilterByArtist(artist string) DownloadFolders {
+	return d.Releases.FilterArtist(artist)
 }
 
-func (d *Downloads) FindAllArtists() []string {
-	allArtists := []string{}
-	for _, dl := range d.Downloads {
-		if dl.HasInfo {
-			for _, info := range dl.Metadata {
-				for _, a := range info.ArtistNames() {
-					if !StringInSlice(a, allArtists) {
-						allArtists = append(allArtists, a)
-					}
-				}
-			}
-		}
+func (d Downloads) FilterByTag(tag string) DownloadFolders {
+	return d.Releases.FilterTag(tag)
+}
+
+func (d Downloads) FilterByState(state string) DownloadFolders {
+	if !StringInSlice(state, downloadFolderStates) {
+		logThis.Info("Invalid state", NORMAL)
 	}
-	return allArtists
+	dlState := DownloadState(-1).Get(state)
+	return d.Releases.FilterSortedState(dlState)
+}
+
+func (d *Downloads) AllArtists() []string {
+	return d.Releases.AllArtists()
+}
+
+func (d *Downloads) AllTags() []string {
+	return d.Releases.AllTags()
 }
 
 func (d *Downloads) FindByInfoHash(infoHash string) error {
@@ -218,7 +202,7 @@ func (d *Downloads) FindByTrackerID(tracker, id string) error {
 }
 
 func (d *Downloads) Sort(e *Environment) error {
-	for _, dl := range d.Downloads {
+	for _, dl := range d.Releases {
 		if dl.State == stateUnsorted {
 			if !Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.Index, dl.Path)) {
 				return nil
@@ -237,21 +221,6 @@ func (d *Downloads) Sort(e *Environment) error {
 		}
 	}
 	return nil
-}
-
-func (d *Downloads) FindByState(state string) []*DownloadFolder {
-	if !StringInSlice(state, downloadFolderStates) {
-		logThis.Info("Invalid state", NORMAL)
-	}
-
-	dlState := DownloadState(-1).Get(state)
-	hits := []*DownloadFolder{}
-	for _, dl := range d.Downloads {
-		if dl.State == dlState {
-			hits = append(hits, dl)
-		}
-	}
-	return hits
 }
 
 func (d *Downloads) Clean() error {

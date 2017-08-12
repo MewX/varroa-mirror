@@ -91,7 +91,7 @@ func main() {
 				return
 			}
 			if cli.downloadSearch {
-				hits := env.Downloads.FindByArtist(cli.artistName)
+				hits := env.Downloads.FilterByArtist(cli.artistName)
 				if len(hits) == 0 {
 					fmt.Println("Nothing found.")
 				} else {
@@ -102,7 +102,7 @@ func main() {
 				return
 			}
 			if cli.downloadList {
-				hits := env.Downloads.FindByState(cli.downloadState)
+				hits := env.Downloads.FilterByState(cli.downloadState)
 				if len(hits) == 0 {
 					fmt.Println("Nothing found.")
 				} else {
@@ -152,7 +152,7 @@ func main() {
 				return
 			}
 			if cli.downloadFuse {
-				logThis.Info("Mounting FUSE filesystem in " + cli.mountPoint, NORMAL)
+				logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, NORMAL)
 				if err := mount(env.config.General.DownloadDir, cli.mountPoint, env.Downloads); err != nil {
 					logThis.Error(err, NORMAL)
 					return

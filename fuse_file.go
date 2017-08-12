@@ -14,10 +14,10 @@ import (
 	"golang.org/x/net/context"
 )
 
-
 type File struct {
 	fs            *FS
 	category      string
+	tag           string
 	artist        string
 	release       string
 	releaseSubdir string

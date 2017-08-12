@@ -165,7 +165,7 @@ func (hi *HTMLIndex) SetMainContentStats() error {
 }
 
 func (hi *HTMLIndex) IndexDownloadsList() ([]byte, error) {
-	if len(hi.Downloads.Downloads) == 0 {
+	if len(hi.Downloads.Releases) == 0 {
 		return []byte{}, errors.New("Error generating downloads list: nothing found")
 	}
 
