@@ -114,24 +114,23 @@ func RemoveFromSlice(r string, s []string) []string {
 	return s
 }
 
-
 func RemoveStringSliceDuplicates(elements []string) []string {
-    // Use map to record duplicates as we find them.
-    encountered := map[string]bool{}
-    result := []string{}
+	// Use map to record duplicates as we find them.
+	encountered := map[string]bool{}
+	result := []string{}
 
-    for v := range elements {
-        if encountered[elements[v]] == true {
-            // Do not add duplicate.
-        } else {
-            // Record this element as an encountered element.
-            encountered[elements[v]] = true
-            // Append to result slice.
-            result = append(result, elements[v])
-        }
-    }
-    // Return the new slice.
-    return result
+	for v := range elements {
+		if encountered[elements[v]] == true {
+			// Do not add duplicate.
+		} else {
+			// Record this element as an encountered element.
+			encountered[elements[v]] = true
+			// Append to result slice.
+			result = append(result, elements[v])
+		}
+	}
+	// Return the new slice.
+	return result
 }
 
 func checkErrors(errs ...error) error {
@@ -313,6 +312,20 @@ func DirectoryIsEmpty(path string) (bool, error) {
 	}
 	// not empty or error
 	return false, err
+}
+
+// DirectoryContainsMusic returns true if it contains mp3 or flac files.
+func DirectoryContainsMusic(directoryPath string) bool {
+	if err := filepath.Walk(directoryPath, func(path string, f os.FileInfo, err error) error {
+		if StringInSlice(strings.ToLower(filepath.Ext(path)), []string{mp3Ext, flacExt}) {
+			// stop walking the directory as soon as a track is found
+			return errors.New(foundMusic)
+		}
+		return nil
+	}); err == nil || err.Error() != foundMusic {
+		return false
+	}
+	return true
 }
 
 // TimeTrack helps track the time taken by a function.

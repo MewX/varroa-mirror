@@ -16,18 +16,18 @@ import (
 )
 
 type TrackerTorrentInfo struct {
-	id       int
-	groupID  int
-	label    string
-	edition  string
-	logScore int
-	artists  map[string]int // concat artists, composers, etc: artist name: id
+	id          int
+	groupID     int
+	label       string
+	edition     string
+	logScore    int
+	artists     map[string]int // concat artists, composers, etc: artist name: id
 	artistNames []string
-	size     uint64
-	uploader string
-	folder   string
-	coverURL string
-	fullJSON []byte
+	size        uint64
+	uploader    string
+	folder      string
+	coverURL    string
+	fullJSON    []byte
 }
 
 func (a *TrackerTorrentInfo) String() string {

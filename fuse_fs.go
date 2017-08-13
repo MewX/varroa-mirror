@@ -12,7 +12,7 @@ import (
 
 type FS struct {
 	mountPoint string
-	releases   *Downloads
+	DB         *FuseDB
 }
 
 var _ = fs.FS(&FS{})
@@ -38,9 +38,21 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 	return nil
 }
 
-func mount(path, mountpoint string, downloads *Downloads) error {
+func mount(path, mountpoint string) error {
 	// TODO checks
 
+	// loading database
+	db := &FuseDB{Path: "storm.db"} // TODO db path
+	if err := db.Open(); err != nil {
+		return errors.Wrap(err, "Error loading db")
+	}
+	defer db.Close()
+
+	// updating entries before serving
+	if err := db.Scan(path); err != nil {
+		return errors.Wrap(err, "Error scanning downloads")
+	}
+	// mounting
 	mountOptions := []fuse.MountOption{
 		fuse.FSName("VarroaMusica"),
 		fuse.Subtype("VarroaMusicaFS"),
@@ -51,12 +63,10 @@ func mount(path, mountpoint string, downloads *Downloads) error {
 		return errors.Wrap(err, "Error mounting fuse filesystem")
 	}
 	defer c.Close()
-
-	filesys := &FS{mountPoint: path, releases: downloads}
+	filesys := &FS{mountPoint: path, DB: db}
 	if err := fs.Serve(c, filesys); err != nil {
 		return errors.Wrap(err, "Error serving fuse filesystem")
 	}
-
 	// check if the mount process has an error to report
 	<-c.Ready
 	if err := c.MountError; err != nil {

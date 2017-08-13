@@ -64,7 +64,7 @@ func main() {
 			fmt.Println(env.config)
 			return
 		}
-		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean || cli.downloadFuse {
+		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
 			if !env.config.downloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), NORMAL)
 				return
@@ -151,16 +151,18 @@ func main() {
 				}
 				return
 			}
-			if cli.downloadFuse {
-				logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, NORMAL)
-				if err := mount(env.config.General.DownloadDir, cli.mountPoint, env.Downloads); err != nil {
-					logThis.Error(err, NORMAL)
-					return
-				}
-				logThis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", VERBOSE)
+		}
+		// using stormDB
+		if cli.downloadFuse {
+			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, NORMAL)
+			if err := mount(env.config.General.DownloadDir, cli.mountPoint); err != nil {
+				logThis.Error(err, NORMAL)
 				return
 			}
+			logThis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", VERBOSE)
+			return
 		}
+
 	}
 
 	// loading configuration
