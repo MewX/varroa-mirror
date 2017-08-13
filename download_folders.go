@@ -1,6 +1,10 @@
 package main
 
-import "github.com/pkg/errors"
+import (
+	"strconv"
+
+	"github.com/pkg/errors"
+)
 
 type DownloadFolders []*DownloadFolder
 
@@ -70,6 +74,23 @@ func (dfs DownloadFolders) FilterRecordLabel(recordLabel string) DownloadFolders
 	})
 }
 
+func (dfs DownloadFolders) FilterYear(year string) DownloadFolders {
+	iYear, err := strconv.Atoi(year)
+	if err != nil {
+		return DownloadFolders{}
+	}
+	return dfs.filter(func(dl *DownloadFolder) bool {
+		if dl.HasInfo {
+			for _, info := range dl.Metadata {
+				if info.Release().Year == iYear {
+					return true
+				}
+			}
+		}
+		return false
+	})
+}
+
 func (dfs *DownloadFolders) FilterSortedState(state DownloadState) DownloadFolders {
 	return dfs.filter(func(dl *DownloadFolder) bool { return dl.State == state })
 }
@@ -112,6 +133,21 @@ func (dfs DownloadFolders) AllTags() []string {
 		}
 	}
 	return AllTags
+}
+
+func (dfs DownloadFolders) AllYears() []string {
+	AllYears := []string{}
+	for _, dl := range dfs {
+		if dl.HasInfo {
+			for _, info := range dl.Metadata {
+				sYear := strconv.Itoa(info.Release().Year)
+				if !StringInSlice(sYear, AllYears) {
+					AllYears = append(AllYears, sYear)
+				}
+			}
+		}
+	}
+	return AllYears
 }
 
 func (dfs DownloadFolders) AllRecordLabels() []string {

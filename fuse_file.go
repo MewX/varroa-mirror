@@ -18,6 +18,7 @@ type File struct {
 	fs            *FS
 	category      string
 	label         string
+	year          string
 	tag           string
 	artist        string
 	release       string

@@ -169,28 +169,12 @@ func (d Downloads) FilterByArtist(artist string) DownloadFolders {
 	return d.Releases.FilterArtist(artist)
 }
 
-func (d Downloads) FilterByTag(tag string) DownloadFolders {
-	return d.Releases.FilterTag(tag)
-}
-
 func (d Downloads) FilterByState(state string) DownloadFolders {
 	if !StringInSlice(state, downloadFolderStates) {
 		logThis.Info("Invalid state", NORMAL)
 	}
 	dlState := DownloadState(-1).Get(state)
 	return d.Releases.FilterSortedState(dlState)
-}
-
-func (d *Downloads) AllArtists() []string {
-	return d.Releases.AllArtists()
-}
-
-func (d *Downloads) AllTags() []string {
-	return d.Releases.AllTags()
-}
-
-func (d *Downloads) AllLabels() []string {
-	return d.Releases.AllRecordLabels()
 }
 
 func (d *Downloads) FindByInfoHash(infoHash string) error {
