@@ -37,32 +37,18 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	if !FileExists(fullPath) {
 		return errors.New("Cannot find file " + fullPath)
 	}
-
-	// open the file
-	r, err := os.Open(fullPath)
-	if err != nil {
-		return errors.Wrap(err, "Error opening file "+fullPath)
-	}
-	defer r.Close()
-
-	fi, err := r.Stat()
-	if err != nil {
-		return errors.Wrap(err, "Error getting file status "+fullPath)
-	}
-
-	a.Size = uint64(fi.Size())
-	a.Mode = 0555 // readonly
-	a.Atime = fi.ModTime()
-
-	// TODO make only 1 call!
-
+	// get stat
 	var stat syscall.Stat_t
 	if err := syscall.Stat(fullPath, &stat); err != nil {
 		return errors.Wrap(err, "Error getting file status Stat_t "+fullPath)
 	}
 	a.Inode = stat.Ino
+	a.Blocks = uint64(stat.Blocks)
+	a.BlockSize = uint32(stat.Blksize)
 	a.Atime = time.Unix(stat.Atim.Sec, stat.Atim.Nsec)
 	a.Ctime = time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec)
+	a.Size = uint64(stat.Size)
+	a.Mode = 0555 // readonly
 	return nil
 }
 

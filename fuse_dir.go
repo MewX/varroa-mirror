@@ -5,9 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -43,9 +46,23 @@ var _ = fs.Node(&Dir{})
 
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
 	logThis.Info(fmt.Sprintf("Attr %s", d.String()), VERBOSEST)
-	// read-only
-	a.Mode = os.ModeDir | 0555
-	a.Size = 4096
+	fullPath := filepath.Join(d.fs.mountPoint, d.release, d.releaseSubdir)
+	if !DirectoryExists(fullPath) {
+		return errors.New("Cannot find directory " + fullPath)
+	}
+	// get stat
+	var stat syscall.Stat_t
+	if err := syscall.Stat(fullPath, &stat); err != nil {
+		return errors.Wrap(err, "Error getting dir status Stat_t "+fullPath)
+	}
+	a.Inode = stat.Ino
+	a.Blocks = uint64(stat.Blocks)
+	a.BlockSize = uint32(stat.Blksize)
+	a.Atime = time.Unix(stat.Atim.Sec, stat.Atim.Nsec)
+	a.Ctime = time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec)
+	a.Size = uint64(stat.Size)
+	a.Mode = os.ModeDir | 0555 // readonly
+
 	return nil
 }
 
