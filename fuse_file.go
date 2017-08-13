@@ -27,11 +27,11 @@ type File struct {
 }
 
 func (f *File) String() string {
-	return fmt.Sprintf("FILE mount %s, category %s, artist %s, release %s, release subdirectory %s, name %s", f.fs.mountPoint, f.category, f.artist, f.release, f.releaseSubdir, f.name)
+	return fmt.Sprintf("FILE mount %s, category %s, label %s, year %s, tag %s, artist %s, release %s, release subdirectory %s, name %s", f.fs.mountPoint, f.category, f.label, f.year, f.tag, f.artist, f.release, f.releaseSubdir, f.name)
 }
 
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
-	fmt.Printf("FILE Attr %s.\n", f.String())
+	logThis.Info(fmt.Sprintf("FILE Attr %s.", f.String()), VERBOSEST)
 	// get stat from the actual file
 	fullPath := filepath.Join(f.fs.mountPoint, f.release, f.releaseSubdir, f.name)
 	if !FileExists(fullPath) {
@@ -69,7 +69,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 var _ = fs.NodeOpener(&File{})
 
 func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
-	fmt.Printf("FILE Open %s.\n", f.String())
+	logThis.Info(fmt.Sprintf("FILE Open %s.", f.String()), VERBOSEST)
 
 	fullPath := filepath.Join(f.fs.mountPoint, f.release, f.releaseSubdir, f.name)
 	if !FileExists(fullPath) {
@@ -93,21 +93,19 @@ var _ fs.Handle = (*FileHandle)(nil)
 var _ fs.HandleReleaser = (*FileHandle)(nil)
 
 func (fh *FileHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
+	logThis.Info(fmt.Sprintf("FILE Release %s", fh.f.String()), VERBOSEST)
 	if fh.r == nil {
-		fmt.Printf("FILE Release: There is no file handler.\n")
 		return fuse.EIO
 	}
-	fmt.Printf("FILE Release %s\n", fh.f.String())
 	return fh.r.Close()
 }
 
 var _ = fs.HandleReader(&FileHandle{})
 
 func (fh *FileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
-	fmt.Printf("FILE Read %s\n", fh.f.String())
+	logThis.Info(fmt.Sprintf("FILE Read %s", fh.f.String()), VERBOSEST)
 
 	if fh.r == nil {
-		fmt.Printf("There is no file handler.\n")
 		return fuse.EIO
 	}
 
@@ -126,13 +124,9 @@ func (fh *FileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fus
 var _ = fs.HandleFlusher(&FileHandle{})
 
 func (fh *FileHandle) Flush(ctx context.Context, req *fuse.FlushRequest) error {
-	if fh.f != nil {
-		fmt.Printf("FILE Flush %s\n", fh.f.String())
-	}
+	logThis.Info(fmt.Sprintf("Entered Flush with path: %s", fh.r.Name()), VERBOSEST)
 	if fh.r == nil {
-		fmt.Printf("There is no file handler.\n")
 		return fuse.EIO
 	}
-	fmt.Printf("Entered Flush with path: %s\n", fh.r.Name())
 	return fh.r.Sync()
 }

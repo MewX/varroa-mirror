@@ -36,13 +36,13 @@ type Dir struct {
 }
 
 func (d *Dir) String() string {
-	return fmt.Sprintf("DIR mount %s, category %s, tag %s, label %s, artist %s, release %s, release subdirectory %s", d.fs.mountPoint, d.category, d.tag, d.label, d.artist, d.release, d.releaseSubdir)
+	return fmt.Sprintf("DIR mount %s, category %s, tag %s, label %s, year %s, artist %s, release %s, release subdirectory %s", d.fs.mountPoint, d.category, d.tag, d.label, d.year, d.artist, d.release, d.releaseSubdir)
 }
 
 var _ = fs.Node(&Dir{})
 
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
-	fmt.Printf("Attr %s\n", d.String())
+	logThis.Info(fmt.Sprintf("Attr %s", d.String()), VERBOSEST)
 	// read-only
 	a.Mode = os.ModeDir | 0555
 	a.Size = 4096
@@ -52,7 +52,7 @@ func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
 var _ = fs.NodeStringLookuper(&Dir{})
 
 func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
-	fmt.Printf("Lookup name %s in  %s.\n", name, d.String())
+	logThis.Info(fmt.Sprintf("Lookup name %s in  %s.", name, d.String()), VERBOSEST)
 
 	// if top directory, show categories
 	if d.category == "" {
@@ -60,7 +60,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		case fuseArtistCategory, fuseTagsCategory, fuseLabelCategory, fuseYearCategory:
 			return &Dir{category: name, fs: d.fs}, nil
 		default:
-			fmt.Println("Lookup unknown category: " + name)
+			logThis.Info("Lookup unknown category: "+name, VERBOSEST)
 			return nil, fuse.EIO
 		}
 	}
@@ -70,7 +70,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// find d.release and get its path
 		dlFolder, err := d.fs.releases.FindByFolderName(d.release)
 		if err != nil {
-			fmt.Println("Unkown release, could not find by path: " + d.release)
+			logThis.Info("Unkown release, could not find by path: "+d.release, VERBOSEST)
 			return nil, fuse.ENOENT
 		}
 		folderPath := filepath.Join(dlFolder.Root, dlFolder.Path, d.releaseSubdir)
@@ -84,7 +84,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 				}
 			}
 		}
-		fmt.Println("Lookup unknown name among files " + d.releaseSubdir + "/" + name)
+		logThis.Info("Unknown name among files "+d.releaseSubdir+"/"+name, VERBOSEST)
 		return nil, fuse.EIO
 	}
 
@@ -98,7 +98,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			if StringInSlice(name, allTags) {
 				return &Dir{category: d.category, tag: name, fs: d.fs}, nil
 			} else {
-				fmt.Println("Unknown tag " + name)
+				logThis.Info("Unknown tag "+name, VERBOSEST)
 				return nil, fuse.EIO
 			}
 		} else {
@@ -114,7 +114,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			if StringInSlice(name, allLabels) {
 				return &Dir{category: d.category, label: name, fs: d.fs}, nil
 			} else {
-				fmt.Println("Unknown label " + name)
+				logThis.Info("Unknown label "+name, VERBOSEST)
 				return nil, fuse.EIO
 			}
 		} else {
@@ -130,7 +130,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			if StringInSlice(name, allYears) {
 				return &Dir{category: d.category, year: name, fs: d.fs}, nil
 			} else {
-				fmt.Println("Unknown year " + name)
+				logThis.Info("Unknown year "+name, VERBOSEST)
 				return nil, fuse.EIO
 			}
 		} else {
@@ -147,7 +147,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		if StringInSlice(name, allArtists) {
 			return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: name, fs: d.fs}, nil
 		} else {
-			fmt.Println("Unknown artist " + name)
+			logThis.Info("Unknown artist "+name, VERBOSEST)
 			return nil, fuse.EIO
 		}
 	}
@@ -160,7 +160,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		if StringInSlice(name, releasePaths) {
 			return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: d.artist, release: name, fs: d.fs}, nil
 		} else {
-			fmt.Println("Unknown release " + name)
+			logThis.Info("Unknown release "+name, VERBOSEST)
 			return nil, fuse.EIO
 		}
 	}
@@ -170,7 +170,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 var _ = fs.HandleReadDirAller(&Dir{})
 
 func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	fmt.Printf("ReadDirAll %s\n", d.String())
+	logThis.Info(fmt.Sprintf("ReadDirAll %s", d.String()), VERBOSEST)
 
 	// if root directory, return categories
 	if d.category == "" {
@@ -186,7 +186,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		// return all files and folders inside the actual path as DT_Dir & DT_File.
 		dlFolder, err := d.fs.releases.FindByFolderName(d.release)
 		if err != nil {
-			fmt.Println("Unkown release, could not find by path: " + d.release)
+			logThis.Info("Unkown release, could not find by path: "+d.release, VERBOSEST)
 			return []fuse.Dirent{}, fuse.ENOENT
 		}
 		actualFiles := []fuse.Dirent{}

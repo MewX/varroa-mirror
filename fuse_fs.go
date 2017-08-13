@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"syscall"
 
@@ -19,13 +18,10 @@ type FS struct {
 var _ = fs.FS(&FS{})
 
 func (f *FS) Root() (fs.Node, error) {
-	fmt.Println("FS Root")
-	n := &Dir{fs: f}
-	return n, nil
+	return &Dir{fs: f}, nil
 }
 
 func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.StatfsResponse) error {
-	fmt.Println("FS StatFS")
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -49,7 +45,6 @@ func mount(path, mountpoint string, downloads *Downloads) error {
 		fuse.FSName("VarroaMusica"),
 		fuse.Subtype("VarroaMusicaFS"),
 		fuse.VolumeName("Varroa Musica Library"),
-		//fuse.AllowOther(),
 	}
 	c, err := fuse.Mount(mountpoint, mountOptions...)
 	if err != nil {
