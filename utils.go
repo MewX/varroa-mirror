@@ -279,6 +279,22 @@ func CopyDir(src, dst string, useHardLinks bool) (err error) {
 	return
 }
 
+// DirectoryIsEmpty checks if a directory is empty.
+func DirectoryIsEmpty(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	// not empty or error
+	return false, err
+}
+
 //-----------------------------------------------------------------------------
 
 type ByteSize float64

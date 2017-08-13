@@ -202,8 +202,12 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 			return errors.New("Fuse mount point does not exist")
 		}
 
-		// TODO : check it's empty!!
-
+		// check it's empty
+		if isEmpty, err := DirectoryIsEmpty(b.mountPoint); err != nil {
+			return errors.New("Could not open Fuse mount point")
+		} else if !isEmpty {
+			return errors.New("Fuse mount point is not empty")
+		}
 	}
 	if b.downloadList {
 		b.downloadState = args["<STATE>"].(string)
