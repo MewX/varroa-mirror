@@ -2,6 +2,7 @@ package main
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -16,13 +17,14 @@ func (dfs *DownloadFolders) Add(folders ...*DownloadFolder) {
 }
 
 // filter DownloadFolders using a given function as a test for inclusion
-func (dfs *DownloadFolders) filter(f func(*DownloadFolder) bool) (filteredDownloadFolders DownloadFolders) {
+func (dfs *DownloadFolders) filter(f func(*DownloadFolder) bool) DownloadFolders {
+	filteredDownloadFolders := make(DownloadFolders, len(*dfs))
 	for _, v := range *dfs {
 		if f(v) {
 			filteredDownloadFolders.Add(v)
 		}
 	}
-	return
+	return filteredDownloadFolders
 }
 
 // findUnique DownloadFolder with a given function
@@ -104,19 +106,16 @@ func (dfs *DownloadFolders) FindByPath(path string) (*DownloadFolder, error) {
 }
 
 func (dfs DownloadFolders) AllArtists() []string {
+	defer TimeTrack(time.Now(), "DFS ALLARTISTS")
 	allArtists := []string{}
 	for _, dl := range dfs {
 		if dl.HasInfo {
 			for _, info := range dl.Metadata {
-				for _, a := range info.ArtistNames() {
-					if !StringInSlice(a, allArtists) {
-						allArtists = append(allArtists, a)
-					}
-				}
+				allArtists = append(allArtists, info.artistNames...)
 			}
 		}
 	}
-	return allArtists
+	return RemoveStringSliceDuplicates(allArtists)
 }
 
 func (dfs DownloadFolders) AllTags() []string {

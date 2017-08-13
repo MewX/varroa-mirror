@@ -45,6 +45,7 @@ func (d *Dir) String() string {
 var _ = fs.Node(&Dir{})
 
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
+	defer TimeTrack(time.Now(), "DIR ATTR")
 	logThis.Info(fmt.Sprintf("Attr %s", d.String()), VERBOSEST)
 	fullPath := filepath.Join(d.fs.mountPoint, d.release, d.releaseSubdir)
 	if !DirectoryExists(fullPath) {
@@ -69,6 +70,7 @@ func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
 var _ = fs.NodeStringLookuper(&Dir{})
 
 func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	defer TimeTrack(time.Now(), "DIR LOOKUP")
 	logThis.Info(fmt.Sprintf("Lookup name %s in  %s.", name, d.String()), VERBOSEST)
 
 	// if top directory, show categories
@@ -187,6 +189,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 var _ = fs.HandleReadDirAller(&Dir{})
 
 func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	defer TimeTrack(time.Now(), "DIR ReadDirAll")
 	logThis.Info(fmt.Sprintf("ReadDirAll %s", d.String()), VERBOSEST)
 
 	// if root directory, return categories

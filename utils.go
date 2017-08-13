@@ -114,6 +114,26 @@ func RemoveFromSlice(r string, s []string) []string {
 	return s
 }
 
+
+func RemoveStringSliceDuplicates(elements []string) []string {
+    // Use map to record duplicates as we find them.
+    encountered := map[string]bool{}
+    result := []string{}
+
+    for v := range elements {
+        if encountered[elements[v]] == true {
+            // Do not add duplicate.
+        } else {
+            // Record this element as an encountered element.
+            encountered[elements[v]] = true
+            // Append to result slice.
+            result = append(result, elements[v])
+        }
+    }
+    // Return the new slice.
+    return result
+}
+
 func checkErrors(errs ...error) error {
 	for _, err := range errs {
 		if err != nil {
@@ -293,6 +313,12 @@ func DirectoryIsEmpty(path string) (bool, error) {
 	}
 	// not empty or error
 	return false, err
+}
+
+// TimeTrack helps track the time taken by a function.
+func TimeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	logThis.Info(fmt.Sprintf("-- %s in %s", name, elapsed), VERBOSESTEST)
 }
 
 //-----------------------------------------------------------------------------

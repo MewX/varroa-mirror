@@ -25,7 +25,7 @@ type ConfigGeneral struct {
 }
 
 func (cg *ConfigGeneral) Check() error {
-	if cg.LogLevel < NORMAL || cg.LogLevel > VERBOSEST {
+	if cg.LogLevel < NORMAL || cg.LogLevel > VERBOSESTEST {
 		return errors.New("Invalid log level")
 	}
 	if cg.DownloadDir != "" && !DirectoryExists(cg.DownloadDir) {

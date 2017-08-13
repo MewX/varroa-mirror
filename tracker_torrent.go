@@ -22,6 +22,7 @@ type TrackerTorrentInfo struct {
 	edition  string
 	logScore int
 	artists  map[string]int // concat artists, composers, etc: artist name: id
+	artistNames []string
 	size     uint64
 	uploader string
 	folder   string
@@ -69,11 +70,8 @@ func (a *TrackerTorrentInfo) ArtistIDs() []int {
 }
 
 func (a *TrackerTorrentInfo) ArtistNames() []string {
-	artistNames := make([]string, 0, len(a.artists))
-	for k := range a.artists {
-		artistNames = append(artistNames, k)
-	}
-	return artistNames
+	defer TimeTrack(time.Now(), "TTI ARTISTNAMES")
+	return a.artistNames
 }
 
 func (a *TrackerTorrentInfo) FullInfo() *GazelleTorrent {
@@ -148,15 +146,19 @@ func (a *TrackerTorrentInfo) LoadFromBytes(data []byte, fullJSON bool) error {
 	a.id = gt.Response.Torrent.ID
 	a.groupID = gt.Response.Group.ID
 	a.artists = map[string]int{}
+	a.artistNames = []string{}
 	// for now, using artists, composers, "with" categories
 	for _, el := range gt.Response.Group.MusicInfo.Artists {
 		a.artists[el.Name] = el.ID
+		a.artistNames = append(a.artistNames, el.Name)
 	}
 	for _, el := range gt.Response.Group.MusicInfo.With {
 		a.artists[el.Name] = el.ID
+		a.artistNames = append(a.artistNames, el.Name)
 	}
 	for _, el := range gt.Response.Group.MusicInfo.Composers {
 		a.artists[el.Name] = el.ID
+		a.artistNames = append(a.artistNames, el.Name)
 	}
 	a.label = gt.Response.Group.RecordLabel
 	if gt.Response.Torrent.Remastered {

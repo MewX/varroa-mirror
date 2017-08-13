@@ -9,6 +9,7 @@ const (
 	NORMAL = iota
 	VERBOSE
 	VERBOSEST
+	VERBOSESTEST
 )
 
 type LogThis struct {

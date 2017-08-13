@@ -31,6 +31,7 @@ func (f *File) String() string {
 }
 
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
+	defer TimeTrack(time.Now(), "FILE ATTR")
 	logThis.Info(fmt.Sprintf("FILE Attr %s.", f.String()), VERBOSEST)
 	// get stat from the actual file
 	fullPath := filepath.Join(f.fs.mountPoint, f.release, f.releaseSubdir, f.name)

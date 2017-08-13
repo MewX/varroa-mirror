@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"strings"
 
 	docopt "github.com/docopt/docopt-go"
@@ -197,6 +198,12 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 	}
 	if b.downloadFuse {
+		// checking fusermount is available
+		_, err := exec.LookPath("fusermount")
+		if err != nil {
+			return errors.New("fusermount is not available on this system, cannot use the fuse command")
+		}
+
 		b.mountPoint = args["<MOUNT_POINT>"].(string)
 		if !DirectoryExists(b.mountPoint) {
 			return errors.New("Fuse mount point does not exist")
