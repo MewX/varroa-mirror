@@ -129,6 +129,8 @@ func (fdb *FuseDB) Close() error {
 }
 
 func (fdb *FuseDB) Scan(path string) error {
+	defer TimeTrack(time.Now(), "Scan FuseDB")
+
 	if fdb.DB == nil {
 		return errors.New("Error db not open")
 	}
@@ -147,8 +149,13 @@ func (fdb *FuseDB) Scan(path string) error {
 	s.Prefix = "Scanning"
 	s.Start()
 
-	// TODO FIND THE ENTRIES NO LONGER IN THE FILESYSTEM
+	// get old entries
+	var previous []FuseEntry
+	if err := fdb.DB.All(&previous); err != nil {
+		return errors.New("Cannot load previous entries")
+	}
 
+	currentFolderNames := []string{}
 	for _, entry := range entries {
 		if entry.IsDir() {
 			// detect if sound files are present, leave otherwise
@@ -164,20 +171,21 @@ func (fdb *FuseDB) Scan(path string) error {
 					fuseEntry.FolderName = entry.Name()
 					// read information from metadata
 					if err := fuseEntry.Load(fdb.Root); err != nil {
-						logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
+						logThis.Error(errors.Wrap(err,"Error: could not load metadata for "+entry.Name()), VERBOSEST)
 						continue
 					}
 					if err := fdb.DB.Save(&fuseEntry); err != nil {
 						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
 						continue
 					}
-
+					logThis.Info("New FuseDB entry: " + entry.Name(), VERBOSESTEST)
 				} else {
 					logThis.Error(err, VERBOSEST)
 					continue
 				}
 			} else {
 				// found entry, update it
+				// TODO for existing entries, maybe only reload if the metadata has been modified?
 				// read information from metadata
 				if err := fuseEntry.Load(fdb.Root); err != nil {
 					logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
@@ -187,12 +195,22 @@ func (fdb *FuseDB) Scan(path string) error {
 					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
 					continue
 				}
-
+				logThis.Info("Updated FuseDB entry: " + entry.Name(), VERBOSESTEST)
 			}
-
-			// TODO for existing entries, maybe only reload if the metadata has been modified?
+			currentFolderNames = append(currentFolderNames, entry.Name())
 		}
 	}
+
+	// remove entries no longer associated with actual files
+	for _, p := range previous {
+		if !StringInSlice(p.FolderName, currentFolderNames) {
+			if err := fdb.DB.DeleteStruct(&p); err != nil {
+				logThis.Error(err, VERBOSEST)
+			}
+			logThis.Info("Removed FuseDB entry: " + p.FolderName, VERBOSESTEST)
+		}
+	}
+
 	s.Stop()
 	return nil
 }
