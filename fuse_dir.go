@@ -143,7 +143,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// tags is an extra layer compared to "artists"
 		if d.tag == "" {
 			// name is a tag
-			query := d.fs.DB.DB.Select(InSlice("Tags", name)) // .Limit(1) ???
+			query := d.fs.DB.DB.Select(InSlice("Tags", name)).Limit(1)
 			var entry FuseEntry
 			if err := query.First(&entry); err != nil {
 				if err == storm.ErrNotFound {

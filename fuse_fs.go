@@ -52,6 +52,9 @@ func mount(path, mountpoint string) error {
 	if err := db.Scan(path); err != nil {
 		return errors.Wrap(err, "Error scanning downloads")
 	}
+
+	// TODO log how many entries
+
 	// mounting
 	mountOptions := []fuse.MountOption{
 		fuse.FSName("VarroaMusica"),

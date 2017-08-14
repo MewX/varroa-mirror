@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/asdine/storm"
+	"github.com/asdine/storm/codec/msgpack"
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 )
@@ -15,12 +16,12 @@ import (
 type FuseEntry struct {
 	ID          int      `storm:"id,increment"`
 	FolderName  string   `storm:"unique"`
-	Artists     []string `storm:"index"`
-	Tags        []string `storm:"index"`
-	Title       string   `storm:"index"`
-	Year        int      `storm:"index"`
-	Tracker     []string `storm:"index"`
-	RecordLabel string   `storm:"index"`
+	Artists     []string // `storm:"index"`
+	Tags        []string // `storm:"index"`
+	Title       string   // `storm:"index"`
+	Year        int      // `storm:"index"`
+	Tracker     []string // `storm:"index"`
+	RecordLabel string   // `storm:"index"`
 }
 
 func (fe *FuseEntry) reset() {
@@ -113,8 +114,11 @@ func (fdb *FuseDB) Open() error {
 	// TODO check fdb.Path exists
 
 	var err error
-	fdb.DB, err = storm.Open(fdb.Path)
-	return err
+	fdb.DB, err = storm.Open(fdb.Path, storm.Codec(msgpack.Codec))
+	if err != nil {
+		return err
+	}
+	return fdb.DB.Init(&FuseEntry{})
 }
 
 func (fdb *FuseDB) Close() error {
@@ -158,26 +162,37 @@ func (fdb *FuseDB) Scan(path string) error {
 				if err == storm.ErrNotFound {
 					// not found, create new entry
 					fuseEntry.FolderName = entry.Name()
+					// read information from metadata
+					if err := fuseEntry.Load(fdb.Root); err != nil {
+						logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
+						continue
+					}
+					if err := fdb.DB.Save(&fuseEntry); err != nil {
+						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
+						continue
+					}
+
 				} else {
 					logThis.Error(err, VERBOSEST)
 					continue
 				}
+			} else {
+				// found entry, update it
+				// read information from metadata
+				if err := fuseEntry.Load(fdb.Root); err != nil {
+					logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
+					continue
+				}
+				if err := fdb.DB.Update(&fuseEntry); err != nil {
+					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
+					continue
+				}
+
 			}
 
 			// TODO for existing entries, maybe only reload if the metadata has been modified?
-
-			// read information from metadata
-			if err := fuseEntry.Load(fdb.Root); err != nil {
-				logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
-				continue
-			}
-			// save to database
-			if err := fdb.DB.Save(&fuseEntry); err != nil {
-				logThis.Error(err, VERBOSEST)
-			}
 		}
 	}
 	s.Stop()
-
 	return nil
 }
