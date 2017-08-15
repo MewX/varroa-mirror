@@ -600,7 +600,7 @@ func (c *Config) Load(file string) error {
 	// loading the configuration file
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		return errors.Wrap(err, "Error reading configuration file "+file)
+		return errors.Wrap(err, errorReadingConfig)
 	}
 	return c.LoadFromBytes(b)
 }
@@ -608,7 +608,7 @@ func (c *Config) Load(file string) error {
 func (c *Config) LoadFromBytes(b []byte) error {
 	err := yaml.Unmarshal(b, &c)
 	if err != nil {
-		return errors.Wrap(err, "Error loading configuration")
+		return errors.Wrap(err, errorLoadingYAML)
 	}
 	return c.Check()
 }

@@ -107,6 +107,8 @@ const (
 	errorCreatingDownloadsCleanDir = "Error creating directory for useless folders in downloads directory"
 	errorSettingUp                 = "Error setting up"
 	errorLoadingConfig             = "Error loading configuration"
+	errorReadingConfig             = "Error reading configuration file"
+	errorLoadingYAML               = "YAML file cannot be parsed, check if it is correctly formatted and has all the required parts"
 	errorGettingPassphrase         = "Error getting passphrase"
 	errorPassphraseNotFound        = "Error retrieving passphrase for daemon"
 	errorSettingEnv                = "Could not set env variable"
