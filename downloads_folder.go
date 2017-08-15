@@ -378,7 +378,9 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 		idElements = append(idElements, editionName)
 	}
 	// adding catalog number, or if not specified, the record label
-	if gt.Response.Group.CatalogueNumber != "" {
+	if gt.Response.Torrent.RemasterCatalogueNumber != "" {
+		idElements = append(idElements, gt.Response.Torrent.RemasterCatalogueNumber)
+	} else if gt.Response.Group.CatalogueNumber != "" {
 		idElements = append(idElements, gt.Response.Group.CatalogueNumber)
 	} else {
 		if gt.Response.Torrent.RemasterRecordLabel != "" {
@@ -386,6 +388,7 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 		} else if gt.Response.Group.RecordLabel != "" {
 			idElements = append(idElements, gt.Response.Group.RecordLabel)
 		}
+		// TODO else unkown release!
 	}
 	if gt.Response.Group.ReleaseType != 1 {
 		// adding release type if not album
