@@ -109,8 +109,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// find d.release and get its path
 		// TODO: but d.release == folder name for now...
 		var entry FuseEntry
-		// TODO fix stupid call sequence
-		if err := d.fs.DB.DB.One("FolderName", d.release, &entry); err != nil {
+		if err := d.fs.contents.DB.One("FolderName", d.release, &entry); err != nil {
 			if err == storm.ErrNotFound {
 				logThis.Info("Unkown release, could not find by path: "+d.release, VERBOSEST)
 			} else {
@@ -118,7 +117,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			}
 			return nil, fuse.ENOENT
 		}
-		folderPath := filepath.Join(d.fs.DB.Root, entry.FolderName, d.releaseSubdir)
+		folderPath := filepath.Join(d.fs.contents.Root, entry.FolderName, d.releaseSubdir)
 		fileInfos, err := ioutil.ReadDir(folderPath)
 		if err != nil {
 			logThis.Info("Could not open path: "+d.release, VERBOSEST)
@@ -143,7 +142,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// tags is an extra layer compared to "artists"
 		if d.tag == "" {
 			// name is a tag
-			query := d.fs.DB.DB.Select(InSlice("Tags", name)).Limit(1)
+			query := d.fs.contents.DB.Select(InSlice("Tags", name)).Limit(1)
 			var entry FuseEntry
 			if err := query.First(&entry); err != nil {
 				if err == storm.ErrNotFound {
@@ -165,7 +164,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// labels is an extra layer compared to "artists"
 		if d.label == "" {
 			// name is a label
-			query := d.fs.DB.DB.Select(q.Eq("RecordLabel", name)).Limit(1)
+			query := d.fs.contents.DB.Select(q.Eq("RecordLabel", name)).Limit(1)
 			var entry FuseEntry
 			if err := query.First(&entry); err != nil {
 				if err == storm.ErrNotFound {
@@ -187,7 +186,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// years is an extra layer compared to "artists"
 		if d.year == "" {
 			// name is a year
-			query := d.fs.DB.DB.Select(q.Eq("Year", name)).Limit(1)
+			query := d.fs.contents.DB.Select(q.Eq("Year", name)).Limit(1)
 			var entry FuseEntry
 			if err := query.First(&entry); err != nil {
 				if err == storm.ErrNotFound {
@@ -209,7 +208,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	// if no artist is selected, return all artists for the filtered releases
 	if d.artist == "" {
 		// name is an artist name, must be found among the already filtered releases
-		query := d.fs.DB.DB.Select(q.And(matcher, InSlice("Artists", name))).Limit(1)
+		query := d.fs.contents.DB.Select(q.And(matcher, InSlice("Artists", name))).Limit(1)
 		var entry FuseEntry
 		if err := query.First(&entry); err != nil {
 			if err == storm.ErrNotFound {
@@ -230,7 +229,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	// if we have an artist but not a release, return the filtered releases for this artist
 	if d.release == "" {
 		// name is a release name
-		query := d.fs.DB.DB.Select(q.And(matcher, q.Eq("FolderName", name))).Limit(1)
+		query := d.fs.contents.DB.Select(q.And(matcher, q.Eq("FolderName", name))).Limit(1)
 		var entry FuseEntry
 		if err := query.First(&entry); err != nil {
 			if err == storm.ErrNotFound {
@@ -268,8 +267,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		// find d.release and get its path
 		// TODO: but d.release == folder name for now...
 		var entry FuseEntry
-		// TODO fix stupid call sequence
-		if err := d.fs.DB.DB.One("FolderName", d.release, &entry); err != nil {
+		if err := d.fs.contents.DB.One("FolderName", d.release, &entry); err != nil {
 			if err == storm.ErrNotFound {
 				logThis.Info("Unkown release, could not find by path: "+d.release, VERBOSEST)
 			} else {
@@ -277,7 +275,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			}
 			return []fuse.Dirent{}, fuse.ENOENT
 		}
-		folderPath := filepath.Join(d.fs.DB.Root, entry.FolderName, d.releaseSubdir)
+		folderPath := filepath.Join(d.fs.contents.Root, entry.FolderName, d.releaseSubdir)
 		actualFiles := []fuse.Dirent{}
 		contents, err := ioutil.ReadDir(folderPath)
 		if err != nil {
@@ -303,7 +301,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			allTagsDirents := []fuse.Dirent{}
 			// get all matching entries
 			var allEntries []FuseEntry
-			query := d.fs.DB.DB.Select(matcher)
+			query := d.fs.contents.DB.Select(matcher)
 			if err := query.Find(&allEntries); err != nil {
 				logThis.Error(err, VERBOSEST)
 				return allTagsDirents, err
@@ -329,7 +327,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			allLabelsDirents := []fuse.Dirent{}
 			// get all matching entries
 			var allEntries []FuseEntry
-			query := d.fs.DB.DB.Select(matcher)
+			query := d.fs.contents.DB.Select(matcher)
 			if err := query.Find(&allEntries); err != nil {
 				logThis.Error(err, VERBOSEST)
 				return allLabelsDirents, err
@@ -355,7 +353,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			allYearsDirents := []fuse.Dirent{}
 			// get all matching entries
 			var allEntries []FuseEntry
-			query := d.fs.DB.DB.Select(matcher)
+			query := d.fs.contents.DB.Select(matcher)
 			if err := query.Find(&allEntries); err != nil {
 				logThis.Error(err, VERBOSEST)
 				return allYearsDirents, err
@@ -379,7 +377,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	if d.artist == "" {
 		allArtistsDirents := []fuse.Dirent{}
 		var allEntries []FuseEntry
-		query := d.fs.DB.DB.Select(matcher)
+		query := d.fs.contents.DB.Select(matcher)
 		if err := query.Find(&allEntries); err != nil {
 			logThis.Error(err, VERBOSEST)
 			return allArtistsDirents, err
@@ -402,7 +400,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		allReleasesDirents := []fuse.Dirent{}
 		// querying for all matches
 		var allEntries []FuseEntry
-		query := d.fs.DB.DB.Select(matcher)
+		query := d.fs.contents.DB.Select(matcher)
 		if err := query.Find(&allEntries); err != nil {
 			logThis.Error(err, VERBOSEST)
 			return allReleasesDirents, err

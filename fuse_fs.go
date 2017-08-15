@@ -12,7 +12,7 @@ import (
 
 type FS struct {
 	mountPoint string
-	DB         *FuseDB
+	contents   *FuseDB
 }
 
 var _ = fs.FS(&FS{})
@@ -66,7 +66,7 @@ func mount(path, mountpoint string) error {
 		return errors.Wrap(err, "Error mounting fuse filesystem")
 	}
 	defer c.Close()
-	filesys := &FS{mountPoint: path, DB: db}
+	filesys := &FS{mountPoint: path, contents: db}
 	if err := fs.Serve(c, filesys); err != nil {
 		return errors.Wrap(err, "Error serving fuse filesystem")
 	}
