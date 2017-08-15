@@ -48,11 +48,12 @@ func mount(path, mountpoint string) error {
 	}
 	defer db.Close()
 
-	// updating entries before serving
-	if err := db.Scan(path); err != nil {
-		return errors.Wrap(err, "Error scanning downloads")
-	}
-
+	go func() {
+		// updating entries before serving
+		if err := db.Scan(path); err != nil {
+			logThis.Error(errors.Wrap(err, "Error scanning downloads"), NORMAL)
+		}
+	}()
 	// TODO log how many entries
 
 	// mounting
