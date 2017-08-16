@@ -1,4 +1,4 @@
-package main
+package varroa
 
 type TrackerArtistInfo struct {
 	id       int

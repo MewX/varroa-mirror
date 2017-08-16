@@ -1,4 +1,4 @@
-package main
+package varroa
 
 func getGazelleReleaseType(value int) string {
 	switch value {

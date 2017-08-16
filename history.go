@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"encoding/csv"
@@ -37,7 +37,7 @@ type History struct {
 }
 
 func (h *History) getPath(file string) string {
-	return filepath.Join(statsDir, h.Tracker+"_"+file)
+	return filepath.Join(StatsDir, h.Tracker+"_"+file)
 }
 
 func (h *History) migrateOldFormats(statsFile, snatchesFile string) {
@@ -121,9 +121,9 @@ func (h *History) LoadAll(statsConfig *ConfigStats) error {
 
 func (h *History) GenerateGraphs(e *Environment) error {
 	// get SVG theme if available
-	if e.config.webserverConfigured {
+	if e.Config.webserverConfigured {
 		// defaults to dark_orange if not set
-		theme := knownThemes[e.config.WebServer.Theme]
+		theme := knownThemes[e.Config.WebServer.Theme]
 		commonStyleSVG.StrokeColor = drawing.ColorFromHex(theme.GraphColor[1:])
 		commonStyleSVG.FillColor = drawing.ColorFromHex(theme.GraphColor[1:]).WithAlpha(theme.GraphFillerOpacity)
 		commonStyleSVG.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
@@ -136,7 +136,7 @@ func (h *History) GenerateGraphs(e *Environment) error {
 	if err != nil {
 		return errors.Wrap(err, errorInvalidTimestamp)
 	}
-	statsConfig, err := e.config.GetStats(h.Tracker)
+	statsConfig, err := e.Config.GetStats(h.Tracker)
 	if err != nil {
 		return errors.Wrap(err, "Error getting stats for "+h.Tracker)
 	}
@@ -153,7 +153,7 @@ func (h *History) GenerateGraphs(e *Environment) error {
 		h.getPath(downloadPerDayStatsFile),
 		h.getPath(bufferPerDayStatsFile),
 		h.getPath(ratioPerDayStatsFile)); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+		logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
 		statsOK = false
 	}
 	// generate history graphs if necessary

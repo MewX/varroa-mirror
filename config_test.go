@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -178,10 +178,10 @@ func TestConfig(t *testing.T) {
 	check.True(c.gitlabPagesConfigured)
 	check.True(c.pushoverConfigured)
 	check.True(c.webhooksConfigured)
-	check.True(c.downloadFolderConfigured)
+	check.True(c.DownloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
-	check.True(c.libraryConfigured)
+	check.True(c.LibraryConfigured)
 
 	// disabling autosnatch
 	check.False(c.Autosnatch[0].disabledAutosnatching)
@@ -204,10 +204,10 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverConfigured)
 	check.False(c.gitlabPagesConfigured)
 	check.False(c.pushoverConfigured)
-	check.True(c.downloadFolderConfigured)
+	check.True(c.DownloadFolderConfigured)
 	check.False(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
-	check.False(c.libraryConfigured)
+	check.False(c.LibraryConfigured)
 
 	c = &Config{}
 	err = c.Load("test/test_nostatsnoweb.yaml")
@@ -217,10 +217,10 @@ func TestConfig(t *testing.T) {
 	check.False(c.webserverConfigured)
 	check.False(c.gitlabPagesConfigured)
 	check.False(c.pushoverConfigured)
-	check.False(c.downloadFolderConfigured)
+	check.False(c.DownloadFolderConfigured)
 	check.False(c.webserverHTTP)
 	check.False(c.webserverHTTPS)
-	check.False(c.libraryConfigured)
+	check.False(c.LibraryConfigured)
 
 	c = &Config{}
 	err = c.Load("test/test_statsnoautosnatch.yaml")
@@ -230,9 +230,9 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverConfigured)
 	check.True(c.gitlabPagesConfigured)
 	check.True(c.pushoverConfigured)
-	check.True(c.downloadFolderConfigured)
+	check.True(c.DownloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
-	check.False(c.libraryConfigured)
+	check.False(c.LibraryConfigured)
 
 }

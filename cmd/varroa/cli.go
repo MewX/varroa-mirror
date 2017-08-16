@@ -8,6 +8,7 @@ import (
 
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
+	"gitlab.com/passelecasque/varroa"
 )
 
 const (
@@ -152,9 +153,9 @@ type varroaArguments struct {
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// parse arguments and options
-	args, err := docopt.Parse(varroaUsage, osArgs, true, fmt.Sprintf(varroaVersion, varroa, version), false, false)
+	args, err := docopt.Parse(varroaUsage, osArgs, true, fmt.Sprintf(varroa.FullVersion, varroa.FullName, varroa.Version), false, false)
 	if err != nil {
-		return errors.Wrap(err, errorInfoBadArguments)
+		return errors.Wrap(err, varroa.ErrorInfoBadArguments)
 	}
 	if len(args) == 0 {
 		// builtin command, nothing to do.
@@ -192,7 +193,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if !ok {
 			return errors.New("Invalid torrent IDs.")
 		}
-		b.torrentIDs, err = StringSliceToIntSlice(IDs)
+		b.torrentIDs, err = varroa.StringSliceToIntSlice(IDs)
 		if err != nil {
 			return errors.New("Invalid torrent IDs, must be integers.")
 		}
@@ -205,12 +206,12 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 
 		b.mountPoint = args["<MOUNT_POINT>"].(string)
-		if !DirectoryExists(b.mountPoint) {
+		if !varroa.DirectoryExists(b.mountPoint) {
 			return errors.New("Fuse mount point does not exist")
 		}
 
 		// check it's empty
-		if isEmpty, err := DirectoryIsEmpty(b.mountPoint); err != nil {
+		if isEmpty, err := varroa.DirectoryIsEmpty(b.mountPoint); err != nil {
 			return errors.New("Could not open Fuse mount point")
 		} else if !isEmpty {
 			return errors.New("Fuse mount point is not empty")
@@ -218,8 +219,8 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	if b.downloadList {
 		b.downloadState = args["<STATE>"].(string)
-		if !StringInSlice(b.downloadState, downloadFolderStates) {
-			return errors.New("Invalid download state, must be among: " + strings.Join(downloadFolderStates, ", "))
+		if !varroa.IsValidDownloadState(b.downloadState) {
+			return errors.New("Invalid download state, must be among: " + strings.Join(varroa.DownloadFolderStates, ", "))
 		}
 	}
 	if b.snatch {
@@ -227,7 +228,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	if b.checkLog {
 		logPath := args["<LOG_FILE>"].(string)
-		if !FileExists(logPath) {
+		if !varroa.FileExists(logPath) {
 			return errors.New("Invalid log file, does not exist.")
 		}
 		b.logFile = logPath
@@ -250,7 +251,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 }
 
 func (b *varroaArguments) commandToDaemon() []byte {
-	out := IncomingJSON{Site: b.trackerLabel}
+	out := varroa.IncomingJSON{Site: b.trackerLabel}
 	if b.stats {
 		out.Command = "stats"
 	}
@@ -260,16 +261,16 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	if b.refreshMetadata {
 		out.Command = "refresh-metadata"
-		out.Args = IntSliceToStringSlice(b.torrentIDs)
+		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.snatch {
 		out.Command = "snatch"
-		out.Args = IntSliceToStringSlice(b.torrentIDs)
+		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
 		out.FLToken = b.useFLToken
 	}
 	if b.info {
 		out.Command = "info"
-		out.Args = IntSliceToStringSlice(b.torrentIDs)
+		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.checkLog {
 		out.Command = "check-log"
@@ -277,7 +278,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "Cannot parse command"), NORMAL)
+		logThis.Error(errors.Wrap(err, "Cannot parse command"), varroa.NORMAL)
 		return []byte{}
 	}
 	return commandBytes

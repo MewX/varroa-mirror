@@ -69,7 +69,7 @@ compiled_varroa_dev:
     - go get github.com/briandowns/spinner
     - go get github.com/fhs/gompd/mpd
     - go get github.com/russross/blackfriday
-    - go build -o varroa
+    - go build ./... #-o varroa
 #    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
     paths:
@@ -105,7 +105,7 @@ compiled_varroa_released_version:
     - go get github.com/briandowns/spinner
     - go get github.com/fhs/gompd/mpd
     - go get github.com/russross/blackfriday
-    - go build -o varroa
+    - go build ./...
   artifacts:
     paths: 
     - varroa

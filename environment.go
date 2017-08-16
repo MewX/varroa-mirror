@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -24,17 +24,16 @@ func (b boolFlag) IsSet() bool {
 
 // Environment keeps track of all the context varroa needs.
 type Environment struct {
-	config           *Config
-	configPassphrase []byte
+	Config           *Config
+	ConfigPassphrase []byte
 	daemon           *daemon.Context
-	inDaemon         bool // <- == daemon.WasReborn()
+	InDaemon         bool // <- == daemon.WasReborn()
 	notification     *Notification
 	serverHTTP       *http.Server
 	serverHTTPS      *http.Server
 	serverData       *ServerData
 	Trackers         map[string]*GazelleTracker
 	History          map[string]*History
-	Downloads        *Downloads
 
 	graphsLastUpdated string
 	expectedOutput    bool
@@ -56,7 +55,7 @@ func NewEnvironment() *Environment {
 		WorkDir:     "./",
 		Umask:       0002,
 	}
-	e.config = &Config{}
+	e.Config = &Config{}
 	e.notification = &Notification{}
 	e.serverHTTP = &http.Server{}
 	e.serverHTTPS = &http.Server{}
@@ -65,8 +64,8 @@ func NewEnvironment() *Environment {
 	e.Trackers = make(map[string]*GazelleTracker)
 	e.History = make(map[string]*History)
 	// is only true if we're in the daemon
-	e.inDaemon = false
-	e.configPassphrase = make([]byte, 32)
+	e.InDaemon = false
+	e.ConfigPassphrase = make([]byte, 32)
 	// current command expects output
 	e.expectedOutput = false
 	if !daemon.WasReborn() {
@@ -84,7 +83,7 @@ func NewEnvironment() *Environment {
 
 // Daemonize the process and return true if in child process.
 func (e *Environment) Daemonize(args []string) error {
-	e.inDaemon = false
+	e.InDaemon = false
 	e.daemon.Args = os.Args
 	child, err := e.daemon.Reborn()
 	if err != nil {
@@ -93,10 +92,10 @@ func (e *Environment) Daemonize(args []string) error {
 	if child != nil {
 		logThis.Info("Starting daemon...", NORMAL)
 	} else {
-		logThis.Info("+ varroa musica daemon started ("+version+")", NORMAL)
+		logThis.Info("+ varroa musica daemon started ("+Version+")", NORMAL)
 		// now in the daemon
 		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
-		e.inDaemon = true
+		e.InDaemon = true
 	}
 	return nil
 }
@@ -156,7 +155,7 @@ func (e *Environment) SavePassphraseForDaemon() error {
 	if passphrase == "" {
 		return errors.New(errorPassphraseNotFound)
 	}
-	copy(e.configPassphrase[:], passphrase)
+	copy(e.ConfigPassphrase[:], passphrase)
 	return nil
 }
 
@@ -166,20 +165,20 @@ func (e *Environment) GetPassphrase() error {
 	if err != nil {
 		return err
 	}
-	copy(e.configPassphrase[:], passphrase)
+	copy(e.ConfigPassphrase[:], passphrase)
 	return nil
 }
 
 // LoadConfiguration whether the configuration file is encrypted or not.
 func (e *Environment) LoadConfiguration() error {
 	newConf := &Config{}
-	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
-	if FileExists(encryptedConfigurationFile) && !FileExists(defaultConfigurationFile) {
+	encryptedConfigurationFile := strings.TrimSuffix(DefaultConfigurationFile, yamlExt) + encryptedExt
+	if FileExists(encryptedConfigurationFile) && !FileExists(DefaultConfigurationFile) {
 		// if using encrypted config file, ask for the passphrase and retrieve it from the daemon side
 		if err := e.SavePassphraseForDaemon(); err != nil {
 			return err
 		}
-		configBytes, err := decrypt(encryptedConfigurationFile, e.configPassphrase)
+		configBytes, err := decrypt(encryptedConfigurationFile, e.ConfigPassphrase)
 		if err != nil {
 			return err
 		}
@@ -187,31 +186,27 @@ func (e *Environment) LoadConfiguration() error {
 			return err
 		}
 	} else {
-		if err := newConf.Load(defaultConfigurationFile); err != nil {
+		if err := newConf.Load(DefaultConfigurationFile); err != nil {
 			return err
 		}
 	}
-	e.config = newConf
-	// init downloads configuration
-	if e.config.downloadFolderConfigured {
-		e.Downloads = &Downloads{Root: e.config.General.DownloadDir}
-	}
+	e.Config = newConf
 	// init notifications with pushover
-	if e.config.pushoverConfigured {
-		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
-		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
+	if e.Config.pushoverConfigured {
+		e.notification.client = pushover.New(e.Config.Notifications.Pushover.Token)
+		e.notification.recipient = pushover.NewRecipient(e.Config.Notifications.Pushover.User)
 	}
-	if e.config.statsConfigured {
+	if e.Config.statsConfigured {
 		theme := knownThemes[darkOrange]
-		if e.config.webserverConfigured {
-			theme = knownThemes[e.config.WebServer.Theme]
+		if e.Config.webserverConfigured {
+			theme = knownThemes[e.Config.WebServer.Theme]
 		}
 		e.serverData.theme = theme
-		e.serverData.index = HTMLIndex{Title: strings.ToUpper(varroa), Version: version, CSS: theme.CSS(), Script: indexJS}
+		e.serverData.index = HTMLIndex{Title: strings.ToUpper(FullName), Version: Version, CSS: theme.CSS(), Script: indexJS}
 	}
 	// git
-	if e.config.gitlabPagesConfigured {
-		e.git = NewGit(statsDir, e.config.GitlabPages.User, e.config.GitlabPages.User+"+varroa@musica")
+	if e.Config.gitlabPagesConfigured {
+		e.git = NewGit(StatsDir, e.Config.GitlabPages.User, e.Config.GitlabPages.User+"+varroa@musica")
 	}
 	return nil
 }
@@ -219,14 +214,14 @@ func (e *Environment) LoadConfiguration() error {
 // SetUp the Environment
 func (e *Environment) SetUp(autologin bool) error {
 	// prepare directory for stats if necessary
-	if !DirectoryExists(statsDir) {
-		if err := os.MkdirAll(statsDir, 0777); err != nil {
+	if !DirectoryExists(StatsDir) {
+		if err := os.MkdirAll(StatsDir, 0777); err != nil {
 			return errors.Wrap(err, errorCreatingStatsDir)
 		}
 	}
 	// log in all trackers, assuming labels are unique (configuration was checked)
-	for _, label := range e.config.TrackerLabels() {
-		config, err := e.config.GetTracker(label)
+	for _, label := range e.Config.TrackerLabels() {
+		config, err := e.Config.GetTracker(label)
 		if err != nil {
 			return errors.Wrap(err, "Error getting tracker information")
 		}
@@ -241,7 +236,7 @@ func (e *Environment) SetUp(autologin bool) error {
 		go tracker.apiCallRateLimiter()
 		e.Trackers[label] = tracker
 
-		statsConfig, err := e.config.GetStats(label)
+		statsConfig, err := e.Config.GetStats(label)
 		if err != nil {
 			return errors.Wrap(err, "Error loading stats config for "+label)
 		}
@@ -260,22 +255,22 @@ func (e *Environment) SetUp(autologin bool) error {
 func (e *Environment) Notify(msg, tracker, msgType string) error {
 	notify := func() error {
 		link := ""
-		if e.config.gitlabPagesConfigured {
-			link = e.config.GitlabPages.URL
-		} else if e.config.webserverConfigured && e.config.WebServer.ServeStats && e.config.WebServer.PortHTTPS != 0 {
-			link = "https://" + e.config.WebServer.Hostname + ":" + strconv.Itoa(e.config.WebServer.PortHTTPS)
+		if e.Config.gitlabPagesConfigured {
+			link = e.Config.GitlabPages.URL
+		} else if e.Config.webserverConfigured && e.Config.WebServer.ServeStats && e.Config.WebServer.PortHTTPS != 0 {
+			link = "https://" + e.Config.WebServer.Hostname + ":" + strconv.Itoa(e.Config.WebServer.PortHTTPS)
 		}
 		atLeastOneError := false
-		if e.config.pushoverConfigured {
-			if err := e.notification.Send(tracker+": "+msg, e.config.gitlabPagesConfigured, link); err != nil {
+		if e.Config.pushoverConfigured {
+			if err := e.notification.Send(tracker+": "+msg, e.Config.gitlabPagesConfigured, link); err != nil {
 				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
 				atLeastOneError = true
 			}
 		}
-		if e.config.webhooksConfigured && StringInSlice(tracker, e.config.Notifications.WebHooks.Trackers) {
+		if e.Config.webhooksConfigured && StringInSlice(tracker, e.Config.Notifications.WebHooks.Trackers) {
 			// create json, POST it
 			whJSON := &WebHookJSON{Site: tracker, Message: msg, Link: link, Type: msgType}
-			if err := whJSON.Send(e.config.Notifications.WebHooks.Address, e.config.Notifications.WebHooks.Token); err != nil {
+			if err := whJSON.Send(e.Config.Notifications.WebHooks.Address, e.Config.Notifications.WebHooks.Token); err != nil {
 				logThis.Error(errors.Wrap(err, errorWebhook), VERBOSE)
 				atLeastOneError = true
 			}
@@ -290,7 +285,7 @@ func (e *Environment) Notify(msg, tracker, msgType string) error {
 
 // RunOrGo depending on whether we're in the daemon or not.
 func (e *Environment) RunOrGo(f func() error) error {
-	if e.inDaemon {
+	if e.InDaemon {
 		go f()
 		return nil
 	}
@@ -302,7 +297,7 @@ func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
 	tracker, ok := e.Trackers[label]
 	if !ok {
 		// not found:
-		config, err := e.config.GetTracker(label)
+		config, err := e.Config.GetTracker(label)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting tracker information")
 		}
@@ -320,15 +315,15 @@ func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
 }
 
 func (e *Environment) GenerateIndex() error {
-	if !e.config.statsConfigured {
+	if !e.Config.statsConfigured {
 		return nil
 	}
-	return e.serverData.SaveIndex(e, filepath.Join(statsDir, htmlIndexFile))
+	return e.serverData.SaveIndex(e, filepath.Join(StatsDir, htmlIndexFile))
 }
 
 // DeployToGitlabPages with git wrapper
 func (e *Environment) DeployToGitlabPages() error {
-	if !e.config.gitlabPagesConfigured {
+	if !e.Config.gitlabPagesConfigured {
 		return nil
 	}
 	if e.git == nil {
@@ -343,7 +338,7 @@ func (e *Environment) DeployToGitlabPages() error {
 			return errors.Wrap(err, errorGitInit)
 		}
 		// create .gitlab-ci.yml
-		if err := ioutil.WriteFile(filepath.Join(statsDir, gitlabCIYamlFile), []byte(gitlabCI), 0666); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(StatsDir, gitlabCIYamlFile), []byte(gitlabCI), 0666); err != nil {
 			return err
 		}
 	}
@@ -361,13 +356,32 @@ func (e *Environment) DeployToGitlabPages() error {
 	}
 	// push
 	if !e.git.HasRemote("origin") {
-		if err := e.git.AddRemote("origin", e.config.GitlabPages.GitHTTPS); err != nil {
+		if err := e.git.AddRemote("origin", e.Config.GitlabPages.GitHTTPS); err != nil {
 			return errors.Wrap(err, errorGitAddRemote)
 		}
 	}
-	if err := e.git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
+	if err := e.git.Push("origin", e.Config.GitlabPages.GitHTTPS, e.Config.GitlabPages.User, e.Config.GitlabPages.Password); err != nil {
 		return errors.Wrap(err, errorGitPush)
 	}
-	logThis.Info("Pushed new stats to "+e.config.GitlabPages.URL, NORMAL)
+	logThis.Info("Pushed new stats to "+e.Config.GitlabPages.URL, NORMAL)
 	return nil
+}
+
+func  (e *Environment) GoGoRoutines() {
+	//  tracker-dependent goroutines
+	for _, t := range e.Trackers {
+		if e.Config.autosnatchConfigured {
+			go ircHandler(e, t)
+		}
+	}
+	// general goroutines
+	if e.Config.statsConfigured {
+		go monitorAllStats(e)
+	}
+	if e.Config.webserverConfigured {
+		go webServer(e, e.serverHTTP, e.serverHTTPS)
+	}
+	// background goroutines
+	go awaitOrders(e)
+	go automatedTasks(e)
 }

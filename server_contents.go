@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"html/template"
@@ -125,7 +125,7 @@ type ServerData struct {
 	theme HistoryTheme
 }
 
-func (sc *ServerData) update(e *Environment) {
+func (sc *ServerData) update(e *Environment, downloads *Downloads) {
 	// updating time
 	e.mutex.RLock()
 	sc.index.Time = e.graphsLastUpdated
@@ -133,8 +133,8 @@ func (sc *ServerData) update(e *Environment) {
 	// rebuilding
 	sc.index.CSV = []HTMLLink{}
 	sc.index.Stats = []HTMLStats{}
-	if e.config.webserverMetadata {
-		sc.index.Downloads = *e.Downloads
+	if e.Config.webserverMetadata {
+		sc.index.Downloads = *downloads
 		sc.index.ShowDownloads = true
 	}
 	// gathering data
@@ -190,7 +190,7 @@ func (sc *ServerData) update(e *Environment) {
 
 func (sc *ServerData) Index(e *Environment) ([]byte, error) {
 	// updating
-	sc.update(e)
+	sc.update(e, nil)
 	if err := sc.index.SetMainContentStats(); err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating stats page")
 	}
@@ -208,9 +208,9 @@ func (sc *ServerData) SaveIndex(e *Environment, file string) error {
 	return ioutil.WriteFile(file, data, 0666)
 }
 
-func (sc *ServerData) DownloadsList(e *Environment) ([]byte, error) {
+func (sc *ServerData) DownloadsList(e *Environment, downloads Downloads) ([]byte, error) {
 	// updating
-	sc.update(e)
+	sc.update(e, &downloads)
 	// getting downloads
 	if err := sc.index.SetMainContentDownloadsList(); err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating downloads list page")
@@ -219,9 +219,9 @@ func (sc *ServerData) DownloadsList(e *Environment) ([]byte, error) {
 	return sc.index.MainPage()
 }
 
-func (sc *ServerData) DownloadsInfo(e *Environment, id string) ([]byte, error) {
+func (sc *ServerData) DownloadsInfo(e *Environment, downloads Downloads, id string) ([]byte, error) {
 	// updating
-	sc.update(e)
+	sc.update(e, &downloads)
 
 	// display individual download metadata
 	downloadID, err := strconv.ParseUint(id, 10, 64)
@@ -229,7 +229,7 @@ func (sc *ServerData) DownloadsInfo(e *Environment, id string) ([]byte, error) {
 		return []byte{}, errors.New("Error parsing download ID")
 	}
 	// find Download
-	dl, err := e.Downloads.FindByID(downloadID)
+	dl, err := sc.index.Downloads.FindByID(downloadID)
 	if err != nil {
 		return []byte{}, errors.New("Error finding download ID " + id + " in db.")
 	}

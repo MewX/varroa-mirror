@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"os"
@@ -38,7 +38,7 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 	return nil
 }
 
-func mount(path, mountpoint string) error {
+func FuseMount(path, mountpoint string) error {
 	// TODO checks
 
 	// loading database

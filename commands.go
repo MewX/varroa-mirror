@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"encoding/json"
@@ -19,20 +19,19 @@ import (
 )
 
 const (
-	varroaSocket               = "varroa.sock"
+	daemonSocket               = "varroa.sock"
 	archivesDir                = "archives"
 	archiveNameTemplate        = "varroa_%s.zip"
-	defaultConfigurationFile   = "config.yaml"
 	unixSocketMessageSeparator = "↑" // because it looks nice
 )
 
-func sendOrders(cli *varroaArguments) error {
-	conn, err := net.Dial("unix", varroaSocket)
+func SendOrders(command []byte) error {
+	conn, err := net.Dial("unix", daemonSocket)
 	if err != nil {
 		return errors.Wrap(err, errorDialingSocket)
 	}
 	// sending command
-	if _, err = conn.Write(cli.commandToDaemon()); err != nil {
+	if _, err = conn.Write(command); err != nil {
 		return errors.Wrap(err, errorWritingToSocket)
 	}
 Loop:
@@ -62,7 +61,7 @@ Loop:
 }
 
 func awaitOrders(e *Environment) {
-	conn, err := net.Listen("unix", varroaSocket)
+	conn, err := net.Listen("unix", daemonSocket)
 	if err != nil {
 		logThis.Error(errors.Wrap(err, errorCreatingSocket), NORMAL)
 		return
@@ -121,27 +120,27 @@ func awaitOrders(e *Environment) {
 		stopEverything := false
 		switch orders.Command {
 		case "stats":
-			if err := generateStats(e); err != nil {
-				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+			if err := GenerateStats(e); err != nil {
+				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
 			}
 		case "stop":
 			logThis.Info("Stopping daemon...", NORMAL)
 			stopEverything = true
 		case "refresh-metadata":
-			if err := refreshMetadata(e, tracker, orders.Args); err != nil {
-				logThis.Error(errors.Wrap(err, errorRefreshingMetadata), NORMAL)
+			if err := RefreshMetadata(e, tracker, orders.Args); err != nil {
+				logThis.Error(errors.Wrap(err, ErrorRefreshingMetadata), NORMAL)
 			}
 		case "snatch":
-			if err := snatchTorrents(e, tracker, orders.Args, orders.FLToken); err != nil {
-				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
+			if err := SnatchTorrents(e, tracker, orders.Args, orders.FLToken); err != nil {
+				logThis.Error(errors.Wrap(err, ErrorSnatchingTorrent), NORMAL)
 			}
 		case "info":
-			if err := showTorrentInfo(e, tracker, orders.Args); err != nil {
-				logThis.Error(errors.Wrap(err, errorShowingTorrentInfo), NORMAL)
+			if err := ShowTorrentInfo(e, tracker, orders.Args); err != nil {
+				logThis.Error(errors.Wrap(err, ErrorShowingTorrentInfo), NORMAL)
 			}
 		case "check-log":
-			if err := checkLog(tracker, orders.Args); err != nil {
-				logThis.Error(errors.Wrap(err, errorCheckingLog), NORMAL)
+			if err := CheckLog(tracker, orders.Args); err != nil {
+				logThis.Error(errors.Wrap(err, ErrorCheckingLog), NORMAL)
 			}
 		}
 		e.sendBackToCLI <- "stop"
@@ -156,12 +155,12 @@ func awaitOrders(e *Environment) {
 	}
 }
 
-func generateStats(e *Environment) error {
+func GenerateStats(e *Environment) error {
 	atLeastOneError := false
 	for t, h := range e.History {
 		logThis.Info("Generating stats for "+t, VERBOSE)
 		if err := h.GenerateGraphs(e); err != nil {
-			logThis.Error(errors.Wrap(err, errorGeneratingGraphs), VERBOSE)
+			logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), VERBOSE)
 			atLeastOneError = true
 		}
 	}
@@ -170,12 +169,12 @@ func generateStats(e *Environment) error {
 		logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
 	}
 	if atLeastOneError {
-		return errors.New(errorGeneratingGraphs)
+		return errors.New(ErrorGeneratingGraphs)
 	}
 	return nil
 }
 
-func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
+func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
@@ -191,10 +190,10 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
 			}
-			if e.inDaemon {
-				go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+			if e.InDaemon {
+				go r.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
 			} else {
-				r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+				r.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
 			}
 		}
 	}
@@ -207,7 +206,7 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 			}
 		}
 		// try to find even if not in history
-		if e.config.downloadFolderConfigured {
+		if e.Config.DownloadFolderConfigured {
 			for _, m := range missing {
 				// get data from tracker.
 				info, err := tracker.GetTorrentInfo(m)
@@ -215,13 +214,13 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 					logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 					break
 				}
-				fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
+				fullFolder := filepath.Join(e.Config.General.DownloadDir, html.UnescapeString(info.folder))
 				if DirectoryExists(fullFolder) {
 					r := info.Release()
-					if e.inDaemon {
-						go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+					if e.InDaemon {
+						go r.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
 					} else {
-						r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+						r.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
 					}
 				} else {
 					logThis.Info(fmt.Sprintf(errorCannotFindID, m), NORMAL)
@@ -234,7 +233,7 @@ func refreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 	return nil
 }
 
-func snatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string, useFLToken bool) error {
+func SnatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string, useFLToken bool) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
@@ -249,7 +248,7 @@ func snatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string,
 	return nil
 }
 
-func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
+func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
@@ -276,8 +275,8 @@ func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 		}
 
 		// checking the files are still there (if snatched with or without varroa)
-		if e.config.downloadFolderConfigured {
-			releaseFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
+		if e.Config.DownloadFolderConfigured {
+			releaseFolder := filepath.Join(e.Config.General.DownloadDir, html.UnescapeString(info.folder))
 			if DirectoryExists(releaseFolder) {
 				logThis.Info(fmt.Sprintf("Files seem to still be in the download directory: %s", releaseFolder), NORMAL)
 				// TODO maybe display when the metadata was last updated?
@@ -287,12 +286,12 @@ func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 		}
 
 		// check and print if info/release triggers filters
-		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
+		autosnatchConfig, err := e.Config.GetAutosnatch(tracker.Name)
 		if err != nil {
 			logThis.Info("Cannot find autosnatch configuration for tracker "+tracker.Name, NORMAL)
 		} else {
 			logThis.Info("+ Showing autosnatch filters results for this release:\n", NORMAL)
-			for _, filter := range e.config.Filters {
+			for _, filter := range e.Config.Filters {
 				// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
 				if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
 					logThis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), NORMAL)
@@ -318,7 +317,7 @@ func showTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 	return nil
 }
 
-func checkLog(tracker *GazelleTracker, logPaths []string) error {
+func CheckLog(tracker *GazelleTracker, logPaths []string) error {
 	for _, log := range logPaths {
 		score, err := tracker.GetLogScore(log)
 		if err != nil {
@@ -329,7 +328,7 @@ func checkLog(tracker *GazelleTracker, logPaths []string) error {
 	return nil
 }
 
-func archiveUserFiles() error {
+func ArchiveUserFiles() error {
 	// generate Timestamp
 	timestamp := time.Now().Format("2006-01-02_15h04m05s")
 	archiveName := fmt.Sprintf(archiveNameTemplate, timestamp)
@@ -341,24 +340,24 @@ func archiveUserFiles() error {
 	}
 
 	// find all .csv + .db files, save them along with the configuration file
-	f, err := os.Open(statsDir)
+	f, err := os.Open(StatsDir)
 	if err != nil {
-		return errors.Wrap(err, "Error opening "+statsDir)
+		return errors.Wrap(err, "Error opening "+StatsDir)
 	}
 	contents, err := f.Readdirnames(-1)
 	f.Close()
 
 	backupFiles := []string{}
-	if FileExists(defaultConfigurationFile) {
-		backupFiles = append(backupFiles, defaultConfigurationFile)
+	if FileExists(DefaultConfigurationFile) {
+		backupFiles = append(backupFiles, DefaultConfigurationFile)
 	}
-	encryptedConfigurationFile := strings.TrimSuffix(defaultConfigurationFile, yamlExt) + encryptedExt
+	encryptedConfigurationFile := strings.TrimSuffix(DefaultConfigurationFile, yamlExt) + encryptedExt
 	if FileExists(encryptedConfigurationFile) {
 		backupFiles = append(backupFiles, encryptedConfigurationFile)
 	}
 	for _, c := range contents {
 		if filepath.Ext(c) == msgpackExt || filepath.Ext(c) == csvExt {
-			backupFiles = append(backupFiles, filepath.Join(statsDir, c))
+			backupFiles = append(backupFiles, filepath.Join(StatsDir, c))
 		}
 	}
 
@@ -415,10 +414,10 @@ func checkQuota(e *Environment) error {
 	// send warning if this is worrying
 	if pc >= 98 {
 		logThis.Info(veryLowDiskSpace, NORMAL)
-		e.Notify(veryLowDiskSpace, varroa, "info")
+		e.Notify(veryLowDiskSpace, FullName, "info")
 	} else if pc >= 95 {
 		logThis.Info(lowDiskSpace, NORMAL)
-		e.Notify(lowDiskSpace, varroa, "info")
+		e.Notify(lowDiskSpace, FullName, "info")
 	}
 	return nil
 }
@@ -428,9 +427,9 @@ func automatedTasks(e *Environment) {
 	s := gocron.NewScheduler()
 
 	// 1. every day, backup user files
-	s.Every(1).Day().At("00:00").Do(archiveUserFiles)
+	s.Every(1).Day().At("00:00").Do(ArchiveUserFiles)
 	// 2. a little later, also compress the git repository if gitlab pages are configured
-	if e.config.gitlabPagesConfigured {
+	if e.Config.gitlabPagesConfigured {
 		s.Every(1).Day().At("00:05").Do(e.git.Compress)
 	}
 	// 3. checking quota is available

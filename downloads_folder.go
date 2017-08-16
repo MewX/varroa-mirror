@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ const (
 	stateRejected                      // has metadata and is not to be exported to library
 )
 
-var downloadFolderStates = []string{"unsorted", "accepted", "exported", "rejected"}
+var DownloadFolderStates = []string{"unsorted", "accepted", "exported", "rejected"}
 
 type DownloadState int
 
@@ -51,6 +51,11 @@ func (ds DownloadState) Get(txt string) DownloadState {
 	return -1
 }
 
+func IsValidDownloadState(txt string) bool {
+	return DownloadState(-1).Get(txt) != -1
+
+}
+
 //-----------------------
 
 type DownloadFolder struct {
@@ -70,11 +75,11 @@ type DownloadFolder struct {
 }
 
 func (d *DownloadFolder) ShortState() string {
-	return downloadFolderStates[d.State][:1]
+	return DownloadFolderStates[d.State][:1]
 }
 
 func (d *DownloadFolder) RawShortString() string {
-	return fmt.Sprintf("[#%d]\t[%s]\t%s", d.Index, downloadFolderStates[d.State][:1], d.Path)
+	return fmt.Sprintf("[#%d]\t[%s]\t%s", d.Index, DownloadFolderStates[d.State][:1], d.Path)
 }
 
 func (d *DownloadFolder) ShortString() string {
@@ -82,7 +87,7 @@ func (d *DownloadFolder) ShortString() string {
 }
 
 func (d *DownloadFolder) String() string {
-	return d.State.Colorize(fmt.Sprintf("ID #%d: %s [%s]", d.Index, d.Path, downloadFolderStates[d.State]))
+	return d.State.Colorize(fmt.Sprintf("ID #%d: %s [%s]", d.Index, d.Path, DownloadFolderStates[d.State]))
 }
 
 func (d *DownloadFolder) Description() string {
@@ -205,10 +210,10 @@ func (d *DownloadFolder) Sort(e *Environment) error {
 	}
 	fmt.Println("Sorting " + d.Path)
 	// if mpd configured, allow playing the release...
-	if e.config.MPD != nil && Accept("Load release into MPD") {
+	if e.Config.MPD != nil && Accept("Load release into MPD") {
 		fmt.Println("Sending to MPD.")
 		mpdClient := MPD{}
-		if err := mpdClient.Connect(e.config.MPD); err == nil {
+		if err := mpdClient.Connect(e.Config.MPD); err == nil {
 			defer mpdClient.DisableAndDisconnect(d.Root, d.Path)
 			if err := mpdClient.SendAndPlay(d.Root, d.Path); err != nil {
 				fmt.Println(RedBold("Error sending to MPD: " + err.Error()))
@@ -223,7 +228,7 @@ func (d *DownloadFolder) Sort(e *Environment) error {
 				logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
 				continue
 			}
-			if err := refreshMetadata(e, tracker, []string{strconv.Itoa(d.ID[t])}); err != nil {
+			if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.ID[t])}); err != nil {
 				logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
 				continue
 			}
@@ -264,7 +269,7 @@ func (d *DownloadFolder) Sort(e *Environment) error {
 			fmt.Println(Green("This can be reverted by sorting its specific download ID."))
 			d.State = stateAccepted
 			if Accept("Do you want to export it now ") {
-				if err := d.export(e.config); err != nil {
+				if err := d.export(e.Config); err != nil {
 					return err
 				}
 			} else {
@@ -371,7 +376,9 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 		idElements = append(idElements, editionName)
 	}
 	// adding catalog number, or if not specified, the record label
-	if gt.Response.Group.CatalogueNumber != "" {
+	if gt.Response.Torrent.RemasterCatalogueNumber != "" {
+		idElements = append(idElements, gt.Response.Torrent.RemasterCatalogueNumber)
+	} else if gt.Response.Group.CatalogueNumber != "" {
 		idElements = append(idElements, gt.Response.Group.CatalogueNumber)
 	} else {
 		if gt.Response.Torrent.RemasterRecordLabel != "" {
@@ -379,6 +386,7 @@ func (d *DownloadFolder) generatePath(tracker, folderTemplate string) string {
 		} else if gt.Response.Group.RecordLabel != "" {
 			idElements = append(idElements, gt.Response.Group.RecordLabel)
 		}
+		// TODO else unkown release!
 	}
 	if gt.Response.Group.ReleaseType != 1 {
 		// adding release type if not album
