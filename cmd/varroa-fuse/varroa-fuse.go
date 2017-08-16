@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/pkg/errors"
@@ -23,12 +24,12 @@ func main() {
 		return
 	}
 
-	logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-	logThis.Info("To quit cleanly, run 'fusermount -u "+cli.mountPoint+"'", varroa.NORMAL)
+	fmt.Println(varroa.Green("Mounting FUSE filesystem in " + cli.mountPoint))
+	fmt.Println(varroa.Green("To quit cleanly, run 'fusermount -u " + cli.mountPoint + "'"))
 	if err := varroa.FuseMount(cli.targetDirectory, cli.mountPoint); err != nil {
 		logThis.Error(err, varroa.NORMAL)
 		return
 	}
-	logThis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", varroa.VERBOSE)
+	fmt.Println(varroa.Green("Unmounting FUSE filesystem, fusermount -u has presumably been called."))
 	return
 }

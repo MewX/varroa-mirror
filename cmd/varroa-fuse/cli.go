@@ -23,6 +23,8 @@ Description:
 	(JSONs saved by varroa musica).
 	It does not require a configuration file.
 
+	To unmount, run 'fusermount -u <MOUNT_POINT>'.
+
 Usage:
 	varroa-fuse <MUSIC_DIRECTORY> <MOUNT_POINT>
 	varroa-fuse --version

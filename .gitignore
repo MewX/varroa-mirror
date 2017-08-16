@@ -10,6 +10,7 @@ config*.yaml
 *.pem
 *.enc
 *.png
+*.db
 log
 TODO
 node_modules
