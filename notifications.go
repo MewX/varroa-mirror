@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"bytes"
@@ -20,9 +20,9 @@ func (n *Notification) Send(message string, addLink bool, link string) error {
 	}
 	var pushoverMessage *pushover.Message
 	if addLink {
-		pushoverMessage = &pushover.Message{Message: message, Title: varroa, URL: link, URLTitle: "Graphs"}
+		pushoverMessage = &pushover.Message{Message: message, Title: FullName, URL: link, URLTitle: "Graphs"}
 	} else {
-		pushoverMessage = pushover.NewMessageWithTitle(message, varroa)
+		pushoverMessage = pushover.NewMessageWithTitle(message, FullName)
 	}
 	_, err := n.client.SendMessage(pushoverMessage, n.recipient)
 	return err

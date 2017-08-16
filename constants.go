@@ -1,14 +1,15 @@
-package main
+package varroa
 
 const (
-	varroa        = "varroa musica"
-	version       = "v18"
-	varroaVersion = "%s -- %s."
+	FullName        = "varroa musica"
+	Version       = "v18"
+	FullVersion = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
 
 	// directories & files
-	statsDir                  = "stats"
+	DefaultConfigurationFile  = "config.yaml"
+	StatsDir                  = "stats"
 	metadataDir               = "TrackerMetadata"
 	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
@@ -34,7 +35,7 @@ const (
 	htmlIndexFile             = "index.html"
 	historyFile               = "history"
 	statsFile                 = "stats"
-	downloadsDBFile           = "downloads"
+	DownloadsDBFile           = "downloads"
 	defaultFolderTemplate     = "$a ($y) $t {$id} [$f $s]"
 
 	// Notable ratios
@@ -54,10 +55,10 @@ const (
 	flacExt      = ".flac"
 
 	// information
-	infoUserFilesArchived         = "User files backed up."
-	infoUsage                     = "Before running a command that requires the daemon, run 'varroa start'."
-	infoEncrypted                 = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
-	infoDecrypted                 = "Configuration file has been decrypted to a plaintext YAML file."
+	InfoUserFilesArchived         = "User files backed up."
+	InfoUsage                     = "Before running a command that requires the daemon, run 'varroa start'."
+	InfoEncrypted                 = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
+	InfoDecrypted                 = "Configuration file has been decrypted to a plaintext YAML file."
 	infoNotInteresting            = "No filter is interested in release: %s. Ignoring."
 	infoNotMusic                  = "Not a music release, ignoring."
 	infoNotSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
@@ -75,15 +76,15 @@ const (
 	webServersUp                  = "Web server(s) started."
 
 	// cli errors
-	errorArguments        = "Error parsing command line arguments"
-	errorInfoBadArguments = "Bad arguments"
+	ErrorArguments        = "Error parsing command line arguments"
+	ErrorInfoBadArguments = "Bad arguments"
 	// daemon errors
 	errorServingSignals         = "Error serving signals"
-	errorFindingDaemon          = "Error finding daemon"
+	ErrorFindingDaemon          = "Error finding daemon"
 	errorReleasingDaemon        = "Error releasing daemon"
 	errorSendingSignal          = "Error sending signal to the daemon"
-	errorGettingDaemonContext   = "Error launching daemon"
-	errorSendingCommandToDaemon = "Error sending command to daemon"
+	ErrorGettingDaemonContext   = "Error launching daemon"
+	ErrorSendingCommandToDaemon = "Error sending command to daemon"
 	errorRemovingPID            = "Error removing pid file"
 	// unix socket errors
 	errorDialingSocket     = "Error dialing to unix socket"
@@ -91,22 +92,22 @@ const (
 	errorReadingFromSocket = "Error reading from unix socket"
 	errorCreatingSocket    = "Error creating unix socket"
 	// command check-log errors
-	errorCheckingLog     = "Error checking log"
+	ErrorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"
 	// command snatch errors
-	errorSnatchingTorrent = "Error snatching torrent"
+	ErrorSnatchingTorrent = "Error snatching torrent"
 	// command info errors
-	errorShowingTorrentInfo = "Error displaying torrent info"
+	ErrorShowingTorrentInfo = "Error displaying torrent info"
 	// command refresh-metadata errors
-	errorRefreshingMetadata = "Error refreshing metadata"
+	ErrorRefreshingMetadata = "Error refreshing metadata"
 	errorCannotFindID       = "Error with ID#%s, not found in history or in downloads directory."
 	// command backup errors
 	errorArchiving = "Error while archiving user files"
 	// set up errors
 	errorCreatingStatsDir          = "Error creating stats directory"
 	errorCreatingDownloadsCleanDir = "Error creating directory for useless folders in downloads directory"
-	errorSettingUp                 = "Error setting up"
-	errorLoadingConfig             = "Error loading configuration"
+	ErrorSettingUp                 = "Error setting up"
+	ErrorLoadingConfig             = "Error loading configuration"
 	errorReadingConfig             = "Error reading configuration file"
 	errorLoadingYAML               = "YAML file cannot be parsed, check if it is correctly formatted and has all the required parts"
 	errorGettingPassphrase         = "Error getting passphrase"
@@ -178,7 +179,7 @@ const (
 	// stats errors
 	errorGettingStats          = "Error getting stats"
 	errorWritingCSV            = "Error writing stats to CSV file"
-	errorGeneratingGraphs      = "Error generating graphs (may require more data)"
+	ErrorGeneratingGraphs      = "Error generating graphs (may require more data)"
 	errorGeneratingDailyGraphs = "Error generating daily graphs (at least 24h worth of data required): "
 	errorNotEnoughDataPoints   = "Not enough data points (yet) to generate graph"
 	errorBufferDrop            = "Buffer drop too important, stopping autosnatching. Restart to start again."

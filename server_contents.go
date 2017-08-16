@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"html/template"
@@ -133,7 +133,7 @@ func (sc *ServerData) update(e *Environment) {
 	// rebuilding
 	sc.index.CSV = []HTMLLink{}
 	sc.index.Stats = []HTMLStats{}
-	if e.config.webserverMetadata {
+	if e.Config.webserverMetadata {
 		sc.index.Downloads = *e.Downloads
 		sc.index.ShowDownloads = true
 	}

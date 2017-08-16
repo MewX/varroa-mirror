@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ func TestHTMLIndex(t *testing.T) {
 
 	// setup logger
 	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{config: c}
+	env := &Environment{Config: c}
 	logThis = LogThis{env: env}
 
 	// setting up

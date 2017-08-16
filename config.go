@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ type ConfigGeneral struct {
 
 func (cg *ConfigGeneral) Check() error {
 	if cg.LogLevel < NORMAL || cg.LogLevel > VERBOSEST {
-		return errors.New("Invalid log level")
+		return errors.New("Invalid log level: " + strconv.Itoa(cg.LogLevel))
 	}
 	if cg.DownloadDir != "" && !DirectoryExists(cg.DownloadDir) {
 		return errors.New("Downloads directory does not exist")
@@ -559,8 +559,8 @@ type Config struct {
 	gitlabPagesConfigured    bool
 	pushoverConfigured       bool
 	webhooksConfigured       bool
-	downloadFolderConfigured bool
-	libraryConfigured        bool
+	DownloadFolderConfigured bool
+	LibraryConfigured        bool
 	mpdConfigured            bool
 }
 
@@ -686,12 +686,12 @@ func (c *Config) Check() error {
 	c.gitlabPagesConfigured = c.GitlabPages != nil
 	c.pushoverConfigured = c.Notifications != nil && c.Notifications.Pushover != nil
 	c.webhooksConfigured = c.Notifications != nil && c.Notifications.WebHooks != nil
-	c.downloadFolderConfigured = c.General.DownloadDir != ""
+	c.DownloadFolderConfigured = c.General.DownloadDir != ""
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
-	c.libraryConfigured = c.Library != nil
+	c.LibraryConfigured = c.Library != nil
 	c.mpdConfigured = c.MPD != nil
-	c.webserverMetadata = c.downloadFolderConfigured && c.webserverConfigured && c.WebServer.ServeMetadata
+	c.webserverMetadata = c.DownloadFolderConfigured && c.webserverConfigured && c.WebServer.ServeMetadata
 
 	// config-wide checks
 	configuredTrackers := c.TrackerLabels()
@@ -744,16 +744,16 @@ func (c *Config) Check() error {
 	if len(c.Filters) != 0 && !c.autosnatchConfigured {
 		return errors.New("Filters defined but no autosnatch configuration found")
 	}
-	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.downloadFolderConfigured {
+	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.DownloadFolderConfigured {
 		return errors.New("Webserver configured to serve metadata, but download folder not configured")
 	}
 	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.General.AutomaticMetadataRetrieval {
 		return errors.New("Webserver configured to serve metadata, but metadata automatic download not configured")
 	}
-	if c.libraryConfigured && !c.downloadFolderConfigured {
+	if c.LibraryConfigured && !c.DownloadFolderConfigured {
 		return errors.New("Library is configured but not the default download directory")
 	}
-	if c.mpdConfigured && !c.downloadFolderConfigured {
+	if c.mpdConfigured && !c.DownloadFolderConfigured {
 		return errors.New("To use the MPD server, a valid download directory must be provided")
 	}
 

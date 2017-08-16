@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func TestCrypto(t *testing.T) {
 	passphrase = make([]byte, 32)
 	copy(passphrase[:], "passphrase")
 
-	check.Nil(env.config.Load(testYAML))
+	check.Nil(env.Config.Load(testYAML))
 
 	// 1. encrypt
 

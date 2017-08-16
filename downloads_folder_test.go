@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ func TestDLPath(t *testing.T) {
 	check := assert.New(t)
 	// setup logger
 	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{config: c}
+	env := &Environment{Config: c}
 	logThis = LogThis{env: env}
 
 	// test API JSON responses

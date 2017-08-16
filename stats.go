@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"reflect"
@@ -35,7 +35,7 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, statsConfi
 			e.Notify(tracker.Name+": "+errorBufferDrop, tracker.Name, "error")
 		}
 		// stopping things
-		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
+		autosnatchConfig, err := e.Config.GetAutosnatch(tracker.Name)
 		if err != nil {
 			logThis.Error(errors.Wrap(err, "Cannot find autosnatch configuration for tracker "+tracker.Name), NORMAL)
 		} else {
@@ -53,7 +53,7 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, statsConfi
 }
 
 func updateStats(e *Environment, label string) error {
-	statsConfig, err := e.config.GetStats(label)
+	statsConfig, err := e.Config.GetStats(label)
 	if err != nil {
 		return errors.Wrap(err, "Error loading stats config for "+label)
 	}
@@ -69,16 +69,16 @@ func updateStats(e *Environment, label string) error {
 }
 
 func monitorAllStats(e *Environment) {
-	if !e.config.statsConfigured {
+	if !e.Config.statsConfigured {
 		return
 	}
 	// track all different periods
 	tickers := map[int][]string{}
 	for label, t := range e.Trackers {
-		if statsConfig, err := e.config.GetStats(t.Name); err == nil {
+		if statsConfig, err := e.Config.GetStats(t.Name); err == nil {
 			// initial stats
 			if err := updateStats(e, label); err != nil {
-				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
 			}
 			// get update period
 			tickers[statsConfig.UpdatePeriodH] = append(tickers[statsConfig.UpdatePeriodH], label)
@@ -115,7 +115,7 @@ func monitorAllStats(e *Environment) {
 		// TODO checks
 		for _, trackerLabel := range tickers[tickerPeriods[triggered]] {
 			if err := updateStats(e, trackerLabel); err != nil {
-				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
 			}
 		}
 		// generate index.html

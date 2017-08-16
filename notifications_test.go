@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"encoding/json"
