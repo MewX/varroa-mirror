@@ -62,7 +62,7 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	release.TorrentFile = norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
 
 	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
-	if err := tracker.DownloadTorrent(release, e.config.General.WatchDir); err != nil {
+	if err := tracker.DownloadTorrent(release.torrentURL, release.TorrentFile, e.config.General.WatchDir); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err
 	}

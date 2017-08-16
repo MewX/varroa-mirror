@@ -8,7 +8,7 @@ import (
 )
 
 func manageStats(e *Environment, h *History, tracker *GazelleTracker, statsConfig *ConfigStats) error {
-	stats, err := tracker.GetStats(statsConfig)
+	stats, err := tracker.GetStats(statsConfig.TargetRatio)
 	if err != nil {
 		return errors.Wrap(err, errorGettingStats)
 	}

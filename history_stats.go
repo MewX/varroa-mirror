@@ -49,7 +49,7 @@ func (t *TrackerStatsHistory) Load(statsFile string, statsConfig *ConfigStats) e
 	// load stats to in-memory slice
 	for i, stats := range trackerStats {
 		r := &TrackerStats{}
-		if err := r.FromSlice(stats, statsConfig); err != nil {
+		if err := r.FromSlice(stats, statsConfig.TargetRatio); err != nil {
 			logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
 		} else {
 			t.TrackerStats = append(t.TrackerStats, r)

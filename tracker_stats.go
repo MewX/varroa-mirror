@@ -81,7 +81,7 @@ func (s *TrackerStats) ToSlice() []string {
 	return []string{fmt.Sprintf("%d", s.Timestamp), strconv.FormatUint(s.Up, 10), strconv.FormatUint(s.Down, 10), strconv.FormatFloat(s.Ratio, 'f', -1, 64)}
 }
 
-func (s *TrackerStats) FromSlice(slice []string, config *ConfigStats) error {
+func (s *TrackerStats) FromSlice(slice []string, targetRatio float64) error {
 	// timestamp, up, down, ratio
 	if len(slice) < 4 {
 		return errors.New("Incorrect entry, cannot load stats")
@@ -107,7 +107,7 @@ func (s *TrackerStats) FromSlice(slice []string, config *ConfigStats) error {
 	}
 	s.Ratio = ratio
 	// recalculate buffer/warningbuffer
-	s.Buffer = int64(float64(s.Up)/config.TargetRatio) - int64(s.Down)
+	s.Buffer = int64(float64(s.Up)/targetRatio) - int64(s.Down)
 	s.WarningBuffer = int64(float64(s.Up)/warningRatio) - int64(s.Down)
 	return nil
 }

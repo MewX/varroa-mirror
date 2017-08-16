@@ -73,7 +73,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					if filter.WatchDir != "" {
 						destination = filter.WatchDir
 					}
-					if err := tracker.DownloadTorrent(release, destination); err != nil {
+					if err := tracker.DownloadTorrent(release.torrentURL, release.TorrentFile, destination); err != nil {
 						return nil, errors.Wrap(err, errorDownloadingTorrent)
 					}
 					downloadedTorrent = true
