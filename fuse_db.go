@@ -13,15 +13,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+// FuseEntry is the struct describing a release folder with tracker metadata.
+// Only the FolderName is indexed.
 type FuseEntry struct {
-	ID          int      `storm:"id,increment"`
-	FolderName  string   `storm:"unique"`
-	Artists     []string // `storm:"index"`
-	Tags        []string // `storm:"index"`
-	Title       string   // `storm:"index"`
-	Year        int      // `storm:"index"`
-	Tracker     []string // `storm:"index"`
-	RecordLabel string   // `storm:"index"`
+	ID          int    `storm:"id,increment"`
+	FolderName  string `storm:"unique"`
+	Artists     []string
+	Tags        []string
+	Title       string
+	Year        int
+	Tracker     []string
+	RecordLabel string
 }
 
 func (fe *FuseEntry) reset() {
@@ -111,8 +113,6 @@ type FuseDB struct {
 }
 
 func (fdb *FuseDB) Open() error {
-	// TODO check fdb.Path exists
-
 	var err error
 	fdb.DB, err = storm.Open(fdb.Path, storm.Codec(msgpack.Codec))
 	if err != nil {
@@ -171,14 +171,14 @@ func (fdb *FuseDB) Scan(path string) error {
 					fuseEntry.FolderName = entry.Name()
 					// read information from metadata
 					if err := fuseEntry.Load(fdb.Root); err != nil {
-						logThis.Error(errors.Wrap(err,"Error: could not load metadata for "+entry.Name()), VERBOSEST)
+						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+entry.Name()), VERBOSEST)
 						continue
 					}
 					if err := fdb.DB.Save(&fuseEntry); err != nil {
 						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
 						continue
 					}
-					logThis.Info("New FuseDB entry: " + entry.Name(), VERBOSESTEST)
+					logThis.Info("New FuseDB entry: "+entry.Name(), VERBOSESTEST)
 				} else {
 					logThis.Error(err, VERBOSEST)
 					continue
@@ -195,7 +195,7 @@ func (fdb *FuseDB) Scan(path string) error {
 					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
 					continue
 				}
-				logThis.Info("Updated FuseDB entry: " + entry.Name(), VERBOSESTEST)
+				logThis.Info("Updated FuseDB entry: "+entry.Name(), VERBOSESTEST)
 			}
 			currentFolderNames = append(currentFolderNames, entry.Name())
 		}
@@ -207,7 +207,7 @@ func (fdb *FuseDB) Scan(path string) error {
 			if err := fdb.DB.DeleteStruct(&p); err != nil {
 				logThis.Error(err, VERBOSEST)
 			}
-			logThis.Info("Removed FuseDB entry: " + p.FolderName, VERBOSESTEST)
+			logThis.Info("Removed FuseDB entry: "+p.FolderName, VERBOSESTEST)
 		}
 	}
 

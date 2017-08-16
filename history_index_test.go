@@ -15,8 +15,8 @@ func TestHTMLIndex(t *testing.T) {
 
 	// setup logger
 	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{Config: c}
-	logThis = LogThis{env: env}
+	env := &Environment{config: c}
+	logThis = NewLogThis(env)
 
 	// setting up
 	expectedFile := "test/test_index.html"

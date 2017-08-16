@@ -35,7 +35,7 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, statsConfi
 			e.Notify(tracker.Name+": "+errorBufferDrop, tracker.Name, "error")
 		}
 		// stopping things
-		autosnatchConfig, err := e.Config.GetAutosnatch(tracker.Name)
+		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
 		if err != nil {
 			logThis.Error(errors.Wrap(err, "Cannot find autosnatch configuration for tracker "+tracker.Name), NORMAL)
 		} else {
@@ -53,7 +53,7 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, statsConfi
 }
 
 func updateStats(e *Environment, label string) error {
-	statsConfig, err := e.Config.GetStats(label)
+	statsConfig, err := e.config.GetStats(label)
 	if err != nil {
 		return errors.Wrap(err, "Error loading stats config for "+label)
 	}
@@ -69,13 +69,13 @@ func updateStats(e *Environment, label string) error {
 }
 
 func monitorAllStats(e *Environment) {
-	if !e.Config.statsConfigured {
+	if !e.config.statsConfigured {
 		return
 	}
 	// track all different periods
 	tickers := map[int][]string{}
 	for label, t := range e.Trackers {
-		if statsConfig, err := e.Config.GetStats(t.Name); err == nil {
+		if statsConfig, err := e.config.GetStats(t.Name); err == nil {
 			// initial stats
 			if err := updateStats(e, label); err != nil {
 				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)

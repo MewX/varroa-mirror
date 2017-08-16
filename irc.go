@@ -38,7 +38,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 		var downloadedInfo bool
 		var downloadedTorrent bool
 		var info *TrackerTorrentInfo
-		for _, filter := range e.Config.Filters {
+		for _, filter := range e.config.Filters {
 			// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
 			if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
 				logThis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), VERBOSE)
@@ -69,7 +69,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					}
 					logThis.Info(" -> "+release.ShortString()+" triggered filter "+filter.Name+", snatching.", NORMAL)
 					// move to relevant watch directory
-					destination := e.Config.General.WatchDir
+					destination := e.config.General.WatchDir
 					if filter.WatchDir != "" {
 						destination = filter.WatchDir
 					}
@@ -84,8 +84,8 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					// send notification
 					e.Notify(filter.Name+": Snatched "+release.ShortString(), tracker.Name, "info")
 					// save metadata once the download folder is created
-					if e.Config.General.AutomaticMetadataRetrieval {
-						go release.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
+					if e.config.General.AutomaticMetadataRetrieval {
+						go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 					}
 					// no need to consider other filters
 					break
@@ -107,7 +107,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 	// general replacer to remove color codes and other useless things from announces.
 	r := strings.NewReplacer("\x02TORRENT:\x02 ", "", "\x0303", "", "\x0304", "", "\x0310", "", "\x0312", "", "\x03", "")
 
-	autosnatchConfig, err := e.Config.GetAutosnatch(tracker.Name)
+	autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
 	if err != nil {
 		logThis.Info("Cannot find autosnatch configuration for tracker "+tracker.Name, NORMAL)
 		return

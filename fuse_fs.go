@@ -38,11 +38,11 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 	return nil
 }
 
-func FuseMount(path, mountpoint string) error {
+func FuseMount(path, mountpoint, dbPath string) error {
 	// TODO checks
 
 	// loading database
-	db := &FuseDB{Path: "storm.db"} // TODO db path
+	db := &FuseDB{Path: dbPath}
 	if err := db.Open(); err != nil {
 		return errors.Wrap(err, "Error loading db")
 	}

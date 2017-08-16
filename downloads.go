@@ -200,7 +200,7 @@ func (d *Downloads) Sort(e *Environment) error {
 			}
 		} else if dl.State == stateAccepted {
 			if Accept(fmt.Sprintf("Do you want to export already accepted release #%d (%s) ", dl.Index, dl.Path)) {
-				if err := dl.export(e.Config); err != nil {
+				if err := dl.export(e.config); err != nil {
 					return errors.Wrap(err, "Error exporting download "+strconv.FormatUint(dl.Index, 10))
 				}
 			} else {

@@ -8,6 +8,10 @@ import (
 	"gitlab.com/passelecasque/varroa"
 )
 
+const (
+	defaultVarroaFuseDBPath = "varroa-fuse.db"
+)
+
 var logThis *varroa.LogThis
 
 func main() {
@@ -26,7 +30,7 @@ func main() {
 
 	fmt.Println(varroa.Green("Mounting FUSE filesystem in " + cli.mountPoint))
 	fmt.Println(varroa.Green("To quit cleanly, run 'fusermount -u " + cli.mountPoint + "'"))
-	if err := varroa.FuseMount(cli.targetDirectory, cli.mountPoint); err != nil {
+	if err := varroa.FuseMount(cli.targetDirectory, cli.mountPoint, defaultVarroaFuseDBPath); err != nil {
 		logThis.Error(err, varroa.NORMAL)
 		return
 	}

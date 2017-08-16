@@ -13,8 +13,8 @@ func TestDLPath(t *testing.T) {
 	check := assert.New(t)
 	// setup logger
 	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{Config: c}
-	logThis = LogThis{env: env}
+	env := &Environment{config: c}
+	logThis = NewLogThis(env)
 
 	// test API JSON responses
 	gt := &GazelleTorrent{}

@@ -121,9 +121,9 @@ func (h *History) LoadAll(statsConfig *ConfigStats) error {
 
 func (h *History) GenerateGraphs(e *Environment) error {
 	// get SVG theme if available
-	if e.Config.webserverConfigured {
+	if e.config.webserverConfigured {
 		// defaults to dark_orange if not set
-		theme := knownThemes[e.Config.WebServer.Theme]
+		theme := knownThemes[e.config.WebServer.Theme]
 		commonStyleSVG.StrokeColor = drawing.ColorFromHex(theme.GraphColor[1:])
 		commonStyleSVG.FillColor = drawing.ColorFromHex(theme.GraphColor[1:]).WithAlpha(theme.GraphFillerOpacity)
 		commonStyleSVG.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
@@ -136,7 +136,7 @@ func (h *History) GenerateGraphs(e *Environment) error {
 	if err != nil {
 		return errors.Wrap(err, errorInvalidTimestamp)
 	}
-	statsConfig, err := e.Config.GetStats(h.Tracker)
+	statsConfig, err := e.config.GetStats(h.Tracker)
 	if err != nil {
 		return errors.Wrap(err, "Error getting stats for "+h.Tracker)
 	}

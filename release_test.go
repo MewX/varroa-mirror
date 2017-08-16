@@ -218,8 +218,8 @@ func TestRelease(t *testing.T) {
 	check := assert.New(t)
 	// setup logger
 	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{Config: c}
-	logThis = LogThis{env: env}
+	env := &Environment{config: c}
+	logThis = NewLogThis(env)
 
 	// filters
 	f0 := &ConfigFilter{Name: "f0"}

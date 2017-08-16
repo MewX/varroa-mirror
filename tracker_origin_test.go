@@ -23,7 +23,7 @@ func TestTrackerOriginJSON(t *testing.T) {
 	tr := &ConfigTracker{Name: "tracker1", URL: "http://azerty.com"}
 	tr2 := &ConfigTracker{Name: "tracker2", URL: "http://qwerty.com"}
 	c.Trackers = append(c.Trackers, tr, tr2)
-	env.Config = c
+	env.config = c
 	info1 := TrackerTorrentInfo{id: 1234, groupID: 11}
 	info2 := TrackerTorrentInfo{id: 123456, groupID: 12}
 	destFile := filepath.Join(testDir, "test_origin.json")
@@ -58,14 +58,14 @@ func TestTrackerOriginJSON(t *testing.T) {
 	check.Nil(err)
 	check.Equal(toj.Origins[tracker1.Name].ID, tojCheck.Origins[tracker1.Name].ID)
 	check.Equal(toj.Origins[tracker1.Name].GroupID, tojCheck.Origins[tracker1.Name].GroupID)
-	check.Equal(env.Config.Trackers[0].URL, tojCheck.Origins[tracker1.Name].Tracker)
+	check.Equal(env.config.Trackers[0].URL, tojCheck.Origins[tracker1.Name].Tracker)
 	check.True(tojCheck.Origins[tracker1.Name].IsAlive)
 	check.Equal(toj.Origins[tracker1.Name].TimeSnatched, tojCheck.Origins[tracker1.Name].TimeSnatched)
 	check.Equal(toj.Origins[tracker1.Name].LastUpdatedMetadata, tojCheck.Origins[tracker1.Name].LastUpdatedMetadata)
 
 	check.Equal(toj.Origins[tracker2.Name].ID, tojCheck.Origins[tracker2.Name].ID)
 	check.Equal(toj.Origins[tracker2.Name].GroupID, tojCheck.Origins[tracker2.Name].GroupID)
-	check.Equal(env.Config.Trackers[1].URL, tojCheck.Origins[tracker2.Name].Tracker)
+	check.Equal(env.config.Trackers[1].URL, tojCheck.Origins[tracker2.Name].Tracker)
 	check.True(tojCheck.Origins[tracker2.Name].IsAlive)
 	check.Equal(toj.Origins[tracker2.Name].TimeSnatched, tojCheck.Origins[tracker2.Name].TimeSnatched)
 	check.Equal(toj.Origins[tracker2.Name].LastUpdatedMetadata, tojCheck.Origins[tracker2.Name].LastUpdatedMetadata)

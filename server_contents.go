@@ -133,7 +133,7 @@ func (sc *ServerData) update(e *Environment, downloads *Downloads) {
 	// rebuilding
 	sc.index.CSV = []HTMLLink{}
 	sc.index.Stats = []HTMLStats{}
-	if e.Config.webserverMetadata {
+	if e.config.webserverMetadata {
 		sc.index.Downloads = *downloads
 		sc.index.ShowDownloads = true
 	}

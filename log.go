@@ -18,10 +18,10 @@ type LogThis struct {
 }
 
 var logThis *LogThis
-var once sync.Once
+var onceLog sync.Once
 
 func NewLogThis(e *Environment) *LogThis {
-	once.Do(func() {
+	onceLog.Do(func() {
 		logThis = &LogThis{env: e}
 	})
 	return logThis
@@ -32,12 +32,12 @@ func (l *LogThis) Error(err error, level int) {
 }
 
 func (l *LogThis) Info(msg string, level int) {
-	if l.env.Config.General == nil {
+	if l.env.config.General == nil {
 		// configuration was not loaded, printing error message
 		fmt.Println(msg)
 		return
 	}
-	if l.env.Config.General.LogLevel >= level {
+	if l.env.config.General.LogLevel >= level {
 		if l.env.expectedOutput {
 			// only is daemon is up...
 			if l.env.InDaemon {

@@ -191,9 +191,9 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				continue
 			}
 			if e.InDaemon {
-				go r.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
+				go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			} else {
-				r.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
+				r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			}
 		}
 	}
@@ -206,7 +206,7 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 			}
 		}
 		// try to find even if not in history
-		if e.Config.DownloadFolderConfigured {
+		if e.config.DownloadFolderConfigured {
 			for _, m := range missing {
 				// get data from tracker.
 				info, err := tracker.GetTorrentInfo(m)
@@ -214,13 +214,13 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 					logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 					break
 				}
-				fullFolder := filepath.Join(e.Config.General.DownloadDir, html.UnescapeString(info.folder))
+				fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
 				if DirectoryExists(fullFolder) {
 					r := info.Release()
 					if e.InDaemon {
-						go r.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
+						go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 					} else {
-						r.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
+						r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 					}
 				} else {
 					logThis.Info(fmt.Sprintf(errorCannotFindID, m), NORMAL)
@@ -275,8 +275,8 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 		}
 
 		// checking the files are still there (if snatched with or without varroa)
-		if e.Config.DownloadFolderConfigured {
-			releaseFolder := filepath.Join(e.Config.General.DownloadDir, html.UnescapeString(info.folder))
+		if e.config.DownloadFolderConfigured {
+			releaseFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
 			if DirectoryExists(releaseFolder) {
 				logThis.Info(fmt.Sprintf("Files seem to still be in the download directory: %s", releaseFolder), NORMAL)
 				// TODO maybe display when the metadata was last updated?
@@ -286,12 +286,12 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 		}
 
 		// check and print if info/release triggers filters
-		autosnatchConfig, err := e.Config.GetAutosnatch(tracker.Name)
+		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
 		if err != nil {
 			logThis.Info("Cannot find autosnatch configuration for tracker "+tracker.Name, NORMAL)
 		} else {
 			logThis.Info("+ Showing autosnatch filters results for this release:\n", NORMAL)
-			for _, filter := range e.Config.Filters {
+			for _, filter := range e.config.Filters {
 				// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
 				if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
 					logThis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), NORMAL)
@@ -429,7 +429,7 @@ func automatedTasks(e *Environment) {
 	// 1. every day, backup user files
 	s.Every(1).Day().At("00:00").Do(ArchiveUserFiles)
 	// 2. a little later, also compress the git repository if gitlab pages are configured
-	if e.Config.gitlabPagesConfigured {
+	if e.config.gitlabPagesConfigured {
 		s.Every(1).Day().At("00:05").Do(e.git.Compress)
 	}
 	// 3. checking quota is available

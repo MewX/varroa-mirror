@@ -62,7 +62,7 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	release.TorrentFile = norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
 
 	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
-	if err := tracker.DownloadTorrent(release, e.Config.General.WatchDir); err != nil {
+	if err := tracker.DownloadTorrent(release, e.config.General.WatchDir); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err
 	}
@@ -71,11 +71,11 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
 	// save metadata
-	if e.Config.General.AutomaticMetadataRetrieval {
+	if e.config.General.AutomaticMetadataRetrieval {
 		if e.InDaemon {
-			go release.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
+			go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 		} else {
-			release.Metadata.SaveFromTracker(tracker, info, e.Config.General.DownloadDir)
+			release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 		}
 	}
 	return release, nil
@@ -127,12 +127,12 @@ func validateGet(r *http.Request, config *Config) (string, string, bool, error) 
 }
 
 func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server) {
-	if !e.Config.webserverConfigured {
+	if !e.config.webserverConfigured {
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
 	}
-	downloads := Downloads{Root: e.Config.General.DownloadDir}
-	if e.Config.WebServer.ServeMetadata {
+	downloads := Downloads{Root: e.config.General.DownloadDir}
+	if e.config.WebServer.ServeMetadata {
 		if err := downloads.Load(filepath.Join(StatsDir, DownloadsDBFile+msgpackExt)); err != nil {
 			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 			return
@@ -143,7 +143,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 
 	rtr := mux.NewRouter()
 	var mutex = &sync.Mutex{}
-	if e.Config.WebServer.AllowDownloads {
+	if e.config.WebServer.AllowDownloads {
 		getStats := func(w http.ResponseWriter, r *http.Request) {
 			// checking token
 			token, ok := r.URL.Query()["token"]
@@ -152,7 +152,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			if token[0] != e.Config.WebServer.Token {
+			if token[0] != e.config.WebServer.Token {
 				logThis.Info(errorWrongToken, NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -190,7 +190,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			w.Write(file)
 		}
 		getTorrent := func(w http.ResponseWriter, r *http.Request) {
-			trackerLabel, id, useFLToken, err := validateGet(r, e.Config)
+			trackerLabel, id, useFLToken, err := validateGet(r, e.config)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, "Error parsing request"), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
@@ -215,7 +215,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 		}
 		getMetadata := func(w http.ResponseWriter, r *http.Request) {
 			// if not configured, return error
-			if !e.Config.WebServer.ServeMetadata {
+			if !e.config.WebServer.ServeMetadata {
 				logThis.Error(errors.New("Error, not configured to serve metadata"), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -294,7 +294,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				}
 
 				var answer OutgoingJSON
-				if incoming.Token != e.Config.WebServer.Token {
+				if incoming.Token != e.config.WebServer.Token {
 					logThis.Info(errorIncorrectWebServerToken, NORMAL)
 					answer = OutgoingJSON{Status: responseError, Message: "Bad token!"}
 				} else {
@@ -347,19 +347,19 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 		rtr.HandleFunc("/ws", socket)
 	}
-	if e.Config.WebServer.ServeStats {
+	if e.config.WebServer.ServeStats {
 		// serving static index.html in stats dir
-		if e.Config.WebServer.Password != "" {
-			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(e.Config.WebServer.User, e.Config.WebServer.Password)(http.FileServer(http.Dir(StatsDir))))
+		if e.config.WebServer.Password != "" {
+			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.FileServer(http.Dir(StatsDir))))
 		} else {
 			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(StatsDir)))
 		}
 	}
 	// serve
-	if e.Config.webserverHTTP {
+	if e.config.webserverHTTP {
 		go func() {
 			logThis.Info(webServerUpHTTP, NORMAL)
-			httpServer = &http.Server{Addr: fmt.Sprintf(":%d", e.Config.WebServer.PortHTTP), Handler: rtr}
+			httpServer = &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTP), Handler: rtr}
 			if err := httpServer.ListenAndServe(); err != nil {
 				if err == http.ErrServerClosed {
 					logThis.Info(webServerShutDown, NORMAL)
@@ -369,7 +369,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			}
 		}()
 	}
-	if e.Config.webserverHTTPS {
+	if e.config.webserverHTTPS {
 		// if not there yet, generate the self-signed certificate
 		if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
 			if err := generateCertificates(e); err != nil {
@@ -383,7 +383,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 
 		go func() {
 			logThis.Info(webServerUpHTTPS, NORMAL)
-			httpsServer = &http.Server{Addr: fmt.Sprintf(":%d", e.Config.WebServer.PortHTTPS), Handler: rtr}
+			httpsServer = &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTPS), Handler: rtr}
 			if err := httpsServer.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
 				if err == http.ErrServerClosed {
 					logThis.Info(webServerShutDown, NORMAL)

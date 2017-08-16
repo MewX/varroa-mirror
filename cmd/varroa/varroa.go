@@ -33,20 +33,29 @@ func main() {
 			}
 			return
 		}
+		// loading configuration
+		config, err := varroa.NewConfig(varroa.DefaultConfigurationFile)
+		if err != nil {
+			logThis.Error(errors.Wrap(err, varroa.ErrorLoadingConfig), varroa.NORMAL)
+			return
+		}
 		if cli.encrypt || cli.decrypt {
 			// now dealing with encrypt/decrypt commands, which both require the passphrase from user
-			if err := env.GetPassphrase(); err != nil {
+			passphrase, err := varroa.GetPassphrase()
+			if err != nil {
 				logThis.Error(errors.Wrap(err, "Error getting passphrase"), varroa.NORMAL)
 			}
+			passphraseBytes := make([]byte, 32)
+			copy(passphraseBytes[:], passphrase)
 			if cli.encrypt {
-				if err := env.Config.Encrypt(varroa.DefaultConfigurationFile, env.ConfigPassphrase); err != nil {
+				if err := config.Encrypt(varroa.DefaultConfigurationFile, passphraseBytes); err != nil {
 					logThis.Info(err.Error(), varroa.NORMAL)
 					return
 				}
 				logThis.Info(varroa.InfoEncrypted, varroa.NORMAL)
 			}
 			if cli.decrypt {
-				if err := env.Config.DecryptTo(varroa.DefaultConfigurationFile, env.ConfigPassphrase); err != nil {
+				if err := config.DecryptTo(varroa.DefaultConfigurationFile, passphraseBytes); err != nil {
 					logThis.Error(err, varroa.NORMAL)
 					return
 				}
@@ -54,23 +63,17 @@ func main() {
 			}
 			return
 		}
-		// commands that require the configuration
-		// loading configuration
-		if err := env.LoadConfiguration(); err != nil {
-			logThis.Error(errors.Wrap(err, varroa.ErrorLoadingConfig), varroa.NORMAL)
-			return
-		}
 		if cli.showConfig {
 			fmt.Print("Found in configuration file: \n\n")
-			fmt.Println(env.Config)
+			fmt.Println(config)
 			return
 		}
 		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
-			if !env.Config.DownloadFolderConfigured {
+			if !config.DownloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)
 				return
 			}
-			downloads := varroa.Downloads{Root: env.Config.General.DownloadDir}
+			downloads := varroa.Downloads{Root: config.General.DownloadDir}
 			// simple operation, only requires access to download folder, since it will clean unindexed folders
 			if cli.downloadClean {
 				if err := downloads.Clean(); err != nil {
@@ -130,7 +133,7 @@ func main() {
 					return
 				}
 
-				if !env.Config.LibraryConfigured {
+				if !config.LibraryConfigured {
 					logThis.Error(errors.New("Cannot sort downloads, library is not configured"), varroa.NORMAL)
 					return
 				}
@@ -157,14 +160,13 @@ func main() {
 		// using stormDB
 		if cli.downloadFuse {
 			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-			if err := varroa.FuseMount(env.Config.General.DownloadDir, cli.mountPoint); err != nil {
+			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, "varroa.db"); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
 			logThis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", varroa.VERBOSE)
 			return
 		}
-
 	}
 
 	// loading configuration
@@ -263,5 +265,3 @@ func main() {
 	}
 	return
 }
-
-

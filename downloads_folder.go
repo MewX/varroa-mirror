@@ -210,10 +210,10 @@ func (d *DownloadFolder) Sort(e *Environment) error {
 	}
 	fmt.Println("Sorting " + d.Path)
 	// if mpd configured, allow playing the release...
-	if e.Config.MPD != nil && Accept("Load release into MPD") {
+	if e.config.MPD != nil && Accept("Load release into MPD") {
 		fmt.Println("Sending to MPD.")
 		mpdClient := MPD{}
-		if err := mpdClient.Connect(e.Config.MPD); err == nil {
+		if err := mpdClient.Connect(e.config.MPD); err == nil {
 			defer mpdClient.DisableAndDisconnect(d.Root, d.Path)
 			if err := mpdClient.SendAndPlay(d.Root, d.Path); err != nil {
 				fmt.Println(RedBold("Error sending to MPD: " + err.Error()))
@@ -269,7 +269,7 @@ func (d *DownloadFolder) Sort(e *Environment) error {
 			fmt.Println(Green("This can be reverted by sorting its specific download ID."))
 			d.State = stateAccepted
 			if Accept("Do you want to export it now ") {
-				if err := d.export(e.Config); err != nil {
+				if err := d.export(e.config); err != nil {
 					return err
 				}
 			} else {
