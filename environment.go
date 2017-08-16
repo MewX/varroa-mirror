@@ -34,7 +34,6 @@ type Environment struct {
 	serverData       *ServerData
 	Trackers         map[string]*GazelleTracker
 	History          map[string]*History
-	Downloads        *Downloads
 
 	graphsLastUpdated string
 	expectedOutput    bool
@@ -192,10 +191,6 @@ func (e *Environment) LoadConfiguration() error {
 		}
 	}
 	e.Config = newConf
-	// init downloads configuration
-	if e.Config.DownloadFolderConfigured {
-		e.Downloads = &Downloads{Root: e.Config.General.DownloadDir}
-	}
 	// init notifications with pushover
 	if e.Config.pushoverConfigured {
 		e.notification.client = pushover.New(e.Config.Notifications.Pushover.Token)

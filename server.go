@@ -131,13 +131,14 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
 	}
+	downloads := Downloads{Root: e.Config.General.DownloadDir}
 	if e.Config.WebServer.ServeMetadata {
-		if err := e.Downloads.Load(filepath.Join(StatsDir, DownloadsDBFile+msgpackExt)); err != nil {
+		if err := downloads.Load(filepath.Join(StatsDir, DownloadsDBFile+msgpackExt)); err != nil {
 			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 			return
 		}
 		// scan on startup in goroutine
-		go e.Downloads.Scan()
+		go downloads.Scan()
 	}
 
 	rtr := mux.NewRouter()
@@ -223,7 +224,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			response := []byte{}
 			id, ok := mux.Vars(r)["id"]
 			if !ok {
-				list, err := e.serverData.DownloadsList(e)
+				list, err := e.serverData.DownloadsList(e, downloads)
 				if err != nil {
 					logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
 					w.WriteHeader(http.StatusUnauthorized)
@@ -232,7 +233,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				response = list
 			} else {
 
-				info, err := e.serverData.DownloadsInfo(e, id)
+				info, err := e.serverData.DownloadsInfo(e, downloads, id)
 				if err != nil {
 					logThis.Error(errors.Wrap(err, "Error loading downloads info"), NORMAL)
 					w.WriteHeader(http.StatusUnauthorized)

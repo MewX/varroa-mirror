@@ -70,9 +70,10 @@ func main() {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)
 				return
 			}
+			downloads := varroa.Downloads{Root: env.Config.General.DownloadDir}
 			// simple operation, only requires access to download folder, since it will clean unindexed folders
 			if cli.downloadClean {
-				if err := env.Downloads.Clean(); err != nil {
+				if err := downloads.Clean(); err != nil {
 					logThis.Error(err, varroa.NORMAL)
 				} else {
 					fmt.Println("Downloads directory cleaned of empty folders & folders containing only tracker metadata.")
@@ -81,18 +82,18 @@ func main() {
 			}
 			// scanning
 			fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
-			if err := env.Downloads.LoadAndScan(filepath.Join(varroa.StatsDir, varroa.DownloadsDBFile+".db")); err != nil {
+			if err := downloads.LoadAndScan(filepath.Join(varroa.StatsDir, varroa.DownloadsDBFile+".db")); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
-			defer env.Downloads.Save()
+			defer downloads.Save()
 
 			if cli.downloadScan {
-				fmt.Println(env.Downloads.String())
+				fmt.Println(downloads.String())
 				return
 			}
 			if cli.downloadSearch {
-				hits := env.Downloads.FindByArtist(cli.artistName)
+				hits := downloads.FindByArtist(cli.artistName)
 				if len(hits) == 0 {
 					fmt.Println("Nothing found.")
 				} else {
@@ -103,7 +104,7 @@ func main() {
 				return
 			}
 			if cli.downloadList {
-				hits := env.Downloads.FindByState(cli.downloadState)
+				hits := downloads.FindByState(cli.downloadState)
 				if len(hits) == 0 {
 					fmt.Println("Nothing found.")
 				} else {
@@ -114,7 +115,7 @@ func main() {
 				return
 			}
 			if cli.downloadInfo {
-				dl, err := env.Downloads.FindByID(uint64(cli.torrentIDs[0]))
+				dl, err := downloads.FindByID(uint64(cli.torrentIDs[0]))
 				if err != nil {
 					logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), varroa.NORMAL)
 					return
@@ -135,12 +136,12 @@ func main() {
 				}
 				if len(cli.torrentIDs) == 0 {
 					fmt.Println("Considering new or unsorted downloads.")
-					if err := env.Downloads.Sort(env); err != nil {
+					if err := downloads.Sort(env); err != nil {
 						logThis.Error(errors.Wrap(err, "Error sorting downloads"), varroa.NORMAL)
 						return
 					}
 				} else {
-					dl, err := env.Downloads.FindByID(uint64(cli.torrentIDs[0]))
+					dl, err := downloads.FindByID(uint64(cli.torrentIDs[0]))
 					if err != nil {
 						logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), varroa.NORMAL)
 						return
