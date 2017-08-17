@@ -103,6 +103,9 @@ func (c *Config) String() string {
 	if c.mpdConfigured {
 		txt += c.MPD.String() + "\n"
 	}
+	if c.LibraryConfigured {
+		txt += c.Library.String() + "\n"
+	}
 	return txt
 }
 
