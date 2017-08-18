@@ -417,6 +417,7 @@ type ConfigFilter struct {
 	UniqueInGroup       bool     `yaml:"unique_in_group"`
 	Tracker             []string `yaml:"tracker"`
 	Uploader            []string `yaml:"uploader"`
+	RejectUnknown       bool     `yaml:"reject_unknown_releases"`
 }
 
 func (cf *ConfigFilter) Check() error {
@@ -533,5 +534,6 @@ func (cf *ConfigFilter) String() string {
 	if len(cf.Edition) != 0 {
 		description += "\tEdition contains: " + strings.Join(cf.Edition, ", ") + "\n"
 	}
+	description += "\tReject unknown releases: " + fmt.Sprintf("%v", cf.RejectUnknown) + "\n"
 	return description
 }

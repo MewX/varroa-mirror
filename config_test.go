@@ -145,6 +145,7 @@ func TestConfig(t *testing.T) {
 	check.Equal([]string{"blue"}, f.Tracker)
 	check.Equal([]string{"best_uploader_ever", "this other guy"}, f.Uploader)
 	check.Nil(f.Edition)
+	check.True(f.RejectUnknown)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]
 	check.Equal("test", f.Name)
@@ -171,6 +172,7 @@ func TestConfig(t *testing.T) {
 	check.Nil(f.Tracker)
 	check.Nil(f.Uploader)
 	check.Equal([]string{"Bonus", "Anniversary"}, f.Edition)
+	check.False(f.RejectUnknown)
 
 	check.True(c.autosnatchConfigured)
 	check.True(c.statsConfigured)

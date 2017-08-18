@@ -93,6 +93,7 @@ filters:
     - this other guy
     excluded_type:
     - Concert Recording
+    reject_unknown_releases: true
 
   - name: test
     year:
