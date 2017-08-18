@@ -39,6 +39,8 @@ func main() {
 			logThis.Error(errors.Wrap(err, varroa.ErrorLoadingConfig), varroa.NORMAL)
 			return
 		}
+		env.SetConfig(config)
+
 		if cli.encrypt || cli.decrypt {
 			// now dealing with encrypt/decrypt commands, which both require the passphrase from user
 			passphrase, err := varroa.GetPassphrase()
@@ -89,14 +91,14 @@ func main() {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
-			defer downloads.Save()
+			defer downloads.Close()
 
 			if cli.downloadScan {
 				fmt.Println(downloads.String())
 				return
 			}
 			if cli.downloadSearch {
-				hits := downloads.Releases.FilterArtist(cli.artistName)
+				hits := downloads.FindByArtist(cli.artistName)
 				if len(hits) == 0 {
 					fmt.Println("Nothing found.")
 				} else {
@@ -118,12 +120,12 @@ func main() {
 				return
 			}
 			if cli.downloadInfo {
-				dl, err := downloads.FindByID(uint64(cli.torrentIDs[0]))
+				dl, err := downloads.FindByID(cli.torrentIDs[0])
 				if err != nil {
 					logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), varroa.NORMAL)
 					return
 				}
-				fmt.Println(dl.Description())
+				fmt.Println(dl.Description(config.General.DownloadDir))
 				return
 			}
 			if cli.downloadSort {
@@ -144,13 +146,9 @@ func main() {
 						return
 					}
 				} else {
-					dl, err := downloads.FindByID(uint64(cli.torrentIDs[0]))
-					if err != nil {
-						logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), varroa.NORMAL)
-						return
-					}
-					if err := dl.Sort(env); err != nil {
-						logThis.Error(errors.Wrap(err, "Error sorting selected download"), varroa.NORMAL)
+					fmt.Println("Sorting a specific download folder.")
+					if err := downloads.SortThisID(env, cli.torrentIDs[0]); err != nil {
+						logThis.Error(errors.Wrap(err, "Error sorting download"), varroa.NORMAL)
 						return
 					}
 				}

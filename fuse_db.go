@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/asdine/storm"
-	"github.com/asdine/storm/codec/msgpack"
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 )
@@ -107,25 +106,8 @@ func (fe *FuseEntry) Load(root string) error {
 }
 
 type FuseDB struct {
-	Path string
-	DB   *storm.DB
+	Database
 	Root string
-}
-
-func (fdb *FuseDB) Open() error {
-	var err error
-	fdb.DB, err = storm.Open(fdb.Path, storm.Codec(msgpack.Codec))
-	if err != nil {
-		return err
-	}
-	return fdb.DB.Init(&FuseEntry{})
-}
-
-func (fdb *FuseDB) Close() error {
-	if fdb.DB != nil {
-		return fdb.DB.Close()
-	}
-	return nil
 }
 
 func (fdb *FuseDB) Scan(path string) error {
@@ -134,6 +116,10 @@ func (fdb *FuseDB) Scan(path string) error {
 	if fdb.DB == nil {
 		return errors.New("Error db not open")
 	}
+	if err := fdb.DB.Init(&FuseEntry{}); err != nil {
+		return errors.New("Could not prepare database for indexing fuse entries")
+	}
+
 	if !DirectoryExists(path) {
 		return errors.New("Error finding " + path)
 	}

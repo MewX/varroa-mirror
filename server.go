@@ -133,7 +133,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 	}
 	downloads := Downloads{Root: e.config.General.DownloadDir}
 	if e.config.WebServer.ServeMetadata {
-		if err := downloads.Load(filepath.Join(StatsDir, DownloadsDBFile+msgpackExt)); err != nil {
+		if err := downloads.Open(filepath.Join(StatsDir, DownloadsDBFile+msgpackExt)); err != nil {
 			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 			return
 		}

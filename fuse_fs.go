@@ -42,8 +42,8 @@ func FuseMount(path, mountpoint, dbPath string) error {
 	// TODO checks
 
 	// loading database
-	db := &FuseDB{Path: dbPath}
-	if err := db.Open(); err != nil {
+	db := &FuseDB{}
+	if err := db.Open(dbPath); err != nil {
 		return errors.Wrap(err, "Error loading db")
 	}
 	defer db.Close()

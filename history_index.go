@@ -128,7 +128,7 @@ type HTMLIndex struct {
 	CSS           template.CSS
 	Script        string
 	ShowDownloads bool
-	Downloads     Downloads
+	Downloads     []DownloadEntry
 	DownloadInfo  template.HTML
 	MainContent   template.HTML
 }
@@ -165,7 +165,7 @@ func (hi *HTMLIndex) SetMainContentStats() error {
 }
 
 func (hi *HTMLIndex) IndexDownloadsList() ([]byte, error) {
-	if len(hi.Downloads.Releases) == 0 {
+	if len(hi.Downloads) == 0 {
 		return []byte{}, errors.New("Error generating downloads list: nothing found")
 	}
 

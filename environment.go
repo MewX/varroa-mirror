@@ -79,6 +79,10 @@ func NewEnvironment() *Environment {
 	return e
 }
 
+func (e *Environment) SetConfig(c *Config) {
+	e.config = c
+}
+
 // Daemonize the process and return true if in child process.
 func (e *Environment) Daemonize(args []string) error {
 	e.InDaemon = false

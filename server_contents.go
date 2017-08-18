@@ -133,9 +133,13 @@ func (sc *ServerData) update(e *Environment, downloads *Downloads) {
 	// rebuilding
 	sc.index.CSV = []HTMLLink{}
 	sc.index.Stats = []HTMLStats{}
-	if e.config.webserverMetadata {
-		sc.index.Downloads = *downloads
-		sc.index.ShowDownloads = true
+	if e.config.webserverMetadata && downloads != nil {
+		// fetch all dl entries
+		if err := downloads.DB.All(&sc.index.Downloads); err != nil {
+			logThis.Error(err, NORMAL)
+		} else {
+			sc.index.ShowDownloads = true
+		}
 	}
 	// gathering data
 	for label, h := range e.History {
@@ -221,24 +225,24 @@ func (sc *ServerData) DownloadsList(e *Environment, downloads Downloads) ([]byte
 
 func (sc *ServerData) DownloadsInfo(e *Environment, downloads Downloads, id string) ([]byte, error) {
 	// updating
-	sc.update(e, &downloads)
+	sc.update(e, nil)
 
 	// display individual download metadata
-	downloadID, err := strconv.ParseUint(id, 10, 64)
+	downloadID, err := strconv.Atoi(id)
 	if err != nil {
 		return []byte{}, errors.New("Error parsing download ID")
 	}
 	// find Download
-	dl, err := sc.index.Downloads.FindByID(downloadID)
+	dl, err := downloads.FindByID(downloadID)
 	if err != nil {
 		return []byte{}, errors.New("Error finding download ID " + id + " in db.")
 	}
 	// get description
 	sc.index.DownloadInfo = ""
-	if dl.HasDescription {
+	if dl.HasTrackerMetadata {
 		// TODO if more than 1 tracker, make things prettier
-		for _, rinfo := range dl.ReleaseInfo {
-			sc.index.DownloadInfo += template.HTML(blackfriday.MarkdownCommon(rinfo))
+		for _, t := range dl.Tracker {
+			sc.index.DownloadInfo += template.HTML(blackfriday.MarkdownCommon(dl.getDescription(e.config.General.DownloadDir, t)))
 		}
 	} else {
 		sc.index.DownloadInfo = template.HTML(dl.RawShortString())
