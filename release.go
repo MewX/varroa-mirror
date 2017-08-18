@@ -213,6 +213,9 @@ func (r *Release) IsInSameGroup(o Release) bool {
 }
 
 func (r *Release) Satisfies(filter *ConfigFilter) bool {
+	// no longer filtering on artists. If a filter has artists defined,
+	// varroa will now wait until it gets the TorrentInfo and all of the artists
+	// to make a call.
 	if len(filter.Year) != 0 && !IntInSlice(r.Year, filter.Year) {
 		logThis.Info(filter.Name+": Wrong year", VERBOSE)
 		return false
@@ -220,22 +223,6 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 	if len(filter.Format) != 0 && !StringInSlice(r.Format, filter.Format) {
 		logThis.Info(filter.Name+": Wrong format", VERBOSE)
 		return false
-	}
-	if r.Artists[0] != "Various Artists" && (len(filter.Artist) != 0 || len(filter.ExcludedArtist) != 0) {
-		var foundAtLeastOneArtist bool
-		for _, artist := range r.Artists {
-			if StringInSlice(artist, filter.Artist) {
-				foundAtLeastOneArtist = true
-			}
-			if StringInSlice(artist, filter.ExcludedArtist) {
-				logThis.Info(filter.Name+": Found excluded artist "+artist, VERBOSE)
-				return false
-			}
-		}
-		if !foundAtLeastOneArtist && len(filter.Artist) != 0 {
-			logThis.Info(filter.Name+": Wrong artist", VERBOSE)
-			return false
-		}
 	}
 	if len(filter.Source) != 0 && !StringInSlice(r.Source, filter.Source) {
 		logThis.Info(filter.Name+": Wrong source", VERBOSE)
