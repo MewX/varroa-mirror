@@ -32,6 +32,8 @@ Description:
 	- check local logs agains logchecker.php
 	- sort downloads, export them to your library, automatically rename
 	  folders using tracker metadata
+	- mount a read-only FUSE filesystem exposing your downloads or library
+	  using tracker metadata
 
 Daemon Commands:
 
@@ -82,6 +84,12 @@ Commands:
 	downloads clean:
 		clean up the downloads directory by moving all empty folders,
 		and folders with only tracker metadata, to a dedicated subfolder.
+	downloads fuse:
+		mount a read-only filesystem exposing your downloads using the
+		tracker metadata, using the following categories: artists, tags,
+		record labels, years. Call 'fusermount -u MOUNT_POINT' to stop.
+	library fuse:
+		similar to downloads fuse, but for your music library.
 
 Configuration Commands:
 
@@ -110,6 +118,7 @@ Usage:
 	varroa backup
 	varroa show-config
 	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean|fuse <MOUNT_POINT>)
+	varroa library fuse <MOUNT_POINT>
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -141,6 +150,7 @@ type varroaArguments struct {
 	downloadState   string
 	downloadClean   bool
 	downloadFuse    bool
+	libraryFuse     bool
 	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
@@ -187,6 +197,9 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.downloadClean = args["clean"].(bool)
 		b.downloadFuse = args["fuse"].(bool)
 	}
+	if args["library"].(bool) {
+		b.libraryFuse = args["fuse"].(bool)
+	}
 	// arguments
 	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
 		IDs, ok := args["<ID>"].([]string)
@@ -198,7 +211,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 			return errors.New("Invalid torrent IDs, must be integers.")
 		}
 	}
-	if b.downloadFuse {
+	if b.downloadFuse || b.libraryFuse {
 		// checking fusermount is available
 		_, err := exec.LookPath("fusermount")
 		if err != nil {
@@ -240,11 +253,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean || b.downloadFuse {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse {
 		b.canUseDaemon = false
 	}
 	return nil

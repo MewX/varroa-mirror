@@ -158,7 +158,20 @@ func main() {
 		// using stormDB
 		if cli.downloadFuse {
 			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, "varroa.db"); err != nil {
+			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, "varroa-downloads.db"); err != nil {
+				logThis.Error(err, varroa.NORMAL)
+				return
+			}
+			logThis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", varroa.VERBOSE)
+			return
+		}
+		if cli.libraryFuse {
+			if !config.LibraryConfigured {
+				logThis.Info("Cannot mount FUSE filesystem for the library, missing relevant configuration section.", varroa.NORMAL)
+				return
+			}
+			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
+			if err := varroa.FuseMount(config.Library.Directory, cli.mountPoint, "varroa-library.db"); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
