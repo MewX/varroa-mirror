@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
@@ -152,13 +153,13 @@ func (d *DownloadEntry) Load(root string) error {
 					// extract relevant information!
 					// for now, using artists, composers, "with" categories
 					for _, el := range gt.Response.Group.MusicInfo.Artists {
-						d.Artists = append(d.Artists, el.Name)
+						d.Artists = append(d.Artists, html.UnescapeString(el.Name))
 					}
 					for _, el := range gt.Response.Group.MusicInfo.With {
-						d.Artists = append(d.Artists, el.Name)
+						d.Artists = append(d.Artists, html.UnescapeString(el.Name))
 					}
 					for _, el := range gt.Response.Group.MusicInfo.Composers {
-						d.Artists = append(d.Artists, el.Name)
+						d.Artists = append(d.Artists, html.UnescapeString(el.Name))
 					}
 				}
 			}
