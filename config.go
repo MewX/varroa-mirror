@@ -36,8 +36,6 @@ type Config struct {
 	DownloadFolderConfigured bool
 	LibraryConfigured        bool
 	mpdConfigured            bool
-
-	passphrase string
 }
 
 func NewConfig(path string) (*Config, error) {
@@ -63,7 +61,7 @@ func NewConfig(path string) (*Config, error) {
 				return
 			}
 		} else {
-			if err := newConf.Load(DefaultConfigurationFile); err != nil {
+			if err := newConf.Load(path); err != nil {
 				newConfigErr = err
 				return
 			}
