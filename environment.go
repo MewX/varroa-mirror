@@ -3,27 +3,21 @@ package varroa
 import (
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
 )
 
 // Environment keeps track of all the context varroa needs.
 type Environment struct {
-	config       *Config
-	notification *Notification
-	serverHTTP   *http.Server
-	serverHTTPS  *http.Server
-	serverData   *ServerData
-	Trackers     map[string]*GazelleTracker
-	History      map[string]*History
+	config     *Config
+	serverData *ServerData
+	Trackers   map[string]*GazelleTracker
+	History    map[string]*History
 
 	graphsLastUpdated string
 	expectedOutput    bool
@@ -38,9 +32,6 @@ type Environment struct {
 func NewEnvironment() *Environment {
 	e := &Environment{}
 	e.config = &Config{}
-	e.notification = &Notification{}
-	e.serverHTTP = &http.Server{}
-	e.serverHTTPS = &http.Server{}
 	e.serverData = &ServerData{}
 	// make maps
 	e.Trackers = make(map[string]*GazelleTracker)
@@ -71,11 +62,7 @@ func (e *Environment) LoadConfiguration() error {
 	if err != nil {
 		return err
 	}
-	// init notifications with pushover
-	if e.config.pushoverConfigured {
-		e.notification.client = pushover.New(e.config.Notifications.Pushover.Token)
-		e.notification.recipient = pushover.NewRecipient(e.config.Notifications.Pushover.User)
-	}
+
 	if e.config.statsConfigured {
 		theme := knownThemes[darkOrange]
 		if e.config.webserverConfigured {
@@ -129,38 +116,6 @@ func (e *Environment) SetUp(autologin bool) error {
 		e.History[label] = h
 	}
 	return nil
-}
-
-// Notify in a goroutine, or directly.
-func (e *Environment) Notify(msg, tracker, msgType string) error {
-	notify := func() error {
-		link := ""
-		if e.config.gitlabPagesConfigured {
-			link = e.config.GitlabPages.URL
-		} else if e.config.webserverConfigured && e.config.WebServer.ServeStats && e.config.WebServer.PortHTTPS != 0 {
-			link = "https://" + e.config.WebServer.Hostname + ":" + strconv.Itoa(e.config.WebServer.PortHTTPS)
-		}
-		atLeastOneError := false
-		if e.config.pushoverConfigured {
-			if err := e.notification.Send(tracker+": "+msg, e.config.gitlabPagesConfigured, link); err != nil {
-				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
-				atLeastOneError = true
-			}
-		}
-		if e.config.webhooksConfigured && StringInSlice(tracker, e.config.Notifications.WebHooks.Trackers) {
-			// create json, POST it
-			whJSON := &WebHookJSON{Site: tracker, Message: msg, Link: link, Type: msgType}
-			if err := whJSON.Send(e.config.Notifications.WebHooks.Address, e.config.Notifications.WebHooks.Token); err != nil {
-				logThis.Error(errors.Wrap(err, errorWebhook), VERBOSE)
-				atLeastOneError = true
-			}
-		}
-		if atLeastOneError {
-			return errors.New(errorNotifications)
-		}
-		return nil
-	}
-	return RunOrGo(notify)
 }
 
 func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
@@ -250,7 +205,7 @@ func (e *Environment) GoGoRoutines() {
 		go monitorAllStats(e)
 	}
 	if e.config.webserverConfigured {
-		go webServer(e, e.serverHTTP, e.serverHTTPS)
+		go webServer(e)
 	}
 	// background goroutines
 	go awaitOrders(e)

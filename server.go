@@ -12,8 +12,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	"github.com/subosito/norma"
 	"github.com/sevlyar/go-daemon"
+	"github.com/subosito/norma"
 )
 
 const (
@@ -127,7 +127,7 @@ func validateGet(r *http.Request, config *Config) (string, string, bool, error) 
 	return trackerLabel, id, useFLToken, nil
 }
 
-func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server) {
+func webServer(e *Environment) {
 	if !e.config.webserverConfigured {
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
@@ -360,7 +360,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 	if e.config.webserverHTTP {
 		go func() {
 			logThis.Info(webServerUpHTTP, NORMAL)
-			httpServer = &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTP), Handler: rtr}
+			httpServer := &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTP), Handler: rtr}
 			if err := httpServer.ListenAndServe(); err != nil {
 				if err == http.ErrServerClosed {
 					logThis.Info(webServerShutDown, NORMAL)
@@ -384,7 +384,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 
 		go func() {
 			logThis.Info(webServerUpHTTPS, NORMAL)
-			httpsServer = &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTPS), Handler: rtr}
+			httpsServer := &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTPS), Handler: rtr}
 			if err := httpsServer.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
 				if err == http.ErrServerClosed {
 					logThis.Info(webServerShutDown, NORMAL)

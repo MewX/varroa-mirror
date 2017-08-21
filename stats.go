@@ -20,19 +20,25 @@ func manageStats(e *Environment, h *History, tracker *GazelleTracker, statsConfi
 	// compare with new stats
 	logThis.Info(stats.Progress(previousStats), NORMAL)
 	// send notification
-	e.Notify("stats: "+stats.Progress(previousStats), tracker.Name, "info")
+	if err := Notify("stats: "+stats.Progress(previousStats), tracker.Name, "info"); err != nil {
+		logThis.Error(err, NORMAL)
+	}
 	// if something is wrong, send notification and stop
 	if !stats.IsProgressAcceptable(previousStats, statsConfig.MaxBufferDecreaseMB, statsConfig.MinimumRatio) {
 		if stats.Ratio <= statsConfig.MinimumRatio {
 			// unacceptable because of low ratio
 			logThis.Info(tracker.Name+": "+errorBelowWarningRatio, NORMAL)
 			// sending notification
-			e.Notify(tracker.Name+": "+errorBelowWarningRatio, tracker.Name, "error")
+			if err := Notify(tracker.Name+": "+errorBelowWarningRatio, tracker.Name, "error"); err != nil {
+				logThis.Error(err, NORMAL)
+			}
 		} else {
 			// unacceptable because of ratio drop
 			logThis.Info(tracker.Name+": "+errorBufferDrop, NORMAL)
 			// sending notification
-			e.Notify(tracker.Name+": "+errorBufferDrop, tracker.Name, "error")
+			if err := Notify(tracker.Name+": "+errorBufferDrop, tracker.Name, "error"); err != nil {
+				logThis.Error(err, NORMAL)
+			}
 		}
 		// stopping things
 		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)

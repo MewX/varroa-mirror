@@ -415,10 +415,10 @@ func checkQuota(e *Environment) error {
 	// send warning if this is worrying
 	if pc >= 98 {
 		logThis.Info(veryLowDiskSpace, NORMAL)
-		e.Notify(veryLowDiskSpace, FullName, "info")
+		return Notify(veryLowDiskSpace, FullName, "info")
 	} else if pc >= 95 {
 		logThis.Info(lowDiskSpace, NORMAL)
-		e.Notify(lowDiskSpace, FullName, "info")
+		return Notify(lowDiskSpace, FullName, "info")
 	}
 	return nil
 }

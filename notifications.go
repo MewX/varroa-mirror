@@ -4,10 +4,48 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
 )
+
+// Notify in a goroutine, or directly.
+func Notify(msg, tracker, msgType string) error {
+	config, err := NewConfig(DefaultConfigurationFile)
+	if err != nil {
+		return err
+	}
+	notify := func() error {
+		link := ""
+		if config.gitlabPagesConfigured {
+			link = config.GitlabPages.URL
+		} else if config.webserverConfigured && config.WebServer.ServeStats && config.WebServer.PortHTTPS != 0 {
+			link = "https://" + config.WebServer.Hostname + ":" + strconv.Itoa(config.WebServer.PortHTTPS)
+		}
+		atLeastOneError := false
+		if config.pushoverConfigured {
+			pushOver := &Notification{client: pushover.New(config.Notifications.Pushover.Token), recipient: pushover.NewRecipient(config.Notifications.Pushover.User)}
+			if err := pushOver.Send(tracker+": "+msg, config.gitlabPagesConfigured, link); err != nil {
+				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
+				atLeastOneError = true
+			}
+		}
+		if config.webhooksConfigured && StringInSlice(tracker, config.Notifications.WebHooks.Trackers) {
+			// create json, POST it
+			whJSON := &WebHookJSON{Site: tracker, Message: msg, Link: link, Type: msgType}
+			if err := whJSON.Send(config.Notifications.WebHooks.Address, config.Notifications.WebHooks.Token); err != nil {
+				logThis.Error(errors.Wrap(err, errorWebhook), VERBOSE)
+				atLeastOneError = true
+			}
+		}
+		if atLeastOneError {
+			return errors.New(errorNotifications)
+		}
+		return nil
+	}
+	return RunOrGo(notify)
+}
 
 type Notification struct {
 	client    *pushover.Pushover
