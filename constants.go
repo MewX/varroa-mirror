@@ -90,7 +90,7 @@ const (
 	errorDialingSocket     = "Error dialing to unix socket"
 	errorWritingToSocket   = "Error writing to unix socket"
 	errorReadingFromSocket = "Error reading from unix socket"
-	errorCreatingSocket    = "Error creating unix socket"
+	errorCreatingSocket    = "Error creating unix socket (it will be impossible to communicate with the daemon, you will likely have to kill the process and remove varroa.sock if it exists)"
 	// command check-log errors
 	ErrorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"

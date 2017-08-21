@@ -74,8 +74,8 @@ func awaitOrders(e *Environment) {
 	for {
 		c, err := conn.Accept()
 		if err != nil {
-			logThis.Info("Error acceptin from unix socket: "+err.Error(), NORMAL)
-			break
+			logThis.Info("Error accepting from unix socket: "+err.Error(), NORMAL)
+			continue // not breaking anymore, else impossible to communicate with the daemon again
 		}
 		// output back things to CLI
 		e.expectedOutput = true

@@ -75,8 +75,11 @@ compiled_varroa_dev:
     - go get github.com/asdine/storm
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
-    - go build ./cmd/varroa -o varroa
-    - go build ./cmd/varroa-fuse -o varroa-fuse
+    - cd cmd/varroa
+    - go build -o ../../varroa
+    - cd ../varroa-fuse
+    - go build -o ../../varroa-fuse
+    - cd ../..
 #    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
     paths:
@@ -116,8 +119,11 @@ compiled_varroa_released_version:
     - go get github.com/asdine/storm
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
-    - go build ./cmd/varroa -o varroa
-    - go build ./cmd/varroa-fuse -o varroa-fuse
+    - cd cmd/varroa
+    - go build -o ../../varroa
+    - cd ../varroa-fuse
+    - go build -o ../../varroa-fuse
+    - cd ../..
   artifacts:
     paths: 
     - varroa
