@@ -16,6 +16,7 @@ import (
 	"github.com/jasonlvhit/gocron"
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
+	daemon "github.com/sevlyar/go-daemon"
 )
 
 const (
@@ -190,7 +191,7 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
 			}
-			if e.InDaemon {
+			if daemon.WasReborn() {
 				go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 			} else {
 				r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
@@ -217,7 +218,7 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
 				if DirectoryExists(fullFolder) {
 					r := info.Release()
-					if e.InDaemon {
+					if daemon.WasReborn() {
 						go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 					} else {
 						r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)

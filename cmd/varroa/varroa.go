@@ -186,16 +186,17 @@ func main() {
 		return
 	}
 
+	d := varroa.NewDaemon()
 	// launching daemon
 	if cli.start {
 		// daemonizing process
-		if err := env.Daemonize(os.Args); err != nil {
+		if err := d.Start(os.Args); err != nil {
 			logThis.Error(errors.Wrap(err, varroa.ErrorGettingDaemonContext), varroa.NORMAL)
 			return
 		}
 		// if not in daemon, job is over; exiting.
 		// the spawned daemon will continue.
-		if !env.InDaemon {
+		if !d.IsRunning() {
 			return
 		}
 		// setting up for the daemon
@@ -207,13 +208,13 @@ func main() {
 		env.GoGoRoutines()
 
 		// wait until daemon is stopped.
-		env.WaitForDaemonStop()
+		d.WaitForStop()
 		return
 	}
 
 	// at this point commands either require the daemon or can use it
 	// assessing if daemon is running
-	daemonProcess, err := env.FindDaemon()
+	daemonProcess, err := d.Find()
 	if err != nil {
 		// no daemon found, running commands directly.
 		if cli.requiresDaemon {
@@ -270,7 +271,7 @@ func main() {
 		// at last, sending signals for shutdown
 		if cli.stop {
 			env.Notify("Stopping daemon!", "varroa daemon", "info")
-			env.StopDaemon(daemonProcess)
+			d.Stop(daemonProcess)
 			return
 		}
 	}

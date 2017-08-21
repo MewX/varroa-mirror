@@ -9,24 +9,15 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
 )
 
-type boolFlag bool
-
-func (b boolFlag) IsSet() bool {
-	return bool(b)
-}
-
 // Environment keeps track of all the context varroa needs.
 type Environment struct {
 	config       *Config
-	daemon       *daemon.Context
-	InDaemon     bool // <- == daemon.WasReborn()
 	notification *Notification
 	serverHTTP   *http.Server
 	serverHTTPS  *http.Server
@@ -46,14 +37,6 @@ type Environment struct {
 // NewEnvironment prepares a new Environment.
 func NewEnvironment() *Environment {
 	e := &Environment{}
-	e.daemon = &daemon.Context{
-		PidFileName: pidFile,
-		PidFilePerm: 0644,
-		LogFileName: "log",
-		LogFilePerm: 0640,
-		WorkDir:     "./",
-		Umask:       0002,
-	}
 	e.config = &Config{}
 	e.notification = &Notification{}
 	e.serverHTTP = &http.Server{}
@@ -62,8 +45,6 @@ func NewEnvironment() *Environment {
 	// make maps
 	e.Trackers = make(map[string]*GazelleTracker)
 	e.History = make(map[string]*History)
-	// is only true if we're in the daemon
-	e.InDaemon = false
 	// current command expects output
 	e.expectedOutput = false
 	if !daemon.WasReborn() {
@@ -81,58 +62,6 @@ func NewEnvironment() *Environment {
 
 func (e *Environment) SetConfig(c *Config) {
 	e.config = c
-}
-
-// Daemonize the process and return true if in child process.
-func (e *Environment) Daemonize(args []string) error {
-	e.InDaemon = false
-	e.daemon.Args = os.Args
-	child, err := e.daemon.Reborn()
-	if err != nil {
-		return err
-	}
-	if child != nil {
-		logThis.Info("Starting daemon...", NORMAL)
-	} else {
-		logThis.Info("+ varroa musica daemon started ("+Version+")", NORMAL)
-		// now in the daemon
-		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
-		e.InDaemon = true
-	}
-	return nil
-}
-
-func quitDaemon(sig os.Signal) error {
-	logThis.Info("+ terminating", VERBOSE)
-	return daemon.ErrStop
-}
-
-// WaitForDaemonStop and clean exit
-func (e *Environment) WaitForDaemonStop() {
-	if err := daemon.ServeSignals(); err != nil {
-		logThis.Error(errors.Wrap(err, errorServingSignals), NORMAL)
-	}
-	logThis.Info("+ varroa musica stopped", NORMAL)
-}
-
-// FindDaemon if it is running.
-func (e *Environment) FindDaemon() (*os.Process, error) {
-	// trying to talk to existing daemon
-	return e.daemon.Search()
-}
-
-// StopDaemon if running
-func (e *Environment) StopDaemon(daemonProcess *os.Process) {
-	daemon.AddCommand(boolFlag(true), syscall.SIGTERM, quitDaemon)
-	if err := daemon.SendCommands(daemonProcess); err != nil {
-		logThis.Error(errors.Wrap(err, errorSendingSignal), NORMAL)
-	}
-	if err := e.daemon.Release(); err != nil {
-		logThis.Error(errors.Wrap(err, errorReleasingDaemon), NORMAL)
-	}
-	if err := os.Remove(pidFile); err != nil {
-		logThis.Error(errors.Wrap(err, errorRemovingPID), NORMAL)
-	}
 }
 
 // LoadConfiguration whether the configuration file is encrypted or not.
@@ -231,16 +160,7 @@ func (e *Environment) Notify(msg, tracker, msgType string) error {
 		}
 		return nil
 	}
-	return e.RunOrGo(notify)
-}
-
-// RunOrGo depending on whether we're in the daemon or not.
-func (e *Environment) RunOrGo(f func() error) error {
-	if e.InDaemon {
-		go f()
-		return nil
-	}
-	return f()
+	return RunOrGo(notify)
 }
 
 func (e *Environment) Tracker(label string) (*GazelleTracker, error) {

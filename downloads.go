@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -50,9 +49,9 @@ func (d *Downloads) Scan() error {
 	}
 
 	// don't walk, we only want the top-level directories here
-	entries, err := ioutil.ReadDir(d.Root)
-	if err != nil {
-		log.Fatal(err)
+	entries, readErr := ioutil.ReadDir(d.Root)
+	if readErr != nil {
+		return errors.Wrap(readErr, "Error reading downloads directory")
 	}
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
@@ -83,8 +82,8 @@ func (d *Downloads) Scan() error {
 			}
 			// try to find entry
 			var downloadEntry DownloadEntry
-			if err := d.DB.One("FolderName", entry.Name(), &downloadEntry); err != nil {
-				if err == storm.ErrNotFound {
+			if dbErr := d.DB.One("FolderName", entry.Name(), &downloadEntry); dbErr != nil {
+				if dbErr == storm.ErrNotFound {
 					// not found, create new entry
 					downloadEntry.FolderName = entry.Name()
 					// read information from metadata
@@ -98,7 +97,7 @@ func (d *Downloads) Scan() error {
 					}
 					logThis.Info("New FuseDB entry: "+entry.Name(), VERBOSESTEST)
 				} else {
-					logThis.Error(err, VERBOSEST)
+					logThis.Error(dbErr, VERBOSEST)
 					continue
 				}
 			} else {
@@ -249,7 +248,7 @@ func (d *Downloads) Clean() error {
 	// don't walk, we only want the top-level directories here
 	entries, err := ioutil.ReadDir(d.Root)
 	if err != nil {
-		log.Fatal(err)
+		return errors.Wrap(err, "Error readingg directory "+d.Root)
 	}
 	for _, entry := range entries {
 		if entry.Name() != downloadsCleanDir && entry.IsDir() {

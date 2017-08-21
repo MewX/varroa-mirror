@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"github.com/sevlyar/go-daemon"
 )
 
 const (
@@ -40,7 +41,7 @@ func (l *LogThis) Info(msg string, level int) {
 	if l.env.config.General.LogLevel >= level {
 		if l.env.expectedOutput {
 			// only is daemon is up...
-			if l.env.InDaemon {
+			if daemon.WasReborn() {
 				log.Println(msg)
 				l.env.sendBackToCLI <- msg
 			} else {

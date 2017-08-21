@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/subosito/norma"
+	"github.com/sevlyar/go-daemon"
 )
 
 const (
@@ -72,7 +73,7 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	}
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
-		if e.InDaemon {
+		if daemon.WasReborn() {
 			go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
 		} else {
 			release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)

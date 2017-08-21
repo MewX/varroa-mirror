@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"html"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"time"
 
@@ -128,9 +127,9 @@ func (fdb *FuseDB) Scan(path string) error {
 	fdb.Root = path
 
 	// don't walk, we only want the top-level directories here
-	entries, err := ioutil.ReadDir(fdb.Root)
-	if err != nil {
-		log.Fatal(err)
+	entries, readErr := ioutil.ReadDir(fdb.Root)
+	if readErr != nil {
+		return errors.Wrap(readErr, "Error reading target directory")
 	}
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
@@ -159,8 +158,8 @@ func (fdb *FuseDB) Scan(path string) error {
 			}
 			// try to find entry
 			var fuseEntry FuseEntry
-			if err := fdb.DB.One("FolderName", entry.Name(), &fuseEntry); err != nil {
-				if err == storm.ErrNotFound {
+			if dbErr := fdb.DB.One("FolderName", entry.Name(), &fuseEntry); dbErr != nil {
+				if dbErr == storm.ErrNotFound {
 					// not found, create new entry
 					fuseEntry.FolderName = entry.Name()
 					// read information from metadata
@@ -174,7 +173,7 @@ func (fdb *FuseDB) Scan(path string) error {
 					}
 					logThis.Info("New FuseDB entry: "+entry.Name(), VERBOSESTEST)
 				} else {
-					logThis.Error(err, VERBOSEST)
+					logThis.Error(dbErr, VERBOSEST)
 					continue
 				}
 			} else {
