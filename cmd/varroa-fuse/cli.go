@@ -28,6 +28,7 @@ Description:
 Usage:
 	varroa-fuse <MUSIC_DIRECTORY> <MOUNT_POINT>
 	varroa-fuse --version
+	varroa-fuse --help
 
 Options:
  	-h, --help             Show this screen.

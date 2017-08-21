@@ -61,13 +61,13 @@ func IsValidDownloadState(txt string) bool {
 //-----------------------
 
 type DownloadEntry struct {
-	ID                 int    `storm:"id,increment"`
-	FolderName         string `storm:"unique"`
-	State              DownloadState
-	Tracker            []string
-	TrackerID          []int
-	Artists            []string
-	HasTrackerMetadata bool
+	ID                 int           `storm:"id,increment"`
+	FolderName         string        `storm:"unique"`
+	State              DownloadState `storm:"index"`
+	Tracker            []string      `storm:"index"`
+	TrackerID          []int         `storm:"index"`
+	Artists            []string      `storm:"index"`
+	HasTrackerMetadata bool          `storm:"index"`
 }
 
 func (d *DownloadEntry) ShortState() string {

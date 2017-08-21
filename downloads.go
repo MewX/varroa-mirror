@@ -67,6 +67,12 @@ func (d *Downloads) Scan() error {
 		return errors.New("Cannot load previous entries")
 	}
 
+	tx, err := d.DB.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	currentFolderNames := []string{}
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -86,7 +92,7 @@ func (d *Downloads) Scan() error {
 						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+entry.Name()), VERBOSEST)
 						continue
 					}
-					if err := d.DB.Save(&downloadEntry); err != nil {
+					if err := tx.Save(&downloadEntry); err != nil {
 						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
 						continue
 					}
@@ -103,7 +109,7 @@ func (d *Downloads) Scan() error {
 					logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
 					continue
 				}
-				if err := d.DB.Update(&downloadEntry); err != nil {
+				if err := tx.Update(&downloadEntry); err != nil {
 					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
 					continue
 				}
@@ -121,6 +127,11 @@ func (d *Downloads) Scan() error {
 			}
 			logThis.Info("Removed Download entry: "+p.FolderName, VERBOSESTEST)
 		}
+	}
+
+	defer TimeTrack(time.Now(), "Committing changes to DB")
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 
 	if !daemon.WasReborn() {

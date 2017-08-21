@@ -241,7 +241,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// release was found
 		return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: d.artist, release: name, fs: d.fs}, nil
 	}
-	logThis.Info("Error during lookup, nothing matched "+name, VERBOSEST)
+	logThis.Info("Error during lookup, nothing matched "+name, VERBOSESTEST)
 	return nil, nil
 }
 
