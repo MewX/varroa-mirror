@@ -75,11 +75,13 @@ compiled_varroa_dev:
     - go get github.com/asdine/storm
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
-    - go build ./... #-o varroa
+    - go build ./cmd/varroa -o varroa
+    - go build ./cmd/varroa-fuse -o varroa-fuse
 #    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
     paths:
     - varroa
+    - varroa-fuse
     name: "varroa-dev-${CI_COMMIT_REF_NAME}"
     expire_in: 4 weeks
   except:
@@ -114,10 +116,12 @@ compiled_varroa_released_version:
     - go get github.com/asdine/storm
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
-    - go build ./...
+    - go build ./cmd/varroa -o varroa
+    - go build ./cmd/varroa-fuse -o varroa-fuse
   artifacts:
     paths: 
     - varroa
+    - varroa-fuse
     name: "varroa-${CI_COMMIT_REF_NAME}"
   only:
     - tags    
