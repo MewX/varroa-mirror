@@ -5,10 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
-
-	"strconv"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"

@@ -40,6 +40,9 @@ format:
     - go get github.com/briandowns/spinner
     - go get github.com/fhs/gompd/mpd
     - go get github.com/russross/blackfriday
+    - go get github.com/asdine/storm
+    - go get bazil.org/fuse
+    - go get golang.org/x/net/context
     - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
@@ -69,6 +72,9 @@ compiled_varroa_dev:
     - go get github.com/briandowns/spinner
     - go get github.com/fhs/gompd/mpd
     - go get github.com/russross/blackfriday
+    - go get github.com/asdine/storm
+    - go get bazil.org/fuse
+    - go get golang.org/x/net/context
     - go build ./... #-o varroa
 #    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
@@ -105,6 +111,9 @@ compiled_varroa_released_version:
     - go get github.com/briandowns/spinner
     - go get github.com/fhs/gompd/mpd
     - go get github.com/russross/blackfriday
+    - go get github.com/asdine/storm
+    - go get bazil.org/fuse
+    - go get golang.org/x/net/context
     - go build ./...
   artifacts:
     paths: 
