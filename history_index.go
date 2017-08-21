@@ -89,10 +89,10 @@ const (
 	htlmDownloadsListTemplate = `
 		<h1>Downloads with full tracker metadata</h1>
 		<ul>
-		{{range .Downloads.Downloads}}
-			{{ if .HasDescription}}
+		{{range .Downloads}}
+			{{ if .HasTrackerMetadata}}
 			<li>
-				[{{.ShortState}}] <a href="downloads/{{.Index}}">{{.Path}}</a>
+				[{{.ShortState}}] <a href="downloads/{{.ID}}">{{.FolderName}}</a>
 			</li>
 			{{ end }}
 		{{end}}
