@@ -15,14 +15,14 @@ import (
 // FuseEntry is the struct describing a release folder with tracker metadata.
 // Only the FolderName is indexed.
 type FuseEntry struct {
-	ID          int    `storm:"id,increment"`
-	FolderName  string `storm:"unique"`
-	Artists     []string
-	Tags        []string
-	Title       string
-	Year        int
-	Tracker     []string
-	RecordLabel string
+	ID          int      `storm:"id,increment"`
+	FolderName  string   `storm:"unique"`
+	Artists     []string `storm:"index"`
+	Tags        []string `storm:"index"`
+	Title       string   `storm:"index"`
+	Year        int      `storm:"index"`
+	Tracker     []string `storm:"index"`
+	RecordLabel string   `storm:"index"`
 }
 
 func (fe *FuseEntry) reset() {
