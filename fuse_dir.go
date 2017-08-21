@@ -329,7 +329,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 				logThis.Error(err, VERBOSEST)
 				return allLabelsDirents, err
 			}
-			// get all different years
+			// get all different labels
 			allLabels := []string{}
 			for _, e := range allEntries {
 				allLabels = append(allLabels, e.RecordLabel)

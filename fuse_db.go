@@ -2,6 +2,7 @@ package varroa
 
 import (
 	"encoding/json"
+	"html"
 	"io/ioutil"
 	"log"
 	"path/filepath"
@@ -74,19 +75,20 @@ func (fe *FuseEntry) Load(root string) error {
 					// extract relevant information!
 					// for now, using artists, composers, "with" categories
 					for _, el := range gt.Response.Group.MusicInfo.Artists {
-						fe.Artists = append(fe.Artists, el.Name)
+						fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
 					}
 					for _, el := range gt.Response.Group.MusicInfo.With {
-						fe.Artists = append(fe.Artists, el.Name)
+						fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
 					}
 					for _, el := range gt.Response.Group.MusicInfo.Composers {
-						fe.Artists = append(fe.Artists, el.Name)
+						fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
 					}
 					// record label
 					fe.RecordLabel = gt.Response.Group.RecordLabel
 					if gt.Response.Torrent.Remastered {
 						fe.RecordLabel = gt.Response.Torrent.RemasterRecordLabel
 					}
+					fe.RecordLabel = SanitizeFolder(html.UnescapeString(fe.RecordLabel))
 					// year
 					fe.Year = gt.Response.Group.Year
 					if gt.Response.Torrent.Remastered {
