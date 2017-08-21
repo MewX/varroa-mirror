@@ -331,7 +331,9 @@ func DirectoryContainsMusic(directoryPath string) bool {
 // TimeTrack helps track the time taken by a function.
 func TimeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
-	logThis.Info(fmt.Sprintf("-- %s in %s", name, elapsed), VERBOSESTEST)
+	if elapsed > time.Millisecond {
+		logThis.Info(fmt.Sprintf("-- %s in %s", name, elapsed), VERBOSESTEST)
+	}
 }
 
 //-----------------------------------------------------------------------------

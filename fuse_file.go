@@ -31,8 +31,7 @@ func (f *File) String() string {
 }
 
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
-	defer TimeTrack(time.Now(), "FILE ATTR")
-	logThis.Info(fmt.Sprintf("FILE Attr %s.", f.String()), VERBOSEST)
+	defer TimeTrack(time.Now(), fmt.Sprintf("FILE Attr %s.", f.String()))
 	// get stat from the actual file
 	fullPath := filepath.Join(f.fs.mountPoint, f.release, f.releaseSubdir, f.name)
 	if !FileExists(fullPath) {
@@ -56,7 +55,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 var _ = fs.NodeOpener(&File{})
 
 func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
-	logThis.Info(fmt.Sprintf("FILE Open %s.", f.String()), VERBOSEST)
+	logThis.Info(fmt.Sprintf("FILE Open %s.", f.String()), VERBOSESTEST)
 
 	fullPath := filepath.Join(f.fs.mountPoint, f.release, f.releaseSubdir, f.name)
 	if !FileExists(fullPath) {
@@ -80,7 +79,7 @@ var _ fs.Handle = (*FileHandle)(nil)
 var _ fs.HandleReleaser = (*FileHandle)(nil)
 
 func (fh *FileHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
-	logThis.Info(fmt.Sprintf("FILE Release %s", fh.f.String()), VERBOSEST)
+	logThis.Info(fmt.Sprintf("FILE Release %s", fh.f.String()), VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO
 	}
@@ -90,8 +89,7 @@ func (fh *FileHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) err
 var _ = fs.HandleReader(&FileHandle{})
 
 func (fh *FileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
-	logThis.Info(fmt.Sprintf("FILE Read %s", fh.f.String()), VERBOSEST)
-
+	logThis.Info(fmt.Sprintf("FILE Read %s", fh.f.String()), VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO
 	}
@@ -111,7 +109,7 @@ func (fh *FileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fus
 var _ = fs.HandleFlusher(&FileHandle{})
 
 func (fh *FileHandle) Flush(ctx context.Context, req *fuse.FlushRequest) error {
-	logThis.Info(fmt.Sprintf("Entered Flush with path: %s", fh.r.Name()), VERBOSEST)
+	logThis.Info(fmt.Sprintf("Entered Flush with path: %s", fh.r.Name()), VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO
 	}

@@ -141,6 +141,12 @@ func (fdb *FuseDB) Scan(path string) error {
 		return errors.New("Cannot load previous entries")
 	}
 
+	tx, err := fdb.DB.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	currentFolderNames := []string{}
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -160,7 +166,7 @@ func (fdb *FuseDB) Scan(path string) error {
 						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+entry.Name()), VERBOSEST)
 						continue
 					}
-					if err := fdb.DB.Save(&fuseEntry); err != nil {
+					if err := tx.Save(&fuseEntry); err != nil {
 						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
 						continue
 					}
@@ -177,7 +183,7 @@ func (fdb *FuseDB) Scan(path string) error {
 					logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
 					continue
 				}
-				if err := fdb.DB.Update(&fuseEntry); err != nil {
+				if err := tx.Update(&fuseEntry); err != nil {
 					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
 					continue
 				}
@@ -190,11 +196,16 @@ func (fdb *FuseDB) Scan(path string) error {
 	// remove entries no longer associated with actual files
 	for _, p := range previous {
 		if !StringInSlice(p.FolderName, currentFolderNames) {
-			if err := fdb.DB.DeleteStruct(&p); err != nil {
+			if err := tx.DeleteStruct(&p); err != nil {
 				logThis.Error(err, VERBOSEST)
 			}
 			logThis.Info("Removed FuseDB entry: "+p.FolderName, VERBOSESTEST)
 		}
+	}
+
+	defer TimeTrack(time.Now(), "Committing changes to DB")
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 
 	s.Stop()
