@@ -15,7 +15,7 @@ import (
 // Environment keeps track of all the context varroa needs.
 type Environment struct {
 	config     *Config
-	serverData *ServerData
+	serverData *ServerPage
 	Trackers   map[string]*GazelleTracker
 	History    map[string]*History
 
@@ -32,7 +32,7 @@ type Environment struct {
 func NewEnvironment() *Environment {
 	e := &Environment{}
 	e.config = &Config{}
-	e.serverData = &ServerData{}
+	e.serverData = &ServerPage{}
 	// make maps
 	e.Trackers = make(map[string]*GazelleTracker)
 	e.History = make(map[string]*History)
