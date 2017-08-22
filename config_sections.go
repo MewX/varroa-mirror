@@ -328,6 +328,7 @@ type ConfigGitlabPages struct {
 	User     string
 	Password string
 	URL      string
+	Folder   string
 }
 
 func (cg *ConfigGitlabPages) Check() error {
@@ -346,6 +347,7 @@ func (cg *ConfigGitlabPages) Check() error {
 		if len(hits) != 1 {
 			return errors.New("Gitlab Pages git repository must be in the form: https://gitlab.com/USER/REPO.git")
 		}
+		cg.Folder = hits[0][2]
 		cg.URL = fmt.Sprintf("https://%s.gitlab.io/%s", hits[0][1], hits[0][2])
 	}
 	return nil

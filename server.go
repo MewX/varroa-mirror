@@ -132,7 +132,7 @@ func webServer(e *Environment) {
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
 	}
-	downloads := Downloads{Root: e.config.General.DownloadDir}
+	downloads := &Downloads{Root: e.config.General.DownloadDir}
 	if e.config.WebServer.ServeMetadata {
 		if err := downloads.Open(filepath.Join(StatsDir, DownloadsDBFile+msgpackExt)); err != nil {
 			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
@@ -347,13 +347,38 @@ func webServer(e *Environment) {
 		rtr.HandleFunc("/getStats/{name:[\\w]+.png}", getStats).Methods("GET")
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 		rtr.HandleFunc("/ws", socket)
+
 	}
 	if e.config.WebServer.ServeStats {
-		// serving static index.html in stats dir
+		getLocalStats := func(w http.ResponseWriter, r *http.Request) {
+			// get filename
+			filename, ok := mux.Vars(r)["name"]
+			if !ok {
+				logThis.Info(errorNoStatsFilename, NORMAL)
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			http.ServeFile(w, r, filepath.Join(StatsDir, filename))
+		}
+		getIndex := func(w http.ResponseWriter, r *http.Request) {
+			response, err := e.serverData.Index(e, downloads)
+			if err != nil {
+				logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			// write response
+			w.WriteHeader(http.StatusOK)
+			w.Write(response)
+		}
 		if e.config.WebServer.Password != "" {
-			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.FileServer(http.Dir(StatsDir))))
+			rtr.Handle("/", httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.HandlerFunc(getIndex)))
+			rtr.Handle("/{name:[\\w]+.svg}", httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.HandlerFunc(getLocalStats)))
+			rtr.Handle("/{name:[\\w]+.png}", httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.HandlerFunc(getLocalStats)))
 		} else {
-			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(StatsDir)))
+			rtr.HandleFunc("/", getIndex)
+			rtr.HandleFunc("/{name:[\\w]+.svg}", getLocalStats)
+			rtr.HandleFunc("/{name:[\\w]+.png}", getLocalStats)
 		}
 	}
 	// serve

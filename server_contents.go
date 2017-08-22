@@ -84,15 +84,15 @@ const (
 		<div id="menu">
 			<div class="pure-menu">
 				<ul class="pure-menu-list">
-					<li class="pure-menu-item"><a class="pure-menu-link" href="/#title">{{.Title}}</a></li>
+					<li class="pure-menu-item"><a class="pure-menu-link" href="/{{.UrlFolder}}#title">{{.Title}}</a></li>
 				{{if .ShowDownloads }}
-					<li class="pure-menu-item"><a class="pure-menu-link" href="/downloads">Downloads</a></li>
+					<li class="pure-menu-item"><a class="pure-menu-link" href="downloads">Downloads</a></li>
 				{{end}}
 				{{range .Stats}}
 					<li class="pure-menu-heading">{{.Name}}</li>
-					<li class="pure-menu-item"> <a class="pure-menu-link" href="/#stats-{{ .Name }}">Stats</a></li>
+					<li class="pure-menu-item"> <a class="pure-menu-link" href="/{{$.UrlFolder}}#stats-{{ .Name }}">Stats</a></li>
 					{{range .GraphLinks}}
-					<li class="pure-menu-item"> <a class="pure-menu-link" href="/{{ .URL }}">{{ .Name }}</a></li>
+					<li class="pure-menu-item"> <a class="pure-menu-link" href="/{{$.UrlFolder}}{{ .URL }}">{{ .Name }}</a></li>
 					{{end}}
 				{{end}}
 				</ul>
@@ -103,7 +103,7 @@ const (
 		  <div class="header">
 				<h1 id="title">{{.Title}}</h1>
 				<p>Graphs last updated: {{.Time}}</p>
-				<p>Raw data: {{range .CSV}}<a href="/{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
+				<p>Raw data: {{range .CSV}}<a href="/{{$.UrlFolder}}{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
 				<p>{{.Version}}</p>
 		  </div>
 		  <div class="content">
@@ -114,7 +114,6 @@ const (
 	</div>
 
 	<script>{{.Script}}</script>
-
   </body>
 </html>
 `
@@ -192,9 +191,9 @@ func (sc *ServerData) update(e *Environment, downloads *Downloads) {
 	}
 }
 
-func (sc *ServerData) Index(e *Environment) ([]byte, error) {
+func (sc *ServerData) Index(e *Environment, downloads *Downloads) ([]byte, error) {
 	// updating
-	sc.update(e, nil)
+	sc.update(e, downloads)
 	if err := sc.index.SetMainContentStats(); err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating stats page")
 	}
@@ -202,19 +201,26 @@ func (sc *ServerData) Index(e *Environment) ([]byte, error) {
 	return sc.index.MainPage()
 }
 
+// SaveIndex is only used for Gitlab pages, so it never shows Downloads and will need to know the repository name (ie Pages subfolder).
 func (sc *ServerData) SaveIndex(e *Environment, file string) error {
 	// building index
-	data, err := sc.Index(e)
+	if e.config.gitlabPagesConfigured {
+		e.serverData.index.UrlFolder = e.config.GitlabPages.Folder + "/"
+	}
+	data, err := sc.Index(e, nil)
 	if err != nil {
 		return err
+	}
+	if e.config.gitlabPagesConfigured {
+		e.serverData.index.UrlFolder = ""
 	}
 	// write to file
 	return ioutil.WriteFile(file, data, 0666)
 }
 
-func (sc *ServerData) DownloadsList(e *Environment, downloads Downloads) ([]byte, error) {
+func (sc *ServerData) DownloadsList(e *Environment, downloads *Downloads) ([]byte, error) {
 	// updating
-	sc.update(e, &downloads)
+	sc.update(e, downloads)
 	// getting downloads
 	if err := sc.index.SetMainContentDownloadsList(); err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating downloads list page")
@@ -223,7 +229,7 @@ func (sc *ServerData) DownloadsList(e *Environment, downloads Downloads) ([]byte
 	return sc.index.MainPage()
 }
 
-func (sc *ServerData) DownloadsInfo(e *Environment, downloads Downloads, id string) ([]byte, error) {
+func (sc *ServerData) DownloadsInfo(e *Environment, downloads *Downloads, id string) ([]byte, error) {
 	// updating
 	sc.update(e, nil)
 
