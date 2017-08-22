@@ -193,7 +193,7 @@ func (e *Environment) DeployToGitlabPages() error {
 	return nil
 }
 
-func (e *Environment) GoGoRoutines() {
+func GoGoRoutines(e *Environment) {
 	//  tracker-dependent goroutines
 	for _, t := range e.Trackers {
 		if e.config.autosnatchConfigured {

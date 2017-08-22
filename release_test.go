@@ -209,8 +209,8 @@ var (
 	i4 = &TrackerTorrentInfo{size: 123456789, logScore: 80}
 	i5 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
 	i6 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
-	i7 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition"}
-	i8 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster"}
+	i7 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition", editionYear: 2004}
+	i8 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster", editionYear: 2017}
 )
 
 func TestRelease(t *testing.T) {
@@ -253,6 +253,7 @@ func TestRelease(t *testing.T) {
 	f28 := &ConfigFilter{Name: "f28", PerfectFlac: true, Edition: []string{"Deluxe", "Bonus"}}
 	f29 := &ConfigFilter{Name: "f29", Uploader: []string{"this_guy", "that_guy"}}
 	f30 := &ConfigFilter{Name: "f30", RejectUnknown: true}
+	f31 := &ConfigFilter{Name: "f31", EditionYear: []int{2004}, AllowScene: true}
 
 	// checking filters
 	check.NotNil(f0.Check())
@@ -286,6 +287,7 @@ func TestRelease(t *testing.T) {
 	check.Nil(f28.Check())
 	check.Nil(f29.Check())
 	check.Nil(f30.Check())
+	check.Nil(f31.Check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -456,4 +458,9 @@ func TestRelease(t *testing.T) {
 	// reject unknown releases
 	check.False(r1.HasCompatibleTrackerInfo(f30, []string{}, i1))
 	check.True(r1.HasCompatibleTrackerInfo(f30, []string{}, i5))
+
+	// edition year
+	check.False(r1.HasCompatibleTrackerInfo(f31, []string{}, i6))
+	check.True(r1.HasCompatibleTrackerInfo(f31, []string{}, i7))
+	check.False(r1.HasCompatibleTrackerInfo(f31, []string{}, i8))
 }

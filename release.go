@@ -284,6 +284,10 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 
 func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUploaders []string, info *TrackerTorrentInfo) bool {
 	// checks
+	if len(filter.EditionYear) != 0 && !IntInSlice(info.editionYear, filter.EditionYear) {
+		logThis.Info(filter.Name+": Wrong edition year", VERBOSE)
+		return false
+	}
 	if filter.MaxSizeMB != 0 && uint64(filter.MaxSizeMB) < (info.size/(1024*1024)) {
 		logThis.Info(filter.Name+": Release too big.", VERBOSE)
 		return false

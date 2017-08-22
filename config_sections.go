@@ -398,6 +398,7 @@ type ConfigFilter struct {
 	Artist              []string `yaml:"artist"`
 	ExcludedArtist      []string `yaml:"excluded_artist"`
 	Year                []int    `yaml:"year"`
+	EditionYear         []int    `yaml:"edition_year"`
 	RecordLabel         []string `yaml:"record_label"`
 	TagsIncluded        []string `yaml:"included_tags"`
 	TagsExcluded        []string `yaml:"excluded_tags"`
@@ -464,6 +465,9 @@ func (cf *ConfigFilter) Check() error {
 	}
 	if reflect.DeepEqual(*cf, ConfigFilter{Name: cf.Name}) {
 		return errors.New("Empty filter would snatch everything, it probably is not what you want")
+	}
+	if len(cf.Year) != 0 && len(cf.EditionYear) != 0 {
+		return errors.New("A filter can define year or edition_year, but not both")
 	}
 
 	// TODO: check source/quality against hard-coded values?, MP3, 24bit Lossless, etc?
@@ -535,6 +539,9 @@ func (cf *ConfigFilter) String() string {
 	}
 	if len(cf.Edition) != 0 {
 		description += "\tEdition contains: " + strings.Join(cf.Edition, ", ") + "\n"
+	}
+	if len(cf.EditionYear) != 0 {
+		description += "\tEdition Year(s): " + strings.Join(IntSliceToStringSlice(cf.EditionYear), ", ") + "\n"
 	}
 	description += "\tReject unknown releases: " + fmt.Sprintf("%v", cf.RejectUnknown) + "\n"
 	return description

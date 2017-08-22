@@ -21,6 +21,7 @@ type TrackerTorrentInfo struct {
 	label       string
 	catnum      string
 	edition     string
+	editionYear int
 	logScore    int
 	artists     map[string]int // concat artists, composers, etc: artist name: id
 	artistNames []string
@@ -161,6 +162,7 @@ func (a *TrackerTorrentInfo) LoadFromBytes(data []byte, fullJSON bool) error {
 		a.catnum = gt.Response.Torrent.RemasterCatalogueNumber
 	}
 	a.edition = gt.Response.Torrent.RemasterTitle
+	a.editionYear = gt.Response.Torrent.RemasterYear
 	a.logScore = gt.Response.Torrent.LogScore
 	a.size = uint64(gt.Response.Torrent.Size)
 	a.coverURL = gt.Response.Group.WikiImage

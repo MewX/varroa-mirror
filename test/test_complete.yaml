@@ -94,6 +94,12 @@ filters:
     excluded_type:
     - Concert Recording
     reject_unknown_releases: true
+    edition_contains:
+    - Bonus
+    - Anniversary
+    edition_year:
+    - 2014
+    - 2015
 
   - name: test
     year:
@@ -132,7 +138,3 @@ filters:
     - Spammy McSpam
     record_label:
     - Warp
-    edition_contains:
-    - Bonus
-    - Anniversary
-

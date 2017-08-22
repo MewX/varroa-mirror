@@ -205,7 +205,7 @@ func main() {
 			return
 		}
 		// launch goroutines
-		env.GoGoRoutines()
+		varroa.GoGoRoutines(env)
 
 		// wait until daemon is stopped.
 		d.WaitForStop()
