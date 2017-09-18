@@ -189,7 +189,7 @@ func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile string, destina
 	return nil
 }
 
-func (t *GazelleTracker) GetStats(targetRatio float64) (*TrackerStats, error) {
+func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	if t.userID == 0 {
 		data, err := t.get(t.URL + "/ajax.php?action=index")
 		if err != nil {
@@ -215,16 +215,14 @@ func (t *GazelleTracker) GetStats(targetRatio float64) (*TrackerStats, error) {
 		logThis.Info("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
 		ratio = 0.0
 	}
-	// GazelleIndex to TrackerStats
-	stats := &TrackerStats{
-		Username:      s.Response.Username,
-		Class:         s.Response.Personal.Class,
-		Up:            uint64(s.Response.Stats.Uploaded),
-		Down:          uint64(s.Response.Stats.Downloaded),
-		Buffer:        int64(float64(s.Response.Stats.Uploaded)/targetRatio) - int64(s.Response.Stats.Downloaded),
-		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/warningRatio) - int64(s.Response.Stats.Downloaded),
-		Ratio:         ratio,
-		Timestamp:     time.Now().Unix(),
+	// return StatsEntry
+	stats := &StatsEntry{
+		Tracker:   t.Name,
+		Up:        uint64(s.Response.Stats.Uploaded),
+		Down:      uint64(s.Response.Stats.Downloaded),
+		Ratio:     ratio,
+		Timestamp: time.Now(),
+		Collected: true,
 	}
 	return stats, nil
 }

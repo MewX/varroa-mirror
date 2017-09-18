@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/asdine/storm"
 	"github.com/pkg/errors"
 	"github.com/russross/blackfriday"
 )
@@ -167,27 +168,28 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 			graphs = append(graphs, HTMLLink{Title: label + ": " + s.Name, Name: s.Label, URL: s.Label + svgExt})
 		}
 		// add previous stats (progress)
-		var lastStats []*TrackerStats
-		var lastStatsStrings [][]string
-		if len(h.TrackerStats) < 25 {
-			lastStats = h.TrackerStats
+		// access to statsDB
+		lastStatsStrings := [][]string{}
+		stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
+		if err != nil {
+			logThis.Error(errors.Wrap(err, "Error, could not access the stats database"), NORMAL)
 		} else {
-			lastStats = h.TrackerStats[len(h.TrackerStats)-25 : len(h.TrackerStats)]
-		}
-		for i, s := range lastStats {
-			if i == 0 {
-				continue
+			// get previous stats
+			knownPreviousStats, err := stats.GetLastCollected(label, 25)
+			if err != nil && err != storm.ErrNotFound {
+				logThis.Error(errors.Wrap(err, "Error retreiving previous stats for tracker "+label), NORMAL)
 			}
-			lastStatsStrings = append(lastStatsStrings, s.ProgressParts(lastStats[i-1]))
+			for i, s := range knownPreviousStats {
+				if i == 0 {
+					continue
+				}
+				lastStatsStrings = append(lastStatsStrings, s.ProgressParts(&knownPreviousStats[i-1]))
+			}
 		}
-		// reversing
-		for left, right := 0, len(lastStatsStrings)-1; left < right; left, right = left+1, right-1 {
-			lastStatsStrings[left], lastStatsStrings[right] = lastStatsStrings[right], lastStatsStrings[left]
-		}
-		// TODO timestamps: first column for h.TrackerRecords.
 
-		stats := HTMLStats{Name: label, TrackerStats: lastStatsStrings, Graphs: graphs, GraphLinks: graphLinks}
-		sc.index.Stats = append(sc.index.Stats, stats)
+		// TODO timestamps: first column for h.TrackerRecords.
+		htmlStats := HTMLStats{Name: label, TrackerStats: lastStatsStrings, Graphs: graphs, GraphLinks: graphLinks}
+		sc.index.Stats = append(sc.index.Stats, htmlStats)
 	}
 }
 

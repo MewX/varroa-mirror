@@ -10,6 +10,23 @@ import (
 
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
+	"github.com/wcharczuk/go-chart/drawing"
+)
+
+const (
+	gitlabCI = `# plain-htlm CI
+pages:
+  stage: deploy
+  script:
+  - mkdir .public
+  - cp -r * .public
+  - mv .public public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
+`
 )
 
 // Environment keeps track of all the context varroa needs.
@@ -63,10 +80,17 @@ func (e *Environment) LoadConfiguration() error {
 		return err
 	}
 
+	// get theme for stats & webserver
 	if e.config.statsConfigured {
 		theme := knownThemes[darkOrange]
 		if e.config.webserverConfigured {
 			theme = knownThemes[e.config.WebServer.Theme]
+			commonStyleSVG.StrokeColor = drawing.ColorFromHex(theme.GraphColor[1:])
+			commonStyleSVG.FillColor = drawing.ColorFromHex(theme.GraphColor[1:]).WithAlpha(theme.GraphFillerOpacity)
+			commonStyleSVG.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+			timeAxisSVG.NameStyle.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+			timeAxisSVG.Style.FontColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
+			timeAxisSVG.Style.StrokeColor = drawing.ColorFromHex(theme.GraphAxisColor[1:])
 		}
 		e.serverData.theme = theme
 		e.serverData.index = HTMLIndex{Title: strings.ToUpper(FullName), Version: Version, CSS: theme.CSS(), Script: indexJS}
@@ -86,6 +110,7 @@ func (e *Environment) SetUp(autologin bool) error {
 			return errors.Wrap(err, errorCreatingStatsDir)
 		}
 	}
+
 	// log in all trackers, assuming labels are unique (configuration was checked)
 	for _, label := range e.config.TrackerLabels() {
 		config, err := e.config.GetTracker(label)

@@ -158,13 +158,24 @@ func awaitOrders(e *Environment) {
 
 func GenerateStats(e *Environment) error {
 	atLeastOneError := false
-	for t, h := range e.History {
-		logThis.Info("Generating stats for "+t, VERBOSE)
-		if err := h.GenerateGraphs(e); err != nil {
-			logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), VERBOSE)
+	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
+	if err != nil {
+		return errors.Wrap(err, "Error, could not access the stats database")
+	}
+
+	// get tracker labels from config.
+	config, err := NewConfig(DefaultConfigurationFile)
+	if err != nil {
+		return err
+	}
+	// generate graphs
+	for _, tracker := range config.TrackerLabels() {
+		if err := stats.GenerateAllGraphsForTracker(tracker); err != nil {
+			logThis.Error(err, NORMAL)
 			atLeastOneError = true
 		}
 	}
+
 	// generate index.html
 	if err := e.GenerateIndex(); err != nil {
 		logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
