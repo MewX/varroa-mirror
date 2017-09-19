@@ -22,13 +22,10 @@ func TestCrypto(t *testing.T) {
 	passphrase = make([]byte, 32)
 	copy(passphrase[:], "passphrase")
 
-	_, err := NewConfig(testYAML)
-	check.Nil(err)
-
 	// 1. encrypt
 
 	// bad passphrase
-	err = encryptAndSave(testYAML, []byte("tooshort"))
+	err := encryptAndSave(testYAML, []byte("tooshort"))
 	check.NotNil(err)
 	// not yaml
 	err = encryptAndSave(testYAML+"--", passphrase)

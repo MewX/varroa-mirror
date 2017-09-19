@@ -91,9 +91,8 @@ func (se *StatsEntry) IsProgressAcceptable(previous *StatsEntry, maxDecrease int
 	// if maxDecrease is unset (=0), always return true
 	if maxDecrease == 0 || bufferChange >= 0 || -bufferChange <= int64(maxDecrease*1024*1024) {
 		return true
-	} else {
-		logThis.Info(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.", bufferChange, maxDecrease*1024*1024), VERBOSE)
 	}
+	logThis.Info(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.", bufferChange, maxDecrease*1024*1024), VERBOSE)
 	return false
 }
 
