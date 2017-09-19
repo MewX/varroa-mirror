@@ -119,6 +119,7 @@ func (sdb *StatsDB) migrate(tracker, csvFile string) error {
 // It creates StatsEntries for each start of day (which might also be start of week/month)
 // That way, it'll be quicker to create stats and recalculate StatsDeltas.
 func (sdb *StatsDB) Update() error {
+	defer TimeTrack(time.Now(), "UPDATE")
 	// TODO: add cron job
 
 	// get tracker labels from config.
@@ -138,7 +139,7 @@ func (sdb *StatsDB) Update() error {
 	// get start of today
 	startOfToday := now.BeginningOfDay()
 	for _, t := range allTrackers {
-		logThis.Info("Updating stats for tracker "+t, VERBOSE)
+		logThis.Info("Updating stats for tracker "+t, VERBOSEST)
 
 		// find first collected timestamp for this tracker
 		firstTrackerStats, err := sdb.getFirstStatsForTracker(t)
@@ -191,7 +192,7 @@ func (sdb *StatsDB) Update() error {
 					if previous.Timestamp.Equal(next.Timestamp) {
 						// if they are the same, it's probably the first day.
 						// creating first day without interpolation.
-						newDailyStats = &StatsEntry{Tracker: previous.Tracker, Timestamp: previous.Timestamp, Up: previous.Up, Down: previous.Down, Ratio: previous.Ratio, StartOfDay: true}
+						newDailyStats = &StatsEntry{Tracker: previous.Tracker, Timestamp: currentStartOfDay, Up: previous.Up, Down: previous.Down, Ratio: previous.Ratio, StartOfDay: true}
 					} else {
 						// interpolate stats at the start of the day being considered
 						newDailyStats, err = InterpolateStats(previous, next, currentStartOfDay)
@@ -260,6 +261,8 @@ func (sdb *StatsDB) GetLastCollected(tracker string, limit int) ([]StatsEntry, e
 }
 
 func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
+	atLeastOneFailed := false
+
 	firstStats, err := sdb.getFirstStatsForTracker(tracker)
 	if err != nil {
 		return errors.Wrap(err, "error getting tracker stats")
@@ -283,7 +286,8 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		return errors.Wrap(err, "error querying database")
 	}
 	if err := generateGraphs(tracker, "lastweek", lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
-		return err
+		logThis.Error(err, NORMAL)
+		atLeastOneFailed = true
 	}
 
 	// 3. collect stats since last month
@@ -295,7 +299,8 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		return errors.Wrap(err, "error querying database")
 	}
 	if err := generateGraphs(tracker, "lastmonth", lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
-		return err
+		logThis.Error(err, NORMAL)
+		atLeastOneFailed = true
 	}
 
 	// 4. stats/day
@@ -308,7 +313,8 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allDailyDeltas := CalculateDeltas(allDailyStats)
 	// generate graphs
 	if err := generateDeltaGraphs(tracker, "overall_per_day", allDailyDeltas, allDailyDeltas[0].Timestamp); err != nil {
-		return err
+		logThis.Error(err, NORMAL)
+		atLeastOneFailed = true
 	}
 
 	// 5. stats/week
@@ -321,7 +327,8 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allWeeklyDeltas := CalculateDeltas(allWeeklyStats)
 	// generate graphs
 	if err := generateDeltaGraphs(tracker, "overall_per_week", allWeeklyDeltas, allWeeklyDeltas[0].Timestamp); err != nil {
-		return err
+		logThis.Error(err, NORMAL)
+		atLeastOneFailed = true
 	}
 
 	// 6. stats/month
@@ -334,15 +341,21 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allMonthlyDeltas := CalculateDeltas(allMonthlyStats)
 	// generate graphs
 	if err := generateDeltaGraphs(tracker, "overall_per_month", allMonthlyDeltas, allMonthlyDeltas[0].Timestamp); err != nil {
-		return err
+		logThis.Error(err, NORMAL)
+		atLeastOneFailed = true
 	}
 
+	// return
+	if atLeastOneFailed {
+		return errors.New(errorGeneratingGraph)
+	}
 	return nil
 }
 
 // generateGraphs for data points
 // graphType == lastweek, lastmonth, overall, etc
 func generateGraphs(tracker, graphType string, entries []StatsEntry, firstTimestamp time.Time) error {
+	logThis.Info("Generating "+graphType+" graphs for tracker "+tracker, VERBOSEST)
 	overallStats := StatsSeries{Tracker: tracker}
 	if err := overallStats.AddStats(entries...); err != nil {
 		return err
@@ -353,6 +366,7 @@ func generateGraphs(tracker, graphType string, entries []StatsEntry, firstTimest
 // generateDeltaGraphs for data deltas
 // graphType == daily, weekly, monthly, etc
 func generateDeltaGraphs(tracker, graphType string, entries []StatsDelta, firstTimestamp time.Time) error {
+	logThis.Info("Generating "+graphType+" delta graphs for tracker "+tracker, VERBOSEST)
 	overallStats := StatsSeries{Tracker: tracker}
 	if err := overallStats.AddDeltas(entries...); err != nil {
 		return err
