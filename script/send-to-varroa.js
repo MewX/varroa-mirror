@@ -4,8 +4,9 @@
 // @description    Adds a VM link for each torrent, to send directly to varroa musica.
 // @include        http*://*redacted.ch/*
 // @include        http*://*notwhat.cd/*
-// @version        9
-// @date           2017-03
+// @include        http*://*apollo.rip/*
+// @version        10
+// @date           2017-09
 // @grant          GM_getValue
 // @grant          GM_setValue
 // @grant          GM_notification
@@ -67,7 +68,7 @@ if (settings) {
 		// Open the websocket to varroa
 		newSocket();
 	} else {
-		// Add http links
+	    // Add http links
 		addLinks();
 	}
 	// Add stats if on user page
@@ -168,7 +169,7 @@ function addStatsToUserPage() {
 }
 
 function newSocket() {
-	// TODO use settings.token
+    // TODO use settings.token
 	sock = new WebSocket('wss://' + settings.url + ':' + settings.port + '/ws');
 	// Add unknown indicator
 	setVMStatus(vmUnknown);
@@ -194,8 +195,8 @@ function newSocket() {
 				// Safe to add links
 				addLinks();
 			} else {
+			    // TODO change back after a while
 				setVMStatus('VM: ' + msg.Message);
-				// TODO change back after a while
 			}
 		}
 	};
