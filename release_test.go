@@ -365,13 +365,13 @@ func TestRelease(t *testing.T) {
 	check.True(r1.Satisfies(f16))
 	check.False(r2.Satisfies(f16))
 	check.False(r3.Satisfies(f16))
-	check.False(r4.Satisfies(f16))
+	check.True(r4.Satisfies(f16)) // logscore isn't evaluated since it's not FLAC
 	check.True(r5.Satisfies(f16))
 
 	check.True(r1.Satisfies(f17))
 	check.False(r2.Satisfies(f17))
 	check.False(r3.Satisfies(f17))
-	check.False(r4.Satisfies(f17))
+	check.True(r4.Satisfies(f17)) // logscore isn't evaluated since it's not FLAC
 	check.False(r5.Satisfies(f17))
 
 	check.True(r1.Satisfies(f18))
@@ -401,7 +401,7 @@ func TestRelease(t *testing.T) {
 	check.True(r1.Satisfies(f22))
 	check.False(r2.Satisfies(f22))
 	check.False(r3.Satisfies(f22))
-	check.False(r4.Satisfies(f22))
+	check.True(r4.Satisfies(f22)) // logscore isn't evaluated since it's not FLAC
 	check.True(r5.Satisfies(f22))
 
 	check.False(r1.Satisfies(f24))

@@ -232,16 +232,16 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		logThis.Info(filter.Name+": Wrong quality", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && filter.HasLog && !r.HasLog {
+	if r.Source == "CD" && r.Format == "FLAC" && filter.HasLog && !r.HasLog {
 		logThis.Info(filter.Name+": Release has no log", VERBOSE)
 		return false
 	}
 	// only compare logscores if the announce contained that information
-	if r.Source == "CD" && filter.LogScore != 0 && (!r.HasLog || (r.LogScore != logScoreNotInAnnounce && filter.LogScore > r.LogScore)) {
+	if r.Source == "CD" && r.Format == "FLAC" && filter.LogScore != 0 && (!r.HasLog || (r.LogScore != logScoreNotInAnnounce && filter.LogScore > r.LogScore)) {
 		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && filter.HasCue && !r.HasCue {
+	if r.Source == "CD" && r.Format == "FLAC" && filter.HasCue && !r.HasCue {
 		logThis.Info(filter.Name+": Release has no cue", VERBOSE)
 		return false
 	}
@@ -296,7 +296,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 		logThis.Info(filter.Name+": Release too small.", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && r.HasLog && filter.LogScore != 0 && filter.LogScore > info.logScore {
+	if r.Source == "CD" && r.Format == "FLAC" && r.HasLog && filter.LogScore != 0 && filter.LogScore > info.logScore {
 		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
