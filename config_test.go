@@ -123,9 +123,9 @@ func TestConfig(t *testing.T) {
 	f := c.Filters[0]
 	check.Equal("perfect", f.Name)
 	check.Nil(f.Year)
-	check.Equal([]string{"CD", "Vinyl", "DVD", "Soundboard", "WEB", "Cassette", "Blu-ray", "SACD", "DAT"}, f.Source)
+	check.Equal(knownSources, f.Source)
 	check.Equal([]string{"FLAC"}, f.Format)
-	check.Equal([]string{"Lossless", "24bit Lossless"}, f.Quality)
+	check.Equal([]string{"24bit Lossless", "Lossless"}, f.Quality)
 	check.True(f.HasCue)
 	check.True(f.HasLog)
 	check.Equal(100, f.LogScore)

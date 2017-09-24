@@ -1,39 +1,80 @@
 package varroa
 
-func getGazelleReleaseType(value int) string {
-	switch value {
-	case 1:
-		return "Album"
-	case 3:
-		return "Soundtrack"
-	case 5:
-		return "EP"
-	case 6:
-		return "Anthology"
-	case 7:
-		return "Compilation"
-	case 9:
-		return "Single"
-	case 11:
-		return "Live album"
-	case 13:
-		return "Remix"
-	case 14:
-		return "Bootleg"
-	case 15:
-		return "Interview"
-	case 16:
-		return "Mixtape"
-	case 17:
-		return "Demo"
-	case 18:
-		return "Concert Recording"
-	case 19:
-		return "DJ Mix"
-	case 21:
-		return "Unknown"
+const (
+	formatFLAC = "FLAC"
+	formatMP3  = "MP3"
+	formatAAC  = "AAC"
+	formatAC3  = "AC3"
+	formatDTS  = "DTS"
+
+	sourceCD         = "CD"
+	sourceWEB        = "WEB"
+	sourceDVD        = "DVD"
+	sourceVinyl      = "Vinyl"
+	sourceSoundboard = "Soundboard"
+	sourceDAT        = "DAT"
+	sourceCassette   = "Cassette"
+	sourceBluRay     = "Blu-Ray"
+	sourceSACD       = "SACD"
+
+	quality192           = "192"
+	quality256           = "256"
+	quality320           = "320"
+	qualityAPS           = "APS (VBR)"
+	qualityAPX           = "APX (VBR)"
+	qualityV2            = "V2 (VBR)"
+	qualityV1            = "V1 (VBR)"
+	qualityV0            = "V0 (VBR)"
+	qualityLossless      = "Lossless"
+	quality24bitLossless = "24bit Lossless"
+
+	releaseAlbum       = "Album"
+	releaseSoundtrack  = "Soundtrack"
+	releaseEP          = "EP"
+	releaseAnthology   = "Anthology"
+	releaseCompilation = "Compilation"
+	releaseSingle      = "Single"
+	releaseLive        = "Live album"
+	releaseRemix       = "Remix"
+	releaseBootleg     = "Bootleg"
+	releaseInterview   = "Interview"
+	releaseMixtape     = "Mixtape"
+	releaseDemo        = "Demo"
+	releaseConcert     = "Concert Recording"
+	releaseDJMix       = "DJ Mix"
+	releaseUnknown     = "Unknown"
+)
+
+var (
+	releaseTypes = map[int]string{
+		1:  releaseAlbum,
+		3:  releaseSoundtrack,
+		5:  releaseEP,
+		6:  releaseAnthology,
+		7:  releaseCompilation,
+		9:  releaseSingle,
+		11: releaseLive,
+		13: releaseRemix,
+		14: releaseBootleg,
+		15: releaseInterview,
+		16: releaseMixtape,
+		17: releaseDemo,
+		18: releaseConcert,
+		19: releaseDJMix,
+		21: releaseUnknown,
 	}
-	return "Unknown value"
+	knownReleaseTypes = []string{releaseAlbum, releaseSoundtrack, releaseEP, releaseAnthology, releaseCompilation, releaseSingle, releaseLive, releaseRemix, releaseBootleg, releaseInterview, releaseMixtape, releaseDemo, releaseConcert, releaseDJMix, releaseUnknown}
+	knownFormats      = []string{formatFLAC, formatMP3, formatAAC, formatAC3, formatDTS}
+	knownSources      = []string{sourceCD, sourceWEB, sourceVinyl, sourceBluRay, sourceCassette, sourceDVD, sourceDAT, sourceSoundboard, sourceSACD}
+	knownQualities    = []string{quality192, quality256, quality320, qualityAPS, qualityAPX, qualityV2, qualityV1, qualityV0, qualityLossless, quality24bitLossless}
+)
+
+func getGazelleReleaseType(value int) string {
+	label, ok := releaseTypes[value]
+	if !ok {
+		return "Unknown value"
+	}
+	return label
 }
 
 type GazelleGenericResponse struct {

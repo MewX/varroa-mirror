@@ -46,7 +46,7 @@ var announces = []testAnnounce{
 		true,
 		false,
 		"Release info:\n\tArtist: An artist\n\tTitle: Title / \\ with utf8 characters éç_?<Ω>§Ð¢<¢<Ð>\n\tYear: 2013\n\tRelease Type: Album\n\tFormat: MP3\n\tQuality: 320\n\tHasLog: false\n\tLog Score: -9999\n\tHas Cue: false\n\tScene: false\n\tSource: CD\n\tTags: [tag1.taggy tag2.mctagface]\n\tURL: https://mysterious.address/torrents.php?id=93821\n\tTorrent URL: https://mysterious.address/torrents.php?action=download&id=981243\n\tTorrent ID: 981243",
-		[]*ConfigFilter{filter1, filter2, filter3, filter4, filter6, filter11, filter12},
+		[]*ConfigFilter{filter1, filter2, filter3, filter4, filter6, filter8, filter11, filter12, filter15, filter16},
 	},
 	{
 		`An artist:!, with / another artist! :)ÆΩ¢ - Title / \ with - utf8 characters éç_?<Ω>§Ð¢<¢<Ð> [1999] [EP] - FLAC / 24bit Lossless / Vinyl / Scene - https://mysterious.address/torrents.php?id=93821 / https://mysterious.address/torrents.php?action=download&id=981243 - tag.mctagface`,

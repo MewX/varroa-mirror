@@ -427,7 +427,7 @@ func (cf *ConfigFilter) Check() error {
 	if cf.Name == "" {
 		return errors.New("Missing filter name")
 	}
-	if (cf.HasCue || cf.HasLog || cf.LogScore != 0) && !StringInSlice("CD", cf.Source) {
+	if (cf.HasCue || cf.HasLog || cf.LogScore != 0) && !StringInSlice(sourceCD, cf.Source) {
 		return errors.New("Has Log/Cue only relevant if CD is an acceptable source")
 	}
 	if cf.MaxSizeMB < 0 || cf.MinSizeMB < 0 {
@@ -456,12 +456,12 @@ func (cf *ConfigFilter) Check() error {
 			return errors.New("The perfect_flag option replaces all options about quality, source, format, and cue/log/log score")
 		}
 		// setting the relevant options
-		cf.Format = []string{"FLAC"}
-		cf.Quality = []string{"Lossless", "24bit Lossless"}
+		cf.Format = []string{formatFLAC}
+		cf.Quality = []string{quality24bitLossless, qualityLossless}
 		cf.HasCue = true
 		cf.HasLog = true
 		cf.LogScore = 100
-		cf.Source = []string{"CD", "Vinyl", "DVD", "Soundboard", "WEB", "Cassette", "Blu-ray", "SACD", "DAT"}
+		cf.Source = knownSources
 	}
 	if reflect.DeepEqual(*cf, ConfigFilter{Name: cf.Name}) {
 		return errors.New("Empty filter would snatch everything, it probably is not what you want")
@@ -470,7 +470,43 @@ func (cf *ConfigFilter) Check() error {
 		return errors.New("A filter can define year or edition_year, but not both")
 	}
 
-	// TODO: check source/quality against hard-coded values?, MP3, 24bit Lossless, etc?
+	// checking against known gazelle values
+	if len(cf.ReleaseType) != 0 {
+		for _, r := range cf.ReleaseType {
+			if !StringInSlice(r, knownReleaseTypes) {
+				return errors.New("unknown release type " + r + ", acceptable values: " + strings.Join(knownReleaseTypes, ", "))
+			}
+		}
+	}
+	if len(cf.ExcludedReleaseType) != 0 {
+		for _, r := range cf.ExcludedReleaseType {
+			if !StringInSlice(r, knownReleaseTypes) {
+				return errors.New("unknown release type " + r + ", acceptable values: " + strings.Join(knownReleaseTypes, ", "))
+			}
+		}
+	}
+	if len(cf.Format) != 0 {
+		for _, r := range cf.Format {
+			if !StringInSlice(r, knownFormats) {
+				return errors.New("unknown format " + r + ", acceptable values: " + strings.Join(knownFormats, ", "))
+			}
+		}
+	}
+	if len(cf.Source) != 0 {
+		for _, r := range cf.Source {
+			if !StringInSlice(r, knownSources) {
+				return errors.New("unknown source " + r + ", acceptable values: " + strings.Join(knownSources, ", "))
+			}
+		}
+	}
+	if len(cf.Quality) != 0 {
+		for _, r := range cf.Quality {
+			if !StringInSlice(r, knownQualities) {
+				return errors.New("unknown quality " + r + ", acceptable values: " + strings.Join(knownQualities, ", "))
+			}
+		}
+	}
+
 	// TODO: check impossible filters: ie format :FLAC + quality: 320
 
 	return nil

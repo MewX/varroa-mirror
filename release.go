@@ -63,7 +63,7 @@ type Release struct {
 
 func NewRelease(parts []string, alternative bool) (*Release, error) {
 	if len(parts) != 19 {
-		return nil, errors.New("Incomplete announce information")
+		return nil, errors.New("incomplete announce information")
 	}
 
 	var tags []string
@@ -114,7 +114,25 @@ func NewRelease(parts []string, alternative bool) (*Release, error) {
 		artist = append(artist, subArtists...)
 	}
 
-	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: parts[4], Format: parts[5], Quality: parts[6], Source: parts[13], HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: url, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID, Metadata: ReleaseMetadata{}}
+	// checks
+	releaseType := parts[4]
+	if !StringInSlice(releaseType, knownReleaseTypes) {
+		return nil, errors.New("Unknown release type: " + releaseType)
+	}
+	format := parts[5]
+	if !StringInSlice(format, knownFormats) {
+		return nil, errors.New("Unknown format: " + format)
+	}
+	source := parts[13]
+	if !StringInSlice(source, knownSources) {
+		return nil, errors.New("Unknown source: " + source)
+	}
+	quality := parts[6]
+	if !StringInSlice(quality, knownQualities) {
+		return nil, errors.New("Unknown quality: " + quality)
+	}
+
+	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: releaseType, Format: format, Quality: quality, Source: source, HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: url, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID, Metadata: ReleaseMetadata{}}
 	r.TorrentFile = fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
 	r.TorrentFile = norma.Sanitize(r.TorrentFile)
 	return r, nil
@@ -137,7 +155,7 @@ func (r *Release) FromSlice(slice []string) error {
 
 	// slice contains timestamp + filter, which are ignored
 	if len(slice) < 16 {
-		return errors.New("Incorrect entry, cannot load release")
+		return errors.New("incorrect entry, cannot load release")
 	}
 	// no need to parse the raw Artists announce again, probably
 	timestamp, err := strconv.ParseUint(slice[0], 10, 64)
@@ -191,7 +209,7 @@ func (r *Release) IsDupe(o Release) bool {
 	// checking if similar
 	// size and tags are not taken into account
 	if r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.IsScene == o.IsScene {
-		if r.Source == "CD" {
+		if r.Source == sourceCD {
 			if r.HasLog == o.HasLog && r.LogScore == o.LogScore && r.HasCue == o.HasCue {
 				return true
 			}
@@ -232,16 +250,16 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		logThis.Info(filter.Name+": Wrong quality", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && r.Format == "FLAC" && filter.HasLog && !r.HasLog {
+	if r.Source == sourceCD && r.Format == formatFLAC && filter.HasLog && !r.HasLog {
 		logThis.Info(filter.Name+": Release has no log", VERBOSE)
 		return false
 	}
 	// only compare logscores if the announce contained that information
-	if r.Source == "CD" && r.Format == "FLAC" && filter.LogScore != 0 && (!r.HasLog || (r.LogScore != logScoreNotInAnnounce && filter.LogScore > r.LogScore)) {
+	if r.Source == sourceCD && r.Format == formatFLAC && filter.LogScore != 0 && (!r.HasLog || (r.LogScore != logScoreNotInAnnounce && filter.LogScore > r.LogScore)) {
 		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && r.Format == "FLAC" && filter.HasCue && !r.HasCue {
+	if r.Source == sourceCD && r.Format == formatFLAC && filter.HasCue && !r.HasCue {
 		logThis.Info(filter.Name+": Release has no cue", VERBOSE)
 		return false
 	}
@@ -296,7 +314,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 		logThis.Info(filter.Name+": Release too small.", VERBOSE)
 		return false
 	}
-	if r.Source == "CD" && r.Format == "FLAC" && r.HasLog && filter.LogScore != 0 && filter.LogScore > info.logScore {
+	if r.Source == sourceCD && r.Format == formatFLAC && r.HasLog && filter.LogScore != 0 && filter.LogScore > info.logScore {
 		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
