@@ -57,7 +57,6 @@ type Release struct {
 	Size        uint64
 	Folder      string
 	Filter      string
-	Metadata    ReleaseMetadata
 }
 
 func NewRelease(parts []string, alternative bool) (*Release, error) {
@@ -131,7 +130,7 @@ func NewRelease(parts []string, alternative bool) (*Release, error) {
 		return nil, errors.New("Unknown quality: " + quality)
 	}
 
-	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: releaseType, Format: format, Quality: quality, Source: source, HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: url, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID, Metadata: ReleaseMetadata{}}
+	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: releaseType, Format: format, Quality: quality, Source: source, HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: url, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID}
 	r.TorrentFile = fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
 	r.TorrentFile = norma.Sanitize(r.TorrentFile)
 	return r, nil

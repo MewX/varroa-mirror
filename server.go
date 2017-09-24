@@ -74,9 +74,9 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
 		if daemon.WasReborn() {
-			go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+			go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 		} else {
-			release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+			SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 		}
 	}
 	return release, nil

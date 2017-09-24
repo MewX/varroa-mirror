@@ -203,9 +203,9 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				continue
 			}
 			if daemon.WasReborn() {
-				go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+				go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 			} else {
-				r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+				SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 			}
 		}
 	}
@@ -228,11 +228,10 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				}
 				fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
 				if DirectoryExists(fullFolder) {
-					r := info.Release()
 					if daemon.WasReborn() {
-						go r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+						go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 					} else {
-						r.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+						SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 					}
 				} else {
 					logThis.Info(fmt.Sprintf(errorCannotFindID, m), NORMAL)

@@ -87,7 +87,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					}
 					// save metadata once the download folder is created
 					if e.config.General.AutomaticMetadataRetrieval {
-						go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+						go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 					}
 					// no need to consider other filters
 					break

@@ -53,8 +53,9 @@ func (rm *ReleaseMetadata) GenerateSummary(tracker *GazelleTracker) error {
 	return ioutil.WriteFile(filepath.Join(rm.Root, tracker.Name+"_"+summaryFile), []byte(md), 0644)
 }
 
-// SaveFromTracker all of the associated metadata.
-func (rm *ReleaseMetadata) SaveFromTracker(tracker *GazelleTracker, info *TrackerTorrentInfo, destination string) error {
+// SaveMetadataFromTracker all of the associated metadata.
+func SaveMetadataFromTracker(tracker *GazelleTracker, info *TrackerTorrentInfo, destination string) error {
+	rm := ReleaseMetadata{}
 	if destination == "" {
 		// download folder not set
 		return nil
