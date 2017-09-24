@@ -83,12 +83,12 @@ func (a *TrackerTorrentInfo) FullInfo() *GazelleTorrent {
 	return &gt
 }
 
-func (a *TrackerTorrentInfo) Release() *Release {
+func (a *TrackerTorrentInfo) Release(tracker string) *Release {
 	gt := a.FullInfo()
 	if gt == nil {
 		return nil // nothing useful here
 	}
-	r := &Release{Timestamp: time.Now()}
+	r := &Release{Tracker: tracker, Timestamp: time.Now()}
 	// for now, using artists, composers, "with" categories
 	for _, el := range gt.Response.Group.MusicInfo.Artists {
 		r.Artists = append(r.Artists, el.Name)

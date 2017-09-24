@@ -273,7 +273,7 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 			logThis.Error(errors.Wrap(err, fmt.Sprintf("Could not get info about torrent %s on %s, may not exist", id, tracker.Name)), NORMAL)
 			continue
 		}
-		release := info.Release()
+		release := info.Release(tracker.Name)
 		// TODO better output, might need to add a new info.FullString()
 		logThis.Info(release.String(), NORMAL)
 		logThis.Info(info.String()+"\n", NORMAL)

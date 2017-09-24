@@ -51,19 +51,19 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 		logThis.Info(errorCouldNotGetTorrentInfo, NORMAL)
 		return nil, err // probably the ID does not exist
 	}
-	release := info.Release()
+	release := info.Release(tracker.Name)
 	if release == nil {
 		logThis.Info("Error parsing Torrent Info", NORMAL)
-		release = &Release{TorrentID: id}
+		release = &Release{Tracker: tracker.Name, TorrentID: id}
 	}
 	release.torrentURL = tracker.URL + "/torrents.php?action=download&id=" + id
 	if useFLToken {
 		release.torrentURL += "&usetoken=1"
 	}
-	release.TorrentFile = norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
+	torrentFile := norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
 
 	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
-	if err := tracker.DownloadTorrent(release.torrentURL, release.TorrentFile, e.config.General.WatchDir); err != nil {
+	if err := tracker.DownloadTorrent(release.torrentURL, torrentFile, e.config.General.WatchDir); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err
 	}

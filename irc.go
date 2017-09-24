@@ -28,7 +28,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 	}
 
 	if len(hits) != 0 {
-		release, err := NewRelease(hits[0], alternative)
+		release, err := NewRelease(tracker.Name, hits[0], alternative)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +73,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					if filter.WatchDir != "" {
 						destination = filter.WatchDir
 					}
-					if err := tracker.DownloadTorrent(release.torrentURL, release.TorrentFile, destination); err != nil {
+					if err := tracker.DownloadTorrent(release.torrentURL, release.TorrentFile(), destination); err != nil {
 						return nil, errors.Wrap(err, errorDownloadingTorrent)
 					}
 					downloadedTorrent = true

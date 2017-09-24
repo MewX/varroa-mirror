@@ -143,7 +143,7 @@ var announces = []testAnnounce{
 
 func testFilters(announced testAnnounce, hits [][]string, alternate bool, verify *assert.Assertions) {
 	verify.NotZero(len(hits))
-	release, err := NewRelease(hits[0], alternate)
+	release, err := NewRelease("tracker", hits[0], alternate)
 	verify.Nil(err)
 	verify.Equal(announced.expectedRelease, release.String())
 	fmt.Println(release)

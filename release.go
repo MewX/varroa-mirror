@@ -35,6 +35,8 @@ const (
 )
 
 type Release struct {
+	ID          uint32 `storm:"id,increment"`
+	Tracker     string `storm:"index"`
 	Timestamp   time.Time
 	TorrentID   string
 	GroupID     string
@@ -51,13 +53,12 @@ type Release struct {
 	Source      string
 	Tags        []string
 	torrentURL  string
-	TorrentFile string
 	Size        uint64
 	Folder      string
 	Filter      string
 }
 
-func NewRelease(parts []string, alternative bool) (*Release, error) {
+func NewRelease(tracker string, parts []string, alternative bool) (*Release, error) {
 	if len(parts) != 19 {
 		return nil, errors.New("incomplete announce information")
 	}
@@ -126,9 +127,7 @@ func NewRelease(parts []string, alternative bool) (*Release, error) {
 		return nil, errors.New("Unknown quality: " + quality)
 	}
 
-	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: releaseType, Format: format, Quality: quality, Source: source, HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID}
-	r.TorrentFile = fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
-	r.TorrentFile = norma.Sanitize(r.TorrentFile)
+	r := &Release{Tracker: tracker, Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: releaseType, Format: format, Quality: quality, Source: source, HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID}
 	return r, nil
 }
 
@@ -144,10 +143,15 @@ func (r *Release) ShortString() string {
 	return short
 }
 
+func (r *Release) TorrentFile() string {
+	torrentFile := fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
+	return norma.Sanitize(torrentFile)
+}
+
 func (r *Release) IsDupe(o Release) bool {
 	// checking if similar
 	// size and tags are not taken into account
-	if r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.IsScene == o.IsScene {
+	if r.Tracker == o.Tracker && r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.IsScene == o.IsScene {
 		if r.Source == sourceCD {
 			if r.HasLog == o.HasLog && r.LogScore == o.LogScore && r.HasCue == o.HasCue {
 				return true
@@ -161,12 +165,12 @@ func (r *Release) IsDupe(o Release) bool {
 
 // IsEqual returns true if both release have the same torrentID && groupID.
 func (r *Release) IsEqual(o Release) bool {
-	return r.TorrentID == o.TorrentID && r.IsInSameGroup(o)
+	return r.Tracker == o.Tracker && r.TorrentID == o.TorrentID && r.IsInSameGroup(o)
 }
 
 // IsInSameGroup returns true if both release are in the same torrentgroup.
 func (r *Release) IsInSameGroup(o Release) bool {
-	return r.GroupID == o.GroupID
+	return r.Tracker == o.Tracker && r.GroupID == o.GroupID
 }
 
 func (r *Release) Satisfies(filter *ConfigFilter) bool {
