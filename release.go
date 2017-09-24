@@ -26,7 +26,6 @@ const (
 	Scene: %t
 	Source: %s
 	Tags: %s
-	URL: %s
 	Torrent URL: %s
 	Torrent ID: %s`
 	TorrentPath         = `%s - %s (%d) [%s %s %s %s] - %s.torrent`
@@ -51,7 +50,6 @@ type Release struct {
 	IsScene     bool
 	Source      string
 	Tags        []string
-	url         string
 	torrentURL  string
 	TorrentFile string
 	Size        uint64
@@ -65,18 +63,16 @@ func NewRelease(parts []string, alternative bool) (*Release, error) {
 	}
 
 	var tags []string
-	var url, torrentURL, torrentID string
+	var torrentURL, torrentID string
 	pattern := `http[s]?://[[:alnum:]\./:]*torrents\.php\?action=download&id=([\d]*)`
 	rg := regexp.MustCompile(pattern)
 
 	if alternative {
 		tags = strings.Split(parts[16], ",")
-		url = parts[17]
 		torrentURL = parts[18]
 
 	} else {
 		tags = strings.Split(parts[18], ",")
-		url = parts[16]
 		torrentURL = parts[17]
 	}
 
@@ -130,14 +126,14 @@ func NewRelease(parts []string, alternative bool) (*Release, error) {
 		return nil, errors.New("Unknown quality: " + quality)
 	}
 
-	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: releaseType, Format: format, Quality: quality, Source: source, HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, url: url, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID}
+	r := &Release{Timestamp: time.Now(), Artists: artist, Title: parts[2], Year: year, ReleaseType: releaseType, Format: format, Quality: quality, Source: source, HasLog: hasLog, LogScore: logScore, HasCue: hasCue, IsScene: isScene, torrentURL: torrentURL, Tags: tags, TorrentID: torrentID}
 	r.TorrentFile = fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
 	r.TorrentFile = norma.Sanitize(r.TorrentFile)
 	return r, nil
 }
 
 func (r *Release) String() string {
-	return fmt.Sprintf(ReleaseString, strings.Join(r.Artists, ","), r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.HasLog, r.LogScore, r.HasCue, r.IsScene, r.Source, r.Tags, r.url, r.torrentURL, r.TorrentID)
+	return fmt.Sprintf(ReleaseString, strings.Join(r.Artists, ","), r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.HasLog, r.LogScore, r.HasCue, r.IsScene, r.Source, r.Tags, r.torrentURL, r.TorrentID)
 }
 
 func (r *Release) ShortString() string {
@@ -146,60 +142,6 @@ func (r *Release) ShortString() string {
 		return short + fmt.Sprintf(" [%s]", humanize.IBytes(r.Size))
 	}
 	return short
-}
-
-func (r *Release) FromSlice(slice []string) error {
-	// DEPRECATED, only used for migrating old csv files to the new msgpack-based db.
-
-	// slice contains timestamp + filter, which are ignored
-	if len(slice) < 16 {
-		return errors.New("incorrect entry, cannot load release")
-	}
-	// no need to parse the raw Artists announce again, probably
-	timestamp, err := strconv.ParseUint(slice[0], 10, 64)
-	if err != nil {
-		return err
-	}
-	r.Timestamp = time.Unix(int64(timestamp), 0)
-	r.Filter = slice[1]
-	r.Artists = []string{slice[2]}
-	r.Title = slice[3]
-	year, err := strconv.Atoi(slice[4])
-	if err != nil {
-		return err
-	}
-	r.Year = year
-	size, err := strconv.ParseUint(slice[5], 10, 64)
-	if err != nil {
-		return err
-	}
-	r.Size = size
-	r.ReleaseType = slice[6]
-	r.Quality = slice[7]
-	hasLog, err := strconv.ParseBool(slice[8])
-	if err != nil {
-		return err
-	}
-	r.HasLog = hasLog
-	logScore, err := strconv.Atoi(slice[9])
-	if err != nil {
-		return err
-	}
-	r.LogScore = logScore
-	hasCue, err := strconv.ParseBool(slice[10])
-	if err != nil {
-		return err
-	}
-	r.HasCue = hasCue
-	isScene, err := strconv.ParseBool(slice[11])
-	if err != nil {
-		return err
-	}
-	r.IsScene = isScene
-	r.Source = slice[12]
-	r.Format = slice[13]
-	r.Tags = strings.Split(slice[14], ",")
-	return nil
 }
 
 func (r *Release) IsDupe(o Release) bool {
@@ -366,4 +308,60 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 	r.Folder = info.folder
 	r.GroupID = strconv.Itoa(info.groupID)
 	return true
+}
+
+// ------------------------------------------------
+
+func (r *Release) FromSlice(slice []string) error {
+	// DEPRECATED, only used for migrating old csv files to the new msgpack-based db.
+
+	// slice contains timestamp + filter, which are ignored
+	if len(slice) < 16 {
+		return errors.New("incorrect entry, cannot load release")
+	}
+	// no need to parse the raw Artists announce again, probably
+	timestamp, err := strconv.ParseUint(slice[0], 10, 64)
+	if err != nil {
+		return err
+	}
+	r.Timestamp = time.Unix(int64(timestamp), 0)
+	r.Filter = slice[1]
+	r.Artists = []string{slice[2]}
+	r.Title = slice[3]
+	year, err := strconv.Atoi(slice[4])
+	if err != nil {
+		return err
+	}
+	r.Year = year
+	size, err := strconv.ParseUint(slice[5], 10, 64)
+	if err != nil {
+		return err
+	}
+	r.Size = size
+	r.ReleaseType = slice[6]
+	r.Quality = slice[7]
+	hasLog, err := strconv.ParseBool(slice[8])
+	if err != nil {
+		return err
+	}
+	r.HasLog = hasLog
+	logScore, err := strconv.Atoi(slice[9])
+	if err != nil {
+		return err
+	}
+	r.LogScore = logScore
+	hasCue, err := strconv.ParseBool(slice[10])
+	if err != nil {
+		return err
+	}
+	r.HasCue = hasCue
+	isScene, err := strconv.ParseBool(slice[11])
+	if err != nil {
+		return err
+	}
+	r.IsScene = isScene
+	r.Source = slice[12]
+	r.Format = slice[13]
+	r.Tags = strings.Split(slice[14], ",")
+	return nil
 }

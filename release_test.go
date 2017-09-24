@@ -22,7 +22,6 @@ var (
 		IsScene:     false,
 		Source:      "CD",
 		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "2",
 		GroupID:     "21",
@@ -32,7 +31,6 @@ var (
 		LogScore:    100,
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r2 = &Release{
 		Artists:     []string{"a", "b"},
@@ -46,7 +44,6 @@ var (
 		IsScene:     false,
 		Source:      "WEB",
 		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "22",
 		GroupID:     "21",
@@ -56,7 +53,6 @@ var (
 		LogScore:    100,
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r3 = &Release{
 		Artists:     []string{"c"},
@@ -70,7 +66,6 @@ var (
 		IsScene:     true,
 		Source:      "WEB",
 		Tags:        []string{"tag3", "tag4"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "33",
 		GroupID:     "22",
@@ -80,7 +75,6 @@ var (
 		LogScore:    logScoreNotInAnnounce,
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r4 = &Release{
 		Artists:     []string{"a", "j"},
@@ -94,7 +88,6 @@ var (
 		IsScene:     false,
 		Source:      "CD",
 		Tags:        []string{"tag3"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "34",
 		GroupID:     "22",
@@ -104,7 +97,6 @@ var (
 		LogScore:    logScoreNotInAnnounce,
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r5 = &Release{
 		Artists:     []string{"a", "b", "a & b"},
@@ -118,7 +110,6 @@ var (
 		IsScene:     false,
 		Source:      "CD",
 		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "211",
 		GroupID:     "21",
@@ -128,7 +119,6 @@ var (
 		LogScore:    95,
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r1Dupe = &Release{
 		Artists:     []string{"a", "b"},
@@ -142,7 +132,6 @@ var (
 		IsScene:     false,
 		Source:      "CD",
 		Tags:        []string{"tag1", "tag2", "othertag"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "277",
 		GroupID:     "21",
@@ -152,7 +141,6 @@ var (
 		LogScore:    100,
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r6 = &Release{
 		Artists:     []string{"a"},
@@ -163,7 +151,6 @@ var (
 		Quality:     "24bit Lossless",
 		Source:      "WEB",
 		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "22",
 		GroupID:     "21",
@@ -172,7 +159,6 @@ var (
 		Folder:      "a, b (2017) title",
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r6Dupe = &Release{
 		Artists:     []string{"a"},
@@ -183,7 +169,6 @@ var (
 		Quality:     "24bit Lossless",
 		Source:      "WEB",
 		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "212",
 		GroupID:     "21",
@@ -192,7 +177,6 @@ var (
 		Folder:      "a, b (2017) title",
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	// torrent infos
 	i1 = &TrackerTorrentInfo{size: 1234567, logScore: 100, uploader: "that_guy"}
