@@ -121,7 +121,6 @@ func (a *TrackerTorrentInfo) Release() *Release {
 	r.Size = uint64(gt.Response.Torrent.Size)
 	r.Folder = gt.Response.Torrent.FilePath
 	r.LogScore = gt.Response.Torrent.LogScore
-	r.Uploader = gt.Response.Torrent.Username
 	r.Metadata = ReleaseMetadata{}
 	return r
 }

@@ -227,7 +227,6 @@ func main() {
 			logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
 			return
 		}
-
 		// general commands
 		if cli.stats {
 			if err := varroa.GenerateStats(env); err != nil {

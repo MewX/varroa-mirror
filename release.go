@@ -36,6 +36,9 @@ const (
 )
 
 type Release struct {
+	Timestamp   time.Time
+	TorrentID   string
+	GroupID     string
 	Artists     []string
 	Title       string
 	Year        int
@@ -43,20 +46,16 @@ type Release struct {
 	Format      string
 	Quality     string
 	HasLog      bool
+	LogScore    int
 	HasCue      bool
 	IsScene     bool
 	Source      string
 	Tags        []string
 	url         string
 	torrentURL  string
-	TorrentID   string
-	GroupID     string
 	TorrentFile string
 	Size        uint64
 	Folder      string
-	LogScore    int
-	Uploader    string
-	Timestamp   time.Time
 	Filter      string
 	Metadata    ReleaseMetadata
 }
@@ -151,7 +150,7 @@ func (r *Release) ShortString() string {
 }
 
 func (r *Release) FromSlice(slice []string) error {
-	// Deprecated, only used for migrating old csv files to the new msgpack-based db.
+	// DEPRECATED, only used for migrating old csv files to the new msgpack-based db.
 
 	// slice contains timestamp + filter, which are ignored
 	if len(slice) < 16 {
@@ -201,7 +200,6 @@ func (r *Release) FromSlice(slice []string) error {
 	r.Source = slice[12]
 	r.Format = slice[13]
 	r.Tags = strings.Split(slice[14], ",")
-	r.Uploader = slice[15]
 	return nil
 }
 
@@ -366,7 +364,6 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 	// taking the opportunity to retrieve and save some info
 	r.Size = info.size
 	r.LogScore = info.logScore
-	r.Uploader = info.uploader
 	r.Folder = info.folder
 	r.GroupID = strconv.Itoa(info.groupID)
 	return true
