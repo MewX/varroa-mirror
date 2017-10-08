@@ -45,6 +45,11 @@ type OutgoingJSON struct {
 
 // TODO: see if this could also be used by irc
 func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useFLToken bool) (*Release, error) {
+	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not access the stats database")
+	}
+
 	// get torrent info
 	info, err := tracker.GetTorrentInfo(id)
 	if err != nil {
@@ -68,7 +73,8 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 		return release, err
 	}
 	// add to history
-	if err := e.History[tracker.Name].AddSnatch(release, "remote"); err != nil {
+	release.Filter = manualSnatchFilterName
+	if err := stats.AddSnatch(release); err != nil {
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
 	// save metadata

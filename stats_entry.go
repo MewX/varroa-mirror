@@ -201,3 +201,17 @@ func CalculateDeltas(entries []StatsEntry) []StatsDelta {
 	}
 	return deltas
 }
+
+// ------------------------
+
+type SnatchStatsEntry struct {
+	ID           uint32 `storm:"id,increment"`
+	Tracker      string `storm:"index"`
+	Size         uint64
+	Number       int
+	Timestamp    time.Time `storm:"index"`
+	Collected    bool      `storm:"index"`
+	StartOfDay   bool      `storm:"index"`
+	StartOfWeek  bool      `storm:"index"`
+	StartOfMonth bool      `storm:"index"`
+}

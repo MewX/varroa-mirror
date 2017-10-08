@@ -3,16 +3,19 @@ package varroa
 import (
 	"encoding/csv"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"sort"
 	"sync"
 	"time"
-
-	"path/filepath"
 
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
 	"github.com/jinzhu/now"
 	"github.com/pkg/errors"
+	"github.com/wcharczuk/go-chart"
+	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
 var statsDB *StatsDB
@@ -45,7 +48,7 @@ func NewStatsDB(path string) (*StatsDB, error) {
 		} else {
 			// try to import <v19
 			for _, label := range config.TrackerLabels() {
-				if err := statsDB.migrate(label, filepath.Join(StatsDir, label+"_"+statsFile+csvExt)); err != nil {
+				if err := statsDB.migrate(label, filepath.Join(StatsDir, label+"_"+statsFile+csvExt), filepath.Join(StatsDir, label+"_"+historyFile+msgpackExt)); err != nil {
 					logThis.Error(errors.Wrap(err, "Error migrating stats csv to the new database, for tracker "+label), NORMAL)
 				}
 			}
@@ -56,63 +59,125 @@ func NewStatsDB(path string) (*StatsDB, error) {
 }
 
 func (sdb *StatsDB) init() error {
-	return sdb.db.DB.Init(&StatsEntry{})
+	if err := sdb.db.DB.Init(&StatsEntry{}); err != nil {
+		return err
+	}
+	if err := sdb.db.DB.Init(&SnatchStatsEntry{}); err != nil {
+		return err
+	}
+	return sdb.db.DB.Init(&Release{})
 }
 
-func (sdb *StatsDB) migrate(tracker, csvFile string) error {
-	if !FileExists(csvFile) {
-		return nil // already migrated
-	}
-	logThis.Info("Migrating stats for tracker "+tracker, NORMAL)
+func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) error {
+	if FileExists(csvFile) {
+		logThis.Info("Migrating stats for tracker "+tracker, NORMAL)
 
-	// load history file
-	f, errOpening := os.OpenFile(csvFile, os.O_RDONLY, 0644)
-	if errOpening != nil {
-		return errors.New(errorMigratingFile + csvFile)
-	}
+		// load history file
+		f, errOpening := os.OpenFile(csvFile, os.O_RDONLY, 0644)
+		if errOpening != nil {
+			return errors.New(errorMigratingFile + csvFile)
+		}
 
-	w := csv.NewReader(f)
-	records, errReading := w.ReadAll()
-	if errReading != nil {
-		return errors.Wrap(errReading, "Error loading old history file")
-	}
-	if err := f.Close(); err != nil {
-		return errors.Wrap(err, "Error closing old history file")
-	}
+		w := csv.NewReader(f)
+		records, errReading := w.ReadAll()
+		if errReading != nil {
+			return errors.Wrap(errReading, "Error loading old history file")
+		}
+		if err := f.Close(); err != nil {
+			return errors.Wrap(err, "Error closing old history file")
+		}
 
-	// transaction for quicker results
-	tx, err := sdb.db.DB.Begin(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+		// transaction for quicker results
+		tx, err := sdb.db.DB.Begin(true)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
 
-	for i, record := range records {
-		r := &StatsEntry{Tracker: tracker, Collected: true}
-		if err := r.FromSlice(record); err != nil {
-			logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
-		} else {
-			if err := tx.Save(r); err != nil {
-				return errors.Wrap(err, "Error saving CSV entry to the new database")
+		for i, record := range records {
+			r := &StatsEntry{Tracker: tracker, Collected: true}
+			if err := r.FromSlice(record); err != nil {
+				logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
+			} else {
+				if err := tx.Save(r); err != nil {
+					return errors.Wrap(err, "Error saving CSV entry to the new database")
+				}
 			}
 		}
-	}
-	if err := tx.Commit(); err != nil {
-		return err
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+
+		// checks
+		var allEntries []StatsEntry
+		if err := sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
+			return errors.Wrap(err, "Error reading back stats values from db")
+		}
+		if len(allEntries) != len(records) {
+			return fmt.Errorf("error reading back stats, got %d instead of %d entries", len(allEntries), len(records))
+		}
+		// ok
+		logThis.Info(fmt.Sprintf("Migrated %d records for tracker %s", len(allEntries), tracker), NORMAL)
+		// once successful, rename csvFile to csv.v18
+		if err := os.Rename(csvFile, csvFile+".v18"); err != nil {
+			return err
+		}
 	}
 
-	// checks
-	var allEntries []StatsEntry
-	if err := sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
-		return errors.Wrap(err, "Error reading back stats values from db")
+	if FileExists(msgpackFile) {
+		logThis.Info("Migrating snatch history for tracker "+tracker, NORMAL)
+
+		// load history file
+		bytes, err := ioutil.ReadFile(msgpackFile)
+		if err != nil {
+			logThis.Error(errors.Wrap(err, "Error reading old history file"), NORMAL)
+			return err
+		}
+		if len(bytes) == 0 {
+			// newly created file
+			return nil
+		}
+
+		var oldReleases []Release
+		// load releases from history to in-memory slice
+		err = msgpack.Unmarshal(bytes, &oldReleases)
+		if err != nil {
+			logThis.Error(errors.Wrap(err, "Error loading releases from old history file"), NORMAL)
+		}
+
+		// transaction for quicker results
+		tx, err := sdb.db.DB.Begin(true)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		for _, release := range oldReleases {
+			release.Tracker = tracker
+			if err := tx.Save(&release); err != nil {
+				return errors.Wrap(err, "Error saving snatch entry to the new database")
+			}
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+
+		// checks
+		var allSnatches []Release
+		if err := sdb.db.DB.Find("Tracker", tracker, &allSnatches); err != nil {
+			return errors.Wrap(err, "Error reading back snatch entries from db")
+		}
+		if len(allSnatches) != len(oldReleases) {
+			return fmt.Errorf("error reading back snatches, got %d instead of %d entries", len(allSnatches), len(oldReleases))
+		}
+		// ok
+		logThis.Info(fmt.Sprintf("Migrated %d records for tracker %s", len(allSnatches), tracker), NORMAL)
+		// once successful, rename csvFile to csv.v18
+		if err := os.Rename(msgpackFile, msgpackFile+".v18"); err != nil {
+			return err
+		}
 	}
-	if len(allEntries) != len(records) {
-		return fmt.Errorf("error reading back stats, got %d instead of %d entries", len(allEntries), len(records))
-	}
-	// ok
-	logThis.Info(fmt.Sprintf("Migrated %d records for tracker %s", len(allEntries), tracker), NORMAL)
-	// once successful, rename csvFile to csv.v18
-	return os.Rename(csvFile, csvFile+".v18")
+	return nil
 }
 
 // Update needs to be called everyday at midnight (add cron job)
@@ -216,6 +281,46 @@ func (sdb *StatsDB) Update() error {
 						return errors.Wrap(err, "error saving daily stats")
 					}
 					logThis.Info("Added daily stats for "+t+"/"+currentStartOfDay.String(), VERBOSEST)
+				} else {
+					logThis.Error(err, VERBOSEST)
+				}
+			}
+
+			// look for snatch daily entries in the db.
+			var snatchEntryForThisDay SnatchStatsEntry
+			if err := sdb.db.DB.Select(q.And(q.Eq("StartOfDay", true), q.Eq("Tracker", t), q.Eq("Timestamp", currentStartOfDay))).First(&snatchEntryForThisDay); err != nil {
+				if err == storm.ErrNotFound {
+					// if not found, create
+					snatchEntryForThisDay = SnatchStatsEntry{Tracker: t, StartOfDay: true}
+
+					// get snatches for this day
+					var newSnatches []Release
+					if err := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Gte("Timestamp", currentStartOfDay), q.Lte("Timestamp", now.New(currentStartOfDay).AddDate(0, 0, 1)))).Find(&newSnatches); err != nil {
+						// if nothing found, no snatches for this day, empty entry will be added
+						if err != storm.ErrNotFound {
+							logThis.Error(err, VERBOSEST)
+							continue
+						}
+					} else {
+						// calculating stats for this day
+						snatchEntryForThisDay.Number = len(newSnatches)
+						for _, s := range newSnatches {
+							snatchEntryForThisDay.Size += s.Size
+						}
+					}
+					// if the new day stats is the start of an iso week, StartOfWeek = true
+					if currentStartOfDay.Equal(now.New(currentStartOfDay).BeginningOfWeek()) {
+						snatchEntryForThisDay.StartOfWeek = true
+					}
+					// if the new day stats is the start of a month, StartOfMonth = true
+					if currentStartOfDay.Equal(now.New(currentStartOfDay).BeginningOfMonth()) {
+						snatchEntryForThisDay.StartOfMonth = true
+					}
+					// save new entry
+					if err := tx.Save(&snatchEntryForThisDay); err != nil {
+						return errors.Wrap(err, "error saving daily snatch stats")
+					}
+					logThis.Info("Added daily snatch stats for "+t+"/"+currentStartOfDay.String(), VERBOSEST)
 				} else {
 					logThis.Error(err, VERBOSEST)
 				}
@@ -345,6 +450,60 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		atLeastOneFailed = true
 	}
 
+	// 7. release stats: top tags
+	var allSnatches []Release
+	if err := sdb.db.DB.Find("Tracker", tracker, &allSnatches); err != nil {
+		return errors.Wrap(err, "Error reading back snatch entries from db")
+	}
+	if len(allSnatches) != 0 {
+		popularTags := map[string]int{}
+		for _, r := range allSnatches {
+			for _, t := range r.Tags {
+				popularTags[t]++
+			}
+		}
+		top10tags := []chart.Value{}
+		for k, v := range popularTags {
+			top10tags = append(top10tags, chart.Value{Label: k, Value: float64(v)})
+		}
+		sort.Slice(top10tags, func(i, j int) bool { return top10tags[i].Value > top10tags[j].Value })
+		if len(top10tags) > 10 {
+			top10tags = top10tags[:10]
+		}
+		if err := writePieChart(top10tags, "Top tags", tracker+"_"+toptagsFile); err != nil {
+			logThis.Error(err, NORMAL)
+			atLeastOneFailed = true
+		}
+
+		// 8. release stats: top filters
+		// generate filters chart
+		filterHits := map[string]float64{}
+		for _, r := range allSnatches {
+			filterHits[r.Filter]++
+		}
+		pieSlices := []chart.Value{}
+		for k, v := range filterHits {
+			pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
+		}
+		if err := writePieChart(pieSlices, "Total snatches by filter", tracker+"_"+totalSnatchesByFilterFile); err != nil {
+			logThis.Error(err, NORMAL)
+			atLeastOneFailed = true
+		}
+	}
+
+	// 9. Snatch history stats
+	var allSnatchStats []SnatchStatsEntry
+	if err := sdb.db.DB.Find("Tracker", tracker, &allSnatchStats); err != nil {
+		return errors.Wrap(err, "Error reading back snatch stats entries from db")
+	}
+	snatchStatsSeries := SnatchStatsSeries{}
+	snatchStatsSeries.AddStats(allSnatchStats...)
+	// generate graphs
+	if err := snatchStatsSeries.GenerateGraphs(StatsDir, tracker+"_", firstStats.Timestamp, true); err != nil {
+		logThis.Error(err, NORMAL)
+		atLeastOneFailed = true
+	}
+
 	// return
 	if atLeastOneFailed {
 		return errors.New(errorGeneratingGraph)
@@ -372,4 +531,46 @@ func generateDeltaGraphs(tracker, graphType string, entries []StatsDelta, firstT
 		return err
 	}
 	return overallStats.GenerateGraphs(StatsDir, tracker+"_"+graphType+"_", firstTimestamp, true)
+}
+
+func (sdb *StatsDB) AddSnatch(release *Release) error {
+	// save new entry
+	return sdb.db.DB.Save(&release)
+}
+
+func (sdb *StatsDB) AlreadySnatchedDuplicate(release *Release) bool {
+	duplicateQuery := q.And(
+		q.Eq("Tracker", release.Tracker),
+		q.Eq("Title", release.Title),
+		q.Eq("Year", release.Year),
+		q.Eq("ReleaseType", release.ReleaseType),
+		q.Eq("Quality", release.Quality),
+		q.Eq("Source", release.Source),
+		q.Eq("Format", release.Format),
+		q.Eq("IsScene", release.IsScene),
+		InSlice("Artists", release.Artists[0]),
+	)
+
+	var firstHit Release
+	err := sdb.db.DB.Select(duplicateQuery).First(&firstHit)
+	if err != nil {
+		if err != storm.ErrNotFound {
+			logThis.Error(errors.Wrap(err, "error looking for duplicate releases"), NORMAL)
+		}
+		return false
+	}
+	return true
+}
+
+func (sdb *StatsDB) AlreadySnatchedFromGroup(release *Release) bool {
+	// try to find a release from same tracker+groupid
+	var releaseFromGroup Release
+	err := sdb.db.DB.Select(q.And(q.Eq("GroupID", release.GroupID), q.Eq("Tracker", release.Tracker))).First(&releaseFromGroup)
+	if err != nil {
+		if err != storm.ErrNotFound {
+			logThis.Error(errors.Wrap(err, "error looking for releases from same torrent group"), NORMAL)
+		}
+		return false
+	}
+	return true
 }

@@ -34,7 +34,6 @@ type Environment struct {
 	config     *Config
 	serverData *ServerPage
 	Trackers   map[string]*GazelleTracker
-	History    map[string]*History
 
 	graphsLastUpdated string
 	expectedOutput    bool
@@ -52,7 +51,6 @@ func NewEnvironment() *Environment {
 	e.serverData = &ServerPage{}
 	// make maps
 	e.Trackers = make(map[string]*GazelleTracker)
-	e.History = make(map[string]*History)
 	// current command expects output
 	e.expectedOutput = false
 	if !daemon.WasReborn() {
@@ -127,18 +125,6 @@ func (e *Environment) SetUp(autologin bool) error {
 		// launching rate limiter
 		go tracker.apiCallRateLimiter()
 		e.Trackers[label] = tracker
-
-		statsConfig, err := e.config.GetStats(label)
-		if err != nil {
-			return errors.Wrap(err, "Error loading stats config for "+label)
-		}
-		// load history for this tracker
-		h := &History{Tracker: label}
-		// load relevant history
-		if err := h.LoadAll(statsConfig); err != nil {
-			return errors.Wrap(err, "Error loading history for tracker "+label)
-		}
-		e.History[label] = h
 	}
 	return nil
 }

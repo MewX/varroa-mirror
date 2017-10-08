@@ -38,7 +38,7 @@ type Release struct {
 	ID          uint32 `storm:"id,increment"`
 	Tracker     string `storm:"index"`
 	Timestamp   time.Time
-	TorrentID   string
+	TorrentID   string `storm:"index"`
 	GroupID     string
 	Artists     []string
 	Title       string
@@ -146,31 +146,6 @@ func (r *Release) ShortString() string {
 func (r *Release) TorrentFile() string {
 	torrentFile := fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
 	return norma.Sanitize(torrentFile)
-}
-
-func (r *Release) IsDupe(o Release) bool {
-	// checking if similar
-	// size and tags are not taken into account
-	if r.Tracker == o.Tracker && r.Artists[0] == o.Artists[0] && r.Title == o.Title && r.Year == o.Year && r.ReleaseType == o.ReleaseType && r.Quality == o.Quality && r.Source == o.Source && r.Format == o.Format && r.IsScene == o.IsScene {
-		if r.Source == sourceCD {
-			if r.HasLog == o.HasLog && r.LogScore == o.LogScore && r.HasCue == o.HasCue {
-				return true
-			}
-		} else {
-			return true
-		}
-	}
-	return false
-}
-
-// IsEqual returns true if both release have the same torrentID && groupID.
-func (r *Release) IsEqual(o Release) bool {
-	return r.Tracker == o.Tracker && r.TorrentID == o.TorrentID && r.IsInSameGroup(o)
-}
-
-// IsInSameGroup returns true if both release are in the same torrentgroup.
-func (r *Release) IsInSameGroup(o Release) bool {
-	return r.Tracker == o.Tracker && r.GroupID == o.GroupID
 }
 
 func (r *Release) Satisfies(filter *ConfigFilter) bool {

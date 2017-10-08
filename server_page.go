@@ -104,7 +104,6 @@ const (
 		  <div class="header">
 				<h1 id="title">{{.Title}}</h1>
 				<p>Graphs last updated: {{.Time}}</p>
-				<p>Raw data: {{range .CSV}}<a href="/{{$.UrlFolder}}{{ .URL }}">[{{ .Name }}]</a> {{else}}{{end}}</p>
 				<p>{{.Version}}</p>
 		  </div>
 		  <div class="content">
@@ -126,14 +125,19 @@ type ServerPage struct {
 }
 
 func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
+	config, err := NewConfig(DefaultConfigurationFile)
+	if err != nil {
+		logThis.Error(err, NORMAL)
+		return
+	}
+
 	// updating time
 	e.mutex.RLock()
 	sc.index.Time = e.graphsLastUpdated
 	e.mutex.RUnlock()
 	// rebuilding
-	sc.index.CSV = []HTMLLink{}
 	sc.index.Stats = []HTMLStats{}
-	if e.config.webserverMetadata && downloads != nil {
+	if config.webserverMetadata && downloads != nil {
 		// fetch all dl entries
 		if err := downloads.DB.All(&sc.index.Downloads); err != nil {
 			logThis.Error(err, NORMAL)
@@ -142,23 +146,21 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 		}
 	}
 	// gathering data
-	for label, h := range e.History {
-		sc.index.CSV = append(sc.index.CSV, HTMLLink{Name: label + ".csv", URL: filepath.Base(h.getPath(statsFile + csvExt))})
-
+	for _, label := range config.TrackerLabels() {
 		statsNames := []struct {
 			Name  string
 			Label string
 		}{
-			{Name: "Buffer", Label: label + "_" + bufferStatsFile},
-			{Name: "Upload", Label: label + "_" + uploadStatsFile},
-			{Name: "Download", Label: label + "_" + downloadStatsFile},
-			{Name: "Ratio", Label: label + "_" + ratioStatsFile},
-			{Name: "Buffer/day", Label: label + "_" + bufferPerDayStatsFile},
-			{Name: "Upload/day", Label: label + "_" + uploadPerDayStatsFile},
-			{Name: "Download/day", Label: label + "_" + downloadPerDayStatsFile},
-			{Name: "Ratio/day", Label: label + "_" + ratioPerDayStatsFile},
-			{Name: "Snatches/day", Label: label + "_" + numberSnatchedPerDayFile},
-			{Name: "Size Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
+			{Name: "Buffer", Label: label + "_overall_" + bufferStatsFile},
+			{Name: "Upload", Label: label + "_overall_" + uploadStatsFile},
+			{Name: "Download", Label: label + "_overall_" + downloadStatsFile},
+			{Name: "Ratio", Label: label + "_overall_" + ratioStatsFile},
+			{Name: "Buffer/day", Label: label + "_overall_" + bufferPerDayStatsFile},
+			{Name: "Upload/day", Label: label + "_overall_" + uploadPerDayStatsFile},
+			{Name: "Download/day", Label: label + "_overall_" + downloadPerDayStatsFile},
+			{Name: "Ratio/day", Label: label + "_overall_" + ratioPerDayStatsFile},
+			{Name: "Snatches/day", Label: label + "_overall_" + numberSnatchedPerDayFile},
+			{Name: "Size Snatched/day", Label: label + "_overall_" + sizeSnatchedPerDayFile},
 		}
 		// add graphs + links
 		graphLinks := []HTMLLink{}

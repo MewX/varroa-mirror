@@ -41,6 +41,7 @@ const (
 	DefaultHistoryDB             = "history.db"
 	DefaultDownloadsDB           = "downloads.db"
 	DefaultLibraryDB             = "library.db"
+	manualSnatchFilterName       = "remote"
 
 	// Notable ratios
 	defaultTargetRatio = 1.0

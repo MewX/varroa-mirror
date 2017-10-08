@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asdine/storm"
+	"github.com/asdine/storm/q"
 	"github.com/jasonlvhit/gocron"
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
@@ -160,7 +162,7 @@ func GenerateStats(e *Environment) error {
 	atLeastOneError := false
 	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
 	if err != nil {
-		return errors.Wrap(err, "Error, could not access the stats database")
+		return errors.Wrap(err, "could not access the stats database")
 	}
 
 	// get tracker labels from config.
@@ -190,14 +192,50 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
-	// find ids in history
-	var found []string
-	for _, r := range e.History[tracker.Name].SnatchedReleases {
-		if len(found) != len(IDStrings) && StringInSlice(r.TorrentID, IDStrings) {
-			found = append(found, r.TorrentID)
-			logThis.Info("Found release with ID "+r.TorrentID+" in history: "+r.ShortString()+". Getting tracker metadata.", NORMAL)
-			// get data from RED.
-			info, err := tracker.GetTorrentInfo(r.TorrentID)
+
+	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
+	if err != nil {
+		return errors.Wrap(err, "could not access the stats database")
+	}
+
+	for _, id := range IDStrings {
+		var found Release
+		findIDsQuery := q.And(q.Eq("Tracker", tracker.Name), q.Eq("TorrentID", id))
+		if err := stats.db.DB.Select(findIDsQuery).First(&found); err != nil {
+			if err == storm.ErrNotFound {
+				// not found, try to locate download directory nonetheless
+				if e.config.DownloadFolderConfigured {
+					logThis.Info("Release with ID "+found.TorrentID+" not found in history, trying to locate in downloads directory.", NORMAL)
+					// get data from tracker
+					info, err := tracker.GetTorrentInfo(id)
+					if err != nil {
+						logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
+						break
+					}
+					fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
+					if DirectoryExists(fullFolder) {
+						if daemon.WasReborn() {
+							go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+						} else {
+							SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+						}
+					} else {
+						logThis.Info(fmt.Sprintf(errorCannotFindID, id), NORMAL)
+					}
+
+				} else {
+					logThis.Info(fmt.Sprintf(errorCannotFindID, id), NORMAL)
+					continue
+				}
+			} else {
+				logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
+				continue
+			}
+		} else {
+			// was found
+			logThis.Info("Found release with ID "+found.TorrentID+" in history: "+found.ShortString()+". Getting tracker metadata.", NORMAL)
+			// get data from tracker
+			info, err := tracker.GetTorrentInfo(found.TorrentID)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
@@ -207,38 +245,6 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 			} else {
 				SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 			}
-		}
-	}
-	if len(found) != len(IDStrings) {
-		// find the missing IDs
-		missing := []string{}
-		for _, id := range IDStrings {
-			if !StringInSlice(id, found) {
-				missing = append(missing, id)
-			}
-		}
-		// try to find even if not in history
-		if e.config.DownloadFolderConfigured {
-			for _, m := range missing {
-				// get data from tracker.
-				info, err := tracker.GetTorrentInfo(m)
-				if err != nil {
-					logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
-					break
-				}
-				fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
-				if DirectoryExists(fullFolder) {
-					if daemon.WasReborn() {
-						go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
-					} else {
-						SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
-					}
-				} else {
-					logThis.Info(fmt.Sprintf(errorCannotFindID, m), NORMAL)
-				}
-			}
-		} else {
-			return fmt.Errorf(errorCannotFindID, strings.Join(missing, ","))
 		}
 	}
 	return nil
@@ -264,6 +270,11 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 		return errors.New("Error: no ID provided")
 	}
 
+	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
+	if err != nil {
+		return errors.Wrap(err, "could not access the stats database")
+	}
+
 	// get info
 	for _, id := range IDStrings {
 		logThis.Info(fmt.Sprintf("+ Info about %s / %s: \n", tracker.Name, id), NORMAL)
@@ -279,10 +290,11 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 		logThis.Info(info.String()+"\n", NORMAL)
 
 		// find if in history
-		if e.History[tracker.Name].HasRelease(release) {
-			logThis.Info("+ This torrent has been snatched with varroa.", NORMAL)
-		} else {
+		var found Release
+		if err := stats.db.DB.Select(q.And(q.Eq("Tracker", tracker.Name), q.Eq("TorrentID", id))).First(&found); err != nil {
 			logThis.Info("+ This torrent has not been snatched with varroa.", NORMAL)
+		} else {
+			logThis.Info("+ This torrent has been snatched with varroa.", NORMAL)
 		}
 
 		// checking the files are still there (if snatched with or without varroa)
@@ -311,12 +323,12 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 				// checking if a filter is triggered
 				if release.Satisfies(filter) && release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
 					// checking if duplicate
-					if !filter.AllowDuplicates && e.History[tracker.Name].HasDupe(release) {
+					if !filter.AllowDuplicates && stats.AlreadySnatchedDuplicate(release) {
 						logThis.Info(infoNotSnatchingDuplicate, NORMAL)
 						continue
 					}
 					// checking if a torrent from the same group has already been downloaded
-					if filter.UniqueInGroup && e.History[tracker.Name].HasReleaseFromGroup(release) {
+					if filter.UniqueInGroup && stats.AlreadySnatchedFromGroup(release) {
 						logThis.Info(infoNotSnatchingUniqueInGroup, NORMAL)
 						continue
 					}

@@ -123,7 +123,6 @@ type HTMLIndex struct {
 	Title         string
 	Time          string
 	Version       string
-	CSV           []HTMLLink
 	Stats         []HTMLStats
 	CSS           template.CSS
 	Script        string
