@@ -480,7 +480,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		if len(top10tags) > 10 {
 			top10tags = top10tags[:10]
 		}
-		if err := writePieChart(top10tags, "Top tags", tracker+"_"+toptagsFile); err != nil {
+		if err := writePieChart(top10tags, "Top tags", filepath.Join(StatsDir, tracker+"_"+toptagsFile)); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
@@ -495,7 +495,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		for k, v := range filterHits {
 			pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
 		}
-		if err := writePieChart(pieSlices, "Total snatches by filter", tracker+"_"+totalSnatchesByFilterFile); err != nil {
+		if err := writePieChart(pieSlices, "Total snatches by filter", filepath.Join(StatsDir, tracker+"_"+totalSnatchesByFilterFile)); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
