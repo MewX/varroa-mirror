@@ -291,7 +291,7 @@ func (sdb *StatsDB) Update() error {
 			if err := sdb.db.DB.Select(q.And(q.Eq("StartOfDay", true), q.Eq("Tracker", t), q.Eq("Timestamp", currentStartOfDay))).First(&snatchEntryForThisDay); err != nil {
 				if err == storm.ErrNotFound {
 					// if not found, create
-					snatchEntryForThisDay = SnatchStatsEntry{Tracker: t, StartOfDay: true}
+					snatchEntryForThisDay = SnatchStatsEntry{Tracker: t, StartOfDay: true, Timestamp: currentStartOfDay}
 
 					// get snatches for this day
 					var newSnatches []Release
@@ -320,6 +320,7 @@ func (sdb *StatsDB) Update() error {
 					if err := tx.Save(&snatchEntryForThisDay); err != nil {
 						return errors.Wrap(err, "error saving daily snatch stats")
 					}
+
 					logThis.Info("Added daily snatch stats for "+t+"/"+currentStartOfDay.String(), VERBOSEST)
 				} else {
 					logThis.Error(err, VERBOSEST)
