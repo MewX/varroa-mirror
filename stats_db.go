@@ -382,14 +382,15 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	if err := generateGraphs(tracker, "overall", allStatsEntries, firstStats.Timestamp); err != nil {
 		return err
 	}
-
 	// 2. collect stats since last week
 	// get the timestamp for one week earlier
 	firstWeekTimestamp := time.Now().Add(-7 * 24 * time.Hour)
 	lastWeekQuery := q.And(q.Eq("Collected", true), q.Eq("Tracker", tracker), q.Gte("Timestamp", firstWeekTimestamp))
 	var lastWeekStatsEntries []StatsEntry
 	if err := sdb.db.DB.Select(lastWeekQuery).OrderBy("Timestamp").Find(&lastWeekStatsEntries); err != nil {
-		return errors.Wrap(err, "error querying database")
+		if err != storm.ErrNotFound {
+			return errors.Wrap(err, "error querying database")
+		}
 	}
 	if err := generateGraphs(tracker, "lastweek", lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
 		logThis.Error(err, NORMAL)
@@ -402,7 +403,9 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	lastMonthQuery := q.And(q.Eq("Collected", true), q.Eq("Tracker", tracker), q.Gte("Timestamp", firstMonthTimestamp))
 	var lastMonthStatsEntries []StatsEntry
 	if err := sdb.db.DB.Select(lastMonthQuery).OrderBy("Timestamp").Find(&lastMonthStatsEntries); err != nil {
-		return errors.Wrap(err, "error querying database")
+		if err != storm.ErrNotFound {
+			return errors.Wrap(err, "error querying database")
+		}
 	}
 	if err := generateGraphs(tracker, "lastmonth", lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
 		logThis.Error(err, NORMAL)
@@ -414,7 +417,9 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	var allDailyStats []StatsEntry
 	dailyStatsQuery := q.And(q.Eq("StartOfDay", true), q.Eq("Tracker", tracker))
 	if err := sdb.db.DB.Select(dailyStatsQuery).OrderBy("Timestamp").Find(&allDailyStats); err != nil {
-		return errors.Wrap(err, "error querying database")
+		if err != storm.ErrNotFound {
+			return errors.Wrap(err, "error querying database")
+		}
 	}
 	allDailyDeltas := CalculateDeltas(allDailyStats)
 	// generate graphs
@@ -428,7 +433,9 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	var allWeeklyStats []StatsEntry
 	weeklyStatsQuery := q.And(q.Eq("StartOfWeek", true), q.Eq("Tracker", tracker))
 	if err := sdb.db.DB.Select(weeklyStatsQuery).OrderBy("Timestamp").Find(&allWeeklyStats); err != nil {
-		return errors.Wrap(err, "error querying database")
+		if err != storm.ErrNotFound {
+			return errors.Wrap(err, "error querying database")
+		}
 	}
 	allWeeklyDeltas := CalculateDeltas(allWeeklyStats)
 	// generate graphs
@@ -442,7 +449,9 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	var allMonthlyStats []StatsEntry
 	monthlyStatsQuery := q.And(q.Eq("StartOfMonth", true), q.Eq("Tracker", tracker))
 	if err := sdb.db.DB.Select(monthlyStatsQuery).OrderBy("Timestamp").Find(&allMonthlyStats); err != nil {
-		return errors.Wrap(err, "error querying database")
+		if err != storm.ErrNotFound {
+			return errors.Wrap(err, "error querying database")
+		}
 	}
 	allMonthlyDeltas := CalculateDeltas(allMonthlyStats)
 	// generate graphs
@@ -497,6 +506,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	if err := sdb.db.DB.Find("Tracker", tracker, &allSnatchStats); err != nil {
 		return errors.Wrap(err, "Error reading back snatch stats entries from db")
 	}
+
 	snatchStatsSeries := SnatchStatsSeries{}
 	snatchStatsSeries.AddStats(allSnatchStats...)
 	// generate graphs
