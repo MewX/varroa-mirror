@@ -7,6 +7,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type matchTestStructs struct {
+	patterns  []string
+	candidate string
+	expected  bool
+}
+
+var matchTestData = []matchTestStructs{
+	{[]string{"test"}, "test", true},
+	{[]string{"one", "test", "vegetable"}, "test", true},
+	{[]string{"one", "test", "vegetable"}, "tests", false},
+	{[]string{"one", "r:test", "vegetable"}, "tests", true},
+	{[]string{"r:^test.*$"}, "tests", true},
+	{[]string{"test"}, "Test", false},
+	{[]string{"r:[tT]est"}, "test", true},
+	{[]string{"r:[tT]est"}, "Test", true},
+	{[]string{"test"}, "greatest", false},
+	{[]string{"r:test"}, "greatests", true},
+	{[]string{"r:test$"}, "greatests", false},
+	{[]string{"r:^test"}, "greatests", false},
+}
+
 func TestSliceHelpers(t *testing.T) {
 	fmt.Println("+ Testing CommonInSlices + RemoveFromSlice...")
 	check := assert.New(t)
@@ -27,4 +48,9 @@ func TestSliceHelpers(t *testing.T) {
 	check.Equal(a, t1)
 	t2 := RemoveFromSlice("1", a)
 	check.Equal(b, t2)
+
+	for _, data := range matchTestData {
+		result := MatchInSlice(data.candidate, data.patterns)
+		check.Equal(data.expected, result)
+	}
 }

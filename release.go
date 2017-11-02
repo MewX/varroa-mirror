@@ -194,7 +194,7 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		return false
 	}
 	for _, excluded := range filter.TagsExcluded {
-		if StringInSlice(excluded, r.Tags) {
+		if MatchInSlice(excluded, r.Tags) {
 			logThis.Info(filter.Name+": Has excluded tag", VERBOSE)
 			return false
 		}
@@ -203,7 +203,7 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		// if none of r.tags in conf.includedTags, return false
 		atLeastOneIncludedTag := false
 		for _, t := range r.Tags {
-			if StringInSlice(t, filter.TagsIncluded) {
+			if MatchInSlice(t, filter.TagsIncluded) {
 				atLeastOneIncludedTag = true
 				break
 			}
@@ -236,17 +236,17 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
-	if len(filter.RecordLabel) != 0 && !StringInSlice(info.label, filter.RecordLabel) {
+	if len(filter.RecordLabel) != 0 && !MatchInSlice(info.label, filter.RecordLabel) {
 		logThis.Info(filter.Name+": No match for record label", VERBOSE)
 		return false
 	}
 	if r.Artists[0] == "Various Artists" && (len(filter.Artist) != 0 || len(filter.ExcludedArtist) != 0) {
 		var foundAtLeastOneArtist bool
 		for iArtist := range info.artists {
-			if StringInSlice(iArtist, filter.Artist) {
+			if MatchInSlice(iArtist, filter.Artist) {
 				foundAtLeastOneArtist = true
 			}
-			if StringInSlice(iArtist, filter.ExcludedArtist) {
+			if MatchInSlice(iArtist, filter.ExcludedArtist) {
 				logThis.Info(filter.Name+": Found excluded artist "+iArtist, VERBOSE)
 				return false
 			}
@@ -266,12 +266,10 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 	}
 	if len(filter.Edition) != 0 {
 		found := false
-		for _, w := range filter.Edition {
-			if strings.Contains(strings.ToLower(info.edition), strings.ToLower(w)) {
-				found = true
-				break
-			}
+		if MatchInSlice(info.edition, filter.Edition) {
+			found = true
 		}
+
 		if !found {
 			logThis.Info(filter.Name+": Edition name does not match any criteria.", VERBOSE)
 			return false

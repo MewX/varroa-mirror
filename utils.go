@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"regexp"
+
 	"github.com/subosito/norma"
 	"github.com/ttacon/chalk"
 )
@@ -47,6 +49,26 @@ func allDaysSince(t time.Time) []time.Time {
 func StringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// MatchInSlice checks if a string regexp-matches a slice of patterns, returns bool
+func MatchInSlice(a string, b []string) bool {
+	for _, pattern := range b {
+		if strings.HasPrefix(pattern, "r:") {
+			pattern = strings.Replace(pattern, "r:", "", 1)
+			// try to match
+			match, err := regexp.MatchString(pattern, a)
+			if err != nil {
+				logThis.Error(err, VERBOSE)
+			}
+			if match {
+				return true
+			}
+		} else if pattern == a {
 			return true
 		}
 	}
