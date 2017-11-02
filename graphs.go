@@ -48,14 +48,6 @@ var (
 	}
 )
 
-func sliceByteToGigabyte(in []float64) []float64 {
-	out := make([]float64, len(in))
-	for i, v := range in {
-		out[i] = v / (1024 * 1024 * 1024)
-	}
-	return out
-}
-
 func writePieChart(values []chart.Value, title, filename string) error {
 	// pie chart
 	pie := chart.PieChart{

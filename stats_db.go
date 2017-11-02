@@ -515,6 +515,20 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		atLeastOneFailed = true
 	}
 
+	// combine graphs into overallStatsFile
+	if err := combineAllPNGs(filepath.Join(StatsDir, tracker+"_"+overallStatsFile),
+		filepath.Join(StatsDir, tracker+"_overall_"+uploadStatsFile),
+		filepath.Join(StatsDir, tracker+"_overall_per_day_"+uploadStatsFile),
+		filepath.Join(StatsDir, tracker+"_overall_"+downloadStatsFile),
+		filepath.Join(StatsDir, tracker+"_overall_per_day_"+downloadStatsFile),
+		filepath.Join(StatsDir, tracker+"_overall_"+bufferStatsFile),
+		filepath.Join(StatsDir, tracker+"_overall_per_day_"+bufferStatsFile),
+		filepath.Join(StatsDir, tracker+"_overall_"+ratioStatsFile),
+		filepath.Join(StatsDir, tracker+"_overall_per_day_"+ratioStatsFile),
+		filepath.Join(StatsDir, tracker+"_"+totalSnatchesByFilterFile),
+		filepath.Join(StatsDir, tracker+"_"+toptagsFile)); err != nil {
+		return err
+	}
 	// return
 	if atLeastOneFailed {
 		return errors.New(errorGeneratingGraph)
