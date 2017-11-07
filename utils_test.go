@@ -17,19 +17,19 @@ var matchTestData = []matchTestStructs{
 	{[]string{"test"}, "test", true},
 	{[]string{"one", "test", "vegetable"}, "test", true},
 	{[]string{"one", "test", "vegetable"}, "tests", false},
-	{[]string{"one", "r:test", "vegetable"}, "tests", true},
-	{[]string{"r:^test.*$"}, "tests", true},
+	{[]string{"one", "r/test", "vegetable"}, "tests", true},
+	{[]string{"r/^test.*$"}, "tests", true},
 	{[]string{"test"}, "Test", false},
-	{[]string{"r:[tT]est"}, "test", true},
-	{[]string{"r:[tT]est"}, "Test", true},
+	{[]string{"r/[tT]est"}, "test", true},
+	{[]string{"r/[tT]est"}, "Test", true},
 	{[]string{"test"}, "greatest", false},
-	{[]string{"r:test"}, "greatests", true},
-	{[]string{"r:test$"}, "greatests", false},
-	{[]string{"r:^test"}, "greatests", false},
+	{[]string{"r/test"}, "greatests", true},
+	{[]string{"r/test$"}, "greatests", false},
+	{[]string{"r/^test"}, "greatests", false},
 }
 
 func TestSliceHelpers(t *testing.T) {
-	fmt.Println("+ Testing CommonInSlices + RemoveFromSlice...")
+	fmt.Println("+ Testing CommonInSlices + RemoveFromSlice + MatchInSlice...")
 	check := assert.New(t)
 
 	a := []string{"1", "2", "3"}

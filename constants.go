@@ -59,6 +59,9 @@ const (
 	mp3Ext       = ".mp3"
 	flacExt      = ".flac"
 
+	// filters
+	filterRegExpPrefix = "r/"
+
 	// information
 	InfoUserFilesArchived         = "User files backed up."
 	InfoUsage                     = "Before running a command that requires the daemon, run 'varroa start'."

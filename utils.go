@@ -58,8 +58,8 @@ func StringInSlice(a string, list []string) bool {
 // MatchInSlice checks if a string regexp-matches a slice of patterns, returns bool
 func MatchInSlice(a string, b []string) bool {
 	for _, pattern := range b {
-		if strings.HasPrefix(pattern, "r:") {
-			pattern = strings.Replace(pattern, "r:", "", 1)
+		if strings.HasPrefix(pattern, filterRegExpPrefix) {
+			pattern = strings.Replace(pattern, filterRegExpPrefix, "", 1)
 			// try to match
 			match, err := regexp.MatchString(pattern, a)
 			if err != nil {
