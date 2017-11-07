@@ -182,7 +182,7 @@ func main() {
 
 	// loading configuration
 	if err := env.LoadConfiguration(); err != nil {
-		logThis.Error(errors.Wrap(err, varroa.ErrorLoadingConfig), varroa.NORMAL)
+		fmt.Println(errors.Wrap(err, varroa.ErrorLoadingConfig).Error())
 		return
 	}
 

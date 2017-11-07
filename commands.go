@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"net"
 	"os"
 	"os/exec"
 	"os/user"
@@ -29,133 +28,88 @@ const (
 )
 
 func SendOrders(command []byte) error {
-	conn, err := net.Dial("unix", daemonSocket)
-	if err != nil {
-		return errors.Wrap(err, errorDialingSocket)
-	}
-	// sending command
-	if _, err = conn.Write(command); err != nil {
-		return errors.Wrap(err, errorWritingToSocket)
-	}
-Loop:
-	for {
-		// read answer
-		buf := make([]byte, 2048)
-		n, err := conn.Read(buf[:])
-		if err != nil {
-			return errors.Wrap(err, errorReadingFromSocket)
-		}
-		output := string(buf[:n])
-		if !strings.HasSuffix(output, unixSocketMessageSeparator) {
-			logThis.Info(errorReadingFromSocket+"Malformed buffer "+string(buf[:n]), NORMAL)
-			break
-		}
-		for _, m := range strings.Split(output, unixSocketMessageSeparator) {
-			switch m {
-			case "":
-			case "stop":
-				break Loop
-			default:
-				fmt.Println(m)
+	dcClient := NewDaemonComClient()
+	go dcClient.RunClient()
+	// goroutine to display anything that is sent back from the daemon
+	go func() {
+		for {
+			a := <-dcClient.Incoming
+			if string(a) != "stop" {
+				fmt.Println(string(a))
 			}
 		}
-	}
-	return conn.Close()
+	}()
+	// waiting for connection to unix domain socket
+	<-dcClient.ClientConnected
+	// sending command
+	dcClient.Outgoing <- command
+	// waiting for end of connection
+	<-dcClient.ClientDisconnected
+	return nil
 }
 
 func awaitOrders(e *Environment) {
-	conn, err := net.Listen("unix", daemonSocket)
-	if err != nil {
-		logThis.Error(errors.Wrap(err, errorCreatingSocket), NORMAL)
-		return
-	}
-	defer conn.Close()
-	// channel to know when the connection with a specific instance is over
-	endThisConnection := make(chan struct{})
+	go e.daemonCom.RunServer()
+	<-e.daemonCom.ServerUp
 
+Loop:
 	for {
-		c, err := conn.Accept()
-		if err != nil {
-			logThis.Info("Error accepting from unix socket: "+err.Error(), NORMAL)
-			continue // not breaking anymore, else impossible to communicate with the daemon again
-		}
+		<-e.daemonCom.ClientConnected
 		// output back things to CLI
 		e.expectedOutput = true
-
-		// this goroutine will send back messages to the instance that sent the command
-		go func() {
-			for {
-				messageToLog := <-e.sendBackToCLI
-				// writing to socket with a separator, so that the other instance, reading more slowly,
-				// can separate messages that might have been written one after the other
-				if _, err = c.Write([]byte(messageToLog + unixSocketMessageSeparator)); err != nil {
-					logThis.Error(errors.Wrap(err, errorWritingToSocket), NORMAL)
+	Loop2:
+		for {
+			select {
+			case a := <-e.daemonCom.Incoming:
+				orders := IncomingJSON{}
+				if jsonErr := json.Unmarshal(a, &orders); jsonErr != nil {
+					logThis.Error(errors.Wrap(jsonErr, "Error parsing incoming command from unix socket"), NORMAL)
+					continue
 				}
-				// we've just told the other instance talking was over, ending this connection.
-				if messageToLog == "stop" {
-					endThisConnection <- struct{}{}
-					break
+				var tracker *GazelleTracker
+				var err error
+				if orders.Site != "" {
+					tracker, err = e.Tracker(orders.Site)
+					if err != nil {
+						logThis.Error(errors.Wrap(err, "Error parsing tracker label for command from unix socket"), NORMAL)
+						continue
+					}
 				}
-			}
-		}()
 
-		buf := make([]byte, 512)
-		n, err := c.Read(buf[:])
-		if err != nil {
-			logThis.Error(errors.Wrap(err, errorReadingFromSocket), NORMAL)
-			continue
-		}
-
-		orders := IncomingJSON{}
-		if jsonErr := json.Unmarshal(buf[:n], &orders); jsonErr != nil {
-			logThis.Error(errors.Wrap(jsonErr, "Error parsing incoming command from unix socket"), NORMAL)
-			continue
-		}
-		var tracker *GazelleTracker
-		if orders.Site != "" {
-			tracker, err = e.Tracker(orders.Site)
-			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error parsing tracker label for command from unix socket"), NORMAL)
-				continue
+				switch orders.Command {
+				case "stats":
+					if err := GenerateStats(e); err != nil {
+						logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
+					}
+				case "stop":
+					logThis.Info("Stopping daemon...", NORMAL)
+					break Loop
+				case "refresh-metadata":
+					if err := RefreshMetadata(e, tracker, orders.Args); err != nil {
+						logThis.Error(errors.Wrap(err, ErrorRefreshingMetadata), NORMAL)
+					}
+				case "snatch":
+					if err := SnatchTorrents(e, tracker, orders.Args, orders.FLToken); err != nil {
+						logThis.Error(errors.Wrap(err, ErrorSnatchingTorrent), NORMAL)
+					}
+				case "info":
+					if err := ShowTorrentInfo(e, tracker, orders.Args); err != nil {
+						logThis.Error(errors.Wrap(err, ErrorShowingTorrentInfo), NORMAL)
+					}
+				case "check-log":
+					if err := CheckLog(tracker, orders.Args); err != nil {
+						logThis.Error(errors.Wrap(err, ErrorCheckingLog), NORMAL)
+					}
+				}
+				e.daemonCom.Outgoing <- []byte("stop")
+			case <-e.daemonCom.ClientDisconnected:
+				// output back things to CLI
+				e.expectedOutput = false
+				break Loop2
 			}
-		}
-
-		stopEverything := false
-		switch orders.Command {
-		case "stats":
-			if err := GenerateStats(e); err != nil {
-				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
-			}
-		case "stop":
-			logThis.Info("Stopping daemon...", NORMAL)
-			stopEverything = true
-		case "refresh-metadata":
-			if err := RefreshMetadata(e, tracker, orders.Args); err != nil {
-				logThis.Error(errors.Wrap(err, ErrorRefreshingMetadata), NORMAL)
-			}
-		case "snatch":
-			if err := SnatchTorrents(e, tracker, orders.Args, orders.FLToken); err != nil {
-				logThis.Error(errors.Wrap(err, ErrorSnatchingTorrent), NORMAL)
-			}
-		case "info":
-			if err := ShowTorrentInfo(e, tracker, orders.Args); err != nil {
-				logThis.Error(errors.Wrap(err, ErrorShowingTorrentInfo), NORMAL)
-			}
-		case "check-log":
-			if err := CheckLog(tracker, orders.Args); err != nil {
-				logThis.Error(errors.Wrap(err, ErrorCheckingLog), NORMAL)
-			}
-		}
-		e.sendBackToCLI <- "stop"
-		// waiting for the other instance to be warned that communication is over
-		<-endThisConnection
-		c.Close()
-		e.expectedOutput = false
-		if stopEverything {
-			// shutting down the daemon, exiting look for socket cleanup
-			break
 		}
 	}
+	e.daemonCom.StopCurrent()
 }
 
 func GenerateStats(e *Environment) error {

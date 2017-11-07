@@ -38,10 +38,10 @@ type Environment struct {
 	graphsLastUpdated string
 	expectedOutput    bool
 	websocketOutput   bool
-	sendBackToCLI     chan string
 	sendToWebsocket   chan string
 	mutex             sync.RWMutex
 	git               *Git
+	daemonCom         *DaemonCom
 }
 
 // NewEnvironment prepares a new Environment.
@@ -59,7 +59,7 @@ func NewEnvironment() *Environment {
 	}
 	// websocket is open and waiting for input
 	e.websocketOutput = false
-	e.sendBackToCLI = make(chan string, 10)
+	e.daemonCom = NewDaemonComServer()
 	e.sendToWebsocket = make(chan string, 10)
 	// default graphs update time
 	e.graphsLastUpdated = "unknown"
