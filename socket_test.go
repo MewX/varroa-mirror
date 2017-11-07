@@ -13,7 +13,7 @@ func TestDaemonSocket(t *testing.T) {
 	check := assert.New(t)
 
 	// setup logger
-	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
+	c := &Config{General: &ConfigGeneral{LogLevel: 3}}
 	env := &Environment{config: c}
 	logThis = NewLogThis(env)
 	// cleanup if things fail

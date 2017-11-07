@@ -218,7 +218,7 @@ func TestRelease(t *testing.T) {
 	f25 := &ConfigFilter{Name: "f25", HasCue: true, HasLog: true, LogScore: 100, Source: []string{"CD"}, ReleaseType: []string{"Album"}, Format: []string{"FLAC"}}
 	f26 := &ConfigFilter{Name: "f26", RecordLabel: []string{"label1", "label2"}}
 	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b", "k"}, AllowScene: true}
-	f28 := &ConfigFilter{Name: "f28", PerfectFlac: true, Edition: []string{"r:[dD]eluxe", "Bonus"}}
+	f28 := &ConfigFilter{Name: "f28", PerfectFlac: true, Edition: []string{"r/[dD]eluxe", "Bonus"}}
 	f29 := &ConfigFilter{Name: "f29", Uploader: []string{"this_guy", "that_guy"}}
 	f30 := &ConfigFilter{Name: "f30", RejectUnknown: true}
 	f31 := &ConfigFilter{Name: "f31", EditionYear: []int{2004}, AllowScene: true}
