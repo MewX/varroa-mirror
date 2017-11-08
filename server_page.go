@@ -155,23 +155,23 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 			{Name: "Upload", Label: label + "_overall_" + uploadStatsFile},
 			{Name: "Download", Label: label + "_overall_" + downloadStatsFile},
 			{Name: "Ratio", Label: label + "_overall_" + ratioStatsFile},
-			{Name: "Buffer/day", Label: label + "_overall_" + bufferPerDayStatsFile},
-			{Name: "Upload/day", Label: label + "_overall_" + uploadPerDayStatsFile},
-			{Name: "Download/day", Label: label + "_overall_" + downloadPerDayStatsFile},
-			{Name: "Ratio/day", Label: label + "_overall_" + ratioPerDayStatsFile},
-			{Name: "Snatches/day", Label: label + "_overall_" + numberSnatchedPerDayFile},
-			{Name: "Size Snatched/day", Label: label + "_overall_" + sizeSnatchedPerDayFile},
+			{Name: "Buffer/day", Label: label + "_overall_" + perDay + bufferStatsFile},
+			{Name: "Upload/day", Label: label + "_overall_" + perDay + uploadStatsFile},
+			{Name: "Download/day", Label: label + "_overall_" + perDay + downloadStatsFile},
+			{Name: "Ratio/day", Label: label + "_overall_" + perDay + ratioStatsFile},
+			{Name: "Number Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
+			{Name: "Size Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
 		}
 		// add graphs + links
-		graphLinks := []HTMLLink{}
-		graphs := []HTMLLink{}
+		var graphLinks []HTMLLink
+		var graphs []HTMLLink
 		for _, s := range statsNames {
 			graphLinks = append(graphLinks, HTMLLink{Name: s.Name, URL: "#" + s.Label})
 			graphs = append(graphs, HTMLLink{Title: label + ": " + s.Name, Name: s.Label, URL: s.Label + svgExt})
 		}
 		// add previous stats (progress)
 		// access to statsDB
-		lastStatsStrings := [][]string{}
+		var lastStatsStrings [][]string
 		stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
 		if err != nil {
 			logThis.Error(errors.Wrap(err, "Error, could not access the stats database"), NORMAL)
