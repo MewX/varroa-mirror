@@ -100,6 +100,12 @@ Loop:
 					if err := CheckLog(tracker, orders.Args); err != nil {
 						logThis.Error(errors.Wrap(err, ErrorCheckingLog), NORMAL)
 					}
+				case "uptime":
+					if e.startTime.IsZero() {
+						logThis.Info("Daemon is not running.", NORMAL)
+					} else {
+						logThis.Info("varroa musica daemon up for "+time.Since(e.startTime).String()+".", NORMAL)
+					}
 				}
 				e.daemonCom.Outgoing <- []byte("stop")
 			case <-e.daemonCom.ClientDisconnected:

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
@@ -42,6 +43,7 @@ type Environment struct {
 	mutex             sync.RWMutex
 	git               *Git
 	daemonCom         *DaemonCom
+	startTime         time.Time
 }
 
 // NewEnvironment prepares a new Environment.
@@ -102,6 +104,10 @@ func (e *Environment) LoadConfiguration() error {
 
 // SetUp the Environment
 func (e *Environment) SetUp(autologin bool) error {
+	// for uptime
+	if daemon.WasReborn() {
+		e.startTime = time.Now()
+	}
 	// prepare directory for stats if necessary
 	if !DirectoryExists(StatsDir) {
 		if err := os.MkdirAll(StatsDir, 0777); err != nil {

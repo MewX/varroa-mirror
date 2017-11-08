@@ -45,6 +45,8 @@ Daemon Commands:
 		starts the daemon.
 	stop:
 		stops it.
+	uptime:
+		shows how long it has been running.
 
 Commands:
 
@@ -109,7 +111,7 @@ Configuration Commands:
 		decrypts your encrypted configuration file.
 
 Usage:
-	varroa (start|stop)
+	varroa (start|stop|uptime)
 	varroa stats
 	varroa refresh-metadata <TRACKER> <ID>...
 	varroa check-log <TRACKER> <LOG_FILE>
@@ -133,6 +135,7 @@ type varroaArguments struct {
 	builtin         bool
 	start           bool
 	stop            bool
+	uptime          bool
 	stats           bool
 	refreshMetadata bool
 	checkLog        bool
@@ -176,6 +179,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// commands
 	b.start = args["start"].(bool)
 	b.stop = args["stop"].(bool)
+	b.uptime = args["uptime"].(bool)
 	b.stats = args["stats"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
@@ -271,6 +275,9 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	if b.stop {
 		// to cleanly close the unix socket
 		out.Command = "stop"
+	}
+	if b.uptime {
+		out.Command = "uptime"
 	}
 	if b.refreshMetadata {
 		out.Command = "refresh-metadata"
