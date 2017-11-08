@@ -419,12 +419,10 @@ func automatedTasks(e *Environment) {
 	_, err := exec.LookPath("quota")
 	if err != nil {
 		logThis.Info("The command 'quota' is not available on this system, not able to check disk usage", NORMAL)
-		return
 	} else {
 		// first check
 		if err := checkQuota(e); err != nil {
-			logThis.Error(err, NORMAL)
-			return
+			logThis.Error(errors.Wrap(err, "error checking user quota: disk usage monitoring off"), NORMAL)
 		} else {
 			// scheduler for subsequent quota checks
 			s.Every(1).Hour().Do(checkQuota, e)
