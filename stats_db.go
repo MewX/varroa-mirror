@@ -53,7 +53,6 @@ func NewStatsDB(path string) (*StatsDB, error) {
 				}
 			}
 		}
-		returnErr = statsDB.Update()
 	})
 	return statsDB, returnErr
 }

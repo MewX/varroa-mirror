@@ -17,7 +17,7 @@ import (
 	"github.com/jasonlvhit/gocron"
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
-	daemon "github.com/sevlyar/go-daemon"
+	"github.com/sevlyar/go-daemon"
 )
 
 const (
@@ -123,6 +123,9 @@ func GenerateStats(e *Environment) error {
 	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
 	if err != nil {
 		return errors.Wrap(err, "could not access the stats database")
+	}
+	if err := stats.Update(); err != nil {
+		return errors.Wrap(err, "error updating database")
 	}
 
 	// get tracker labels from config.
@@ -330,7 +333,7 @@ func ArchiveUserFiles() error {
 	contents, err := f.Readdirnames(-1)
 	f.Close()
 
-	backupFiles := []string{}
+	var backupFiles []string
 	if FileExists(DefaultConfigurationFile) {
 		backupFiles = append(backupFiles, DefaultConfigurationFile)
 	}
@@ -361,7 +364,7 @@ func parseQuota(cmdOut string) (float32, int64, error) {
 	if len(lines) != 3 {
 		return -1, -1, errors.New("Unexpected quota output")
 	}
-	relevantParts := []string{}
+	var relevantParts []string
 	for _, p := range strings.Split(lines[2], " ") {
 		if strings.TrimSpace(p) != "" {
 			relevantParts = append(relevantParts, p)
@@ -379,7 +382,7 @@ func parseQuota(cmdOut string) (float32, int64, error) {
 	return 100 * float32(used) / float32(quota), int64(quota-used) * 1024, nil
 }
 
-func checkQuota(e *Environment) error {
+func checkQuota() error {
 	u, err := user.Current()
 	if err != nil {
 		return err
@@ -421,13 +424,15 @@ func automatedTasks(e *Environment) {
 		logThis.Info("The command 'quota' is not available on this system, not able to check disk usage", NORMAL)
 	} else {
 		// first check
-		if err := checkQuota(e); err != nil {
+		if err := checkQuota(); err != nil {
 			logThis.Error(errors.Wrap(err, "error checking user quota: disk usage monitoring off"), NORMAL)
 		} else {
 			// scheduler for subsequent quota checks
-			s.Every(1).Hour().Do(checkQuota, e)
+			s.Every(1).Hour().Do(checkQuota)
 		}
 	}
+	// 4. update database stats
+	s.Every(1).Day().At("00:10").Do(GenerateStats, e)
 	// launch scheduler
 	<-s.Start()
 }
