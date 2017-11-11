@@ -185,7 +185,7 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 				if i == 0 {
 					continue
 				}
-				lastStatsStrings = append(lastStatsStrings, s.ProgressParts(&knownPreviousStats[i-1]))
+				lastStatsStrings = append(lastStatsStrings, knownPreviousStats[i-1].ProgressParts(&s))
 			}
 		}
 
