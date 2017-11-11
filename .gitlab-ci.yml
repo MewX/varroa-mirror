@@ -43,6 +43,7 @@ format:
     - go get github.com/asdine/storm
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
+    - go get github.com/jinzhu/now
     - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
@@ -75,6 +76,7 @@ compiled_varroa_dev:
     - go get github.com/asdine/storm
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
+    - go get github.com/jinzhu/now
     - cd cmd/varroa
     - go build -o ../../varroa
     - cd ../varroa-fuse
@@ -119,6 +121,7 @@ compiled_varroa_released_version:
     - go get github.com/asdine/storm
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
+    - go get github.com/jinzhu/now
     - cd cmd/varroa
     - go build -o ../../varroa
     - cd ../varroa-fuse
