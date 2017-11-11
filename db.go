@@ -12,11 +12,13 @@ import (
 var database *Database
 var onceDatabase sync.Once
 
+// Database allows manupulating stats or release entries.
 type Database struct {
 	path string
 	DB   *storm.DB
 }
 
+// Open the Database
 func (db *Database) Open(path string) error {
 	openedDatabase, err := storm.Open(path, storm.Codec(msgpack.Codec))
 	if err != nil {
@@ -27,6 +29,7 @@ func (db *Database) Open(path string) error {
 	return nil
 }
 
+// Close the Database
 func (db *Database) Close() error {
 	if db.DB != nil {
 		return db.DB.Close()
@@ -34,6 +37,7 @@ func (db *Database) Close() error {
 	return nil
 }
 
+// NewDatabase opens the Database once.
 func NewDatabase(path string) (*Database, error) {
 	var err error
 	onceDatabase.Do(func() {

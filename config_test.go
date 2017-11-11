@@ -17,7 +17,7 @@ func TestConfig(t *testing.T) {
 	check.Nil(err)
 
 	// setting up
-	os.Mkdir("library", 0777)
+	check.Nil(os.Mkdir("library", 0777))
 	defer os.Remove("library")
 
 	// general

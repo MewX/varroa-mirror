@@ -34,7 +34,7 @@ func SendOrders(command []byte) error {
 	go func() {
 		for {
 			a := <-dcClient.Incoming
-			if string(a) != "stop" {
+			if string(a) != stopCommand {
 				fmt.Println(string(a))
 			}
 		}
@@ -81,7 +81,7 @@ Loop:
 					if err := GenerateStats(e); err != nil {
 						logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
 					}
-				case "stop":
+				case stopCommand:
 					logThis.Info("Stopping daemon...", NORMAL)
 					break Loop
 				case "refresh-metadata":
@@ -107,7 +107,7 @@ Loop:
 						logThis.Info("varroa musica daemon up for "+time.Since(e.startTime).String()+".", NORMAL)
 					}
 				}
-				e.daemonCom.Outgoing <- []byte("stop")
+				e.daemonCom.Outgoing <- []byte(stopCommand)
 			case <-e.daemonCom.ClientDisconnected:
 				// output back things to CLI
 				e.expectedOutput = false
@@ -331,6 +331,9 @@ func ArchiveUserFiles() error {
 		return errors.Wrap(err, "Error opening "+StatsDir)
 	}
 	contents, err := f.Readdirnames(-1)
+	if err != nil {
+		return errors.Wrap(err, "Error reading directory "+StatsDir)
+	}
 	f.Close()
 
 	var backupFiles []string

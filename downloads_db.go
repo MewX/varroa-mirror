@@ -114,53 +114,52 @@ func (d *DownloadEntry) Load(root string) error {
 		origin := TrackerOriginJSON{Path: originFile}
 		if err := origin.load(); err != nil {
 			return errors.Wrap(err, "Error reading origin.json")
-		} else {
-			// TODO: check last update timestamp, compare with value in db
-			// TODO: if was not updated, skip.
+		}
+		// TODO: check last update timestamp, compare with value in db
+		// TODO: if was not updated, skip.
 
-			// TODO: remove duplicate if there are actually several origins
+		// TODO: remove duplicate if there are actually several origins
 
-			// state: should be set to unsorted by default,
-			// if it has already been set, leaving it as it is
+		// state: should be set to unsorted by default,
+		// if it has already been set, leaving it as it is
 
-			// resetting the other fields
-			d.Tracker = []string{}
-			d.TrackerID = []int{}
-			d.HasTrackerMetadata = false
+		// resetting the other fields
+		d.Tracker = []string{}
+		d.TrackerID = []int{}
+		d.HasTrackerMetadata = false
 
-			// load useful things from JSON
-			for tracker, info := range origin.Origins {
-				d.Tracker = append(d.Tracker, tracker)
-				d.TrackerID = append(d.TrackerID, info.ID)
+		// load useful things from JSON
+		for tracker, info := range origin.Origins {
+			d.Tracker = append(d.Tracker, tracker)
+			d.TrackerID = append(d.TrackerID, info.ID)
 
-				// getting release info from json
-				infoJSON := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
-				infoJSONOldFormat := filepath.Join(root, d.FolderName, metadataDir, "Release.json")
-				if !FileExists(infoJSON) {
-					infoJSON = infoJSONOldFormat
+			// getting release info from json
+			infoJSON := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
+			infoJSONOldFormat := filepath.Join(root, d.FolderName, metadataDir, "Release.json")
+			if !FileExists(infoJSON) {
+				infoJSON = infoJSONOldFormat
+			}
+			if FileExists(infoJSON) {
+				d.HasTrackerMetadata = true
+				// load JSON, get info
+				data, err := ioutil.ReadFile(infoJSON)
+				if err != nil {
+					return errors.Wrap(err, "Error loading JSON file "+infoJSON)
 				}
-				if FileExists(infoJSON) {
-					d.HasTrackerMetadata = true
-					// load JSON, get info
-					data, err := ioutil.ReadFile(infoJSON)
-					if err != nil {
-						return errors.Wrap(err, "Error loading JSON file "+infoJSON)
-					}
-					var gt GazelleTorrent
-					if err := json.Unmarshal(data, &gt.Response); err != nil {
-						return errors.Wrap(err, "Error parsing JSON file "+infoJSON)
-					}
-					// extract relevant information!
-					// for now, using artists, composers, "with" categories
-					for _, el := range gt.Response.Group.MusicInfo.Artists {
-						d.Artists = append(d.Artists, html.UnescapeString(el.Name))
-					}
-					for _, el := range gt.Response.Group.MusicInfo.With {
-						d.Artists = append(d.Artists, html.UnescapeString(el.Name))
-					}
-					for _, el := range gt.Response.Group.MusicInfo.Composers {
-						d.Artists = append(d.Artists, html.UnescapeString(el.Name))
-					}
+				var gt GazelleTorrent
+				if err := json.Unmarshal(data, &gt.Response); err != nil {
+					return errors.Wrap(err, "Error parsing JSON file "+infoJSON)
+				}
+				// extract relevant information!
+				// for now, using artists, composers, "with" categories
+				for _, el := range gt.Response.Group.MusicInfo.Artists {
+					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
+				}
+				for _, el := range gt.Response.Group.MusicInfo.With {
+					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
+				}
+				for _, el := range gt.Response.Group.MusicInfo.Composers {
+					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
 				}
 			}
 		}

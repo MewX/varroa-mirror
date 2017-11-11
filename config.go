@@ -216,7 +216,7 @@ func (c *Config) Check() error {
 		// check all autosnatch configs point to defined Trackers
 		for _, a := range c.Autosnatch {
 			if !StringInSlice(a.Tracker, configuredTrackers) {
-				return errors.New(fmt.Sprintf("Autosnatch enabled, but tracker %s undefined", a.Tracker))
+				return fmt.Errorf("Autosnatch enabled, but tracker %s undefined", a.Tracker)
 			}
 		}
 		// check all filter trackers are defined
@@ -224,7 +224,7 @@ func (c *Config) Check() error {
 			for _, f := range c.Filters {
 				for _, t := range f.Tracker {
 					if !StringInSlice(t, configuredTrackers) {
-						return errors.New(fmt.Sprintf("Filter %s refers to undefined tracker %s", f.Name, t))
+						return fmt.Errorf("Filter %s refers to undefined tracker %s", f.Name, t)
 					}
 				}
 			}
@@ -234,7 +234,7 @@ func (c *Config) Check() error {
 		// check all stats point to defined Trackers
 		for _, a := range c.Stats {
 			if !StringInSlice(a.Tracker, configuredTrackers) {
-				return errors.New(fmt.Sprintf("Stats enabled, but tracker %s undefined", a.Tracker))
+				return fmt.Errorf("Stats enabled, but tracker %s undefined", a.Tracker)
 			}
 		}
 	}
@@ -242,7 +242,7 @@ func (c *Config) Check() error {
 		// check all webhook trackers point to defined Trackers
 		for _, a := range c.Notifications.WebHooks.Trackers {
 			if !StringInSlice(a, configuredTrackers) {
-				return errors.New(fmt.Sprintf("Stats enabled, but tracker %s undefined", a))
+				return fmt.Errorf("Stats enabled, but tracker %s undefined", a)
 			}
 		}
 	}

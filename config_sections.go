@@ -97,13 +97,12 @@ func (ca *ConfigAutosnatch) Check() error {
 	}
 	if ca.IRCServer == "" {
 		return errors.New("Missing IRC server")
-	} else {
-		// check it's server:port
-		r := regexp.MustCompile(ircServerPattern)
-		hits := r.FindAllStringSubmatch(ca.IRCServer, -1)
-		if len(hits) != 1 {
-			return errors.New("IRC server must be in the form: server.hostname:port")
-		}
+	}
+	// check it's server:port
+	r := regexp.MustCompile(ircServerPattern)
+	hits := r.FindAllStringSubmatch(ca.IRCServer, -1)
+	if len(hits) != 1 {
+		return errors.New("IRC server must be in the form: server.hostname:port")
 	}
 	if ca.IRCKey == "" {
 		return errors.New("Missing IRC key")
@@ -119,10 +118,9 @@ func (ca *ConfigAutosnatch) Check() error {
 	}
 	if ca.AnnounceChannel == "" {
 		return errors.New("Missing announce channel")
-	} else {
-		if !strings.HasPrefix(ca.AnnounceChannel, "#") {
-			return errors.New("Invalid announce channel")
-		}
+	}
+	if !strings.HasPrefix(ca.AnnounceChannel, "#") {
+		return errors.New("Invalid announce channel")
 	}
 	return nil
 }
@@ -188,16 +186,16 @@ func (cs *ConfigStats) Check() error {
 		cs.MinimumRatio = warningRatio
 	}
 	if cs.MinimumRatio < warningRatio {
-		return errors.New(fmt.Sprintf("Minimum ratio must be at least %.2f", warningRatio))
+		return fmt.Errorf("Minimum ratio must be at least %.2f", warningRatio)
 	}
 	if cs.TargetRatio == 0 {
 		cs.TargetRatio = defaultTargetRatio
 	}
 	if cs.TargetRatio < warningRatio {
-		return errors.New(fmt.Sprintf("Target ratio must be higher than %.2f", warningRatio))
+		return fmt.Errorf("Target ratio must be higher than %.2f", warningRatio)
 	}
 	if cs.TargetRatio < cs.MinimumRatio {
-		return errors.New(fmt.Sprintf("Target ratio must be higher than minimum ratio (%.2f)", cs.MinimumRatio))
+		return fmt.Errorf("Target ratio must be higher than minimum ratio (%.2f)", cs.MinimumRatio)
 	}
 	return nil
 }

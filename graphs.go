@@ -157,7 +157,7 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 }
 
 func combineAllPNGs(combined string, graphs ...string) error {
-	images := []image.Image{}
+	var images []image.Image
 	// open and decode images
 	for _, graph := range graphs {
 		imgFile, err := os.Open(graph + pngExt)
@@ -221,7 +221,7 @@ func combineAllPNGs(combined string, graphs ...string) error {
 		}
 	}
 	//rectangle for the big image
-	r := image.Rectangle{image.Point{0, 0}, image.Point{maxX, maxY}}
+	r := image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: maxX, Y: maxY}}
 	// new image
 	rgba := image.NewRGBA(r)
 
@@ -232,15 +232,15 @@ func combineAllPNGs(combined string, graphs ...string) error {
 		if i%2 == 0 {
 			// first column
 			currentX = 0
-			sp := image.Point{currentX, currentY}
-			draw.Draw(rgba, image.Rectangle{sp, sp.Add(img.Bounds().Size())}, img, image.Point{0, 0}, draw.Src)
+			sp := image.Point{X: currentX, Y: currentY}
+			draw.Draw(rgba, image.Rectangle{sp, sp.Add(img.Bounds().Size())}, img, image.Point{X: 0, Y: 0}, draw.Src)
 			currentX = img.Bounds().Dx()
 			currentRowHeight = img.Bounds().Dy()
 
 		} else {
 			// second column
-			sp := image.Point{currentX, currentY}
-			draw.Draw(rgba, image.Rectangle{sp, sp.Add(img.Bounds().Size())}, img, image.Point{0, 0}, draw.Src)
+			sp := image.Point{X: currentX, Y: currentY}
+			draw.Draw(rgba, image.Rectangle{sp, sp.Add(img.Bounds().Size())}, img, image.Point{X: 0, Y: 0}, draw.Src)
 			if img.Bounds().Dy() > currentRowHeight {
 				currentRowHeight = img.Bounds().Dy()
 			}

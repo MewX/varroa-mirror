@@ -45,61 +45,61 @@ func (fe *FuseEntry) Load(root string) error {
 		origin := TrackerOriginJSON{Path: originFile}
 		if err := origin.load(); err != nil {
 			return errors.Wrap(err, "Error reading origin.json")
-		} else {
-			// reset fields
-			fe.reset()
+		}
+		// reset fields
+		fe.reset()
 
-			// TODO: remove duplicate if there are actually several origins
+		// TODO: remove duplicate if there are actually several origins
 
-			// load useful things from JSON
-			for tracker := range origin.Origins {
-				fe.Tracker = append(fe.Tracker, tracker)
+		// load useful things from JSON
+		for tracker := range origin.Origins {
+			fe.Tracker = append(fe.Tracker, tracker)
 
-				// getting release info from json
-				infoJSON := filepath.Join(root, fe.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
-				if !FileExists(infoJSON) {
-					// if not present, try the old format
-					infoJSON = filepath.Join(root, fe.FolderName, metadataDir, "Release.json")
+			// getting release info from json
+			infoJSON := filepath.Join(root, fe.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
+			if !FileExists(infoJSON) {
+				// if not present, try the old format
+				infoJSON = filepath.Join(root, fe.FolderName, metadataDir, "Release.json")
+			}
+			if FileExists(infoJSON) {
+				// load JSON, get info
+				data, err := ioutil.ReadFile(infoJSON)
+				if err != nil {
+					return errors.Wrap(err, "Error loading JSON file "+infoJSON)
 				}
-				if FileExists(infoJSON) {
-					// load JSON, get info
-					data, err := ioutil.ReadFile(infoJSON)
-					if err != nil {
-						return errors.Wrap(err, "Error loading JSON file "+infoJSON)
-					}
-					var gt GazelleTorrent
-					if err := json.Unmarshal(data, &gt.Response); err != nil {
-						return errors.Wrap(err, "Error parsing JSON file "+infoJSON)
-					}
-					// extract relevant information!
-					// for now, using artists, composers, "with" categories
-					for _, el := range gt.Response.Group.MusicInfo.Artists {
-						fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
-					}
-					for _, el := range gt.Response.Group.MusicInfo.With {
-						fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
-					}
-					for _, el := range gt.Response.Group.MusicInfo.Composers {
-						fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
-					}
-					// record label
-					fe.RecordLabel = gt.Response.Group.RecordLabel
-					if gt.Response.Torrent.Remastered {
-						fe.RecordLabel = gt.Response.Torrent.RemasterRecordLabel
-					}
-					fe.RecordLabel = SanitizeFolder(html.UnescapeString(fe.RecordLabel))
-					// year
-					fe.Year = gt.Response.Group.Year
-					if gt.Response.Torrent.Remastered {
-						fe.Year = gt.Response.Torrent.RemasterYear
-					}
-					// title
-					fe.Title = gt.Response.Group.Name
-					// tags
-					fe.Tags = gt.Response.Group.Tags
+				var gt GazelleTorrent
+				if err := json.Unmarshal(data, &gt.Response); err != nil {
+					return errors.Wrap(err, "Error parsing JSON file "+infoJSON)
 				}
+				// extract relevant information!
+				// for now, using artists, composers, "with" categories
+				for _, el := range gt.Response.Group.MusicInfo.Artists {
+					fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
+				}
+				for _, el := range gt.Response.Group.MusicInfo.With {
+					fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
+				}
+				for _, el := range gt.Response.Group.MusicInfo.Composers {
+					fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
+				}
+				// record label
+				fe.RecordLabel = gt.Response.Group.RecordLabel
+				if gt.Response.Torrent.Remastered {
+					fe.RecordLabel = gt.Response.Torrent.RemasterRecordLabel
+				}
+				fe.RecordLabel = SanitizeFolder(html.UnescapeString(fe.RecordLabel))
+				// year
+				fe.Year = gt.Response.Group.Year
+				if gt.Response.Torrent.Remastered {
+					fe.Year = gt.Response.Torrent.RemasterYear
+				}
+				// title
+				fe.Title = gt.Response.Group.Name
+				// tags
+				fe.Tags = gt.Response.Group.Tags
 			}
 		}
+
 	} else {
 		return errors.New("Error, no metadata found")
 	}
@@ -133,7 +133,7 @@ func (fdb *FuseDB) Scan(path string) error {
 	}
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
-	s.Prefix = "Scanning"
+	s.Prefix = scanningFiles
 	s.Start()
 
 	// get old entries
@@ -148,7 +148,7 @@ func (fdb *FuseDB) Scan(path string) error {
 	}
 	defer tx.Rollback()
 
-	currentFolderNames := []string{}
+	var currentFolderNames []string
 	for _, entry := range entries {
 		if entry.IsDir() {
 			// detect if sound files are present, leave otherwise

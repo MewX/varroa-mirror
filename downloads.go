@@ -55,7 +55,7 @@ func (d *Downloads) Scan() error {
 	}
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
-	s.Prefix = "Scanning"
+	s.Prefix = scanningFiles
 	if !daemon.WasReborn() {
 		s.Start()
 	}
@@ -211,7 +211,7 @@ func (d *Downloads) FindByState(state string) []DownloadEntry {
 	}
 
 	dlState := DownloadState(-1).Get(state)
-	hits := []DownloadEntry{}
+	var hits []DownloadEntry
 	if err := d.DB.Find("State", dlState, &hits); err != nil && err != storm.ErrNotFound {
 		logThis.Error(errors.Wrap(err, "Could not find downloads by state"), VERBOSEST)
 	}
@@ -219,7 +219,7 @@ func (d *Downloads) FindByState(state string) []DownloadEntry {
 }
 
 func (d *Downloads) FindByArtist(artist string) []DownloadEntry {
-	hits := []DownloadEntry{}
+	var hits []DownloadEntry
 	query := d.DB.Select(InSlice("Artists", artist))
 	if err := query.Find(&hits); err != nil && err != storm.ErrNotFound {
 		logThis.Error(errors.Wrap(err, "Could not find downloads by artist "+artist), VERBOSEST)
@@ -237,10 +237,10 @@ func (d *Downloads) Clean() error {
 	}
 
 	// don't walk, we only want the top-level directories here
-	toBeMoved := []os.FileInfo{}
+	var toBeMoved []os.FileInfo
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
-	s.Prefix = "Scanning"
+	s.Prefix = scanningFiles
 	if !daemon.WasReborn() {
 		s.Start()
 	}

@@ -228,7 +228,7 @@ func webServer(e *Environment) {
 				return
 			}
 
-			response := []byte{}
+			var response []byte
 			id, ok := mux.Vars(r)["id"]
 			if !ok {
 				list, err := e.serverData.DownloadsList(e, downloads)

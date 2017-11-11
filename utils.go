@@ -139,12 +139,10 @@ func RemoveFromSlice(r string, s []string) []string {
 func RemoveStringSliceDuplicates(elements []string) []string {
 	// Use map to record duplicates as we find them.
 	encountered := map[string]bool{}
-	result := []string{}
+	var result []string
 
 	for v := range elements {
-		if encountered[elements[v]] == true {
-			// Do not add duplicate.
-		} else {
+		if !encountered[elements[v]] {
 			// Record this element as an encountered element.
 			encountered[elements[v]] = true
 			// Append to result slice.

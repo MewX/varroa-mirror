@@ -163,7 +163,7 @@ func (dc *DaemonCom) read() {
 
 			// if we are the client and receive stop, the server just told us it's the end of the communication.
 			// -1 because of unixSocketMessageSeparator
-			if part == "stop" && !dc.IsServer {
+			if part == stopCommand && !dc.IsServer {
 				stopAfterThis = true
 			}
 		}
@@ -206,7 +206,7 @@ func (dc *DaemonCom) send() {
 			break
 		}
 		// we've just told the other instance talking was over, ending this connection.
-		if string(messageToLog) == "stop" && dc.IsServer {
+		if string(messageToLog) == stopCommand && dc.IsServer {
 			//logThis.Info("Server: Sent order to stop connection", VERBOSESTEST)
 			dc.endThisConnection <- struct{}{}
 			dc.IsActive = false

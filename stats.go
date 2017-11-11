@@ -32,13 +32,14 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 	var previousStats *StatsEntry
 	knownPreviousStats, err := stats.GetLastCollected(tracker, 1)
 	if err != nil {
-		if err == storm.ErrNotFound {
+		if err != storm.ErrNotFound {
 			previousStats = &StatsEntry{Collected: true}
 		} else {
 			return errors.Wrap(err, "Error retreiving previous stats for tracker "+tracker)
 		}
+	} else {
+		previousStats = &knownPreviousStats[0]
 	}
-	previousStats = &knownPreviousStats[0]
 
 	// compare with new stats
 	logThis.Info(newStats.Progress(previousStats), NORMAL)
@@ -46,8 +47,6 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 	if err := Notify("stats: "+newStats.Progress(previousStats), tracker, "info"); err != nil {
 		logThis.Error(err, NORMAL)
 	}
-
-	// TODO if first run, don't check!!!!!!!!!!!!!!!!!!!!
 
 	// if something is wrong, send notification and stop
 	if !newStats.IsProgressAcceptable(previousStats, statsConfig.MaxBufferDecreaseMB, statsConfig.MinimumRatio) {
@@ -76,8 +75,6 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 			e.mutex.Unlock()
 		}
 	}
-
-	// TODO generate history snatches graphs!!
 
 	// generate graphs
 	return stats.GenerateAllGraphsForTracker(tracker)

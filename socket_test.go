@@ -38,7 +38,7 @@ func TestDaemonSocket(t *testing.T) {
 			dcServer.Outgoing <- outMessage
 			if string(a) == "command before stop" {
 				time.Sleep(1 * time.Millisecond)
-				dcServer.Outgoing <- []byte("stop")
+				dcServer.Outgoing <- []byte(stopCommand)
 			}
 		}
 	}()
