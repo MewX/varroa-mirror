@@ -24,8 +24,8 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 		return errors.Wrap(err, errorGettingStats)
 	}
 	// save to database
-	if err := stats.Save(newStats); err != nil {
-		return errors.Wrap(err, "Error saving stats to database")
+	if saveErr := stats.Save(newStats); saveErr != nil {
+		return errors.Wrap(saveErr, "Error saving stats to database")
 	}
 
 	// get previous stats

@@ -129,9 +129,9 @@ func GenerateStats(e *Environment) error {
 	}
 
 	// get tracker labels from config.
-	config, err := NewConfig(DefaultConfigurationFile)
-	if err != nil {
-		return err
+	config, configErr := NewConfig(DefaultConfigurationFile)
+	if configErr != nil {
+		return configErr
 	}
 	// generate graphs
 	for _, tracker := range config.TrackerLabels() {
@@ -170,9 +170,9 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				if e.config.DownloadFolderConfigured {
 					logThis.Info("Release with ID "+found.TorrentID+" not found in history, trying to locate in downloads directory.", NORMAL)
 					// get data from tracker
-					info, err := tracker.GetTorrentInfo(id)
-					if err != nil {
-						logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
+					info, infoErr := tracker.GetTorrentInfo(id)
+					if infoErr != nil {
+						logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 						break
 					}
 					fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
@@ -254,7 +254,7 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 		// find if in history
 		var found Release
-		if err := stats.db.DB.Select(q.And(q.Eq("Tracker", tracker.Name), q.Eq("TorrentID", id))).First(&found); err != nil {
+		if selectErr := stats.db.DB.Select(q.And(q.Eq("Tracker", tracker.Name), q.Eq("TorrentID", id))).First(&found); selectErr != nil {
 			logThis.Info("+ This torrent has not been snatched with varroa.", NORMAL)
 		} else {
 			logThis.Info("+ This torrent has been snatched with varroa.", NORMAL)

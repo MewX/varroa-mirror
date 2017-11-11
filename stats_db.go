@@ -35,8 +35,7 @@ func NewStatsDB(path string) (*StatsDB, error) {
 			return
 		}
 		statsDB = &StatsDB{db: db}
-		if err := statsDB.init(); err != nil {
-			returnErr = err
+		if returnErr = statsDB.init(); returnErr != nil {
 			return
 		}
 
@@ -229,39 +228,39 @@ func (sdb *StatsDB) Update() error {
 					// get closest collected stats before midnight & after, and do some simple linear interpolation
 					// get previous collected stats
 					var previous StatsEntry
-					if err := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Eq("Collected", true), q.Lte("Timestamp", currentStartOfDay))).OrderBy("Timestamp").Reverse().First(&previous); err != nil {
-						if err == storm.ErrNotFound {
+					if selectErr := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Eq("Collected", true), q.Lte("Timestamp", currentStartOfDay))).OrderBy("Timestamp").Reverse().First(&previous); selectErr != nil {
+						if selectErr == storm.ErrNotFound {
 							// first day, use the first known stats as the reference
 							previous = firstTrackerStats
 						} else {
-							logThis.Error(err, VERBOSEST)
+							logThis.Error(selectErr, VERBOSEST)
 							continue
 						}
 					}
 					// get following collected stats
 					var next StatsEntry
-					if err := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Eq("Collected", true), q.Gte("Timestamp", currentStartOfDay))).OrderBy("Timestamp").First(&next); err != nil {
-						if err == storm.ErrNotFound {
+					if selectErr := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Eq("Collected", true), q.Gte("Timestamp", currentStartOfDay))).OrderBy("Timestamp").First(&next); selectErr != nil {
+						if selectErr == storm.ErrNotFound {
 							// last day, missing information to create the daily stats
 							continue
 						} else {
-							logThis.Error(err, VERBOSEST)
+							logThis.Error(selectErr, VERBOSEST)
 							continue
 						}
 					}
 
 					// calculate the stats at start of day
 					newDailyStats := &StatsEntry{}
-					var err error
+					var statsErr error
 					if previous.Timestamp.Equal(next.Timestamp) {
 						// if they are the same, it's probably the first day.
 						// creating first day without interpolation.
 						newDailyStats = &StatsEntry{Tracker: previous.Tracker, Timestamp: currentStartOfDay, Up: previous.Up, Down: previous.Down, Ratio: previous.Ratio, StartOfDay: true}
 					} else {
 						// interpolate stats at the start of the day being considered
-						newDailyStats, err = InterpolateStats(previous, next, currentStartOfDay)
-						if err != nil {
-							logThis.Error(err, VERBOSE)
+						newDailyStats, statsErr = InterpolateStats(previous, next, currentStartOfDay)
+						if statsErr != nil {
+							logThis.Error(statsErr, VERBOSE)
 							continue
 						} else {
 							newDailyStats.StartOfDay = true
@@ -276,8 +275,8 @@ func (sdb *StatsDB) Update() error {
 						newDailyStats.StartOfMonth = true
 					}
 					// save new entry
-					if err := tx.Save(newDailyStats); err != nil {
-						return errors.Wrap(err, "error saving daily stats")
+					if saveErr := tx.Save(newDailyStats); saveErr != nil {
+						return errors.Wrap(saveErr, "error saving daily stats")
 					}
 					logThis.Info("Added daily stats for "+t+"/"+currentStartOfDay.String(), VERBOSEST)
 				} else {
@@ -294,10 +293,10 @@ func (sdb *StatsDB) Update() error {
 
 					// get snatches for this day
 					var newSnatches []Release
-					if err := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Gte("Timestamp", currentStartOfDay), q.Lte("Timestamp", now.New(currentStartOfDay).AddDate(0, 0, 1)))).Find(&newSnatches); err != nil {
+					if selectErr := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Gte("Timestamp", currentStartOfDay), q.Lte("Timestamp", now.New(currentStartOfDay).AddDate(0, 0, 1)))).Find(&newSnatches); selectErr != nil {
 						// if nothing found, no snatches for this day, empty entry will be added
-						if err != storm.ErrNotFound {
-							logThis.Error(err, VERBOSEST)
+						if selectErr != storm.ErrNotFound {
+							logThis.Error(selectErr, VERBOSEST)
 							continue
 						}
 					} else {
@@ -316,8 +315,8 @@ func (sdb *StatsDB) Update() error {
 						snatchEntryForThisDay.StartOfMonth = true
 					}
 					// save new entry
-					if err := tx.Save(&snatchEntryForThisDay); err != nil {
-						return errors.Wrap(err, "error saving daily snatch stats")
+					if saveErr := tx.Save(&snatchEntryForThisDay); saveErr != nil {
+						return errors.Wrap(saveErr, "error saving daily snatch stats")
 					}
 
 					logThis.Info("Added daily snatch stats for "+t+"/"+currentStartOfDay.String(), VERBOSEST)
