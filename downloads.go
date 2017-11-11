@@ -72,7 +72,7 @@ func (d *Downloads) Scan() error {
 	}
 	defer tx.Rollback()
 
-	currentFolderNames := []string{}
+	var currentFolderNames []string
 	for _, entry := range entries {
 		if entry.IsDir() {
 			// detect if sound files are present, leave otherwise
@@ -121,7 +121,7 @@ func (d *Downloads) Scan() error {
 	// remove entries no longer associated with actual files
 	for _, p := range previous {
 		if !StringInSlice(p.FolderName, currentFolderNames) {
-			if err := d.DB.DeleteStruct(&p); err != nil {
+			if err := tx.DeleteStruct(&p); err != nil {
 				logThis.Error(err, VERBOSEST)
 			}
 			logThis.Info("Removed Download entry: "+p.FolderName, VERBOSESTEST)
