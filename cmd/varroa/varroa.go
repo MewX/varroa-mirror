@@ -25,6 +25,9 @@ func main() {
 		return
 	}
 
+	// prepare cleanup
+	defer closeDB()
+
 	// here commands that have no use for the daemon
 	if !cli.canUseDaemon {
 		if cli.backup {
@@ -275,4 +278,14 @@ func main() {
 		}
 	}
 	return
+}
+
+func closeDB() {
+	// closing statsDB properly
+	logThis.Info("Closing stats DB.", varroa.VERBOSESTEST)
+	if stats, err := varroa.NewDatabase(filepath.Join(varroa.StatsDir, varroa.DefaultHistoryDB)); err == nil {
+		if closingErr := stats.Close(); closingErr != nil {
+			logThis.Error(closingErr, varroa.NORMAL)
+		}
+	}
 }
