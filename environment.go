@@ -36,14 +36,13 @@ type Environment struct {
 	serverData *ServerPage
 	Trackers   map[string]*GazelleTracker
 
-	graphsLastUpdated string
-	expectedOutput    bool
-	websocketOutput   bool
-	sendToWebsocket   chan string
-	mutex             sync.RWMutex
-	git               *Git
-	daemonCom         *DaemonCom
-	startTime         time.Time
+	expectedOutput  bool
+	websocketOutput bool
+	sendToWebsocket chan string
+	mutex           sync.RWMutex
+	git             *Git
+	daemonCom       *DaemonCom
+	startTime       time.Time
 }
 
 // NewEnvironment prepares a new Environment.
@@ -63,8 +62,6 @@ func NewEnvironment() *Environment {
 	e.websocketOutput = false
 	e.daemonCom = NewDaemonComServer()
 	e.sendToWebsocket = make(chan string, 10)
-	// default graphs update time
-	e.graphsLastUpdated = "unknown"
 	return e
 }
 

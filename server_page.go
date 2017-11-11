@@ -103,7 +103,6 @@ const (
 		<div id="main">
 		  <div class="header">
 				<h1 id="title">{{.Title}}</h1>
-				<p>Graphs last updated: {{.Time}}</p>
 				<p>{{.Version}}</p>
 		  </div>
 		  <div class="content">
@@ -131,10 +130,6 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 		return
 	}
 
-	// updating time
-	e.mutex.RLock()
-	sc.index.Time = e.graphsLastUpdated
-	e.mutex.RUnlock()
 	// rebuilding
 	sc.index.Stats = []HTMLStats{}
 	if config.webserverMetadata && downloads != nil {
