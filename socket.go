@@ -78,8 +78,8 @@ func (dc *DaemonCom) RunClient() error {
 	if err != nil {
 		return errors.Wrap(err, errorDialingSocket)
 	}
-	dc.connection = &conn
 	dc.Lock()
+	dc.connection = &conn
 	dc.IsActive = true
 	dc.Unlock()
 	dc.ClientConnected <- struct{}{}
@@ -117,8 +117,10 @@ func (dc *DaemonCom) serverReceive() {
 				break
 			}
 		}
+		dc.Lock()
 		dc.connection = &conn
 		dc.IsActive = true
+		dc.Unlock()
 		dc.ClientConnected <- struct{}{}
 		//logThis.Info("Server connected.", VERBOSESTEST)
 
