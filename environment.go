@@ -186,7 +186,7 @@ func (e *Environment) DeployToGitlabPages() error {
 		}
 	}
 	// add main files
-	if err := e.git.Add(filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile), "*"+csvExt); err != nil {
+	if err := e.git.Add(filepath.Base(gitlabCIYamlFile), filepath.Base(htmlIndexFile)); err != nil {
 		return errors.Wrap(err, errorGitAdd)
 	}
 	// add the graphs, if it fails,
