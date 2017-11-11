@@ -161,7 +161,7 @@ func main() {
 		// using stormDB
 		if cli.downloadFuse {
 			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, varroa.DefaultDownloadsDB); err != nil {
+			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, filepath.Join(varroa.StatsDir, varroa.DefaultDownloadsDB)); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
@@ -174,7 +174,7 @@ func main() {
 				return
 			}
 			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-			if err := varroa.FuseMount(config.Library.Directory, cli.mountPoint, varroa.DefaultLibraryDB); err != nil {
+			if err := varroa.FuseMount(config.Library.Directory, cli.mountPoint, filepath.Join(varroa.StatsDir, varroa.DefaultLibraryDB)); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}

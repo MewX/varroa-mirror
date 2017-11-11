@@ -27,6 +27,7 @@ const (
 	unixSocketMessageSeparator = "↑" // because it looks nice
 )
 
+// SendOrders from the CLI to the running daemon
 func SendOrders(command []byte) error {
 	dcClient := NewDaemonComClient()
 	go dcClient.RunClient()
@@ -48,6 +49,7 @@ func SendOrders(command []byte) error {
 	return nil
 }
 
+// awaitOrders in the daemon from the CLI
 func awaitOrders(e *Environment) {
 	go e.daemonCom.RunServer()
 	<-e.daemonCom.ServerUp
@@ -118,6 +120,7 @@ Loop:
 	e.daemonCom.StopCurrent()
 }
 
+// GenerateStats for all labels and the associated HTML index.
 func GenerateStats(e *Environment) error {
 	atLeastOneError := false
 	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
@@ -151,6 +154,7 @@ func GenerateStats(e *Environment) error {
 	return nil
 }
 
+// RefreshMetadata for a list of releases on a tracker
 func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
@@ -213,21 +217,23 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 	return nil
 }
 
+// SnatchTorrents on a tracker using their TorrentIDs
 func SnatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string, useFLToken bool) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
 	}
 	// snatch
 	for _, id := range IDStrings {
-		if release, err := manualSnatchFromID(e, tracker, id, useFLToken); err != nil {
+		release, err := manualSnatchFromID(e, tracker, id, useFLToken)
+		if err != nil {
 			return errors.New("Error snatching torrent with ID #" + id)
-		} else {
-			logThis.Info("Successfully snatched torrent "+release.ShortString(), NORMAL)
 		}
+		logThis.Info("Successfully snatched torrent "+release.ShortString(), NORMAL)
 	}
 	return nil
 }
 
+// ShowTorrentInfo of a list of releases on a tracker
 func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string) error {
 	if len(IDStrings) == 0 {
 		return errors.New("Error: no ID provided")
@@ -303,6 +309,7 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 	return nil
 }
 
+// CheckLog on a tracker's logchecker
 func CheckLog(tracker *GazelleTracker, logPaths []string) error {
 	for _, log := range logPaths {
 		score, err := tracker.GetLogScore(log)
@@ -314,6 +321,7 @@ func CheckLog(tracker *GazelleTracker, logPaths []string) error {
 	return nil
 }
 
+// ArchiveUserFiles in a timestamped compressed archive.
 func ArchiveUserFiles() error {
 	// generate Timestamp
 	timestamp := time.Now().Format("2006-01-02_15h04m05s")
@@ -358,6 +366,7 @@ func ArchiveUserFiles() error {
 	return err
 }
 
+// parseQuota output to find out what remains available
 func parseQuota(cmdOut string) (float32, int64, error) {
 	output := strings.TrimSpace(cmdOut)
 	if output == "" {
@@ -385,6 +394,7 @@ func parseQuota(cmdOut string) (float32, int64, error) {
 	return 100 * float32(used) / float32(quota), int64(quota-used) * 1024, nil
 }
 
+// checkQuota on the machine the daemon is run
 func checkQuota() error {
 	u, err := user.Current()
 	if err != nil {
@@ -411,6 +421,7 @@ func checkQuota() error {
 	return nil
 }
 
+// automatedTasks is a list of cronjobs for maintenance, backup, or non-critical operations
 func automatedTasks(e *Environment) {
 	// new scheduler
 	s := gocron.NewScheduler()
