@@ -46,10 +46,19 @@ func NewStatsDB(path string) (*StatsDB, error) {
 			return
 		} else {
 			// try to import <v19
+			migratedSomething := false
 			for _, label := range config.TrackerLabels() {
-				if err := statsDB.migrate(label, filepath.Join(StatsDir, label+"_"+statsFile+csvExt), filepath.Join(StatsDir, label+"_"+historyFile+msgpackExt)); err != nil {
+				migrated, err := statsDB.migrate(label, filepath.Join(StatsDir, label+"_"+statsFile+csvExt), filepath.Join(StatsDir, label+"_"+historyFile+msgpackExt))
+				if err != nil {
 					logThis.Error(errors.Wrap(err, "Error migrating stats csv to the new database, for tracker "+label), NORMAL)
+				} else if migrated {
+					migratedSomething = migrated
 				}
+			}
+			if migratedSomething {
+				logThis.Info("Updating stats after migration", NORMAL)
+				returnErr = statsDB.Update()
+				return
 			}
 		}
 	})
@@ -66,29 +75,30 @@ func (sdb *StatsDB) init() error {
 	return sdb.db.DB.Init(&Release{})
 }
 
-func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) error {
+func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) {
+	migratedSomething := false
 	if FileExists(csvFile) {
 		logThis.Info("Migrating stats for tracker "+tracker, NORMAL)
 
 		// load history file
 		f, errOpening := os.OpenFile(csvFile, os.O_RDONLY, 0644)
 		if errOpening != nil {
-			return errors.New(errorMigratingFile + csvFile)
+			return migratedSomething, errors.New(errorMigratingFile + csvFile)
 		}
 
 		w := csv.NewReader(f)
 		records, errReading := w.ReadAll()
 		if errReading != nil {
-			return errors.Wrap(errReading, "Error loading old history file")
+			return migratedSomething, errors.Wrap(errReading, "Error loading old history file")
 		}
 		if err := f.Close(); err != nil {
-			return errors.Wrap(err, "Error closing old history file")
+			return migratedSomething, errors.Wrap(err, "Error closing old history file")
 		}
 
 		// transaction for quicker results
 		tx, err := sdb.db.DB.Begin(true)
 		if err != nil {
-			return err
+			return migratedSomething, err
 		}
 		defer tx.Rollback()
 
@@ -98,27 +108,28 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) error {
 				logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
 			} else {
 				if err := tx.Save(r); err != nil {
-					return errors.Wrap(err, "Error saving CSV entry to the new database")
+					return migratedSomething, errors.Wrap(err, "Error saving CSV entry to the new database")
 				}
 			}
 		}
 		if err := tx.Commit(); err != nil {
-			return err
+			return migratedSomething, err
 		}
 
 		// checks
 		var allEntries []StatsEntry
 		if err := sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
-			return errors.Wrap(err, "Error reading back stats values from db")
+			return migratedSomething, errors.Wrap(err, "Error reading back stats values from db")
 		}
 		if len(allEntries) != len(records) {
-			return fmt.Errorf("error reading back stats, got %d instead of %d entries", len(allEntries), len(records))
+			return migratedSomething, fmt.Errorf("error reading back stats, got %d instead of %d entries", len(allEntries), len(records))
 		}
 		// ok
+		migratedSomething = true
 		logThis.Info(fmt.Sprintf("Migrated %d records for tracker %s", len(allEntries), tracker), NORMAL)
 		// once successful, rename csvFile to csv.v18
 		if err := os.Rename(csvFile, csvFile+".v18"); err != nil {
-			return err
+			return migratedSomething, err
 		}
 	}
 
@@ -129,11 +140,11 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) error {
 		bytes, err := ioutil.ReadFile(msgpackFile)
 		if err != nil {
 			logThis.Error(errors.Wrap(err, "Error reading old history file"), NORMAL)
-			return err
+			return migratedSomething, err
 		}
 		if len(bytes) == 0 {
 			// newly created file
-			return nil
+			return migratedSomething, nil
 		}
 
 		var oldReleases []Release
@@ -146,36 +157,37 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) error {
 		// transaction for quicker results
 		tx, err := sdb.db.DB.Begin(true)
 		if err != nil {
-			return err
+			return migratedSomething, err
 		}
 		defer tx.Rollback()
 
 		for _, release := range oldReleases {
 			release.Tracker = tracker
 			if err := tx.Save(&release); err != nil {
-				return errors.Wrap(err, "Error saving snatch entry to the new database")
+				return migratedSomething, errors.Wrap(err, "Error saving snatch entry to the new database")
 			}
 		}
 		if err := tx.Commit(); err != nil {
-			return err
+			return migratedSomething, err
 		}
 
 		// checks
 		var allSnatches []Release
 		if err := sdb.db.DB.Find("Tracker", tracker, &allSnatches); err != nil {
-			return errors.Wrap(err, "Error reading back snatch entries from db")
+			return migratedSomething, errors.Wrap(err, "Error reading back snatch entries from db")
 		}
 		if len(allSnatches) != len(oldReleases) {
-			return fmt.Errorf("error reading back snatches, got %d instead of %d entries", len(allSnatches), len(oldReleases))
+			return migratedSomething, fmt.Errorf("error reading back snatches, got %d instead of %d entries", len(allSnatches), len(oldReleases))
 		}
 		// ok
+		migratedSomething = true
 		logThis.Info(fmt.Sprintf("Migrated %d records for tracker %s", len(allSnatches), tracker), NORMAL)
 		// once successful, rename csvFile to csv.v18
 		if err := os.Rename(msgpackFile, msgpackFile+".v18"); err != nil {
-			return err
+			return migratedSomething, err
 		}
 	}
-	return nil
+	return migratedSomething, nil
 }
 
 // Update needs to be called everyday at midnight (add cron job)
@@ -390,9 +402,11 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 			return errors.Wrap(err, "error querying database")
 		}
 	}
-	if err := generateGraphs(tracker, "lastweek", lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
-		logThis.Error(err, NORMAL)
-		atLeastOneFailed = true
+	if len(lastWeekStatsEntries) != 0 {
+		if err := generateGraphs(tracker, "lastweek", lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
+			logThis.Error(err, NORMAL)
+			atLeastOneFailed = true
+		}
 	}
 
 	// 3. collect stats since last month
@@ -405,9 +419,11 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 			return errors.Wrap(err, "error querying database")
 		}
 	}
-	if err := generateGraphs(tracker, "lastmonth", lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
-		logThis.Error(err, NORMAL)
-		atLeastOneFailed = true
+	if len(lastMonthStatsEntries) != 0 {
+		if err := generateGraphs(tracker, "lastmonth", lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
+			logThis.Error(err, NORMAL)
+			atLeastOneFailed = true
+		}
 	}
 
 	// 4. stats/day
@@ -421,9 +437,11 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	}
 	allDailyDeltas := CalculateDeltas(allDailyStats)
 	// generate graphs
-	if err := generateDeltaGraphs(tracker, "overall_per_day", allDailyDeltas, allDailyDeltas[0].Timestamp); err != nil {
-		logThis.Error(err, NORMAL)
-		atLeastOneFailed = true
+	if len(allDailyDeltas) != 0 {
+		if err := generateDeltaGraphs(tracker, "overall_per_day", allDailyDeltas, allDailyDeltas[0].Timestamp); err != nil {
+			logThis.Error(err, NORMAL)
+			atLeastOneFailed = true
+		}
 	}
 
 	// 5. stats/week
@@ -437,9 +455,11 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	}
 	allWeeklyDeltas := CalculateDeltas(allWeeklyStats)
 	// generate graphs
-	if err := generateDeltaGraphs(tracker, "overall_per_week", allWeeklyDeltas, allWeeklyDeltas[0].Timestamp); err != nil {
-		logThis.Error(err, NORMAL)
-		atLeastOneFailed = true
+	if len(allWeeklyDeltas) != 0 {
+		if err := generateDeltaGraphs(tracker, "overall_per_week", allWeeklyDeltas, allWeeklyDeltas[0].Timestamp); err != nil {
+			logThis.Error(err, NORMAL)
+			atLeastOneFailed = true
+		}
 	}
 
 	// 6. stats/month
@@ -453,9 +473,11 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	}
 	allMonthlyDeltas := CalculateDeltas(allMonthlyStats)
 	// generate graphs
-	if err := generateDeltaGraphs(tracker, "overall_per_month", allMonthlyDeltas, allMonthlyDeltas[0].Timestamp); err != nil {
-		logThis.Error(err, NORMAL)
-		atLeastOneFailed = true
+	if len(allMonthlyDeltas) != 0 {
+		if err := generateDeltaGraphs(tracker, "overall_per_month", allMonthlyDeltas, allMonthlyDeltas[0].Timestamp); err != nil {
+			logThis.Error(err, NORMAL)
+			atLeastOneFailed = true
+		}
 	}
 
 	// 7. release stats: top tags
@@ -470,7 +492,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 				popularTags[t]++
 			}
 		}
-		top10tags := []chart.Value{}
+		var top10tags []chart.Value
 		for k, v := range popularTags {
 			top10tags = append(top10tags, chart.Value{Label: k, Value: float64(v)})
 		}
@@ -489,7 +511,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		for _, r := range allSnatches {
 			filterHits[r.Filter]++
 		}
-		pieSlices := []chart.Value{}
+		var pieSlices []chart.Value
 		for k, v := range filterHits {
 			pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
 		}
