@@ -29,27 +29,28 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 	}
 
 	// get previous stats
-	var previousStats *StatsEntry
-	knownPreviousStats, err := stats.GetLastCollected(tracker, 1)
+	var previousStats StatsEntry
+	knownPreviousStats, err := stats.GetLastCollected(tracker, 2)
 	if err != nil {
 		if err != storm.ErrNotFound {
-			previousStats = &StatsEntry{Collected: true}
+			previousStats = StatsEntry{Collected: true}
 		} else {
 			return errors.Wrap(err, "Error retreiving previous stats for tracker "+tracker)
 		}
-	} else {
-		previousStats = &knownPreviousStats[0]
+	} else if len(knownPreviousStats) == 2 {
+		// we just save the first one, getting the penultimate
+		previousStats = knownPreviousStats[1]
 	}
 
 	// compare with new stats
-	logThis.Info(newStats.Progress(previousStats), NORMAL)
+	logThis.Info(newStats.Progress(&previousStats), NORMAL)
 	// send notification
-	if err := Notify("stats: "+newStats.Progress(previousStats), tracker, "info"); err != nil {
+	if err := Notify("stats: "+newStats.Progress(&previousStats), tracker, "info"); err != nil {
 		logThis.Error(err, NORMAL)
 	}
 
 	// if something is wrong, send notification and stop
-	if !newStats.IsProgressAcceptable(previousStats, statsConfig.MaxBufferDecreaseMB, statsConfig.MinimumRatio) {
+	if !newStats.IsProgressAcceptable(&previousStats, statsConfig.MaxBufferDecreaseMB, statsConfig.MinimumRatio) {
 		if newStats.Ratio <= statsConfig.MinimumRatio {
 			// unacceptable because of low ratio
 			logThis.Info(tracker+": "+errorBelowWarningRatio, NORMAL)
