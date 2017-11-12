@@ -94,7 +94,7 @@ filters:
     excluded_type:
     - Concert Recording
     reject_unknown_releases: true
-    edition_contains:
+    edition:
     - Bonus
     - Anniversary
     edition_year:
