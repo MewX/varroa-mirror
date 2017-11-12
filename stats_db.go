@@ -578,7 +578,7 @@ func generateDeltaGraphs(tracker, graphType string, entries []StatsDelta, firstT
 	return overallStats.GenerateGraphs(StatsDir, tracker+"_"+graphType+"_", firstTimestamp, true)
 }
 
-func (sdb *StatsDB) AddSnatch(release *Release) error {
+func (sdb *StatsDB) AddSnatch(release Release) error {
 	// save new entry
 	return sdb.db.DB.Save(&release)
 }

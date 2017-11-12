@@ -86,7 +86,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					}
 					downloadedTorrent = true
 					// adding to history
-					if err := stats.AddSnatch(release); err != nil {
+					if err := stats.AddSnatch(*release); err != nil {
 						logThis.Error(errors.Wrap(err, errorAddingToHistory), NORMAL)
 					}
 					// send notification

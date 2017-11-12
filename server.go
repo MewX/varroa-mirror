@@ -74,7 +74,7 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	}
 	// add to history
 	release.Filter = manualSnatchFilterName
-	if err := stats.AddSnatch(release); err != nil {
+	if err := stats.AddSnatch(*release); err != nil {
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
 	// save metadata

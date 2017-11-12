@@ -240,7 +240,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 		logThis.Info(filter.Name+": No match for record label", VERBOSE)
 		return false
 	}
-	if r.Artists[0] == "Various Artists" && (len(filter.Artist) != 0 || len(filter.ExcludedArtist) != 0) {
+	if len(filter.Artist) != 0 || len(filter.ExcludedArtist) != 0 {
 		var foundAtLeastOneArtist bool
 		for iArtist := range info.artists {
 			if MatchInSlice(iArtist, filter.Artist) {
