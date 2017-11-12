@@ -2,12 +2,11 @@
 // @name           varroa musica
 // @namespace      varroa
 // @description    Adds a VM link for each torrent, to send directly to varroa musica.
-// @include        http*://*apollo.rip/*
 // @include        http*://*redacted.ch/*
 // @include        http*://*notwhat.cd/*
 // @include        http*://*apollo.rip/*
-// @version        10
-// @date           2017-09
+// @version        11
+// @date           2017-11
 // @grant          GM_getValue
 // @grant          GM_setValue
 // @grant          GM_notification
@@ -161,8 +160,8 @@ function addStatsToUserPage() {
 		const newBoxContent = document.createElement('div');
 		newBoxContent.className = 'pad profileinfo';
 		newBoxContent.id = 'varroa_stats';
-		newBoxContent.innerHTML = makeStatsLink('Full Stats', 'stats.png') + makeStatsLink('Buffer', 'buffer.png') + makeStatsLink('Upload', 'up.png') + makeStatsLink('Download', 'down.png') + makeStatsLink('Ratio', 'ratio.png');
-		newBoxContent.innerHTML += makeStatsLink('Buffer/day', 'buffer_per_day.png') + makeStatsLink('Upload/day', 'up_per_day.png') + makeStatsLink('Download/day', 'down_per_day.png') + makeStatsLink('Ratio/day', 'ratio_per_day.png');
+		newBoxContent.innerHTML = makeStatsLink('Full Stats', 'stats.png') + makeStatsLink('Buffer', 'overall_buffer.png') + makeStatsLink('Upload', 'overall_up.png') + makeStatsLink('Download', 'overall_down.png') + makeStatsLink('Ratio', 'overall_ratio.png');
+		newBoxContent.innerHTML += makeStatsLink('Buffer/day', 'overall_per_day_buffer.png') + makeStatsLink('Upload/day', 'overall_per_day_up.png') + makeStatsLink('Download/day', 'overall_per_day_down.png') + makeStatsLink('Ratio/day', 'overall_per_day_ratio.png');
 		newBoxContent.innerHTML += makeStatsLink('Snatched/day', 'snatches_per_day.png') + makeStatsLink('Size snatched/day', 'size_snatched_per_day.png') + makeStatsLink('Top Tags', 'top_tags.png') + makeStatsLink('Snatched/filer', 'total_snatched_by_filter.png');
 		newBox.appendChild(newBoxContent);
 		main.insertBefore(newBox, main.children[1]);
