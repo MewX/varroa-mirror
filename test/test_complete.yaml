@@ -97,6 +97,7 @@ filters:
     edition:
     - Bonus
     - Anniversary
+    - r/[dD]eluxe
     edition_year:
     - 2014
     - 2015
