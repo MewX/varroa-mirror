@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"bufio"
@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"regexp"
 
 	"github.com/subosito/norma"
 	"github.com/ttacon/chalk"
@@ -47,6 +49,26 @@ func allDaysSince(t time.Time) []time.Time {
 func StringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// MatchInSlice checks if a string regexp-matches a slice of patterns, returns bool
+func MatchInSlice(a string, b []string) bool {
+	for _, pattern := range b {
+		if strings.HasPrefix(pattern, filterRegExpPrefix) {
+			pattern = strings.Replace(pattern, filterRegExpPrefix, "", 1)
+			// try to match
+			match, err := regexp.MatchString(pattern, a)
+			if err != nil {
+				logThis.Error(err, VERBOSE)
+			}
+			if match {
+				return true
+			}
+		} else if pattern == a {
 			return true
 		}
 	}
@@ -112,6 +134,23 @@ func RemoveFromSlice(r string, s []string) []string {
 		}
 	}
 	return s
+}
+
+func RemoveStringSliceDuplicates(elements []string) []string {
+	// Use map to record duplicates as we find them.
+	encountered := map[string]bool{}
+	var result []string
+
+	for v := range elements {
+		if !encountered[elements[v]] {
+			// Record this element as an encountered element.
+			encountered[elements[v]] = true
+			// Append to result slice.
+			result = append(result, elements[v])
+		}
+	}
+	// Return the new slice.
+	return result
 }
 
 func checkErrors(errs ...error) error {
@@ -277,6 +316,44 @@ func CopyDir(src, dst string, useHardLinks bool) (err error) {
 		}
 	}
 	return
+}
+
+// DirectoryIsEmpty checks if a directory is empty.
+func DirectoryIsEmpty(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	// not empty or error
+	return false, err
+}
+
+// DirectoryContainsMusic returns true if it contains mp3 or flac files.
+func DirectoryContainsMusic(directoryPath string) bool {
+	if err := filepath.Walk(directoryPath, func(path string, f os.FileInfo, err error) error {
+		if StringInSlice(strings.ToLower(filepath.Ext(path)), []string{mp3Ext, flacExt}) {
+			// stop walking the directory as soon as a track is found
+			return errors.New(foundMusic)
+		}
+		return nil
+	}); err == nil || err.Error() != foundMusic {
+		return false
+	}
+	return true
+}
+
+// TimeTrack helps track the time taken by a function.
+func TimeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	if elapsed > time.Millisecond {
+		logThis.Info(fmt.Sprintf("-- %s in %s", name, elapsed), VERBOSESTEST)
+	}
 }
 
 //-----------------------------------------------------------------------------

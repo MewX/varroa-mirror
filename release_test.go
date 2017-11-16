@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -22,18 +22,14 @@ var (
 		IsScene:     false,
 		Source:      "CD",
 		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "2",
 		GroupID:     "21",
-		TorrentFile: "torrent.torrent",
 		Size:        123456789,
 		Folder:      "a, b (2017) title",
 		LogScore:    100,
-		Uploader:    "that_guy",
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r2 = &Release{
 		Artists:     []string{"a", "b"},
@@ -47,18 +43,14 @@ var (
 		IsScene:     false,
 		Source:      "WEB",
 		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "22",
 		GroupID:     "21",
-		TorrentFile: "torrent.torrent",
 		Size:        123456789,
 		Folder:      "a, b (2017) title",
 		LogScore:    100,
-		Uploader:    "that_guy",
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r3 = &Release{
 		Artists:     []string{"c"},
@@ -72,18 +64,14 @@ var (
 		IsScene:     true,
 		Source:      "WEB",
 		Tags:        []string{"tag3", "tag4"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "33",
 		GroupID:     "22",
-		TorrentFile: "torrent.torrent",
 		Size:        123456789,
 		Folder:      "c (2016) title [WEB] [V0]",
 		LogScore:    logScoreNotInAnnounce,
-		Uploader:    "that_other_guy",
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r4 = &Release{
 		Artists:     []string{"a", "j"},
@@ -97,18 +85,14 @@ var (
 		IsScene:     false,
 		Source:      "CD",
 		Tags:        []string{"tag3"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "34",
 		GroupID:     "22",
-		TorrentFile: "torrent.torrent",
 		Size:        12345678,
 		Folder:      "a (2016) title [WEB] [320]",
 		LogScore:    logScoreNotInAnnounce,
-		Uploader:    "that_other_guy",
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	r5 = &Release{
 		Artists:     []string{"a", "b", "a & b"},
@@ -122,85 +106,14 @@ var (
 		IsScene:     false,
 		Source:      "CD",
 		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
 		torrentURL:  "https;//some.thing/id/2",
 		TorrentID:   "211",
 		GroupID:     "21",
-		TorrentFile: "torrent.torrent",
 		Size:        123456,
 		Folder:      "a & b (2017) title",
 		LogScore:    95,
-		Uploader:    "that_guy",
 		Timestamp:   time.Now(),
 		Filter:      "",
-		Metadata:    ReleaseMetadata{},
-	}
-	r1Dupe = &Release{
-		Artists:     []string{"a", "b"},
-		Title:       "title",
-		Year:        2017,
-		ReleaseType: "Album",
-		Format:      "FLAC",
-		Quality:     "Lossless",
-		HasLog:      true,
-		HasCue:      true,
-		IsScene:     false,
-		Source:      "CD",
-		Tags:        []string{"tag1", "tag2", "othertag"},
-		url:         "https;//some.thing",
-		torrentURL:  "https;//some.thing/id/2",
-		TorrentID:   "277",
-		GroupID:     "21",
-		TorrentFile: "torrent.torrent",
-		Size:        123456789,
-		Folder:      "a, b (2017) title",
-		LogScore:    100,
-		Uploader:    "that_guy",
-		Timestamp:   time.Now(),
-		Filter:      "",
-		Metadata:    ReleaseMetadata{},
-	}
-	r6 = &Release{
-		Artists:     []string{"a"},
-		Title:       "title6",
-		Year:        2017,
-		ReleaseType: "Album",
-		Format:      "FLAC",
-		Quality:     "24bit Lossless",
-		Source:      "WEB",
-		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
-		torrentURL:  "https;//some.thing/id/2",
-		TorrentID:   "22",
-		GroupID:     "21",
-		TorrentFile: "torrent.torrent",
-		Size:        123456789,
-		Folder:      "a, b (2017) title",
-		Uploader:    "that_guy",
-		Timestamp:   time.Now(),
-		Filter:      "",
-		Metadata:    ReleaseMetadata{},
-	}
-	r6Dupe = &Release{
-		Artists:     []string{"a"},
-		Title:       "title6",
-		Year:        2017,
-		ReleaseType: "Album",
-		Format:      "FLAC",
-		Quality:     "24bit Lossless",
-		Source:      "WEB",
-		Tags:        []string{"tag1", "tag2"},
-		url:         "https;//some.thing",
-		torrentURL:  "https;//some.thing/id/2",
-		TorrentID:   "212",
-		GroupID:     "21",
-		TorrentFile: "torrent.torrent",
-		Size:        123456789,
-		Folder:      "a, b (2017) title",
-		Uploader:    "that_guy",
-		Timestamp:   time.Now(),
-		Filter:      "",
-		Metadata:    ReleaseMetadata{},
 	}
 	// torrent infos
 	i1 = &TrackerTorrentInfo{size: 1234567, logScore: 100, uploader: "that_guy"}
@@ -209,8 +122,8 @@ var (
 	i4 = &TrackerTorrentInfo{size: 123456789, logScore: 80}
 	i5 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
 	i6 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
-	i7 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition"}
-	i8 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster"}
+	i7 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition", editionYear: 2004}
+	i8 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster", editionYear: 2017}
 )
 
 func TestRelease(t *testing.T) {
@@ -219,7 +132,7 @@ func TestRelease(t *testing.T) {
 	// setup logger
 	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
 	env := &Environment{config: c}
-	logThis = LogThis{env: env}
+	logThis = NewLogThis(env)
 
 	// filters
 	f0 := &ConfigFilter{Name: "f0"}
@@ -250,8 +163,10 @@ func TestRelease(t *testing.T) {
 	f25 := &ConfigFilter{Name: "f25", HasCue: true, HasLog: true, LogScore: 100, Source: []string{"CD"}, ReleaseType: []string{"Album"}, Format: []string{"FLAC"}}
 	f26 := &ConfigFilter{Name: "f26", RecordLabel: []string{"label1", "label2"}}
 	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b", "k"}, AllowScene: true}
-	f28 := &ConfigFilter{Name: "f28", PerfectFlac: true, Edition: []string{"Deluxe", "Bonus"}}
+	f28 := &ConfigFilter{Name: "f28", PerfectFlac: true, Edition: []string{"r/[dD]eluxe", "Bonus"}}
 	f29 := &ConfigFilter{Name: "f29", Uploader: []string{"this_guy", "that_guy"}}
+	f30 := &ConfigFilter{Name: "f30", RejectUnknown: true}
+	f31 := &ConfigFilter{Name: "f31", EditionYear: []int{2004}, AllowScene: true}
 
 	// checking filters
 	check.NotNil(f0.Check())
@@ -284,6 +199,8 @@ func TestRelease(t *testing.T) {
 	check.Nil(f27.Check())
 	check.Nil(f28.Check())
 	check.Nil(f29.Check())
+	check.Nil(f30.Check())
+	check.Nil(f31.Check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -361,13 +278,13 @@ func TestRelease(t *testing.T) {
 	check.True(r1.Satisfies(f16))
 	check.False(r2.Satisfies(f16))
 	check.False(r3.Satisfies(f16))
-	check.False(r4.Satisfies(f16))
+	check.True(r4.Satisfies(f16)) // logscore isn't evaluated since it's not FLAC
 	check.True(r5.Satisfies(f16))
 
 	check.True(r1.Satisfies(f17))
 	check.False(r2.Satisfies(f17))
 	check.False(r3.Satisfies(f17))
-	check.False(r4.Satisfies(f17))
+	check.True(r4.Satisfies(f17)) // logscore isn't evaluated since it's not FLAC
 	check.False(r5.Satisfies(f17))
 
 	check.True(r1.Satisfies(f18))
@@ -376,11 +293,11 @@ func TestRelease(t *testing.T) {
 	check.True(r4.Satisfies(f18))
 	check.True(r5.Satisfies(f18))
 
-	check.False(r1.Satisfies(f19))
-	check.False(r2.Satisfies(f19))
+	check.True(r1.Satisfies(f19)) // artists are checked with torrent info only
+	check.True(r2.Satisfies(f19))
 	check.False(r3.Satisfies(f19))
 	check.True(r4.Satisfies(f19))
-	check.False(r5.Satisfies(f19))
+	check.True(r5.Satisfies(f19))
 
 	check.False(r1.Satisfies(f20))
 	check.False(r2.Satisfies(f20))
@@ -397,7 +314,7 @@ func TestRelease(t *testing.T) {
 	check.True(r1.Satisfies(f22))
 	check.False(r2.Satisfies(f22))
 	check.False(r3.Satisfies(f22))
-	check.False(r4.Satisfies(f22))
+	check.True(r4.Satisfies(f22)) // logscore isn't evaluated since it's not FLAC
 	check.True(r5.Satisfies(f22))
 
 	check.False(r1.Satisfies(f24))
@@ -412,11 +329,13 @@ func TestRelease(t *testing.T) {
 	check.False(r4.Satisfies(f25))
 	check.False(r5.Satisfies(f25))
 
-	check.False(r1.Satisfies(f27))
-	check.False(r2.Satisfies(f27))
+	check.True(r1.Satisfies(f27)) // artists are checked with torrent info only
+	check.True(r2.Satisfies(f27))
 	check.True(r3.Satisfies(f27))
 	check.True(r4.Satisfies(f27))
-	check.False(r5.Satisfies(f27))
+	check.True(r5.Satisfies(f27))
+
+	check.True(r1.Satisfies(f30))
 
 	// checking with TorrentInfo
 
@@ -448,4 +367,13 @@ func TestRelease(t *testing.T) {
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i6))
 	check.True(r1.HasCompatibleTrackerInfo(f28, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i8))
+
+	// reject unknown releases
+	check.False(r1.HasCompatibleTrackerInfo(f30, []string{}, i1))
+	check.True(r1.HasCompatibleTrackerInfo(f30, []string{}, i5))
+
+	// edition year
+	check.False(r1.HasCompatibleTrackerInfo(f31, []string{}, i6))
+	check.True(r1.HasCompatibleTrackerInfo(f31, []string{}, i7))
+	check.False(r1.HasCompatibleTrackerInfo(f31, []string{}, i8))
 }

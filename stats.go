@@ -1,84 +1,104 @@
-package main
+package varroa
 
 import (
+	"path/filepath"
 	"reflect"
 	"time"
 
+	"github.com/asdine/storm"
 	"github.com/pkg/errors"
 )
 
-func manageStats(e *Environment, h *History, tracker *GazelleTracker, statsConfig *ConfigStats) error {
-	stats, err := tracker.GetStats(statsConfig)
+func updateStats(e *Environment, tracker string, stats *StatsDB) error {
+	// collect new stats for this tracker
+	statsConfig, err := e.config.GetStats(tracker)
+	if err != nil {
+		return errors.Wrap(err, "Error loading stats config for "+tracker)
+	}
+	gazelleTracker, err := e.Tracker(tracker)
+	if err != nil {
+		return errors.Wrap(err, "Error getting tracker info for "+tracker)
+	}
+	newStats, err := gazelleTracker.GetStats()
 	if err != nil {
 		return errors.Wrap(err, errorGettingStats)
 	}
-	// get previous stats
-	previousStats := &TrackerStats{}
-	if len(h.TrackerStats) != 0 {
-		previousStats = h.TrackerStats[len(h.TrackerStats)-1]
+	// save to database
+	if saveErr := stats.Save(newStats); saveErr != nil {
+		return errors.Wrap(saveErr, "Error saving stats to database")
 	}
+
+	// get previous stats
+	var previousStats StatsEntry
+	knownPreviousStats, err := stats.GetLastCollected(tracker, 2)
+	if err != nil {
+		if err != storm.ErrNotFound {
+			previousStats = StatsEntry{Collected: true}
+		} else {
+			return errors.Wrap(err, "Error retreiving previous stats for tracker "+tracker)
+		}
+	} else if len(knownPreviousStats) == 2 {
+		// we just save the first one, getting the penultimate
+		previousStats = knownPreviousStats[1]
+	}
+
 	// compare with new stats
-	logThis.Info(stats.Progress(previousStats), NORMAL)
+	logThis.Info(newStats.Progress(&previousStats), NORMAL)
 	// send notification
-	e.Notify("stats: "+stats.Progress(previousStats), tracker.Name, "info")
+	if err := Notify("stats: "+newStats.Progress(&previousStats), tracker, "info"); err != nil {
+		logThis.Error(err, NORMAL)
+	}
+
 	// if something is wrong, send notification and stop
-	if !stats.IsProgressAcceptable(previousStats, statsConfig.MaxBufferDecreaseMB, statsConfig.MinimumRatio) {
-		if stats.Ratio <= statsConfig.MinimumRatio {
+	if !newStats.IsProgressAcceptable(&previousStats, statsConfig.MaxBufferDecreaseMB, statsConfig.MinimumRatio) {
+		if newStats.Ratio <= statsConfig.MinimumRatio {
 			// unacceptable because of low ratio
-			logThis.Info(tracker.Name+": "+errorBelowWarningRatio, NORMAL)
+			logThis.Info(tracker+": "+errorBelowWarningRatio, NORMAL)
 			// sending notification
-			e.Notify(tracker.Name+": "+errorBelowWarningRatio, tracker.Name, "error")
+			if err := Notify(tracker+": "+errorBelowWarningRatio, tracker, "error"); err != nil {
+				logThis.Error(err, NORMAL)
+			}
 		} else {
 			// unacceptable because of ratio drop
-			logThis.Info(tracker.Name+": "+errorBufferDrop, NORMAL)
+			logThis.Info(tracker+": "+errorBufferDrop, NORMAL)
 			// sending notification
-			e.Notify(tracker.Name+": "+errorBufferDrop, tracker.Name, "error")
+			if err := Notify(tracker+": "+errorBufferDrop, tracker, "error"); err != nil {
+				logThis.Error(err, NORMAL)
+			}
 		}
 		// stopping things
-		autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
+		autosnatchConfig, err := e.config.GetAutosnatch(tracker)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, "Cannot find autosnatch configuration for tracker "+tracker.Name), NORMAL)
+			logThis.Error(errors.Wrap(err, "Cannot find autosnatch configuration for tracker "+tracker), NORMAL)
 		} else {
 			e.mutex.Lock()
 			autosnatchConfig.disabledAutosnatching = true
 			e.mutex.Unlock()
 		}
 	}
-	// save to CSV
-	if err := h.TrackerStatsHistory.Add(stats); err != nil {
-		return errors.Wrap(err, errorWritingCSV)
-	}
-	// generate graphs
-	return h.GenerateGraphs(e)
-}
 
-func updateStats(e *Environment, label string) error {
-	statsConfig, err := e.config.GetStats(label)
-	if err != nil {
-		return errors.Wrap(err, "Error loading stats config for "+label)
-	}
-	tracker, err := e.Tracker(label)
-	if err != nil {
-		return errors.Wrap(err, "Error getting tracker info for "+label)
-	}
-	history, ok := e.History[label]
-	if !ok {
-		return errors.Wrap(err, "Error getting History for "+label)
-	}
-	return manageStats(e, history, tracker, statsConfig)
+	// generate graphs
+	return stats.GenerateAllGraphsForTracker(tracker)
 }
 
 func monitorAllStats(e *Environment) {
 	if !e.config.statsConfigured {
 		return
 	}
+	// access to statsDB
+	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
+	if err != nil {
+		logThis.Error(errors.Wrap(err, "Error, could not access the stats database"), NORMAL)
+		return
+	}
+
 	// track all different periods
 	tickers := map[int][]string{}
 	for label, t := range e.Trackers {
 		if statsConfig, err := e.config.GetStats(t.Name); err == nil {
 			// initial stats
-			if err := updateStats(e, label); err != nil {
-				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+			if err := updateStats(e, label, stats); err != nil {
+				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
 			}
 			// get update period
 			tickers[statsConfig.UpdatePeriodH] = append(tickers[statsConfig.UpdatePeriodH], label)
@@ -90,7 +110,7 @@ func monitorAllStats(e *Environment) {
 	}
 	// deploy
 	if err := e.DeployToGitlabPages(); err != nil {
-		logThis.Error(errors.Wrap(err, "Error deploying to Gitlab Pages"), NORMAL)
+		logThis.Error(errors.Wrap(err, errorDeploying), NORMAL)
 	}
 
 	// preparing
@@ -114,8 +134,8 @@ func monitorAllStats(e *Environment) {
 		}
 		// TODO checks
 		for _, trackerLabel := range tickers[tickerPeriods[triggered]] {
-			if err := updateStats(e, trackerLabel); err != nil {
-				logThis.Error(errors.Wrap(err, errorGeneratingGraphs), NORMAL)
+			if err := updateStats(e, trackerLabel, stats); err != nil {
+				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
 			}
 		}
 		// generate index.html
@@ -124,7 +144,7 @@ func monitorAllStats(e *Environment) {
 		}
 		// deploy
 		if err := e.DeployToGitlabPages(); err != nil {
-			logThis.Error(errors.Wrap(err, "Error deploying to Gitlab Pages"), NORMAL)
+			logThis.Error(errors.Wrap(err, errorDeploying), NORMAL)
 		}
 	}
 }

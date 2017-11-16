@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
+	"github.com/sevlyar/go-daemon"
 	"github.com/subosito/norma"
 )
 
@@ -44,38 +45,44 @@ type OutgoingJSON struct {
 
 // TODO: see if this could also be used by irc
 func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useFLToken bool) (*Release, error) {
+	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not access the stats database")
+	}
+
 	// get torrent info
 	info, err := tracker.GetTorrentInfo(id)
 	if err != nil {
 		logThis.Info(errorCouldNotGetTorrentInfo, NORMAL)
 		return nil, err // probably the ID does not exist
 	}
-	release := info.Release()
+	release := info.Release(tracker.Name)
 	if release == nil {
 		logThis.Info("Error parsing Torrent Info", NORMAL)
-		release = &Release{TorrentID: id}
+		release = &Release{Tracker: tracker.Name, TorrentID: id}
 	}
 	release.torrentURL = tracker.URL + "/torrents.php?action=download&id=" + id
 	if useFLToken {
 		release.torrentURL += "&usetoken=1"
 	}
-	release.TorrentFile = norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
+	torrentFile := norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
 
 	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
-	if err := tracker.DownloadTorrent(release, e.config.General.WatchDir); err != nil {
+	if err := tracker.DownloadTorrent(release.torrentURL, torrentFile, e.config.General.WatchDir); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
 		return release, err
 	}
 	// add to history
-	if err := e.History[tracker.Name].AddSnatch(release, "remote"); err != nil {
+	release.Filter = manualSnatchFilterName
+	if err := stats.AddSnatch(*release); err != nil {
 		logThis.Info(errorAddingToHistory, NORMAL)
 	}
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
-		if e.inDaemon {
-			go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+		if daemon.WasReborn() {
+			go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 		} else {
-			release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+			SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 		}
 	}
 	return release, nil
@@ -126,18 +133,19 @@ func validateGet(r *http.Request, config *Config) (string, string, bool, error) 
 	return trackerLabel, id, useFLToken, nil
 }
 
-func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server) {
+func webServer(e *Environment) {
 	if !e.config.webserverConfigured {
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
 	}
+	downloads := &Downloads{Root: e.config.General.DownloadDir}
 	if e.config.WebServer.ServeMetadata {
-		if err := e.Downloads.Load(filepath.Join(statsDir, downloadsDBFile+msgpackExt)); err != nil {
+		if err := downloads.Open(filepath.Join(StatsDir, DefaultDownloadsDB)); err != nil {
 			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 			return
 		}
 		// scan on startup in goroutine
-		go e.Downloads.Scan()
+		go downloads.Scan()
 	}
 
 	rtr := mux.NewRouter()
@@ -175,7 +183,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			file, err := ioutil.ReadFile(filepath.Join(statsDir, trackerLabel+"_"+filename))
+			file, err := ioutil.ReadFile(filepath.Join(StatsDir, trackerLabel+"_"+filename))
 			if err != nil {
 				logThis.Error(errors.Wrap(err, errorNoStatsFilename), NORMAL)
 				w.WriteHeader(http.StatusNotFound)
@@ -204,7 +212,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 			}
 			release, err := manualSnatchFromID(e, tracker, id, useFLToken)
 			if err != nil {
-				logThis.Error(errors.Wrap(err, errorSnatchingTorrent), NORMAL)
+				logThis.Error(errors.Wrap(err, ErrorSnatchingTorrent), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -220,10 +228,10 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				return
 			}
 
-			response := []byte{}
+			var response []byte
 			id, ok := mux.Vars(r)["id"]
 			if !ok {
-				list, err := e.serverData.DownloadsList(e)
+				list, err := e.serverData.DownloadsList(e, downloads)
 				if err != nil {
 					logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
 					w.WriteHeader(http.StatusUnauthorized)
@@ -232,7 +240,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 				response = list
 			} else {
 
-				info, err := e.serverData.DownloadsInfo(e, id)
+				info, err := e.serverData.DownloadsInfo(e, downloads, id)
 				if err != nil {
 					logThis.Error(errors.Wrap(err, "Error loading downloads info"), NORMAL)
 					w.WriteHeader(http.StatusUnauthorized)
@@ -345,20 +353,45 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 		rtr.HandleFunc("/getStats/{name:[\\w]+.png}", getStats).Methods("GET")
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 		rtr.HandleFunc("/ws", socket)
+
 	}
 	if e.config.WebServer.ServeStats {
-		// serving static index.html in stats dir
+		getLocalStats := func(w http.ResponseWriter, r *http.Request) {
+			// get filename
+			filename, ok := mux.Vars(r)["name"]
+			if !ok {
+				logThis.Info(errorNoStatsFilename, NORMAL)
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			http.ServeFile(w, r, filepath.Join(StatsDir, filename))
+		}
+		getIndex := func(w http.ResponseWriter, r *http.Request) {
+			response, err := e.serverData.Index(e, downloads)
+			if err != nil {
+				logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			// write response
+			w.WriteHeader(http.StatusOK)
+			w.Write(response)
+		}
 		if e.config.WebServer.Password != "" {
-			rtr.PathPrefix("/").Handler(httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.FileServer(http.Dir(statsDir))))
+			rtr.Handle("/", httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.HandlerFunc(getIndex)))
+			rtr.Handle("/{name:[\\w]+.svg}", httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.HandlerFunc(getLocalStats)))
+			rtr.Handle("/{name:[\\w]+.png}", httpauth.SimpleBasicAuth(e.config.WebServer.User, e.config.WebServer.Password)(http.HandlerFunc(getLocalStats)))
 		} else {
-			rtr.PathPrefix("/").Handler(http.FileServer(http.Dir(statsDir)))
+			rtr.HandleFunc("/", getIndex)
+			rtr.HandleFunc("/{name:[\\w]+.svg}", getLocalStats)
+			rtr.HandleFunc("/{name:[\\w]+.png}", getLocalStats)
 		}
 	}
 	// serve
 	if e.config.webserverHTTP {
 		go func() {
 			logThis.Info(webServerUpHTTP, NORMAL)
-			httpServer = &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTP), Handler: rtr}
+			httpServer := &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTP), Handler: rtr}
 			if err := httpServer.ListenAndServe(); err != nil {
 				if err == http.ErrServerClosed {
 					logThis.Info(webServerShutDown, NORMAL)
@@ -382,7 +415,7 @@ func webServer(e *Environment, httpServer *http.Server, httpsServer *http.Server
 
 		go func() {
 			logThis.Info(webServerUpHTTPS, NORMAL)
-			httpsServer = &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTPS), Handler: rtr}
+			httpsServer := &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTPS), Handler: rtr}
 			if err := httpsServer.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
 				if err == http.ErrServerClosed {
 					logThis.Info(webServerShutDown, NORMAL)

@@ -40,6 +40,10 @@ format:
     - go get github.com/briandowns/spinner
     - go get github.com/fhs/gompd/mpd
     - go get github.com/russross/blackfriday
+    - go get github.com/asdine/storm
+    - go get bazil.org/fuse
+    - go get golang.org/x/net/context
+    - go get github.com/jinzhu/now
     - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
@@ -69,11 +73,20 @@ compiled_varroa_dev:
     - go get github.com/briandowns/spinner
     - go get github.com/fhs/gompd/mpd
     - go get github.com/russross/blackfriday
-    - go build -o varroa
+    - go get github.com/asdine/storm
+    - go get bazil.org/fuse
+    - go get golang.org/x/net/context
+    - go get github.com/jinzhu/now
+    - cd cmd/varroa
+    - go build -o ../../varroa
+    - cd ../varroa-fuse
+    - go build -o ../../varroa-fuse
+    - cd ../..
 #    - go build -race -ldflags "-extldflags '-static'" -o varroa
   artifacts:
     paths:
     - varroa
+    - varroa-fuse
     name: "varroa-dev-${CI_COMMIT_REF_NAME}"
     expire_in: 4 weeks
   except:
@@ -105,10 +118,19 @@ compiled_varroa_released_version:
     - go get github.com/briandowns/spinner
     - go get github.com/fhs/gompd/mpd
     - go get github.com/russross/blackfriday
-    - go build -o varroa
+    - go get github.com/asdine/storm
+    - go get bazil.org/fuse
+    - go get golang.org/x/net/context
+    - go get github.com/jinzhu/now
+    - cd cmd/varroa
+    - go build -o ../../varroa
+    - cd ../varroa-fuse
+    - go build -o ../../varroa-fuse
+    - cd ../..
   artifacts:
     paths: 
     - varroa
+    - varroa-fuse
     name: "varroa-${CI_COMMIT_REF_NAME}"
   only:
     - tags    

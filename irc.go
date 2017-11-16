@@ -1,8 +1,9 @@
-package main
+package varroa
 
 import (
 	"crypto/tls"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -17,6 +18,11 @@ const (
 )
 
 func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, autosnatchConfig *ConfigAutosnatch) (*Release, error) {
+	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not access the stats database")
+	}
+
 	// getting information, trying the alternative pattern if the main one fails
 	r := regexp.MustCompile(announcePattern)
 	r2 := regexp.MustCompile(alternativeAnnouncePattern)
@@ -28,7 +34,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 	}
 
 	if len(hits) != 0 {
-		release, err := NewRelease(hits[0], alternative)
+		release, err := NewRelease(tracker.Name, hits[0], alternative)
 		if err != nil {
 			return nil, err
 		}
@@ -57,13 +63,15 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 				}
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
+					release.Filter = filter.Name
+
 					// checking if duplicate
-					if !filter.AllowDuplicates && e.History[tracker.Name].HasDupe(release) {
+					if !filter.AllowDuplicates && stats.AlreadySnatchedDuplicate(release) {
 						logThis.Info(filter.Name+": "+infoNotSnatchingDuplicate, VERBOSE)
 						continue
 					}
 					// checking if a torrent from the same group has already been downloaded
-					if filter.UniqueInGroup && e.History[tracker.Name].HasReleaseFromGroup(release) {
+					if filter.UniqueInGroup && stats.AlreadySnatchedFromGroup(release) {
 						logThis.Info(filter.Name+": "+infoNotSnatchingUniqueInGroup, VERBOSE)
 						continue
 					}
@@ -73,19 +81,21 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					if filter.WatchDir != "" {
 						destination = filter.WatchDir
 					}
-					if err := tracker.DownloadTorrent(release, destination); err != nil {
+					if err := tracker.DownloadTorrent(release.torrentURL, release.TorrentFile(), destination); err != nil {
 						return nil, errors.Wrap(err, errorDownloadingTorrent)
 					}
 					downloadedTorrent = true
 					// adding to history
-					if err := e.History[tracker.Name].AddSnatch(release, filter.Name); err != nil {
+					if err := stats.AddSnatch(*release); err != nil {
 						logThis.Error(errors.Wrap(err, errorAddingToHistory), NORMAL)
 					}
 					// send notification
-					e.Notify(filter.Name+": Snatched "+release.ShortString(), tracker.Name, "info")
+					if err := Notify(filter.Name+": Snatched "+release.ShortString(), tracker.Name, "info"); err != nil {
+						logThis.Error(err, NORMAL)
+					}
 					// save metadata once the download folder is created
 					if e.config.General.AutomaticMetadataRetrieval {
-						go release.Metadata.SaveFromTracker(tracker, info, e.config.General.DownloadDir)
+						go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 					}
 					// no need to consider other filters
 					break

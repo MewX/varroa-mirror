@@ -1,14 +1,15 @@
-package main
+package varroa
 
 const (
-	varroa        = "varroa musica"
-	version       = "v18"
-	varroaVersion = "%s -- %s."
+	FullName      = "varroa musica"
+	Version       = "v19"
+	FullVersion   = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
 
 	// directories & files
-	statsDir                  = "stats"
+	DefaultConfigurationFile  = "config.yaml"
+	StatsDir                  = "stats"
 	metadataDir               = "TrackerMetadata"
 	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
@@ -17,14 +18,12 @@ const (
 	trackerTGroupMetadataFile = "release_group.json"
 	trackerCoverFile          = "cover"
 	summaryFile               = "release.md"
+	perDay                    = "per_day_"
 	uploadStatsFile           = "up"
-	uploadPerDayStatsFile     = "up_per_day"
 	downloadStatsFile         = "down"
-	downloadPerDayStatsFile   = "down_per_day"
 	ratioStatsFile            = "ratio"
-	ratioPerDayStatsFile      = "ratio_per_day"
 	bufferStatsFile           = "buffer"
-	bufferPerDayStatsFile     = "buffer_per_day"
+	warningBufferStatsFile    = "warningbuffer"
 	overallStatsFile          = "stats"
 	numberSnatchedPerDayFile  = "snatches_per_day"
 	sizeSnatchedPerDayFile    = "size_snatched_per_day"
@@ -34,8 +33,11 @@ const (
 	htmlIndexFile             = "index.html"
 	historyFile               = "history"
 	statsFile                 = "stats"
-	downloadsDBFile           = "downloads"
 	defaultFolderTemplate     = "$a ($y) $t {$id} [$f $s]"
+	DefaultHistoryDB          = "history.db"
+	DefaultDownloadsDB        = "downloads.db"
+	DefaultLibraryDB          = "library.db"
+	manualSnatchFilterName    = "remote"
 
 	// Notable ratios
 	defaultTargetRatio = 1.0
@@ -53,11 +55,14 @@ const (
 	mp3Ext       = ".mp3"
 	flacExt      = ".flac"
 
+	// filters
+	filterRegExpPrefix = "r/"
+
 	// information
-	infoUserFilesArchived         = "User files backed up."
-	infoUsage                     = "Before running a command that requires the daemon, run 'varroa start'."
-	infoEncrypted                 = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
-	infoDecrypted                 = "Configuration file has been decrypted to a plaintext YAML file."
+	InfoUserFilesArchived         = "User files backed up."
+	InfoUsage                     = "Before running a command that requires the daemon, run 'varroa start'."
+	InfoEncrypted                 = "Configuration file encrypted. You can use this encrypted version in place of the unencrypted version."
+	InfoDecrypted                 = "Configuration file has been decrypted to a plaintext YAML file."
 	infoNotInteresting            = "No filter is interested in release: %s. Ignoring."
 	infoNotMusic                  = "Not a music release, ignoring."
 	infoNotSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
@@ -75,45 +80,43 @@ const (
 	webServersUp                  = "Web server(s) started."
 
 	// cli errors
-	errorArguments        = "Error parsing command line arguments"
-	errorInfoBadArguments = "Bad arguments"
+	ErrorArguments        = "Error parsing command line arguments"
+	ErrorInfoBadArguments = "Bad arguments"
 	// daemon errors
 	errorServingSignals         = "Error serving signals"
-	errorFindingDaemon          = "Error finding daemon"
+	ErrorFindingDaemon          = "Error finding daemon"
 	errorReleasingDaemon        = "Error releasing daemon"
 	errorSendingSignal          = "Error sending signal to the daemon"
-	errorGettingDaemonContext   = "Error launching daemon"
-	errorSendingCommandToDaemon = "Error sending command to daemon"
+	ErrorGettingDaemonContext   = "Error launching daemon (it probably is running already)"
+	ErrorSendingCommandToDaemon = "Error sending command to daemon"
 	errorRemovingPID            = "Error removing pid file"
 	// unix socket errors
 	errorDialingSocket     = "Error dialing to unix socket"
 	errorWritingToSocket   = "Error writing to unix socket"
 	errorReadingFromSocket = "Error reading from unix socket"
-	errorCreatingSocket    = "Error creating unix socket"
-	// command reload errors
-	errorReloading = "Error reloading"
 	// command check-log errors
-	errorCheckingLog     = "Error checking log"
+	ErrorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"
 	// command snatch errors
-	errorSnatchingTorrent = "Error snatching torrent"
+	ErrorSnatchingTorrent = "Error snatching torrent"
 	// command info errors
-	errorShowingTorrentInfo = "Error displaying torrent info"
+	ErrorShowingTorrentInfo = "Error displaying torrent info"
 	// command refresh-metadata errors
-	errorRefreshingMetadata = "Error refreshing metadata"
+	ErrorRefreshingMetadata = "Error refreshing metadata"
 	errorCannotFindID       = "Error with ID#%s, not found in history or in downloads directory."
 	// command backup errors
 	errorArchiving = "Error while archiving user files"
 	// set up errors
 	errorCreatingStatsDir          = "Error creating stats directory"
 	errorCreatingDownloadsCleanDir = "Error creating directory for useless folders in downloads directory"
-	errorSettingUp                 = "Error setting up"
-	errorLoadingConfig             = "Error loading configuration"
+	ErrorSettingUp                 = "Error setting up"
+	ErrorLoadingConfig             = "Error loading configuration"
+	errorReadingConfig             = "Error reading configuration file"
+	errorLoadingYAML               = "YAML file cannot be parsed, check if it is correctly formatted and has all the required parts"
 	errorGettingPassphrase         = "Error getting passphrase"
 	errorPassphraseNotFound        = "Error retrieving passphrase for daemon"
 	errorSettingEnv                = "Could not set env variable"
 	// webserver errors
-	errorShuttingDownServer      = "Error shutting down web server"
 	errorServing                 = "Error launching web interface"
 	errorWrongToken              = "Error receiving download order from https: wrong token"
 	errorNoToken                 = "Error receiving download order from https: no token"
@@ -122,7 +125,6 @@ const (
 	errorUnknownCommand          = "Error: unknown websocket command: "
 	errorIncomingWebSocketJSON   = "Error parsing websocket input"
 	errorIncorrectWebServerToken = "Error validating token for web server, ignoring."
-	errorWritingToWebSocket      = "Error writing to websocket"
 	errorCreatingWebSocket       = "Error creating websocket"
 	// certificates errors
 	errorOpenSSL               = "openssl is not available on this system. "
@@ -139,21 +141,16 @@ const (
 	errorImageNotFound = "Error opening png"
 	errorNoImageFound  = "Error: no image found"
 	// history errors
-	errorLoadingLine       = "Error loading line %d of history file"
-	errorNoHistory         = "No history yet"
-	errorInvalidTimestamp  = "Error parsing timestamp"
-	errorNoFurtherSnatches = "No additional snatches since last time, not regenerating daily graphs."
-	errorNotEnoughDays     = "Not enough days in history to generate daily graphs"
-	errorMovingFile        = "Error moving file to stats folder"
-	errorMigratingFile     = "Error migrating file to latest format"
-	errorCreatingGraphs    = "Error, could not generate any graph."
-	errorGeneratingGraph   = "Error generating graph"
+	errorLoadingLine     = "Error loading line %d of history file"
+	errorMigratingFile   = "Error migrating file to latest format"
+	errorGeneratingGraph = "Error generating graph"
 	// git errors
 	errorGitInit      = "Error running git init"
 	errorGitAdd       = "Error running git add"
 	errorGitCommit    = "Error running git commit"
 	errorGitAddRemote = "Error running git remote add"
 	errorGitPush      = "Error running git push"
+	errorDeploying    = "Error deploying to Gitlab Pages"
 	// irc errors
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"
 	errorConnectingToIRC        = "Error connecting to IRC"
@@ -177,13 +174,10 @@ const (
 	errorGeneratingUserMetadataJSON = "Error generating user metadata JSON"
 	errorGeneratingSummary          = "Error generating metadata summary"
 	// stats errors
-	errorGettingStats          = "Error getting stats"
-	errorWritingCSV            = "Error writing stats to CSV file"
-	errorGeneratingGraphs      = "Error generating graphs (may require more data)"
-	errorGeneratingDailyGraphs = "Error generating daily graphs (at least 24h worth of data required): "
-	errorNotEnoughDataPoints   = "Not enough data points (yet) to generate graph"
-	errorBufferDrop            = "Buffer drop too important, stopping autosnatching. Reload to start again."
-	errorBelowWarningRatio     = "Ratio below warning level, stopping autosnatching."
+	errorGettingStats      = "Error getting stats"
+	ErrorGeneratingGraphs  = "Error generating graphs (may require more data, 24h worth for daily graphs)"
+	errorBufferDrop        = "Buffer drop too important, stopping autosnatching. Restart to start again."
+	errorBelowWarningRatio = "Ratio below warning level, stopping autosnatching."
 	// tracker errors
 	errorUnknownTorrentURL        = "Unknown torrent URL"
 	errorLogIn                    = "Error logging in"
@@ -204,4 +198,8 @@ const (
 	currentUsage     = "Current disk usage: %.2f%% used, remaining: %s"
 	lowDiskSpace     = "Warning: low disk space available (<5%)"
 	veryLowDiskSpace = "Warning: very low disk space available (<2%)"
+
+	// generic constants
+	scanningFiles = "Scanning"
+	stopCommand   = "stop"
 )

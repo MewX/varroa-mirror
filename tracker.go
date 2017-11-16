@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"bytes"
@@ -160,16 +160,16 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 	return data, err
 }
 
-func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) error {
-	if r.torrentURL == "" || r.TorrentFile == "" {
+func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile string, destinationFolder string) error {
+	if torrentURL == "" || torrentFile == "" {
 		return errors.New(errorUnknownTorrentURL)
 	}
-	response, err := t.client.Get(r.torrentURL)
+	response, err := t.client.Get(torrentURL)
 	if err != nil {
 		return err
 	}
 	defer response.Body.Close()
-	file, err := os.Create(r.TorrentFile)
+	file, err := os.Create(torrentFile)
 	if err != nil {
 		return err
 	}
@@ -179,17 +179,17 @@ func (t *GazelleTracker) DownloadTorrent(r *Release, destinationFolder string) e
 		return err
 	}
 	// move to relevant directory
-	if err := CopyFile(r.TorrentFile, filepath.Join(destinationFolder, r.TorrentFile), false); err != nil {
+	if err := CopyFile(torrentFile, filepath.Join(destinationFolder, torrentFile), false); err != nil {
 		return errors.Wrap(err, errorCouldNotMoveTorrent)
 	}
 	// cleaning up
-	if err := os.Remove(r.TorrentFile); err != nil {
-		logThis.Info(fmt.Sprintf(errorRemovingTempFile, r.TorrentFile), VERBOSE)
+	if err := os.Remove(torrentFile); err != nil {
+		logThis.Info(fmt.Sprintf(errorRemovingTempFile, torrentFile), VERBOSE)
 	}
 	return nil
 }
 
-func (t *GazelleTracker) GetStats(config *ConfigStats) (*TrackerStats, error) {
+func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	if t.userID == 0 {
 		data, err := t.get(t.URL + "/ajax.php?action=index")
 		if err != nil {
@@ -215,16 +215,14 @@ func (t *GazelleTracker) GetStats(config *ConfigStats) (*TrackerStats, error) {
 		logThis.Info("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
 		ratio = 0.0
 	}
-	// GazelleIndex to TrackerStats
-	stats := &TrackerStats{
-		Username:      s.Response.Username,
-		Class:         s.Response.Personal.Class,
-		Up:            uint64(s.Response.Stats.Uploaded),
-		Down:          uint64(s.Response.Stats.Downloaded),
-		Buffer:        int64(float64(s.Response.Stats.Uploaded)/config.TargetRatio) - int64(s.Response.Stats.Downloaded),
-		WarningBuffer: int64(float64(s.Response.Stats.Uploaded)/warningRatio) - int64(s.Response.Stats.Downloaded),
-		Ratio:         ratio,
-		Timestamp:     time.Now().Unix(),
+	// return StatsEntry
+	stats := &StatsEntry{
+		Tracker:   t.Name,
+		Up:        uint64(s.Response.Stats.Uploaded),
+		Down:      uint64(s.Response.Stats.Downloaded),
+		Ratio:     ratio,
+		Timestamp: time.Now(),
+		Collected: true,
 	}
 	return stats, nil
 }

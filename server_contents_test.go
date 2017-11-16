@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -16,14 +16,13 @@ func TestHTMLIndex(t *testing.T) {
 	// setup logger
 	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
 	env := &Environment{config: c}
-	logThis = LogThis{env: env}
+	logThis = NewLogThis(env)
 
 	// setting up
 	expectedFile := "test/test_index.html"
 	data := HTMLIndex{
 		Title: "VARROA MUSICA",
 		Time:  time.Unix(1492953739, 0).UTC().Format("2006-01-02 15:04:05"),
-		CSV:   []HTMLLink{{URL: "1.csv", Name: "trk1"}, {URL: "2.csv", Name: "Trk2"}},
 		Stats: []HTMLStats{
 			{
 				Name: "BLUE",

@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"strings"
 
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
+	"gitlab.com/passelecasque/varroa"
 )
 
 const (
@@ -28,6 +30,10 @@ Description:
 	- be remotely controlled from your browser with a GreaseMonkey script.
 	- send notifications to your Android device about stats and snatches.
 	- check local logs agains logchecker.php
+	- sort downloads, export them to your library, automatically rename
+	  folders using tracker metadata
+	- mount a read-only FUSE filesystem exposing your downloads or library
+	  using tracker metadata
 
 Daemon Commands:
 
@@ -39,9 +45,8 @@ Daemon Commands:
 		starts the daemon.
 	stop:
 		stops it.
-	reload:
-		reloads the configuration file (allows updating filters without
-		restarting the daemon).
+	uptime:
+		shows how long it has been running.
 
 Commands:
 
@@ -81,6 +86,12 @@ Commands:
 	downloads clean:
 		clean up the downloads directory by moving all empty folders,
 		and folders with only tracker metadata, to a dedicated subfolder.
+	downloads fuse:
+		mount a read-only filesystem exposing your downloads using the
+		tracker metadata, using the following categories: artists, tags,
+		record labels, years. Call 'fusermount -u MOUNT_POINT' to stop.
+	library fuse:
+		similar to downloads fuse, but for your music library.
 
 Configuration Commands:
 
@@ -100,7 +111,7 @@ Configuration Commands:
 		decrypts your encrypted configuration file.
 
 Usage:
-	varroa (start|reload|stop)
+	varroa (start|stop|uptime)
 	varroa stats
 	varroa refresh-metadata <TRACKER> <ID>...
 	varroa check-log <TRACKER> <LOG_FILE>
@@ -108,7 +119,8 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean)
+	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean|fuse <MOUNT_POINT>)
+	varroa library fuse <MOUNT_POINT>
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -123,7 +135,7 @@ type varroaArguments struct {
 	builtin         bool
 	start           bool
 	stop            bool
-	reload          bool
+	uptime          bool
 	stats           bool
 	refreshMetadata bool
 	checkLog        bool
@@ -140,20 +152,23 @@ type varroaArguments struct {
 	downloadList    bool
 	downloadState   string
 	downloadClean   bool
+	downloadFuse    bool
+	libraryFuse     bool
 	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
 	artistName      string
+	mountPoint      string
 	requiresDaemon  bool
 	canUseDaemon    bool
 }
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// parse arguments and options
-	args, err := docopt.Parse(varroaUsage, osArgs, true, fmt.Sprintf(varroaVersion, varroa, version), false, false)
+	args, err := docopt.Parse(varroaUsage, osArgs, true, fmt.Sprintf(varroa.FullVersion, varroa.FullName, varroa.Version), false, false)
 	if err != nil {
-		return errors.Wrap(err, errorInfoBadArguments)
+		return errors.Wrap(err, varroa.ErrorInfoBadArguments)
 	}
 	if len(args) == 0 {
 		// builtin command, nothing to do.
@@ -164,7 +179,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// commands
 	b.start = args["start"].(bool)
 	b.stop = args["stop"].(bool)
-	b.reload = args["reload"].(bool)
+	b.uptime = args["uptime"].(bool)
 	b.stats = args["stats"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
@@ -184,6 +199,10 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.downloadSort = args["sort"].(bool)
 		b.downloadList = args["list"].(bool)
 		b.downloadClean = args["clean"].(bool)
+		b.downloadFuse = args["fuse"].(bool)
+	}
+	if args["library"].(bool) {
+		b.libraryFuse = args["fuse"].(bool)
 	}
 	// arguments
 	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
@@ -191,15 +210,34 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if !ok {
 			return errors.New("Invalid torrent IDs.")
 		}
-		b.torrentIDs, err = StringSliceToIntSlice(IDs)
+		b.torrentIDs, err = varroa.StringSliceToIntSlice(IDs)
 		if err != nil {
 			return errors.New("Invalid torrent IDs, must be integers.")
 		}
 	}
+	if b.downloadFuse || b.libraryFuse {
+		// checking fusermount is available
+		_, err := exec.LookPath("fusermount")
+		if err != nil {
+			return errors.New("fusermount is not available on this system, cannot use the fuse command")
+		}
+
+		b.mountPoint = args["<MOUNT_POINT>"].(string)
+		if !varroa.DirectoryExists(b.mountPoint) {
+			return errors.New("Fuse mount point does not exist")
+		}
+
+		// check it's empty
+		if isEmpty, err := varroa.DirectoryIsEmpty(b.mountPoint); err != nil {
+			return errors.New("Could not open Fuse mount point")
+		} else if !isEmpty {
+			return errors.New("Fuse mount point is not empty")
+		}
+	}
 	if b.downloadList {
 		b.downloadState = args["<STATE>"].(string)
-		if !StringInSlice(b.downloadState, downloadFolderStates) {
-			return errors.New("Invalid download state, must be among: " + strings.Join(downloadFolderStates, ", "))
+		if !varroa.IsValidDownloadState(b.downloadState) {
+			return errors.New("Invalid download state, must be among: " + strings.Join(varroa.DownloadFolderStates, ", "))
 		}
 	}
 	if b.snatch {
@@ -207,7 +245,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	if b.checkLog {
 		logPath := args["<LOG_FILE>"].(string)
-		if !FileExists(logPath) {
+		if !varroa.FileExists(logPath) {
 			return errors.New("Invalid log file, does not exist.")
 		}
 		b.logFile = logPath
@@ -219,40 +257,40 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse {
 		b.canUseDaemon = false
 	}
 	return nil
 }
 
 func (b *varroaArguments) commandToDaemon() []byte {
-	out := IncomingJSON{Site: b.trackerLabel}
+	out := varroa.IncomingJSON{Site: b.trackerLabel}
 	if b.stats {
 		out.Command = "stats"
-	}
-	if b.reload {
-		out.Command = "reload"
 	}
 	if b.stop {
 		// to cleanly close the unix socket
 		out.Command = "stop"
 	}
+	if b.uptime {
+		out.Command = "uptime"
+	}
 	if b.refreshMetadata {
 		out.Command = "refresh-metadata"
-		out.Args = IntSliceToStringSlice(b.torrentIDs)
+		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.snatch {
 		out.Command = "snatch"
-		out.Args = IntSliceToStringSlice(b.torrentIDs)
+		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
 		out.FLToken = b.useFLToken
 	}
 	if b.info {
 		out.Command = "info"
-		out.Args = IntSliceToStringSlice(b.torrentIDs)
+		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.checkLog {
 		out.Command = "check-log"
@@ -260,7 +298,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "Cannot parse command"), NORMAL)
+		logThis.Error(errors.Wrap(err, "Cannot parse command"), varroa.NORMAL)
 		return []byte{}
 	}
 	return commandBytes

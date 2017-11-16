@@ -1,20 +1,22 @@
-package main
+package varroa
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/howeyc/gopass"
 	"github.com/pkg/errors"
+	daemon "github.com/sevlyar/go-daemon"
 	yaml "gopkg.in/yaml.v2"
 )
 
 var commonIV = []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f}
 
-func getPassphrase() (string, error) {
+func GetPassphrase() (string, error) {
 	// get passphrase, make sure it can fit into a 32b []byte
 	fmt.Print("Passphrase: ")
 	pass, err := gopass.GetPasswd()
@@ -25,6 +27,33 @@ func getPassphrase() (string, error) {
 		return "", errors.New(errorBadPassphrase)
 	}
 	return string(pass), nil
+}
+
+// SavePassphraseForDaemon saves the encrypted configuration file passphrase to env if necessary.
+// In the daemon, retrieves that passphrase.
+func SavePassphraseForDaemon() ([]byte, error) {
+	var passphrase string
+	var err error
+	if !daemon.WasReborn() {
+		// if necessary, ask for passphrase and add to env
+		passphrase, err = GetPassphrase()
+		if err != nil {
+			return []byte{}, errors.Wrap(err, errorGettingPassphrase)
+		}
+		// saving to env for the daemon to pick up later
+		if err := os.Setenv(envPassphrase, passphrase); err != nil {
+			return []byte{}, errors.Wrap(err, errorSettingEnv)
+		}
+	} else {
+		// getting passphrase from env if necessary
+		passphrase = os.Getenv(envPassphrase)
+	}
+	if passphrase == "" {
+		return []byte{}, errors.New(errorPassphraseNotFound)
+	}
+	b := make([]byte, 32)
+	copy(b[:], passphrase)
+	return b, nil
 }
 
 func encryptAndSave(path string, passphrase []byte) error {

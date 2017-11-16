@@ -1,134 +1,146 @@
-package main
+package varroa
 
 import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
+	"github.com/asdine/storm"
+	"github.com/asdine/storm/q"
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
-	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 type Downloads struct {
-	Root      string
-	DBFile    string
-	MaxIndex  uint64
-	Downloads []*DownloadFolder
+	Root string
+	Database
 }
 
 func (d *Downloads) String() string {
 	txt := "Downloads in database:\n"
-	for _, dl := range d.Downloads {
-		txt += "\t" + dl.ShortString() + "\n"
+	var allEntries []DownloadEntry
+	if err := d.DB.All(&allEntries); err != nil {
+		txt += err.Error()
+	} else {
+		for _, dl := range allEntries {
+			txt += "\t" + dl.ShortString() + "\n"
+		}
 	}
 	return txt
 }
 
-func (d *Downloads) Load(path string) error {
-	d.DBFile = path
-	// load db
-	f, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	bytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		logThis.Error(errors.Wrap(err, "Error reading history file"), NORMAL)
-		return err
-	}
-	if len(bytes) == 0 {
-		// newly created file
-		return nil
-	}
-	// load releases from history to in-memory slice
-	err = msgpack.Unmarshal(bytes, &d.Downloads)
-	if err != nil {
-		logThis.Error(errors.Wrap(err, "Error loading releases from history file"), NORMAL)
-	}
-	// get max index
-	for _, dl := range d.Downloads {
-		if dl.Index > d.MaxIndex {
-			d.MaxIndex = dl.Index
-		}
-	}
-	return err
-}
-
-func (d *Downloads) Save() error {
-	// saving to msgpack, won't save TrackerTorrentInfo though...
-	b, err := msgpack.Marshal(d.Downloads)
-	if err != nil {
-		return err
-	}
-	// write to history file
-	return ioutil.WriteFile(d.DBFile, b, 0640)
-}
-
 func (d *Downloads) Scan() error {
-	// list of loaded folders
-	knownDownloads := []string{}
-	for _, dl := range d.Downloads {
-		knownDownloads = append(knownDownloads, dl.Path)
+	defer TimeTrack(time.Now(), "Scan Downloads")
+
+	if d.DB == nil {
+		return errors.New("Error db not open")
+	}
+	if err := d.DB.Init(&DownloadEntry{}); err != nil {
+		return errors.New("Could not prepare database for indexing download entries")
+	}
+
+	if !DirectoryExists(d.Root) {
+		return errors.New("Error finding " + d.Root)
 	}
 
 	// don't walk, we only want the top-level directories here
-	entries, err := ioutil.ReadDir(d.Root)
-	if err != nil {
-		log.Fatal(err)
+	entries, readErr := ioutil.ReadDir(d.Root)
+	if readErr != nil {
+		return errors.Wrap(readErr, "Error reading downloads directory")
 	}
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
-	s.Prefix = "Scanning"
+	s.Prefix = scanningFiles
 	if !daemon.WasReborn() {
 		s.Start()
 	}
+
+	// get old entries
+	var previous []DownloadEntry
+	if err := d.DB.All(&previous); err != nil {
+		return errors.New("Cannot load previous entries")
+	}
+
+	tx, err := d.DB.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var currentFolderNames []string
 	for _, entry := range entries {
 		if entry.IsDir() {
-			dl, err := d.FindByFolder(entry.Name())
-			if err != nil {
-				// new entry
-				// logThis.Info("Found new download: "+entry.Name(), VERBOSEST)
-				if err := d.Add(entry.Name()); err != nil {
-					logThis.Error(err, VERBOSEST)
+			// detect if sound files are present, leave otherwise
+			if !DirectoryContainsMusic(filepath.Join(d.Root, entry.Name())) {
+				logThis.Info("Error: no music found in "+entry.Name(), VERBOSEST)
+				continue
+			}
+			// try to find entry
+			var downloadEntry DownloadEntry
+			if dbErr := d.DB.One("FolderName", entry.Name(), &downloadEntry); dbErr != nil {
+				if dbErr == storm.ErrNotFound {
+					// not found, create new entry
+					downloadEntry.FolderName = entry.Name()
+					// read information from metadata
+					if err := downloadEntry.Load(d.Root); err != nil {
+						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+entry.Name()), VERBOSEST)
+						continue
+					}
+					if err := tx.Save(&downloadEntry); err != nil {
+						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
+						continue
+					}
+					logThis.Info("New FuseDB entry: "+entry.Name(), VERBOSESTEST)
+				} else {
+					logThis.Error(dbErr, VERBOSEST)
 					continue
 				}
 			} else {
-				// logThis.Info("Updating known download: "+dl.Path, VERBOSEST)
-				if err := dl.Load(); err != nil {
-					logThis.Error(err, VERBOSEST)
+				// found entry, update it
+				// TODO for existing entries, maybe only reload if the metadata has been modified?
+				// read information from metadata
+				if err := downloadEntry.Load(d.Root); err != nil {
+					logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
 					continue
 				}
+				if err := tx.Update(&downloadEntry); err != nil {
+					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
+					continue
+				}
+				logThis.Info("Updated Downloads entry: "+entry.Name(), VERBOSESTEST)
 			}
-			knownDownloads = RemoveFromSlice(entry.Name(), knownDownloads)
+			currentFolderNames = append(currentFolderNames, entry.Name())
 		}
-	}
-	if !daemon.WasReborn() {
-		s.Stop()
 	}
 
-	// remove from db folders that are no longer in the filesystem
-	if len(knownDownloads) != 0 {
-		for _, dl := range knownDownloads {
-			// logThis.Info("Removing from download db: "+dl, VERBOSEST)
-			if err := d.RemoveByFolder(dl); err != nil {
-				logThis.Error(err, NORMAL)
+	// remove entries no longer associated with actual files
+	for _, p := range previous {
+		if !StringInSlice(p.FolderName, currentFolderNames) {
+			if err := tx.DeleteStruct(&p); err != nil {
+				logThis.Error(err, VERBOSEST)
 			}
+			logThis.Info("Removed Download entry: "+p.FolderName, VERBOSESTEST)
 		}
+	}
+
+	defer TimeTrack(time.Now(), "Committing changes to DB")
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	if !daemon.WasReborn() {
+		s.Stop()
 	}
 	return nil
 }
 
 func (d *Downloads) LoadAndScan(path string) error {
-	if err := d.Load(path); err != nil {
+	if err := d.Open(path); err != nil {
 		return errors.New(errorLoadingDownloadsDB)
 	}
 	if err := d.Scan(); err != nil {
@@ -137,103 +149,80 @@ func (d *Downloads) LoadAndScan(path string) error {
 	return nil
 }
 
-func (d *Downloads) Add(path string) error {
-	dl := &DownloadFolder{Index: d.MaxIndex + 1, Path: path, Root: d.Root, State: stateUnsorted}
-	if err := dl.Load(); err != nil {
-		return err
+func (d *Downloads) FindByID(id int) (DownloadEntry, error) {
+	var downloadEntry DownloadEntry
+	if err := d.DB.One("ID", id, &downloadEntry); err != nil {
+		return DownloadEntry{}, err
 	}
-	d.Downloads = append(d.Downloads, dl)
-	d.MaxIndex += 1
-	return nil
-}
-
-func (d *Downloads) FindByID(id uint64) (*DownloadFolder, error) {
-	for _, dl := range d.Downloads {
-		if dl.Index == id {
-			return dl, nil
-		}
-	}
-	return nil, errors.New("ID not found")
-}
-
-func (d *Downloads) FindByFolder(folder string) (*DownloadFolder, error) {
-	for _, dl := range d.Downloads {
-		if dl.Path == folder {
-			return dl, nil
-		}
-	}
-	return nil, errors.New("folder not found")
-}
-
-func (d *Downloads) RemoveByFolder(folder string) error {
-	for i, v := range d.Downloads {
-		if v.Path == folder {
-			d.Downloads = append(d.Downloads[:i], d.Downloads[i+1:]...)
-			return nil
-		}
-	}
-	return errors.New("Folder not found in DB.")
-}
-
-func (d *Downloads) FindByArtist(artist string) []*DownloadFolder {
-	hits := []*DownloadFolder{}
-	for _, dl := range d.Downloads {
-		if dl.HasInfo {
-			for _, info := range dl.Metadata {
-				if StringInSlice(artist, info.ArtistNames()) {
-					hits = append(hits, dl)
-				}
-			}
-		}
-	}
-	return hits
-}
-
-func (d *Downloads) FindByInfoHash(infoHash string) error {
-	// TODO ?
-
-	return nil
-}
-
-func (d *Downloads) FindByTrackerID(tracker, id string) error {
-	// TODO ?
-
-	return nil
+	return downloadEntry, nil
 }
 
 func (d *Downloads) Sort(e *Environment) error {
-	for _, dl := range d.Downloads {
+	var downloadEntries []DownloadEntry
+	query := d.DB.Select(q.Or(q.Eq("State", stateUnsorted), q.Eq("State", stateAccepted))).OrderBy("FolderName")
+	if err := query.Find(&downloadEntries); err != nil {
+		if err == storm.ErrNotFound {
+			logThis.Info("Everything is sorted. Congratulations!", NORMAL)
+			return nil
+		}
+		return err
+	}
+	for _, dl := range downloadEntries {
 		if dl.State == stateUnsorted {
-			if !Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.Index, dl.Path)) {
+			if !Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.ID, dl.FolderName)) {
 				return nil
 			}
-			if err := dl.Sort(e); err != nil {
-				return errors.Wrap(err, "Error sorting download "+strconv.FormatUint(dl.Index, 10))
+			if err := dl.Sort(e, d.Root); err != nil {
+				return errors.Wrap(err, "Error sorting download "+strconv.Itoa(dl.ID))
 			}
 		} else if dl.State == stateAccepted {
-			if Accept(fmt.Sprintf("Do you want to export already accepted release #%d (%s) ", dl.Index, dl.Path)) {
-				if err := dl.export(e.config); err != nil {
-					return errors.Wrap(err, "Error exporting download "+strconv.FormatUint(dl.Index, 10))
+			if Accept(fmt.Sprintf("Do you want to export already accepted release #%d (%s) ", dl.ID, dl.FolderName)) {
+				if err := dl.export(d.Root, e.config); err != nil {
+					return errors.Wrap(err, "Error exporting download "+strconv.Itoa(dl.ID))
 				}
 			} else {
 				fmt.Println("The release was not exported. It can be exported later by sorting again.")
 			}
 		}
+		if err := d.DB.Update(&dl); err != nil {
+			return errors.Wrap(err, "Error saving new state for download "+dl.FolderName)
+		}
 	}
 	return nil
 }
 
-func (d *Downloads) FindByState(state string) []*DownloadFolder {
-	if !StringInSlice(state, downloadFolderStates) {
+func (d *Downloads) SortThisID(e *Environment, id int) error {
+	dl, err := d.FindByID(id)
+	if err != nil {
+		return errors.Wrap(err, "Error finding such an ID in the downloads database")
+	}
+	if err := dl.Sort(e, d.Root); err != nil {
+		return errors.Wrap(err, "Error sorting selected download")
+	}
+	if err := d.DB.Update(&dl); err != nil {
+		return errors.Wrap(err, "Error saving new state for download "+dl.FolderName)
+	}
+	return nil
+}
+
+func (d *Downloads) FindByState(state string) []DownloadEntry {
+	if !StringInSlice(state, DownloadFolderStates) {
 		logThis.Info("Invalid state", NORMAL)
 	}
 
 	dlState := DownloadState(-1).Get(state)
-	hits := []*DownloadFolder{}
-	for _, dl := range d.Downloads {
-		if dl.State == dlState {
-			hits = append(hits, dl)
-		}
+	var hits []DownloadEntry
+	if err := d.DB.Find("State", dlState, &hits); err != nil && err != storm.ErrNotFound {
+		logThis.Error(errors.Wrap(err, "Could not find downloads by state"), VERBOSEST)
+	}
+	return hits
+}
+
+func (d *Downloads) FindByArtist(artist string) []DownloadEntry {
+	var hits []DownloadEntry
+	query := d.DB.Select(InSlice("Artists", artist))
+	if err := query.Find(&hits); err != nil && err != storm.ErrNotFound {
+		logThis.Error(errors.Wrap(err, "Could not find downloads by artist "+artist), VERBOSEST)
 	}
 	return hits
 }
@@ -248,10 +237,10 @@ func (d *Downloads) Clean() error {
 	}
 
 	// don't walk, we only want the top-level directories here
-	toBeMoved := []os.FileInfo{}
+	var toBeMoved []os.FileInfo
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
-	s.Prefix = "Scanning"
+	s.Prefix = scanningFiles
 	if !daemon.WasReborn() {
 		s.Start()
 	}
@@ -259,7 +248,7 @@ func (d *Downloads) Clean() error {
 	// don't walk, we only want the top-level directories here
 	entries, err := ioutil.ReadDir(d.Root)
 	if err != nil {
-		log.Fatal(err)
+		return errors.Wrap(err, "Error readingg directory "+d.Root)
 	}
 	for _, entry := range entries {
 		if entry.Name() != downloadsCleanDir && entry.IsDir() {
@@ -271,7 +260,7 @@ func (d *Downloads) Clean() error {
 			}
 			contents, err := f.Readdir(2)
 			f.Close()
-
+			// move if empty or if the directory only contains tracker metadata
 			if err != nil {
 				if err == io.EOF {
 					toBeMoved = append(toBeMoved, entry)

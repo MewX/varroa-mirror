@@ -93,6 +93,14 @@ filters:
     - this other guy
     excluded_type:
     - Concert Recording
+    reject_unknown_releases: true
+    edition:
+    - Bonus
+    - Anniversary
+    - r/[dD]eluxe
+    edition_year:
+    - 2014
+    - 2015
 
   - name: test
     year:
@@ -131,7 +139,3 @@ filters:
     - Spammy McSpam
     record_label:
     - Warp
-    edition_contains:
-    - Bonus
-    - Anniversary
-

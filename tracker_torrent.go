@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"encoding/json"
@@ -16,17 +16,20 @@ import (
 )
 
 type TrackerTorrentInfo struct {
-	id       int
-	groupID  int
-	label    string
-	edition  string
-	logScore int
-	artists  map[string]int // concat artists, composers, etc: artist name: id
-	size     uint64
-	uploader string
-	folder   string
-	coverURL string
-	fullJSON []byte
+	id          int
+	groupID     int
+	label       string
+	catnum      string
+	edition     string
+	editionYear int
+	logScore    int
+	artists     map[string]int // concat artists, composers, etc: artist name: id
+	artistNames []string
+	size        uint64
+	uploader    string
+	folder      string
+	coverURL    string
+	fullJSON    []byte
 }
 
 func (a *TrackerTorrentInfo) String() string {
@@ -68,14 +71,6 @@ func (a *TrackerTorrentInfo) ArtistIDs() []int {
 	return artistIDs
 }
 
-func (a *TrackerTorrentInfo) ArtistNames() []string {
-	artistNames := make([]string, 0, len(a.artists))
-	for k := range a.artists {
-		artistNames = append(artistNames, k)
-	}
-	return artistNames
-}
-
 func (a *TrackerTorrentInfo) FullInfo() *GazelleTorrent {
 	if len(a.fullJSON) == 0 {
 		return nil // nothing useful here
@@ -88,12 +83,12 @@ func (a *TrackerTorrentInfo) FullInfo() *GazelleTorrent {
 	return &gt
 }
 
-func (a *TrackerTorrentInfo) Release() *Release {
+func (a *TrackerTorrentInfo) Release(tracker string) *Release {
 	gt := a.FullInfo()
 	if gt == nil {
 		return nil // nothing useful here
 	}
-	r := &Release{Timestamp: time.Now()}
+	r := &Release{Tracker: tracker, Timestamp: time.Now()}
 	// for now, using artists, composers, "with" categories
 	for _, el := range gt.Response.Group.MusicInfo.Artists {
 		r.Artists = append(r.Artists, el.Name)
@@ -126,8 +121,6 @@ func (a *TrackerTorrentInfo) Release() *Release {
 	r.Size = uint64(gt.Response.Torrent.Size)
 	r.Folder = gt.Response.Torrent.FilePath
 	r.LogScore = gt.Response.Torrent.LogScore
-	r.Uploader = gt.Response.Torrent.Username
-	r.Metadata = ReleaseMetadata{}
 	return r
 }
 
@@ -162,7 +155,12 @@ func (a *TrackerTorrentInfo) LoadFromBytes(data []byte, fullJSON bool) error {
 	if gt.Response.Torrent.Remastered {
 		a.label = gt.Response.Torrent.RemasterRecordLabel
 	}
+	a.catnum = gt.Response.Group.CatalogueNumber
+	if gt.Response.Torrent.Remastered {
+		a.catnum = gt.Response.Torrent.RemasterCatalogueNumber
+	}
 	a.edition = gt.Response.Torrent.RemasterTitle
+	a.editionYear = gt.Response.Torrent.RemasterYear
 	a.logScore = gt.Response.Torrent.LogScore
 	a.size = uint64(gt.Response.Torrent.Size)
 	a.coverURL = gt.Response.Group.WikiImage

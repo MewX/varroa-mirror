@@ -1,18 +1,32 @@
-package main
+package varroa
 
 import (
 	"fmt"
 	"log"
+	"sync"
+
+	"github.com/sevlyar/go-daemon"
 )
 
 const (
 	NORMAL = iota
 	VERBOSE
 	VERBOSEST
+	VERBOSESTEST
 )
 
 type LogThis struct {
 	env *Environment
+}
+
+var logThis *LogThis
+var onceLog sync.Once
+
+func NewLogThis(e *Environment) *LogThis {
+	onceLog.Do(func() {
+		logThis = &LogThis{env: e}
+	})
+	return logThis
 }
 
 func (l *LogThis) Error(err error, level int) {
@@ -28,9 +42,11 @@ func (l *LogThis) Info(msg string, level int) {
 	if l.env.config.General.LogLevel >= level {
 		if l.env.expectedOutput {
 			// only is daemon is up...
-			if l.env.inDaemon {
+			if daemon.WasReborn() {
 				log.Println(msg)
-				l.env.sendBackToCLI <- msg
+				if l.env.daemonCom.IsActive {
+					l.env.daemonCom.Outgoing <- []byte(msg)
+				}
 			} else {
 				fmt.Println(msg)
 			}

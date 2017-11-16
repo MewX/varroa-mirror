@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -18,12 +18,9 @@ func TestCrypto(t *testing.T) {
 	testFilename := "test_crypto"
 	testYAML := filepath.Join(testDir, testFilename+yamlExt)
 	testENC := filepath.Join(testDir, testFilename+encryptedExt)
-	env := &Environment{}
 	var passphrase []byte
 	passphrase = make([]byte, 32)
 	copy(passphrase[:], "passphrase")
-
-	check.Nil(env.config.Load(testYAML))
 
 	// 1. encrypt
 

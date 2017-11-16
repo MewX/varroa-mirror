@@ -1,4 +1,4 @@
-package main
+package varroa
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ func TestConfig(t *testing.T) {
 	check.Nil(err)
 
 	// setting up
-	os.Mkdir("library", 0777)
+	check.Nil(os.Mkdir("library", 0777))
 	defer os.Remove("library")
 
 	// general
@@ -123,9 +123,9 @@ func TestConfig(t *testing.T) {
 	f := c.Filters[0]
 	check.Equal("perfect", f.Name)
 	check.Nil(f.Year)
-	check.Equal([]string{"CD", "Vinyl", "DVD", "Soundboard", "WEB", "Cassette", "Blu-ray", "SACD", "DAT"}, f.Source)
+	check.Equal(knownSources, f.Source)
 	check.Equal([]string{"FLAC"}, f.Format)
-	check.Equal([]string{"Lossless", "24bit Lossless"}, f.Quality)
+	check.Equal([]string{"24bit Lossless", "Lossless"}, f.Quality)
 	check.True(f.HasCue)
 	check.True(f.HasLog)
 	check.Equal(100, f.LogScore)
@@ -144,7 +144,9 @@ func TestConfig(t *testing.T) {
 	check.True(f.UniqueInGroup)
 	check.Equal([]string{"blue"}, f.Tracker)
 	check.Equal([]string{"best_uploader_ever", "this other guy"}, f.Uploader)
-	check.Nil(f.Edition)
+	check.True(f.RejectUnknown)
+	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe"}, f.Edition)
+	check.Equal([]int{2014, 2015}, f.EditionYear)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]
 	check.Equal("test", f.Name)
@@ -170,7 +172,9 @@ func TestConfig(t *testing.T) {
 	check.False(f.UniqueInGroup)
 	check.Nil(f.Tracker)
 	check.Nil(f.Uploader)
-	check.Equal([]string{"Bonus", "Anniversary"}, f.Edition)
+	check.False(f.RejectUnknown)
+	check.Nil(f.Edition)
+	check.Nil(f.EditionYear)
 
 	check.True(c.autosnatchConfigured)
 	check.True(c.statsConfigured)
@@ -178,10 +182,10 @@ func TestConfig(t *testing.T) {
 	check.True(c.gitlabPagesConfigured)
 	check.True(c.pushoverConfigured)
 	check.True(c.webhooksConfigured)
-	check.True(c.downloadFolderConfigured)
+	check.True(c.DownloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
-	check.True(c.libraryConfigured)
+	check.True(c.LibraryConfigured)
 
 	// disabling autosnatch
 	check.False(c.Autosnatch[0].disabledAutosnatching)
@@ -204,10 +208,10 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverConfigured)
 	check.False(c.gitlabPagesConfigured)
 	check.False(c.pushoverConfigured)
-	check.True(c.downloadFolderConfigured)
+	check.True(c.DownloadFolderConfigured)
 	check.False(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
-	check.False(c.libraryConfigured)
+	check.False(c.LibraryConfigured)
 
 	c = &Config{}
 	err = c.Load("test/test_nostatsnoweb.yaml")
@@ -217,10 +221,10 @@ func TestConfig(t *testing.T) {
 	check.False(c.webserverConfigured)
 	check.False(c.gitlabPagesConfigured)
 	check.False(c.pushoverConfigured)
-	check.False(c.downloadFolderConfigured)
+	check.False(c.DownloadFolderConfigured)
 	check.False(c.webserverHTTP)
 	check.False(c.webserverHTTPS)
-	check.False(c.libraryConfigured)
+	check.False(c.LibraryConfigured)
 
 	c = &Config{}
 	err = c.Load("test/test_statsnoautosnatch.yaml")
@@ -230,9 +234,9 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverConfigured)
 	check.True(c.gitlabPagesConfigured)
 	check.True(c.pushoverConfigured)
-	check.True(c.downloadFolderConfigured)
+	check.True(c.DownloadFolderConfigured)
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
-	check.False(c.libraryConfigured)
+	check.False(c.LibraryConfigured)
 
 }
