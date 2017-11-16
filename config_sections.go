@@ -438,13 +438,13 @@ func (cf *ConfigFilter) Check() error {
 		return errors.New("Specific filter watch directory does not exist")
 	}
 	if CommonInStringSlices(cf.ExcludedArtist, cf.Artist) != nil {
-		return errors.New("Artists cannot be both included and excluded")
+		return errors.New("The same artist cannot be both included and excluded")
 	}
 	if CommonInStringSlices(cf.TagsExcluded, cf.TagsIncluded) != nil {
-		return errors.New("Tags cannot be both included and excluded")
+		return errors.New("The same tag cannot be both included and excluded")
 	}
 	if len(cf.ExcludedReleaseType) != 0 && len(cf.ReleaseType) != 0 {
-		return errors.New("Release types cannot be both included and excluded")
+		return errors.New("Release types should be either included or excluded, not both")
 	}
 	if cf.UniqueInGroup && cf.AllowDuplicates {
 		return errors.New("Filter can both allow duplicates and only allow one snatch/torrentgroup")
