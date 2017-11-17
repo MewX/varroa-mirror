@@ -23,6 +23,7 @@ type FuseEntry struct {
 	Year        int      `storm:"index"`
 	Tracker     []string `storm:"index"`
 	RecordLabel string   `storm:"index"`
+	Source      string   `storm:"index"`
 }
 
 func (fe *FuseEntry) reset() {
@@ -32,6 +33,7 @@ func (fe *FuseEntry) reset() {
 	fe.Year = 0
 	fe.Tracker = []string{}
 	fe.RecordLabel = ""
+	fe.Source = ""
 }
 
 func (fe *FuseEntry) Load(root string) error {
@@ -97,6 +99,16 @@ func (fe *FuseEntry) Load(root string) error {
 				fe.Title = gt.Response.Group.Name
 				// tags
 				fe.Tags = gt.Response.Group.Tags
+				// source
+				fe.Source = gt.Response.Torrent.Media
+				if fe.Source == "CD" && gt.Response.Torrent.Encoding == "Lossless" {
+					if gt.Response.Torrent.HasLog && gt.Response.Torrent.HasCue && (gt.Response.Torrent.LogScore == 100 || gt.Response.Torrent.Grade == "Silver") {
+						fe.Source += "+"
+					}
+					if gt.Response.Torrent.Grade == "Gold" {
+						fe.Source += "+"
+					}
+				}
 			}
 		}
 

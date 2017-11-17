@@ -45,8 +45,8 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 	// compare with new stats
 	logThis.Info(newStats.Progress(&previousStats), NORMAL)
 	// send notification
-	if err := Notify("stats: "+newStats.Progress(&previousStats), tracker, "info"); err != nil {
-		logThis.Error(err, NORMAL)
+	if notifyErr := Notify("stats: "+newStats.Progress(&previousStats), tracker, "info"); notifyErr != nil {
+		logThis.Error(notifyErr, NORMAL)
 	}
 
 	// if something is wrong, send notification and stop
@@ -114,8 +114,8 @@ func monitorAllStats(e *Environment) {
 	}
 
 	// preparing
-	tickerChans := []<-chan time.Time{}
-	tickerPeriods := []int{}
+	var tickerChans []<-chan time.Time
+	var tickerPeriods []int
 	for p := range tickers {
 		tickerChans = append(tickerChans, time.NewTicker(time.Hour*time.Duration(p)).C)
 		tickerPeriods = append(tickerPeriods, p)

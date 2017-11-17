@@ -5,7 +5,7 @@
 // @include        http*://*redacted.ch/*
 // @include        http*://*notwhat.cd/*
 // @include        http*://*apollo.rip/*
-// @version        11
+// @version        20
 // @date           2017-11
 // @grant          GM_getValue
 // @grant          GM_setValue

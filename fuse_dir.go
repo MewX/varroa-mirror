@@ -18,13 +18,14 @@ import (
 )
 
 // TODO: add categories
-var fuseCategories = []string{fuseArtistCategory, fuseTagsCategory, fuseLabelCategory, fuseYearCategory}
+var fuseCategories = []string{fuseArtistCategory, fuseTagsCategory, fuseLabelCategory, fuseYearCategory, fuseSourceCategory}
 
 const (
 	fuseArtistCategory = "artists"
 	fuseTagsCategory   = "tags"
 	fuseLabelCategory  = "record labels"
 	fuseYearCategory   = "years"
+	fuseSourceCategory = "source"
 )
 
 // Dir is a folder in the FUSE filesystem.
@@ -39,10 +40,11 @@ type Dir struct {
 	artist        string
 	release       string
 	releaseSubdir string
+	source        string
 }
 
 func (d *Dir) String() string {
-	return fmt.Sprintf("DIR mount %s, category %s, tag %s, label %s, year %s, artist %s, release %s, release subdirectory %s", d.fs.mountPoint, d.category, d.tag, d.label, d.year, d.artist, d.release, d.releaseSubdir)
+	return fmt.Sprintf("DIR mount %s, category %s, tag %s, label %s, year %s, source %s, artist %s, release %s, release subdirectory %s", d.fs.mountPoint, d.category, d.tag, d.label, d.year, d.source, d.artist, d.release, d.releaseSubdir)
 }
 
 var _ = fs.Node(&Dir{})
@@ -93,7 +95,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	// if top directory, show categories
 	if d.category == "" {
 		switch name {
-		case fuseArtistCategory, fuseTagsCategory, fuseLabelCategory, fuseYearCategory:
+		case fuseArtistCategory, fuseTagsCategory, fuseLabelCategory, fuseYearCategory, fuseSourceCategory:
 			return &Dir{category: name, fs: d.fs}, nil
 		default:
 			logThis.Info("Lookup unknown category: "+name, VERBOSEST)
@@ -123,9 +125,9 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		for _, f := range fileInfos {
 			if f.Name() == name {
 				if f.IsDir() {
-					return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: d.artist, release: d.release, releaseSubdir: filepath.Join(d.releaseSubdir, name), fs: d.fs}, nil
+					return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: d.artist, source: d.source, release: d.release, releaseSubdir: filepath.Join(d.releaseSubdir, name), fs: d.fs}, nil
 				}
-				return &File{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: d.artist, release: d.release, releaseSubdir: d.releaseSubdir, name: name, fs: d.fs}, nil
+				return &File{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: d.artist, source: d.source, release: d.release, releaseSubdir: d.releaseSubdir, name: name, fs: d.fs}, nil
 			}
 		}
 		logThis.Info("Unknown name among files "+d.releaseSubdir+"/"+name, VERBOSEST)
@@ -148,7 +150,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 				logThis.Error(err, VERBOSEST)
 				return nil, fuse.EIO
 			}
-			// we know there's at least 1 entry with this record label.
+			// we know there's at least 1 entry with this tag.
 			return &Dir{category: d.category, tag: name, fs: d.fs}, nil
 		}
 		// if we have a tag, filter all releases with that tag
@@ -191,8 +193,28 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			// we know there's at least 1 entry with this year.
 			return &Dir{category: d.category, year: name, fs: d.fs}, nil
 		}
-		// if we have a label, filter all releases with that record label
+		// if we have a year, filter all releases with that year
 		matcher = q.And(matcher, q.Eq("Year", d.year))
+	}
+	if d.category == fuseSourceCategory {
+		// source is an extra layer compared to "artists"
+		if d.source == "" {
+			// name is a source
+			query := d.fs.contents.DB.Select(q.Eq("Source", name)).Limit(1)
+			var entry FuseEntry
+			if err := query.First(&entry); err != nil {
+				if err == storm.ErrNotFound {
+					logThis.Info("Unknown source "+name, VERBOSEST)
+					return nil, fuse.EIO
+				}
+				logThis.Error(err, VERBOSEST)
+				return nil, fuse.EIO
+			}
+			// we know there's at least 1 entry with this source.
+			return &Dir{category: d.category, source: name, fs: d.fs}, nil
+		}
+		// if we have a source, filter all releases with that source
+		matcher = q.And(matcher, q.Eq("Source", d.source))
 	}
 
 	// if no artist is selected, return all artists for the filtered releases
@@ -209,7 +231,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			return nil, fuse.EIO
 		}
 		// we know there's at least 1 entry with this artist.
-		return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: name, fs: d.fs}, nil
+		return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: name, source: d.source, fs: d.fs}, nil
 	}
 	// if we have an artist, filter all releases with that artist
 	matcher = q.And(matcher, InSlice("Artists", d.artist))
@@ -228,7 +250,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			return nil, fuse.EIO
 		}
 		// release was found
-		return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: d.artist, release: name, fs: d.fs}, nil
+		return &Dir{category: d.category, tag: d.tag, label: d.label, year: d.year, artist: d.artist, source: d.source, release: name, fs: d.fs}, nil
 	}
 	logThis.Info("Error during lookup, nothing matched "+name, VERBOSESTEST)
 	return nil, nil
@@ -292,7 +314,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 				logThis.Error(err, VERBOSEST)
 				return allTagsDirents, err
 			}
-			// get all different years
+			// get all different tags
 			var allTags []string
 			for _, e := range allEntries {
 				allTags = append(allTags, e.Tags...)
@@ -352,8 +374,33 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			}
 			return allYearsDirents, nil
 		}
-		// if we have a label, filter all releases with that record label
+		// if we have a year, filter all releases with that year
 		matcher = q.And(matcher, q.Eq("Year", d.year))
+	}
+	if d.category == fuseSourceCategory {
+		// source is an extra layer compared to "artists"
+		if d.source == "" {
+			// return all years as directories
+			var allSourcesDirents []fuse.Dirent
+			// get all matching entries
+			var allEntries []FuseEntry
+			query := d.fs.contents.DB.Select(matcher)
+			if err := query.Find(&allEntries); err != nil {
+				logThis.Error(err, VERBOSEST)
+				return allSourcesDirents, err
+			}
+			// get all different years
+			var allSources []string
+			for _, e := range allEntries {
+				allSources = append(allSources, e.Source)
+			}
+			for _, a := range RemoveStringSliceDuplicates(allSources) {
+				allSourcesDirents = append(allSourcesDirents, fuse.Dirent{Name: a, Type: fuse.DT_Dir})
+			}
+			return allSourcesDirents, nil
+		}
+		// if we have a source, filter all releases with that source
+		matcher = q.And(matcher, q.Eq("Source", d.source))
 	}
 
 	// if not artist set, return all artists from filtered releases

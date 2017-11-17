@@ -21,13 +21,14 @@ type File struct {
 	year          string
 	tag           string
 	artist        string
+	source        string
 	release       string
 	releaseSubdir string
 	name          string
 }
 
 func (f *File) String() string {
-	return fmt.Sprintf("FILE mount %s, category %s, label %s, year %s, tag %s, artist %s, release %s, release subdirectory %s, name %s", f.fs.mountPoint, f.category, f.label, f.year, f.tag, f.artist, f.release, f.releaseSubdir, f.name)
+	return fmt.Sprintf("FILE mount %s, category %s, label %s, year %s, tag %s, artist %s, source %s, release %s, release subdirectory %s, name %s", f.fs.mountPoint, f.category, f.label, f.year, f.tag, f.artist, f.source, f.release, f.releaseSubdir, f.name)
 }
 
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
