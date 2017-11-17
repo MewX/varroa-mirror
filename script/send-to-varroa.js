@@ -295,17 +295,25 @@
 		if (vmStatusDiv === null) {
 			vmStatusDiv = document.createElement('div');
 			vmStatusDiv.id = 'varroa';
+			const vmStatusP = document.createElement('p');
+			vmStatusP.innerHTML = 'varroa musica';
+			vmStatusDiv.appendChild(vmStatusP);
+
 			vmStatusDiv.appendChild(a);
 			document.body.appendChild(vmStatusDiv);
 		} else {
-			vmStatusDiv.replaceChild(a, vmStatusDiv.firstChild);
+			vmStatusDiv.replaceChild(a, vmStatusDiv.lastChild);
 		}
 	}
 
 	(function () {
 		'use strict';
-		const css = '#varroa a {margin: 3px 0 15px 0;position: fixed;bottom: 0;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; cursor: pointer;}';
+		const css = '#varroa {bottom: 20px; left: 20px; position: fixed; width: 310px; height: auto; margin: 0px; list-style-type: none; z-index: 10000000;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; border-radius: 5px; } ';
+		const css2 = '#varroa a {bottom: 0; left: 0px; position: relative; width: auto; height: auto; margin: 0px; background-color: #FFFFFF ;color: #000000; cursor: pointer }';
+		const css3 = '#varroa p {bottom: 0; left: 0px; position: relative; width: auto; height: auto; margin: 0px; background-color: #FFFFFF ;color: #000000;text-decoration: underline; }';
 		GM.addStyle(css);
+		GM.addStyle(css2);
+		GM.addStyle(css3);
 	})();
 
 // -- Settings -----------------------------------------------------------------
