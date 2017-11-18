@@ -4,7 +4,7 @@ image: golang:latest
 # the repository in the $GOPATH. So for example if your gitlab domain
 # is mydomainperso.com, and that your repository is repos/projectname, and
 # the default GOPATH being /go, then you'd need to have your
-# repository in /go/src/mydomainperso.com/repos/projectname 
+# repository in /go/src/mydomainperso.com/repos/projectname
 # Thus, making a symbolic link corrects this.
 before_script:
   - ln -s /builds /go/src/gitlab.com
@@ -44,6 +44,7 @@ format:
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
     - go get github.com/jinzhu/now
+    - go get github.com/vmihailenco/msgpack
     - go tool vet -composites=false -shadow=true *.go
     - go test -race $(go list ./... | grep -v /vendor/)
 
@@ -77,6 +78,7 @@ compiled_varroa_dev:
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
     - go get github.com/jinzhu/now
+    - go get github.com/vmihailenco/msgpack
     - cd cmd/varroa
     - go build -o ../../varroa
     - cd ../varroa-fuse
@@ -90,8 +92,8 @@ compiled_varroa_dev:
     name: "varroa-dev-${CI_COMMIT_REF_NAME}"
     expire_in: 4 weeks
   except:
-    - tags  
-    
+    - tags
+
 compiled_varroa_released_version:
   stage: build
   script:
@@ -122,16 +124,17 @@ compiled_varroa_released_version:
     - go get bazil.org/fuse
     - go get golang.org/x/net/context
     - go get github.com/jinzhu/now
+    - go get github.com/vmihailenco/msgpack
     - cd cmd/varroa
     - go build -o ../../varroa
     - cd ../varroa-fuse
     - go build -o ../../varroa-fuse
     - cd ../..
   artifacts:
-    paths: 
+    paths:
     - varroa
     - varroa-fuse
     name: "varroa-${CI_COMMIT_REF_NAME}"
   only:
-    - tags    
-            
+    - tags
+
