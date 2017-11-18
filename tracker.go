@@ -95,7 +95,7 @@ func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, e
 	return data, nil
 }
 
-//--------------------
+// --------------------
 
 // GazelleTracker allows querying the Gazelle JSON API.
 type GazelleTracker struct {

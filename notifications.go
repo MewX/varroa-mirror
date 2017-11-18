@@ -66,7 +66,7 @@ func (n *Notification) Send(message string, addLink bool, link string) error {
 	return err
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 type WebHookJSON struct {
 	Site    string

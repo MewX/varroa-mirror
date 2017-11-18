@@ -1,5 +1,7 @@
 package varroa
 
+import "strings"
+
 const (
 	formatFLAC = "FLAC"
 	formatMP3  = "MP3"
@@ -256,6 +258,48 @@ func (gt *GazelleTorrent) Source() string {
 		}
 	}
 	return source
+}
+
+func (gt *GazelleTorrent) ShortEncoding() string {
+	var format string
+	switch gt.Response.Torrent.Encoding {
+	case qualityLossless:
+		format = "FLAC"
+	case quality24bitLossless:
+		format = "FLAC24"
+	case qualityV0:
+		format = "V0"
+	case qualityV2:
+		format = "V2"
+	case quality320:
+		format = "320"
+	default:
+		format = "UnF"
+	}
+	return format
+}
+
+func (gt *GazelleTorrent) ShortEdition() string {
+	editionReplacer := strings.NewReplacer(
+		"Reissue", "RE",
+		"Repress", "RP",
+		"Remaster", "RM",
+		"Remastered", "RM",
+		"Limited Edition", "LTD",
+		"Deluxe", "DLX",
+		"Deluxe Edition", "DLX",
+		"Special Editon", "SE",
+		"Bonus Tracks", "Bonus",
+		"Bonus Tracks Edition", "Bonus",
+		"Promo", "PR",
+		"Test Pressing", "TP",
+		"Self Released", "SR",
+		"Box Set", "Box set",
+		"Compact Disc Recordable", "CDr",
+		"Japan Edition", "Japan",
+		"Japan Release", "Japan",
+	)
+	return editionReplacer.Replace(gt.Response.Torrent.RemasterTitle)
 }
 
 type GazelleTorrentGroup struct {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	docopt "github.com/docopt/docopt-go"
+	"github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
 	"gitlab.com/passelecasque/varroa"
 )

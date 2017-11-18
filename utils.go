@@ -9,41 +9,26 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"regexp"
 
 	"github.com/subosito/norma"
 	"github.com/ttacon/chalk"
 )
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 func startOfDay(t time.Time) time.Time {
 	return t.Truncate(24 * time.Hour)
-}
-
-func previousDay(t time.Time) time.Time {
-	return t.Add(time.Duration(-24) * time.Hour)
 }
 
 func nextDay(t time.Time) time.Time {
 	return t.Add(time.Duration(24) * time.Hour)
 }
 
-func allDaysSince(t time.Time) []time.Time {
-	firstDay := startOfDay(t)
-	tomorrow := nextDay(startOfDay(time.Now()))
-	dayTimes := []time.Time{}
-	for t := firstDay; t.Before(tomorrow); t = nextDay(t) {
-		dayTimes = append(dayTimes, t)
-	}
-	return dayTimes
-}
-
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 // StringInSlice checks if a string is in a []string, returns bool.
 func StringInSlice(a string, list []string) bool {
@@ -162,7 +147,7 @@ func checkErrors(errs ...error) error {
 	return nil
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 func SanitizeFolder(path string) string {
 	// making sure the path is relative
@@ -370,7 +355,7 @@ func TimeTrack(start time.Time, name string) {
 	}
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 type ByteSize float64
 
@@ -413,7 +398,7 @@ func readableInt64Sign(a int64) string {
 	return "-"
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 // BlueBold outputs a string in blue bold.
 func BlueBold(in string) string {

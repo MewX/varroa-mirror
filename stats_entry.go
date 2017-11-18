@@ -185,7 +185,7 @@ func CalculateDelta(first, second StatsEntry) (*StatsDelta, error) {
 }
 
 func CalculateDeltas(entries []StatsEntry) []StatsDelta {
-	deltas := []StatsDelta{}
+	var deltas []StatsDelta
 	for i, e := range entries {
 		if i == 0 {
 			deltas = append(deltas, StatsDelta{Timestamp: e.Timestamp})
