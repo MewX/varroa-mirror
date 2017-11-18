@@ -139,15 +139,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	if d.category == fuseTagsCategory {
 		// tags is an extra layer compared to "artists"
 		if d.tag == "" {
-			// name is a tag
-			query := d.fs.contents.DB.Select(InSlice("Tags", name)).Limit(1)
-			var entry FuseEntry
-			if err := query.First(&entry); err != nil {
-				if err == storm.ErrNotFound {
-					logThis.Info("Unknown tag "+name, VERBOSEST)
-					return nil, fuse.EIO
-				}
-				logThis.Error(err, VERBOSEST)
+			if !d.fs.contents.Contains("Tags", name, true) {
 				return nil, fuse.EIO
 			}
 			// we know there's at least 1 entry with this tag.
@@ -159,15 +151,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	if d.category == fuseLabelCategory {
 		// labels is an extra layer compared to "artists"
 		if d.label == "" {
-			// name is a label
-			query := d.fs.contents.DB.Select(q.Eq("RecordLabel", name)).Limit(1)
-			var entry FuseEntry
-			if err := query.First(&entry); err != nil {
-				if err == storm.ErrNotFound {
-					logThis.Info("Unknown record label "+name, VERBOSEST)
-					return nil, fuse.EIO
-				}
-				logThis.Error(err, VERBOSEST)
+			if !d.fs.contents.Contains("RecordLabel", name, false) {
 				return nil, fuse.EIO
 			}
 			// we know there's at least 1 entry with this record label.
@@ -179,15 +163,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	if d.category == fuseYearCategory {
 		// years is an extra layer compared to "artists"
 		if d.year == "" {
-			// name is a year
-			query := d.fs.contents.DB.Select(q.Eq("Year", name)).Limit(1)
-			var entry FuseEntry
-			if err := query.First(&entry); err != nil {
-				if err == storm.ErrNotFound {
-					logThis.Info("Unknown year "+name, VERBOSEST)
-					return nil, fuse.EIO
-				}
-				logThis.Error(err, VERBOSEST)
+			if !d.fs.contents.Contains("Year", name, false) {
 				return nil, fuse.EIO
 			}
 			// we know there's at least 1 entry with this year.
@@ -199,15 +175,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	if d.category == fuseSourceCategory {
 		// source is an extra layer compared to "artists"
 		if d.source == "" {
-			// name is a source
-			query := d.fs.contents.DB.Select(q.Eq("Source", name)).Limit(1)
-			var entry FuseEntry
-			if err := query.First(&entry); err != nil {
-				if err == storm.ErrNotFound {
-					logThis.Info("Unknown source "+name, VERBOSEST)
-					return nil, fuse.EIO
-				}
-				logThis.Error(err, VERBOSEST)
+			if !d.fs.contents.Contains("Source", name, false) {
 				return nil, fuse.EIO
 			}
 			// we know there's at least 1 entry with this source.
@@ -258,6 +226,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 
 var _ = fs.HandleReadDirAller(&Dir{})
 
+// ReadDirAll returns directory entries for the FUSE filesystem
 func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	defer TimeTrack(time.Now(), "DIR ReadDirAll "+d.String())
 

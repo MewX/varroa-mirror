@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/asdine/storm"
+	"github.com/asdine/storm/q"
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 )
@@ -215,4 +216,23 @@ func (fdb *FuseDB) Scan(path string) error {
 
 	s.Stop()
 	return nil
+}
+
+func (fdb *FuseDB) Contains(category string, value string, inSlice bool) bool {
+	var query storm.Query
+	if inSlice {
+		query = fdb.DB.Select(InSlice(category, value)).Limit(1)
+	} else {
+		query = fdb.DB.Select(q.Eq(category, value)).Limit(1)
+	}
+	var entry FuseEntry
+	if err := query.First(&entry); err != nil {
+		if err == storm.ErrNotFound {
+			logThis.Info("Unknown value for "+category+": "+value, VERBOSEST)
+			return false
+		}
+		logThis.Error(err, VERBOSEST)
+		return false
+	}
+	return true
 }
