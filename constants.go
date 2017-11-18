@@ -104,6 +104,8 @@ const (
 	// command refresh-metadata errors
 	ErrorRefreshingMetadata = "Error refreshing metadata"
 	errorCannotFindID       = "Error with ID#%s, not found in history or in downloads directory."
+	// command reseed
+	ErrorReseed = "error trying to reseed release"
 	// command backup errors
 	errorArchiving = "Error while archiving user files"
 	// set up errors

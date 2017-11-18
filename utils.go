@@ -348,6 +348,20 @@ func DirectoryContainsMusic(directoryPath string) bool {
 	return true
 }
 
+// DirectoryContainsMusicAndMetadata returns true if it contains mp3 or flac files, and JSONs in a TrackerMetadata folder.
+func DirectoryContainsMusicAndMetadata(directoryPath string) bool {
+	if !DirectoryContainsMusic(directoryPath) {
+		return false
+	}
+	if !DirectoryExists(filepath.Join(directoryPath, metadataDir)) {
+		return false
+	}
+	if !FileExists(filepath.Join(directoryPath, metadataDir, originJSONFile)) {
+		return false
+	}
+	return true
+}
+
 // TimeTrack helps track the time taken by a function.
 func TimeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)

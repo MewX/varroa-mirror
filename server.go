@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
-	"github.com/subosito/norma"
 )
 
 const (
@@ -61,15 +60,9 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 		logThis.Info("Error parsing Torrent Info", NORMAL)
 		release = &Release{Tracker: tracker.Name, TorrentID: id}
 	}
-	release.torrentURL = tracker.URL + "/torrents.php?action=download&id=" + id
-	if useFLToken {
-		release.torrentURL += "&usetoken=1"
-	}
-	torrentFile := norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
-
 	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
-	if err := tracker.DownloadTorrent(release.torrentURL, torrentFile, e.config.General.WatchDir); err != nil {
-		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
+	if err := tracker.DownloadTorrentFromID(id, e.config.General.WatchDir, useFLToken); err != nil {
+		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+id), NORMAL)
 		return release, err
 	}
 	// add to history

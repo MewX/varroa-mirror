@@ -264,6 +264,11 @@ func main() {
 				logThis.Error(errors.Wrap(err, varroa.ErrorCheckingLog), varroa.NORMAL)
 			}
 		}
+		if cli.reseed {
+			if err := varroa.Reseed(tracker, []string{cli.path}); err != nil {
+				logThis.Error(errors.Wrap(err, varroa.ErrorReseed), varroa.NORMAL)
+			}
+		}
 	} else {
 		// daemon is up, sending commands to the daemon through the unix socket
 		if err := varroa.SendOrders(cli.commandToDaemon()); err != nil {

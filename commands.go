@@ -108,6 +108,10 @@ Loop:
 					} else {
 						logThis.Info("varroa musica daemon up for "+time.Since(e.startTime).String()+".", NORMAL)
 					}
+				case "reseed":
+					if err := Reseed(tracker, orders.Args); err != nil {
+						logThis.Error(errors.Wrap(err, ErrorReseed), NORMAL)
+					}
 				}
 				e.daemonCom.Outgoing <- []byte(stopCommand)
 			case <-e.daemonCom.ClientDisconnected:
@@ -306,6 +310,54 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 			}
 		}
 	}
+	return nil
+}
+
+// Reseed a release using local files and tracker metadata
+func Reseed(tracker *GazelleTracker, path []string) error {
+	// get config.
+	conf, configErr := NewConfig(DefaultConfigurationFile)
+	if configErr != nil {
+		return configErr
+	}
+	if !conf.DownloadFolderConfigured {
+		return errors.New("impossible to reseed release if downloads directory is not configured")
+	}
+	// parse metadata for tracker, and get tid
+	// assuming reseeding one at a time only (as limited by CLI)
+	toc := TrackerOriginJSON{Path: filepath.Join(path[0], metadataDir, originJSONFile)}
+	if err := toc.load(); err != nil {
+		return errors.Wrap(err, "error reading origin.json")
+	}
+	// check that tracker is in list of origins
+	oj, ok := toc.Origins[tracker.Name]
+	if !ok {
+		return errors.New("release does not originate from tracker " + tracker.Name)
+	}
+
+	// copy files if necessary
+	// if the relative path of the downloads directory and the release path is the folder name, it means the path is
+	// directly inside the downloads directory, where we want it to reseed.
+	// if it is not, we need to copy the files.
+	// TODO: maybe hard link instead if in the same filesystem
+	rel, err := filepath.Rel(conf.General.DownloadDir, path[0])
+	if err != nil {
+		return errors.Wrap(err, "error trying to locate the target path relatively to the downloads directory")
+	}
+	// copy files if not in downloads directory
+	if rel != filepath.Base(path[0]) {
+		if err := CopyDir(path[0], filepath.Join(conf.General.DownloadDir, filepath.Base(path[0])), false); err != nil {
+			return errors.Wrap(err, "error copying files to downloads directory")
+		}
+		logThis.Info("Release files have been copied inside the downloads directory", NORMAL)
+	}
+
+	// TODO TO A TEMP DIR, then compare torrent description with path contents; if OK only copy .torrent to conf.General.WatchDir
+	// downloading torrent
+	if err := tracker.DownloadTorrentFromID(strconv.Itoa(oj.ID), conf.General.WatchDir, false); err != nil {
+		return errors.Wrap(err, "error downloading torrent file")
+	}
+	logThis.Info("Torrent downloaded, your bittorrent client should be able to reseed the release.", NORMAL)
 	return nil
 }
 
