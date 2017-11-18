@@ -371,7 +371,7 @@ func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, fo
 	editionName := editionReplacer.Replace(gt.Response.Torrent.RemasterTitle)
 
 	// identifying info
-	idElements := []string{}
+	var idElements []string
 	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterYear != originalYear {
 		idElements = append(idElements, fmt.Sprintf("%d", gt.Response.Torrent.RemasterYear))
 	}
@@ -400,30 +400,22 @@ func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, fo
 	// format
 	var format string
 	switch gt.Response.Torrent.Encoding {
-	case "Lossless":
+	case qualityLossless:
 		format = "FLAC"
-	case "24bit Lossless":
+	case quality24bitLossless:
 		format = "FLAC24"
-	case "V0 (VBR)":
+	case qualityV0:
 		format = "V0"
-	case "V2 (VBR)":
+	case qualityV2:
 		format = "V2"
-	case "320":
+	case quality320:
 		format = "320"
 	default:
 		format = "UnF"
 	}
 
 	// source
-	source := gt.Response.Torrent.Media
-	if source == "CD" && format == "FLAC" {
-		if gt.Response.Torrent.HasLog && gt.Response.Torrent.HasCue && (gt.Response.Torrent.LogScore == 100 || gt.Response.Torrent.Grade == "Silver") {
-			source += "+"
-		}
-		if gt.Response.Torrent.Grade == "Gold" {
-			source += "+"
-		}
-	}
+	source := gt.Source()
 
 	r := strings.NewReplacer(
 		"$id", "{{$id}}",

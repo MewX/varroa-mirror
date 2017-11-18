@@ -100,15 +100,7 @@ func (fe *FuseEntry) Load(root string) error {
 				// tags
 				fe.Tags = gt.Response.Group.Tags
 				// source
-				fe.Source = gt.Response.Torrent.Media
-				if fe.Source == "CD" && gt.Response.Torrent.Encoding == "Lossless" {
-					if gt.Response.Torrent.HasLog && gt.Response.Torrent.HasCue && (gt.Response.Torrent.LogScore == 100 || gt.Response.Torrent.Grade == "Silver") {
-						fe.Source += "+"
-					}
-					if gt.Response.Torrent.Grade == "Gold" {
-						fe.Source += "+"
-					}
-				}
+				fe.Source = gt.Source()
 			}
 		}
 

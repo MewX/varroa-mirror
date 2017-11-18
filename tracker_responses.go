@@ -245,6 +245,19 @@ type GazelleTorrent struct {
 	Status string `json:"status"`
 }
 
+func (gt *GazelleTorrent) Source() string {
+	source := gt.Response.Torrent.Media
+	if source == sourceCD && gt.Response.Torrent.Encoding == qualityLossless {
+		if gt.Response.Torrent.HasLog && gt.Response.Torrent.HasCue && (gt.Response.Torrent.LogScore == 100 || gt.Response.Torrent.Grade == "Silver") {
+			source += "+"
+		}
+		if gt.Response.Torrent.Grade == "Gold" {
+			source += "+"
+		}
+	}
+	return source
+}
+
 type GazelleTorrentGroup struct {
 	Response struct {
 		Group struct {
