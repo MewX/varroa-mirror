@@ -218,7 +218,7 @@ func (fdb *FuseDB) Scan(path string) error {
 	return nil
 }
 
-func (fdb *FuseDB) Contains(category string, value string, inSlice bool) bool {
+func (fdb *FuseDB) contains(category, value string, inSlice bool) bool {
 	var query storm.Query
 	if inSlice {
 		query = fdb.DB.Select(InSlice(category, value)).Limit(1)

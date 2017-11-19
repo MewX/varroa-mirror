@@ -18,7 +18,7 @@ type FS struct {
 var _ = fs.FS(&FS{})
 
 func (f *FS) Root() (fs.Node, error) {
-	return &Dir{fs: f}, nil
+	return &FuseDir{fs: f}, nil
 }
 
 func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.StatfsResponse) error {
