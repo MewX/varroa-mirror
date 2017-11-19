@@ -89,6 +89,7 @@ func InSlice(field, v string) q.Matcher {
 
 func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	defer TimeTrack(time.Now(), "DIR LOOKUP "+name)
+
 	// not music files, but files Dolphin tries to open nonetheless
 	// returning directly saves a few DB searches doomed to fail
 	if StringInSlice(name, []string{".hidden", ".directory"}) {
@@ -97,10 +98,9 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 
 	// if top directory, show categories
 	if d.category == "" {
-		switch name {
-		case fuseArtistCategory, fuseTagsCategory, fuseLabelCategory, fuseYearCategory, fuseSourceCategory:
+		if StringInSlice(name, fuseCategories) {
 			return &FuseDir{category: name, fs: d.fs}, nil
-		default:
+		} else {
 			logThis.Info("Lookup unknown category: "+name, VERBOSEST)
 			return nil, fuse.EIO
 		}

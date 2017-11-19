@@ -93,7 +93,8 @@ Commands:
 	library fuse:
 		similar to downloads fuse, but for your music library.
 	reseed:
-		reseed a downloaded release using tracker metadata.
+		reseed a downloaded release using tracker metadata. Does not check
+		the torrent files actually match the contents in the given PATH.
 
 Configuration Commands:
 
