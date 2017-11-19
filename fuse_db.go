@@ -5,6 +5,7 @@ import (
 	"html"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/asdine/storm"
@@ -235,4 +236,33 @@ func (fdb *FuseDB) contains(category, value string, inSlice bool) bool {
 		return false
 	}
 	return true
+}
+
+func (fdb *FuseDB) uniqueEntries(matcher q.Matcher, field string) ([]string, error) {
+	// get all matching entries
+	var allEntries []FuseEntry
+	query := fdb.DB.Select(matcher)
+	if err := query.Find(&allEntries); err != nil {
+		logThis.Error(err, VERBOSEST)
+		return []string{}, err
+	}
+	// get all different values
+	var allValues []string
+	for _, e := range allEntries {
+		switch field {
+		case "Tags":
+			allValues = append(allValues, e.Tags...)
+		case "Source":
+			allValues = append(allValues, e.Source)
+		case "Year":
+			allValues = append(allValues, strconv.Itoa(e.Year))
+		case "RecordLabel":
+			allValues = append(allValues, e.RecordLabel)
+		case "Artists":
+			allValues = append(allValues, e.Artists...)
+		case "Folder":
+			allValues = append(allValues, e.FolderName)
+		}
+	}
+	return RemoveStringSliceDuplicates(allValues), nil
 }
