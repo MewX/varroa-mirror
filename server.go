@@ -27,6 +27,11 @@ const (
 	responseError
 )
 
+const (
+	notificationArea = iota
+	statsArea
+)
+
 // IncomingJSON from the websocket created by the GM script, also used with unix socket.
 type IncomingJSON struct {
 	Token   string
@@ -39,6 +44,7 @@ type IncomingJSON struct {
 // OutgoingJSON to the websocket created by the GM script.
 type OutgoingJSON struct {
 	Status  int
+	Target  int
 	Message string
 }
 
@@ -268,7 +274,7 @@ func webServer(e *Environment) {
 						if e.websocketOutput {
 							mutex.Lock()
 							// TODO differentiate info / error
-							if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog}); err != nil {
+							if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog, Target: notificationArea}); err != nil {
 								if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 									logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), VERBOSEST)
 								}
@@ -296,36 +302,36 @@ func webServer(e *Environment) {
 				var answer OutgoingJSON
 				if incoming.Token != e.config.WebServer.Token {
 					logThis.Info(errorIncorrectWebServerToken, NORMAL)
-					answer = OutgoingJSON{Status: responseError, Message: "Bad token!"}
+					answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Bad token!"}
 				} else {
 					// dealing with command
 					switch incoming.Command {
 					case handshakeCommand:
 						// say hello right back
-						answer = OutgoingJSON{Status: responseInfo, Message: handshakeCommand}
+						answer = OutgoingJSON{Status: responseInfo, Target: notificationArea, Message: handshakeCommand}
 					case downloadCommand:
 						tracker, err := e.Tracker(incoming.Site)
 						if err != nil {
 							logThis.Error(errors.Wrap(err, "Error identifying in configuration tracker "+incoming.Site), NORMAL)
-							answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
+							answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Error snatching torrent."}
 						} else {
 							// snatching
 							for _, id := range incoming.Args {
 								release, err := manualSnatchFromID(e, tracker, id, incoming.FLToken)
 								if err != nil {
 									logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
-									answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
+									answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Error snatching torrent."}
 								} else {
-									answer = OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent " + release.ShortString()}
+									answer = OutgoingJSON{Status: responseInfo, Target: notificationArea, Message: "Successfully snatched torrent " + release.ShortString()}
 								}
 								// TODO send responses for all IDs (only 1 from GM Script for now anyway)
 							}
 						}
 					case statsCommand:
-						answer = OutgoingJSON{Status: responseInfo, Message: "STATS!"}
-						// TODO gather stats and send text / or svgs (ie snatched today, this week, etc...)
+						// TODO gather stats and send text (ie snatched today, this week, etc...)
+						answer = OutgoingJSON{Status: responseInfo, Target: statsArea, Message: statusString(e)}
 					default:
-						answer = OutgoingJSON{Status: responseError, Message: errorUnknownCommand + incoming.Command}
+						answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: errorUnknownCommand + incoming.Command}
 					}
 				}
 				// writing answer

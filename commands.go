@@ -108,6 +108,12 @@ Loop:
 					} else {
 						logThis.Info("varroa musica daemon up for "+time.Since(e.startTime).String()+".", NORMAL)
 					}
+				case "status":
+					if e.startTime.IsZero() {
+						logThis.Info("Daemon is not running.", NORMAL)
+					} else {
+						logThis.Info(statusString(e), NORMAL)
+					}
 				case "reseed":
 					if err := Reseed(tracker, orders.Args); err != nil {
 						logThis.Error(errors.Wrap(err, ErrorReseed), NORMAL)
@@ -122,6 +128,28 @@ Loop:
 		}
 	}
 	e.daemonCom.StopCurrent()
+}
+
+func statusString(e *Environment) string {
+	// version
+	status := fmt.Sprintf(FullVersion+"\n", FullName, Version)
+	// uptime
+	status += "Daemon up since " + e.startTime.Format("2006.01.02 15h04") + " (uptime: " + time.Since(e.startTime).String() + ").\n"
+	// autosnatch enabled?
+	conf, err := NewConfig(DefaultConfigurationFile)
+	if err == nil {
+		for _, as := range conf.Autosnatch {
+			status += "Autosnatching for tracker " + as.Tracker + ": "
+			if as.disabledAutosnatching {
+				status += "disabled!\n"
+			} else {
+				status += "enabled.\n"
+			}
+		}
+	}
+
+	// TODO last autosnatched release for tracker X: date
+	return status
 }
 
 // GenerateStats for all labels and the associated HTML index.

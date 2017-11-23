@@ -30,15 +30,16 @@ const (
 // Top directory == exposed categories, such as artists, tags.
 // ex: artists/Radiohead/OK Computer/FILES
 type FuseDir struct {
-	fs            *FS
-	category      string
-	label         string
-	year          string
-	tag           string
-	artist        string
+	fs       *FS
+	category string
+	label    string
+	year     string
+	tag      string
+	artist   string
+	source   string
+
 	release       string
 	releaseSubdir string
-	source        string
 }
 
 func (d *FuseDir) String() string {
