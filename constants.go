@@ -39,9 +39,10 @@ const (
 	DefaultLibraryDB          = "library.db"
 	manualSnatchFilterName    = "remote"
 
-	// Notable ratios
+	// Notable ratios & constants
 	defaultTargetRatio = 1.0
 	warningRatio       = 0.6
+	minimumSeeders     = 5
 
 	// file extensions
 	yamlExt      = ".yaml"

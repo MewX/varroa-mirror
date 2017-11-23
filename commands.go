@@ -199,6 +199,8 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 	for _, id := range IDStrings {
 		var found Release
+		var info *TrackerTorrentInfo
+		var infoErr error
 		findIDsQuery := q.And(q.Eq("Tracker", tracker.Name), q.Eq("TorrentID", id))
 		if err := stats.db.DB.Select(findIDsQuery).First(&found); err != nil {
 			if err == storm.ErrNotFound {
@@ -206,7 +208,7 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				if e.config.DownloadFolderConfigured {
 					logThis.Info("Release with ID "+found.TorrentID+" not found in history, trying to locate in downloads directory.", NORMAL)
 					// get data from tracker
-					info, infoErr := tracker.GetTorrentInfo(id)
+					info, infoErr = tracker.GetTorrentInfo(id)
 					if infoErr != nil {
 						logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 						break
@@ -234,9 +236,9 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 			// was found
 			logThis.Info("Found release with ID "+found.TorrentID+" in history: "+found.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from tracker
-			info, err := tracker.GetTorrentInfo(found.TorrentID)
-			if err != nil {
-				logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
+			info, infoErr = tracker.GetTorrentInfo(found.TorrentID)
+			if infoErr != nil {
+				logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
 			}
 			if daemon.WasReborn() {
@@ -245,6 +247,11 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 			}
 		}
+		// check the number of active seeders
+		if !info.IsWellSeeded() {
+			logThis.Info("This torrent has less than "+strconv.Itoa(minimumSeeders)+" seeders; if that is not already the case, consider reseeding it.", NORMAL)
+		}
+
 	}
 	return nil
 }
