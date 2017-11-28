@@ -260,7 +260,7 @@ func (fdb *FuseDB) uniqueEntries(matcher q.Matcher, field string) ([]string, err
 			allValues = append(allValues, e.RecordLabel)
 		case "Artists":
 			allValues = append(allValues, e.Artists...)
-		case "Folder":
+		case "FolderName":
 			allValues = append(allValues, e.FolderName)
 		}
 	}
