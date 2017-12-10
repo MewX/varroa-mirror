@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	progress      = "Up: %s (%s) | Down: %s (%s) | Buffer: %s (%s) | Warning Buffer: %s (%s) | Ratio:  %.3f (%.3f)"
-	firstProgress = "Up: %s | Down: %s | Buffer: %s | Warning Buffer: %s | Ratio: %.3f"
+	progress      = "Buffer: %s (%s) | Ratio:  %.3f (%.3f) | Up: %s (%s) | Down: %s (%s) | Warning Buffer: %s (%s)"
+	firstProgress = "Buffer: %s | Ratio: %.3f | Up: %s | Down: %s | Warning Buffer: %s"
 )
 
 type StatsEntry struct {
@@ -27,16 +27,16 @@ type StatsEntry struct {
 
 func (se *StatsEntry) String() string {
 	buffer, warningBuffer := se.getBufferValues()
-	return fmt.Sprintf(firstProgress, readableUInt64(se.Up), readableUInt64(se.Down), readableInt64(buffer), readableInt64(warningBuffer), se.Ratio)
+	return fmt.Sprintf(firstProgress, readableInt64(buffer), se.Ratio, readableUInt64(se.Up), readableUInt64(se.Down), readableInt64(warningBuffer))
 }
 
 func (se *StatsEntry) getBufferValues() (int64, int64) {
-	config, err := NewConfig(DefaultConfigurationFile)
+	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		logThis.Error(err, VERBOSEST)
 		return 0, 0
 	}
-	statsConfig, err := config.GetStats(se.Tracker)
+	statsConfig, err := conf.GetStats(se.Tracker)
 	if err != nil {
 		logThis.Error(err, VERBOSEST)
 		return 0, 0
@@ -57,7 +57,7 @@ func (se *StatsEntry) Progress(previous *StatsEntry) string {
 	}
 	buffer, warningBuffer := se.getBufferValues()
 	dup, ddown, dbuff, dwbuff, dratio := se.Diff(previous)
-	return fmt.Sprintf(progress, readableUInt64(se.Up), readableInt64(dup), readableUInt64(se.Down), readableInt64(ddown), readableInt64(buffer), readableInt64(dbuff), readableInt64(warningBuffer), readableInt64(dwbuff), se.Ratio, dratio)
+	return fmt.Sprintf(progress, readableInt64(buffer), readableInt64(dbuff), se.Ratio, dratio, readableUInt64(se.Up), readableInt64(dup), readableUInt64(se.Down), readableInt64(ddown), readableInt64(warningBuffer), readableInt64(dwbuff))
 }
 
 // TODO do something about this awful thing
