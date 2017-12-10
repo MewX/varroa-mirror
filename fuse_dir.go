@@ -113,7 +113,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		for _, f := range fileInfos {
 			if f.Name() == name {
 				if f.IsDir() {
-					return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source}, release: d.release, releaseSubdir: filepath.Join(d.releaseSubdir, name), fs: d.fs}, nil
+					return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, release: d.release, releaseSubdir: filepath.Join(d.releaseSubdir, name), fs: d.fs}, nil
 				}
 				return &FuseFile{release: d.release, releaseSubdir: d.releaseSubdir, name: name, fs: d.fs}, nil
 			}
@@ -164,7 +164,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			return nil, fuse.EIO
 		}
 		// we know there's at least 1 entry with this artist.
-		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: name, source: d.path.source}, fs: d.fs}, nil
+		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: name, source: d.path.source, format: d.path.format}, fs: d.fs}, nil
 	}
 	// if we have an artist, filter all releases with that artist
 	matcher = q.And(matcher, InSlice("Artists", d.path.artist))
@@ -183,7 +183,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			return nil, fuse.EIO
 		}
 		// release was found
-		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source}, release: name, fs: d.fs}, nil
+		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, release: name, fs: d.fs}, nil
 	}
 	logThis.Info("Error during lookup, nothing matched "+name, VERBOSESTEST)
 	return nil, nil

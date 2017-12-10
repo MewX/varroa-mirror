@@ -30,7 +30,7 @@ var fuseCategories = []fuseCategory{
 	{id: recordLabel, label: "record labels", field: "RecordLabel", validPath: []int{recordLabel, artist, release}},
 	{id: year, label: "years", field: "Year", validPath: []int{year, artist, release}},
 	{id: source, label: "source", field: "Source", validPath: []int{source, format, artist, release}},
-	// {id: format, label: "format", field: "Format", validPath: []int{format, source, artist, release}},
+	{id: format, label: "format", field: "Format", validPath: []int{format, source, artist, release}},
 	// {id: release, field: "FolderName", validPath: []int{}},
 }
 
@@ -40,7 +40,7 @@ func fuseCategoryByLabel(label string) (fuseCategory, error) {
 			return fc, nil
 		}
 	}
-	return fuseCategory{}, errors.New("cannot find category for label" + label)
+	return fuseCategory{}, errors.New("cannot find category for label " + label)
 }
 
 type FusePath struct {
@@ -50,10 +50,11 @@ type FusePath struct {
 	tag      string
 	artist   string
 	source   string
+	format   string
 }
 
 func (d *FusePath) String() string {
-	return fmt.Sprintf("category %s, tag %s, label %s, year %s, source %s, artist %s", d.category, d.tag, d.label, d.year, d.source, d.artist)
+	return fmt.Sprintf("category %s, tag %s, label %s, year %s, source %s, format %s, artist %s", d.category, d.tag, d.label, d.year, d.source, d.format, d.artist)
 }
 
 func (d *FusePath) Category() string {
@@ -73,6 +74,8 @@ func (d *FusePath) Category() string {
 		return d.year
 	case source:
 		return d.source
+	case format:
+		return d.format
 	default:
 		return ""
 	}
@@ -95,6 +98,8 @@ func (d *FusePath) SetCategory(value string) error {
 		d.year = value
 	case source:
 		d.source = value
+	case format:
+		d.format = value
 	default:
 		return errors.New("category not found: " + value)
 	}

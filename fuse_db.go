@@ -26,6 +26,7 @@ type FuseEntry struct {
 	Tracker     []string `storm:"index"`
 	RecordLabel string   `storm:"index"`
 	Source      string   `storm:"index"`
+	Format      string   `storm:"index"`
 }
 
 func (fe *FuseEntry) reset() {
@@ -36,6 +37,7 @@ func (fe *FuseEntry) reset() {
 	fe.Tracker = []string{}
 	fe.RecordLabel = ""
 	fe.Source = ""
+	fe.Format = ""
 }
 
 func (fe *FuseEntry) Load(root string) error {
@@ -103,9 +105,10 @@ func (fe *FuseEntry) Load(root string) error {
 				fe.Tags = gt.Response.Group.Tags
 				// source
 				fe.Source = gt.Source()
+				// format
+				fe.Format = gt.ShortEncoding()
 			}
 		}
-
 	} else {
 		return errors.New("Error, no metadata found")
 	}
@@ -254,6 +257,8 @@ func (fdb *FuseDB) uniqueEntries(matcher q.Matcher, field string) ([]string, err
 			allValues = append(allValues, e.Tags...)
 		case "Source":
 			allValues = append(allValues, e.Source)
+		case "Format":
+			allValues = append(allValues, e.Format)
 		case "Year":
 			allValues = append(allValues, strconv.Itoa(e.Year))
 		case "RecordLabel":
