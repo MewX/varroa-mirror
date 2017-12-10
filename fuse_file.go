@@ -40,8 +40,9 @@ func (f *FuseFile) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Inode = stat.Ino
 	a.Blocks = uint64(stat.Blocks)
 	a.BlockSize = uint32(stat.Blksize)
-	a.Atime = time.Unix(stat.Atim.Sec, stat.Atim.Nsec)
-	a.Ctime = time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec)
+	// forced int64 for FreeBSD compatibility
+	a.Atime = time.Unix(int64(stat.Atim.Sec), int64(stat.Atim.Nsec))
+	a.Ctime = time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec))
 	a.Size = uint64(stat.Size)
 	a.Mode = 0555 // readonly
 	return nil
