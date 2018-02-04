@@ -78,7 +78,7 @@ func (d *Daemon) Stop(daemonProcess *os.Process) {
 	if err := d.context.Release(); err != nil {
 		logThis.Error(errors.Wrap(err, errorReleasingDaemon), NORMAL)
 	}
-	if err := os.Remove(pidFile); err != nil {
+	if err := os.Remove(d.context.PidFileName); err != nil {
 		logThis.Error(errors.Wrap(err, errorRemovingPID), NORMAL)
 	}
 }

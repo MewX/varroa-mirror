@@ -38,6 +38,7 @@ const (
 	DefaultDownloadsDB        = "downloads.db"
 	DefaultLibraryDB          = "library.db"
 	manualSnatchFilterName    = "remote"
+	overallPrefix             = "overall"
 
 	// Notable ratios & constants
 	defaultTargetRatio = 1.0

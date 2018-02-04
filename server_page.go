@@ -146,14 +146,14 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 			Name  string
 			Label string
 		}{
-			{Name: "Buffer", Label: label + "_overall_" + bufferStatsFile},
-			{Name: "Upload", Label: label + "_overall_" + uploadStatsFile},
-			{Name: "Download", Label: label + "_overall_" + downloadStatsFile},
-			{Name: "Ratio", Label: label + "_overall_" + ratioStatsFile},
-			{Name: "Buffer/day", Label: label + "_overall_" + perDay + bufferStatsFile},
-			{Name: "Upload/day", Label: label + "_overall_" + perDay + uploadStatsFile},
-			{Name: "Download/day", Label: label + "_overall_" + perDay + downloadStatsFile},
-			{Name: "Ratio/day", Label: label + "_overall_" + perDay + ratioStatsFile},
+			{Name: "Buffer", Label: label + "_" + overallPrefix + "_" + bufferStatsFile},
+			{Name: "Upload", Label: label + "_" + overallPrefix + "_" + uploadStatsFile},
+			{Name: "Download", Label: label + "_" + overallPrefix + "_" + downloadStatsFile},
+			{Name: "Ratio", Label: label + "_" + overallPrefix + "_" + ratioStatsFile},
+			{Name: "Buffer/day", Label: label + "_" + overallPrefix + "_" + perDay + bufferStatsFile},
+			{Name: "Upload/day", Label: label + "_" + overallPrefix + "_" + perDay + uploadStatsFile},
+			{Name: "Download/day", Label: label + "_" + overallPrefix + "_" + perDay + downloadStatsFile},
+			{Name: "Ratio/day", Label: label + "_" + overallPrefix + "_" + perDay + ratioStatsFile},
 			{Name: "Number Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
 			{Name: "Size Snatched/day", Label: label + "_" + sizeSnatchedPerDayFile},
 		}

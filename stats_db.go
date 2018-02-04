@@ -389,7 +389,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	if err != nil {
 		return errors.New("could not get all collected stats for " + tracker)
 	}
-	if err := generateGraphs(tracker, "overall", allStatsEntries, firstStats.Timestamp); err != nil {
+	if err := generateGraphs(tracker, overallPrefix, allStatsEntries, firstStats.Timestamp); err != nil {
 		return err
 	}
 	// 2. collect stats since last week
@@ -438,7 +438,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allDailyDeltas := CalculateDeltas(allDailyStats)
 	// generate graphs
 	if len(allDailyDeltas) != 0 {
-		if err := generateDeltaGraphs(tracker, "overall_per_day", allDailyDeltas, allDailyDeltas[0].Timestamp); err != nil {
+		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_day", allDailyDeltas, allDailyDeltas[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
@@ -456,7 +456,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allWeeklyDeltas := CalculateDeltas(allWeeklyStats)
 	// generate graphs
 	if len(allWeeklyDeltas) != 0 {
-		if err := generateDeltaGraphs(tracker, "overall_per_week", allWeeklyDeltas, allWeeklyDeltas[0].Timestamp); err != nil {
+		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_week", allWeeklyDeltas, allWeeklyDeltas[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
@@ -474,7 +474,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allMonthlyDeltas := CalculateDeltas(allMonthlyStats)
 	// generate graphs
 	if len(allMonthlyDeltas) != 0 {
-		if err := generateDeltaGraphs(tracker, "overall_per_month", allMonthlyDeltas, allMonthlyDeltas[0].Timestamp); err != nil {
+		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_month", allMonthlyDeltas, allMonthlyDeltas[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
