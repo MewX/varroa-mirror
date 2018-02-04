@@ -79,6 +79,7 @@ func (ct *ConfigTracker) String() string {
 
 type ConfigAutosnatch struct {
 	Tracker               string
+	LocalAddress          string `yaml:"local_address"`
 	IRCServer             string `yaml:"irc_server"`
 	IRCKey                string `yaml:"irc_key"`
 	IRCSSL                bool   `yaml:"irc_ssl"`
@@ -127,6 +128,9 @@ func (ca *ConfigAutosnatch) Check() error {
 
 func (ca *ConfigAutosnatch) String() string {
 	txt := "Autosnatch configuration for " + ca.Tracker + "\n"
+	if ca.LocalAddress != "" {
+		txt += "\tLocal address: " + ca.LocalAddress + "\n"
+	}
 	txt += "\tIRC server: " + ca.IRCServer + "\n"
 	txt += "\tIRC KeyPassword: " + ca.IRCKey + "\n"
 	txt += "\tUse SSL: " + fmt.Sprintf("%v", ca.IRCSSL) + "\n"

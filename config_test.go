@@ -44,6 +44,7 @@ func TestConfig(t *testing.T) {
 	check.Equal(2, len(c.Autosnatch))
 	a := c.Autosnatch[0]
 	check.Equal("blue", a.Tracker)
+	check.Equal("1.2.3.4", a.LocalAddress)
 	check.Equal("irc.server.net:6697", a.IRCServer)
 	check.Equal("kkeeyy", a.IRCKey)
 	check.True(a.IRCSSL)

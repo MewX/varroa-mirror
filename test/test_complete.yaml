@@ -63,6 +63,7 @@ mpd:
 
 autosnatch:
   - tracker: blue
+    local_address: 1.2.3.4
     irc_server: irc.server.net:6697
     irc_key: kkeeyy
     irc_ssl: true

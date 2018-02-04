@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/thoj/go-ircevent"
+	"gitlab.com/passelecasque/go-ircevent"
 )
 
 const (
@@ -124,6 +124,9 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 	}
 
 	IRCClient := irc.IRC(autosnatchConfig.BotName, tracker.User)
+	if autosnatchConfig.LocalAddress != "" {
+		IRCClient.LocalAddress = autosnatchConfig.LocalAddress
+	}
 	IRCClient.UseTLS = autosnatchConfig.IRCSSL
 	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: autosnatchConfig.IRCSSLSkipVerify}
 	IRCClient.AddCallback("001", func(e *irc.Event) {
