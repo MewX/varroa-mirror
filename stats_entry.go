@@ -10,19 +10,23 @@ import (
 const (
 	progress      = "Buffer: %s (%s) | Ratio:  %.3f (%.3f) | Up: %s (%s) | Down: %s (%s) | Warning Buffer: %s (%s)"
 	firstProgress = "Buffer: %s | Ratio: %.3f | Up: %s | Down: %s | Warning Buffer: %s"
+
+	currentSchemaVersion = 1
 )
 
 type StatsEntry struct {
-	ID           uint32 `storm:"id,increment"`
-	Tracker      string `storm:"index"`
-	Up           uint64
-	Down         uint64
-	Ratio        float64
-	Timestamp    time.Time `storm:"index"`
-	Collected    bool      `storm:"index"`
-	StartOfDay   bool      `storm:"index"`
-	StartOfWeek  bool      `storm:"index"`
-	StartOfMonth bool      `storm:"index"`
+	ID            uint32 `storm:"id,increment"`
+	Tracker       string `storm:"index"`
+	Up            uint64
+	Down          uint64
+	Ratio         float64
+	Timestamp     time.Time
+	TimestampUnix int64 `storm:"index"`
+	Collected     bool  `storm:"index"`
+	StartOfDay    bool  `storm:"index"`
+	StartOfWeek   bool  `storm:"index"`
+	StartOfMonth  bool  `storm:"index"`
+	SchemaVersion int
 }
 
 func (se *StatsEntry) String() string {
@@ -112,6 +116,7 @@ func (se *StatsEntry) FromSlice(slice []string) error {
 	if err != nil {
 		return err
 	}
+	se.TimestampUnix = int64(timestamp)
 	se.Timestamp = time.Unix(timestamp, 0)
 	up, err := strconv.ParseUint(slice[1], 10, 64)
 	if err != nil {
@@ -148,7 +153,9 @@ func InterpolateStats(previous, next StatsEntry, targetTime time.Time) (*StatsEn
 	ratioOffset := previous.Ratio - ratioSlope*float64(previous.Timestamp.Unix())
 	virtualStats.Ratio = ratioSlope*float64(targetTime.Unix()) + ratioOffset
 	virtualStats.Timestamp = targetTime
+	virtualStats.TimestampUnix = targetTime.Unix()
 	virtualStats.Tracker = previous.Tracker
+	virtualStats.SchemaVersion = currentSchemaVersion
 	return virtualStats, nil
 }
 

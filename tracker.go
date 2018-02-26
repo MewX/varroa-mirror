@@ -230,12 +230,14 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	}
 	// return StatsEntry
 	stats := &StatsEntry{
-		Tracker:   t.Name,
-		Up:        uint64(s.Response.Stats.Uploaded),
-		Down:      uint64(s.Response.Stats.Downloaded),
-		Ratio:     ratio,
-		Timestamp: time.Now(),
-		Collected: true,
+		Tracker:       t.Name,
+		Up:            uint64(s.Response.Stats.Uploaded),
+		Down:          uint64(s.Response.Stats.Downloaded),
+		Ratio:         ratio,
+		Timestamp:     time.Now(),
+		TimestampUnix: time.Now().Unix(),
+		Collected:     true,
+		SchemaVersion: currentSchemaVersion,
 	}
 	return stats, nil
 }
