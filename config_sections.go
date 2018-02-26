@@ -37,6 +37,7 @@ func (cg *ConfigGeneral) Check() error {
 	return nil
 }
 
+// String representation for ConfigGeneral.
 func (cg *ConfigGeneral) String() string {
 	txt := "General configuration:\n"
 	txt += "\tLog level: " + strconv.Itoa(cg.LogLevel) + "\n"

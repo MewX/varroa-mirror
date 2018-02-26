@@ -19,7 +19,7 @@ format:
   script:
     - go get github.com/docopt/docopt-go
     - go get github.com/wcharczuk/go-chart
-    - go get github.com/thoj/go-ircevent
+    - go get gitlab.com/passelecasque/go-ircevent
     - go get github.com/stretchr/testify/assert
     - go get github.com/gregdel/pushover
     - go get github.com/dustin/go-humanize
@@ -53,7 +53,7 @@ compiled_varroa_dev:
   script:
     - go get github.com/docopt/docopt-go
     - go get github.com/wcharczuk/go-chart
-    - go get github.com/thoj/go-ircevent
+    - go get gitlab.com/passelecasque/go-ircevent
     - go get github.com/stretchr/testify/assert
     - go get github.com/gregdel/pushover
     - go get github.com/dustin/go-humanize
@@ -99,7 +99,7 @@ compiled_varroa_released_version:
   script:
     - go get github.com/docopt/docopt-go
     - go get github.com/wcharczuk/go-chart
-    - go get github.com/thoj/go-ircevent
+    - go get gitlab.com/passelecasque/go-ircevent
     - go get github.com/stretchr/testify/assert
     - go get github.com/gregdel/pushover
     - go get github.com/dustin/go-humanize
