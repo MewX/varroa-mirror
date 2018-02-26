@@ -96,6 +96,7 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking notifications")
 	check.Equal("tokenpushovertoken", c.Notifications.Pushover.Token)
 	check.Equal("userpushoveruser", c.Notifications.Pushover.User)
+	check.Equal(true, c.Notifications.Pushover.IncludeBufferGraph)
 	// library
 	fmt.Println("Checking library")
 	check.Equal("library", c.Library.Directory)

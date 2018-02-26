@@ -403,7 +403,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		}
 	}
 	if len(lastWeekStatsEntries) != 0 {
-		if err := generateGraphs(tracker, "lastweek", lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
+		if err := generateGraphs(tracker, lastWeekPrefix, lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
@@ -420,7 +420,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 		}
 	}
 	if len(lastMonthStatsEntries) != 0 {
-		if err := generateGraphs(tracker, "lastmonth", lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
+		if err := generateGraphs(tracker, lastMonthPrefix, lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}

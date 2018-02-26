@@ -2,7 +2,7 @@ package varroa
 
 const (
 	FullName      = "varroa musica"
-	Version       = "v20dev"
+	Version       = "v20"
 	FullVersion   = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
@@ -39,6 +39,8 @@ const (
 	DefaultLibraryDB          = "library.db"
 	manualSnatchFilterName    = "remote"
 	overallPrefix             = "overall"
+	lastWeekPrefix            = "lastweek"
+	lastMonthPrefix           = "lastmonth"
 
 	// Notable ratios & constants
 	defaultTargetRatio = 1.0

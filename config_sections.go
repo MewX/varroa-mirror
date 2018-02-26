@@ -277,8 +277,9 @@ type ConfigNotifications struct {
 }
 
 type ConfigPushover struct {
-	User  string
-	Token string
+	User               string
+	Token              string
+	IncludeBufferGraph bool `yaml:"include_buffer_graph"`
 }
 
 func (cp *ConfigPushover) Check() error {
@@ -295,6 +296,7 @@ func (cp *ConfigPushover) String() string {
 	txt := "Pushover configuration:\n"
 	txt += "\tUser: " + cp.User + "\n"
 	txt += "\tToken: " + cp.Token + "\n"
+	txt += "\tInclude Buffer Graph: " + fmt.Sprintf("%v", cp.IncludeBufferGraph) + "\n"
 	return txt
 }
 
