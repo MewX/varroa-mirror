@@ -5,7 +5,7 @@
 // @include        http*://*redacted.ch/*
 // @include        http*://*notwhat.cd/*
 // @include        http*://*apollo.rip/*
-// @version        11
+// @version        20
 // @date           2017-11
 // @grant          GM_getValue
 // @grant          GM_setValue
@@ -51,6 +51,9 @@
 	const vmCannotGet = 'VM is offline, cannot get torrent (click to check again).';
 	const vmLinkInfo = 'Send to varroa musica';
 
+	const notification = 0;
+	const statsInfo = 1;
+
 	let obsElem;
 	let linkLabel = 'VM';
 	let linkLabelFL = 'VM FL';
@@ -60,14 +63,21 @@
 	}
 	let isWebSocketConnected = false;
 	let vmStatusDiv = null;
+	let vmStatusInfoDiv = null;
 	let sock;
 	let hello;
+	let getInfo;
 	let alreadyAddedLinks = false;
 
 	if (settings) {
 		if (settings.https === true) {
 			hello = {
 				Command: 'hello',
+				Token: settings.token,
+				Site: settings.site
+			};
+			getInfo = {
+				Command: 'stats',
 				Token: settings.token,
 				Site: settings.site
 			};
@@ -174,20 +184,34 @@
 			newBoxContent.innerHTML += makeStatsLink('Snatched/day', 'snatches_per_day.png') + makeStatsLink('Size snatched/day', 'size_snatched_per_day.png') + makeStatsLink('Top Tags', 'top_tags.png') + makeStatsLink('Snatched/filer', 'total_snatched_by_filter.png');
 			newBox.appendChild(newBoxContent);
 			main.insertBefore(newBox, main.children[1]);
+			if (settings.https) {
+				setVMStatusInfo('varroa musica status.');
+			}
+		}
+	}
+
+	function askForStatusInfoOnceConnected() {
+		if (isWebSocketConnected) {
+			sock.send(JSON.stringify(getInfo));
+		} else {
+			setTimeout(askForStatusInfoOnceConnected, 100);
 		}
 	}
 
 	function newSocket() {
-    // TODO use settings.token
+		// TODO use settings.token
 		sock = new WebSocket('wss://' + settings.url + ':' + settings.port + '/ws');
-	// Add unknown indicator
+		// Add unknown indicator
 		setVMStatus(vmUnknown);
 
 		sock.onopen = function () {
 			console.log('Connected to the server');
 			isWebSocketConnected = true;
-		// Send the msg object as a JSON-formatted string.
+			// Send the msg object as a JSON-formatted string.
 			sock.send(JSON.stringify(hello));
+			if (userPage) {
+				askForStatusInfoOnceConnected();
+			}
 		};
 		sock.onerror = () => {
 			console.log('Websocket error.');
@@ -197,15 +221,18 @@
 		sock.onmessage = function (evt) {
 			console.log(evt.data);
 			const msg = JSON.parse(evt.data);
-
 			if (msg.Status === 0) {
-				if (msg.Message === 'hello') {
-					setVMStatus(vmOK);
-				// Safe to add links
-					addLinks();
-				} else {
-					// TODO change back after a while
-					setVMStatus('VM: ' + msg.Message);
+				if (msg.Target === notification || msg.Target === undefined) {
+					if (msg.Message === 'hello') {
+						setVMStatus(vmOK);
+						// Safe to add links
+						addLinks();
+					} else {
+						// TODO change back after a while
+						setVMStatus('VM: ' + msg.Message);
+					}
+				} else if (msg.Target === statsInfo && userPage) {
+					setVMStatusInfo(msg.Message);
 				}
 			}
 		};
@@ -284,28 +311,54 @@
 		return parseInt(tokens.getElementsByClassName('stat')[0].getElementsByTagName('a')[0].innerHTML, 10) > 0;
 	}
 
-// -- Status -------------------------------------------------------------------
+    // -- Status Info -------------------------------------------------------------------
+
+	function setVMStatusInfo(label) {
+		const a = document.createElement('a');
+		a.innerHTML = label.replace(/\n/g, '<br />');
+		if (settings.https === true) {
+			a.addEventListener('click', newSocket, false);
+		}
+		if (vmStatusInfoDiv === null) {
+			vmStatusInfoDiv = document.createElement('div');
+			vmStatusInfoDiv.appendChild(a);
+			const mainVMStatsDiv = document.getElementById('varroa_stats');
+			mainVMStatsDiv.insertBefore(vmStatusInfoDiv, mainVMStatsDiv.firstChild);
+		} else {
+			vmStatusInfoDiv.replaceChild(a, vmStatusInfoDiv.lastChild);
+		}
+	}
+
+	// -- Status Info -------------------------------------------------------------------
 
 	function setVMStatus(label) {
 		const a = document.createElement('a');
-		a.innerHTML = label;
+		a.innerHTML = label.replace(/\n/g, '<br />');
 		if (settings.https === true) {
 			a.addEventListener('click', newSocket, false);
 		}
 		if (vmStatusDiv === null) {
 			vmStatusDiv = document.createElement('div');
 			vmStatusDiv.id = 'varroa';
+			const vmStatusP = document.createElement('p');
+			vmStatusP.innerHTML = 'varroa musica';
+			vmStatusDiv.appendChild(vmStatusP);
+
 			vmStatusDiv.appendChild(a);
 			document.body.appendChild(vmStatusDiv);
 		} else {
-			vmStatusDiv.replaceChild(a, vmStatusDiv.firstChild);
+			vmStatusDiv.replaceChild(a, vmStatusDiv.lastChild);
 		}
 	}
 
 	(function () {
 		'use strict';
-		const css = '#varroa a {margin: 3px 0 15px 0;position: fixed;bottom: 0;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; cursor: pointer;}';
+		const css = '#varroa {bottom: 20px; left: 20px; position: fixed; width: 310px; height: auto; margin: 0px; list-style-type: none; z-index: 10000000;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; border-radius: 5px; } ';
+		const css2 = '#varroa a {bottom: 0; left: 0px; position: relative; width: auto; height: auto; margin: 0px; background-color: #FFFFFF ;color: #000000; cursor: pointer }';
+		const css3 = '#varroa p {bottom: 0; left: 0px; position: relative; width: auto; height: auto; margin: 0px; background-color: #FFFFFF ;color: #000000;text-decoration: underline; }';
 		GM.addStyle(css);
+		GM.addStyle(css2);
+		GM.addStyle(css3);
 	})();
 
 // -- Settings -----------------------------------------------------------------

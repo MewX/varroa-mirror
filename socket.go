@@ -95,8 +95,8 @@ func (dc *DaemonCom) RunClient() error {
 func (dc *DaemonCom) waitForErrors(exitOnError bool) {
 	for {
 		<-dc.err
-		//err := <-dc.err
-		//logThis.Info(fmt.Sprintf("Got error %s, closing connection (server:%v)", err.Error(), dc.IsServer), VERBOSESTEST)
+		// err := <-dc.err
+		// logThis.Info(fmt.Sprintf("Got error %s, closing connection (server:%v)", err.Error(), dc.IsServer), VERBOSESTEST)
 		dc.endThisConnection <- struct{}{}
 		if exitOnError {
 			break
@@ -107,7 +107,7 @@ func (dc *DaemonCom) waitForErrors(exitOnError bool) {
 func (dc *DaemonCom) serverReceive() {
 	// goroutine to read from socket
 	for { // dc.IsListening {
-		//logThis.Info("Server waiting for connection.", VERBOSESTEST)
+		// logThis.Info("Server waiting for connection.", VERBOSESTEST)
 		conn, err := (*dc.listener).Accept()
 		if err != nil {
 			if dc.IsListening {
@@ -122,7 +122,7 @@ func (dc *DaemonCom) serverReceive() {
 		dc.IsActive = true
 		dc.Unlock()
 		dc.ClientConnected <- struct{}{}
-		//logThis.Info("Server connected.", VERBOSESTEST)
+		// logThis.Info("Server connected.", VERBOSESTEST)
 
 		go dc.send()
 		go dc.read()
@@ -134,13 +134,13 @@ func (dc *DaemonCom) serverReceive() {
 		dc.Unlock()
 		(*dc.connection).Close()
 		dc.ClientDisconnected <- struct{}{}
-		//logThis.Info("Closing server connection.", VERBOSESTEST)
+		// logThis.Info("Closing server connection.", VERBOSESTEST)
 	}
 }
 
 func (dc *DaemonCom) read() {
 	for {
-		//logThis.Info(fmt.Sprintf("Waiting for read (server:%v).", dc.IsServer), VERBOSESTEST)
+		// logThis.Info(fmt.Sprintf("Waiting for read (server:%v).", dc.IsServer), VERBOSESTEST)
 		buf := make([]byte, 2048)
 		n, err := (*dc.connection).Read(buf[:])
 		if err != nil {
@@ -154,7 +154,7 @@ func (dc *DaemonCom) read() {
 			dc.RUnlock()
 			break
 		}
-		//fmt.Println("HHHH" + string(buf[:n]))
+		// fmt.Println("HHHH" + string(buf[:n]))
 
 		stopAfterThis := false
 		for _, part := range strings.Split(string(buf[:n]), unixSocketMessageSeparator) {
@@ -170,7 +170,7 @@ func (dc *DaemonCom) read() {
 			}
 		}
 		if stopAfterThis {
-			//logThis.Info("Client: Received order to stop connection", VERBOSESTEST)
+			// logThis.Info("Client: Received order to stop connection", VERBOSESTEST)
 			dc.endThisConnection <- struct{}{}
 			break
 		}
@@ -193,7 +193,7 @@ func (dc *DaemonCom) clientReceive() {
 func (dc *DaemonCom) send() {
 	// goroutine to write to socket
 	for {
-		//logThis.Info(fmt.Sprintf("Waiting for something to send (server:%v).", dc.IsServer), VERBOSESTEST)
+		// logThis.Info(fmt.Sprintf("Waiting for something to send (server:%v).", dc.IsServer), VERBOSESTEST)
 		messageToLog := <-dc.Outgoing
 		messageToLog = append(messageToLog, []byte(unixSocketMessageSeparator)...)
 		// writing to socket with a separator, so that the other instance, reading more slowly,
@@ -209,7 +209,7 @@ func (dc *DaemonCom) send() {
 		}
 		// we've just told the other instance talking was over, ending this connection.
 		if string(messageToLog) == stopCommand && dc.IsServer {
-			//logThis.Info("Server: Sent order to stop connection", VERBOSESTEST)
+			// logThis.Info("Server: Sent order to stop connection", VERBOSESTEST)
 			dc.endThisConnection <- struct{}{}
 			dc.IsActive = false
 			break
@@ -220,7 +220,7 @@ func (dc *DaemonCom) send() {
 
 func (dc *DaemonCom) StopCurrent() {
 	if dc.IsActive {
-		//logThis.Info("Stopping current connection.", VERBOSESTEST)
+		// logThis.Info("Stopping current connection.", VERBOSESTEST)
 		dc.endThisConnection <- struct{}{}
 	}
 

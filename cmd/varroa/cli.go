@@ -47,6 +47,8 @@ Daemon Commands:
 		stops it.
 	uptime:
 		shows how long it has been running.
+	status
+		returns information about the daemon status.
 
 Commands:
 
@@ -92,6 +94,9 @@ Commands:
 		record labels, years. Call 'fusermount -u MOUNT_POINT' to stop.
 	library fuse:
 		similar to downloads fuse, but for your music library.
+	reseed:
+		reseed a downloaded release using tracker metadata. Does not check
+		the torrent files actually match the contents in the given PATH.
 
 Configuration Commands:
 
@@ -111,7 +116,7 @@ Configuration Commands:
 		decrypts your encrypted configuration file.
 
 Usage:
-	varroa (start|stop|uptime)
+	varroa (start|stop|uptime|status)
 	varroa stats
 	varroa refresh-metadata <TRACKER> <ID>...
 	varroa check-log <TRACKER> <LOG_FILE>
@@ -121,6 +126,7 @@ Usage:
 	varroa show-config
 	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean|fuse <MOUNT_POINT>)
 	varroa library fuse <MOUNT_POINT>
+	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -136,6 +142,7 @@ type varroaArguments struct {
 	start           bool
 	stop            bool
 	uptime          bool
+	status          bool
 	stats           bool
 	refreshMetadata bool
 	checkLog        bool
@@ -154,10 +161,12 @@ type varroaArguments struct {
 	downloadClean   bool
 	downloadFuse    bool
 	libraryFuse     bool
+	reseed          bool
 	useFLToken      bool
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
+	path            string
 	artistName      string
 	mountPoint      string
 	requiresDaemon  bool
@@ -180,6 +189,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.start = args["start"].(bool)
 	b.stop = args["stop"].(bool)
 	b.uptime = args["uptime"].(bool)
+	b.status = args["status"].(bool)
 	b.stats = args["stats"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
@@ -203,6 +213,16 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	if args["library"].(bool) {
 		b.libraryFuse = args["fuse"].(bool)
+	}
+	if args["reseed"].(bool) {
+		b.reseed = true
+		b.path = args["<PATH>"].(string)
+		if !varroa.DirectoryExists(b.path) {
+			return errors.New("Target path does not exist")
+		}
+		if !varroa.DirectoryContainsMusicAndMetadata(b.path) {
+			return errors.New("Target path does not seem to contain music files and tracker metadata")
+		}
 	}
 	// arguments
 	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
@@ -250,14 +270,14 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		b.logFile = logPath
 	}
-	if b.refreshMetadata || b.snatch || b.checkLog || b.info {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.info || b.reseed {
 		b.trackerLabel = args["<TRACKER>"].(string)
 	}
 
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.reseed {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
@@ -279,6 +299,9 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	if b.uptime {
 		out.Command = "uptime"
 	}
+	if b.status {
+		out.Command = "status"
+	}
 	if b.refreshMetadata {
 		out.Command = "refresh-metadata"
 		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
@@ -295,6 +318,10 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	if b.checkLog {
 		out.Command = "check-log"
 		out.Args = []string{b.logFile}
+	}
+	if b.reseed {
+		out.Command = "reseed"
+		out.Args = []string{b.path}
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {

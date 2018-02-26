@@ -193,3 +193,8 @@ func (a *TrackerTorrentInfo) Load(path string) error {
 	}
 	return a.LoadFromBytes(bytes, false)
 }
+
+// IsWellSeeded if it has more than minimumSeeders.
+func (a *TrackerTorrentInfo) IsWellSeeded() bool {
+	return a.FullInfo().Response.Torrent.Seeders >= minimumSeeders
+}

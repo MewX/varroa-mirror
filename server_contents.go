@@ -1,10 +1,9 @@
 package varroa
 
 import (
-	"html/template"
-
 	"bufio"
 	"bytes"
+	"html/template"
 
 	"github.com/pkg/errors"
 	"github.com/tdewolff/minify"

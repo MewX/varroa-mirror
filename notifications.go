@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
@@ -26,7 +29,11 @@ func Notify(msg, tracker, msgType string) error {
 		atLeastOneError := false
 		if config.pushoverConfigured {
 			pushOver := &Notification{client: pushover.New(config.Notifications.Pushover.Token), recipient: pushover.NewRecipient(config.Notifications.Pushover.User)}
-			if err := pushOver.Send(tracker+": "+msg, config.gitlabPagesConfigured, link); err != nil {
+			var pngLink string
+			if tracker != FullName && strings.HasPrefix(msg, statsNotificationPrefix) && config.Notifications.Pushover.IncludeBufferGraph {
+				pngLink = filepath.Join(StatsDir, tracker+"_"+lastWeekPrefix+"_"+bufferStatsFile+pngExt)
+			}
+			if err := pushOver.Send(tracker+": "+msg, config.gitlabPagesConfigured, link, pngLink); err != nil {
 				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
 				atLeastOneError = true
 			}
@@ -52,7 +59,7 @@ type Notification struct {
 	recipient *pushover.Recipient
 }
 
-func (n *Notification) Send(message string, addLink bool, link string) error {
+func (n *Notification) Send(message string, addLink bool, link, pngLink string) error {
 	if n.client == nil || n.recipient == nil {
 		return errors.New("Could not send notification: " + message)
 	}
@@ -62,11 +69,22 @@ func (n *Notification) Send(message string, addLink bool, link string) error {
 	} else {
 		pushoverMessage = pushover.NewMessageWithTitle(message, FullName)
 	}
+	if pngLink != "" {
+		file, err := os.Open(pngLink)
+		if err != nil {
+			logThis.Error(errors.Wrap(err, "error adding png attachment to pushover notification"), VERBOSE)
+		} else {
+			defer file.Close()
+			if addErr := pushoverMessage.AddAttachment(file); addErr != nil {
+				logThis.Error(errors.Wrap(err, "error adding png attachment to pushover notification"), VERBOSE)
+			}
+		}
+	}
 	_, err := n.client.SendMessage(pushoverMessage, n.recipient)
 	return err
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 type WebHookJSON struct {
 	Site    string

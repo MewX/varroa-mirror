@@ -1,7 +1,6 @@
 package varroa
 
 import (
-	"path/filepath"
 	"sync"
 
 	"github.com/asdine/storm"
@@ -42,7 +41,7 @@ func NewDatabase(path string) (*Database, error) {
 	var err error
 	onceDatabase.Do(func() {
 		db := &Database{}
-		if err = db.Open(filepath.Join(StatsDir, DefaultHistoryDB)); err != nil {
+		if err = db.Open(path); err != nil {
 			err = errors.Wrap(err, "Error opening history database")
 			return
 		}

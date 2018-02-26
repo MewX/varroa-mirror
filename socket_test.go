@@ -17,7 +17,7 @@ func TestDaemonSocket(t *testing.T) {
 	env := &Environment{config: c}
 	logThis = NewLogThis(env)
 	// cleanup if things fail
-	//defer os.Remove(daemonSocket)
+	// defer os.Remove(daemonSocket)
 
 	dcServer := NewDaemonComServer()
 	dcClient := NewDaemonComClient()

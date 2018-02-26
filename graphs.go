@@ -220,7 +220,7 @@ func combineAllPNGs(combined string, graphs ...string) error {
 			}
 		}
 	}
-	//rectangle for the big image
+	// rectangle for the big image
 	r := image.Rectangle{Min: image.Point{X: 0, Y: 0}, Max: image.Point{X: maxX, Y: maxY}}
 	// new image
 	rgba := image.NewRGBA(r)

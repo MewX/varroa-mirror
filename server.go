@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
-	"github.com/subosito/norma"
 )
 
 const (
@@ -28,6 +27,11 @@ const (
 	responseError
 )
 
+const (
+	notificationArea = iota
+	statsArea
+)
+
 // IncomingJSON from the websocket created by the GM script, also used with unix socket.
 type IncomingJSON struct {
 	Token   string
@@ -40,6 +44,7 @@ type IncomingJSON struct {
 // OutgoingJSON to the websocket created by the GM script.
 type OutgoingJSON struct {
 	Status  int
+	Target  int
 	Message string
 }
 
@@ -61,15 +66,9 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 		logThis.Info("Error parsing Torrent Info", NORMAL)
 		release = &Release{Tracker: tracker.Name, TorrentID: id}
 	}
-	release.torrentURL = tracker.URL + "/torrents.php?action=download&id=" + id
-	if useFLToken {
-		release.torrentURL += "&usetoken=1"
-	}
-	torrentFile := norma.Sanitize(tracker.Name) + "_id" + id + torrentExt
-
 	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
-	if err := tracker.DownloadTorrent(release.torrentURL, torrentFile, e.config.General.WatchDir); err != nil {
-		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+release.torrentURL), NORMAL)
+	if err := tracker.DownloadTorrentFromID(id, e.config.General.WatchDir, useFLToken); err != nil {
+		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+id), NORMAL)
 		return release, err
 	}
 	// add to history
@@ -275,7 +274,7 @@ func webServer(e *Environment) {
 						if e.websocketOutput {
 							mutex.Lock()
 							// TODO differentiate info / error
-							if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog}); err != nil {
+							if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog, Target: notificationArea}); err != nil {
 								if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 									logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), VERBOSEST)
 								}
@@ -303,36 +302,36 @@ func webServer(e *Environment) {
 				var answer OutgoingJSON
 				if incoming.Token != e.config.WebServer.Token {
 					logThis.Info(errorIncorrectWebServerToken, NORMAL)
-					answer = OutgoingJSON{Status: responseError, Message: "Bad token!"}
+					answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Bad token!"}
 				} else {
 					// dealing with command
 					switch incoming.Command {
 					case handshakeCommand:
 						// say hello right back
-						answer = OutgoingJSON{Status: responseInfo, Message: handshakeCommand}
+						answer = OutgoingJSON{Status: responseInfo, Target: notificationArea, Message: handshakeCommand}
 					case downloadCommand:
 						tracker, err := e.Tracker(incoming.Site)
 						if err != nil {
 							logThis.Error(errors.Wrap(err, "Error identifying in configuration tracker "+incoming.Site), NORMAL)
-							answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
+							answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Error snatching torrent."}
 						} else {
 							// snatching
 							for _, id := range incoming.Args {
 								release, err := manualSnatchFromID(e, tracker, id, incoming.FLToken)
 								if err != nil {
 									logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
-									answer = OutgoingJSON{Status: responseError, Message: "Error snatching torrent."}
+									answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Error snatching torrent."}
 								} else {
-									answer = OutgoingJSON{Status: responseInfo, Message: "Successfully snatched torrent " + release.ShortString()}
+									answer = OutgoingJSON{Status: responseInfo, Target: notificationArea, Message: "Successfully snatched torrent " + release.ShortString()}
 								}
 								// TODO send responses for all IDs (only 1 from GM Script for now anyway)
 							}
 						}
 					case statsCommand:
-						answer = OutgoingJSON{Status: responseInfo, Message: "STATS!"}
-						// TODO gather stats and send text / or svgs (ie snatched today, this week, etc...)
+						// TODO gather stats and send text (ie snatched today, this week, etc...)
+						answer = OutgoingJSON{Status: responseInfo, Target: statsArea, Message: statusString(e)}
 					default:
-						answer = OutgoingJSON{Status: responseError, Message: errorUnknownCommand + incoming.Command}
+						answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: errorUnknownCommand + incoming.Command}
 					}
 				}
 				// writing answer

@@ -5,9 +5,11 @@ import (
 	"html"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/asdine/storm"
+	"github.com/asdine/storm/q"
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 )
@@ -23,6 +25,8 @@ type FuseEntry struct {
 	Year        int      `storm:"index"`
 	Tracker     []string `storm:"index"`
 	RecordLabel string   `storm:"index"`
+	Source      string   `storm:"index"`
+	Format      string   `storm:"index"`
 }
 
 func (fe *FuseEntry) reset() {
@@ -32,6 +36,8 @@ func (fe *FuseEntry) reset() {
 	fe.Year = 0
 	fe.Tracker = []string{}
 	fe.RecordLabel = ""
+	fe.Source = ""
+	fe.Format = ""
 }
 
 func (fe *FuseEntry) Load(root string) error {
@@ -97,9 +103,12 @@ func (fe *FuseEntry) Load(root string) error {
 				fe.Title = gt.Response.Group.Name
 				// tags
 				fe.Tags = gt.Response.Group.Tags
+				// source
+				fe.Source = gt.Source()
+				// format
+				fe.Format = gt.ShortEncoding()
 			}
 		}
-
 	} else {
 		return errors.New("Error, no metadata found")
 	}
@@ -211,4 +220,54 @@ func (fdb *FuseDB) Scan(path string) error {
 
 	s.Stop()
 	return nil
+}
+
+func (fdb *FuseDB) contains(category, value string, inSlice bool) bool {
+	var query storm.Query
+	if inSlice {
+		query = fdb.DB.Select(InSlice(category, value)).Limit(1)
+	} else {
+		query = fdb.DB.Select(q.Eq(category, value)).Limit(1)
+	}
+	var entry FuseEntry
+	if err := query.First(&entry); err != nil {
+		if err == storm.ErrNotFound {
+			logThis.Info("Unknown value for "+category+": "+value, VERBOSEST)
+			return false
+		}
+		logThis.Error(err, VERBOSEST)
+		return false
+	}
+	return true
+}
+
+func (fdb *FuseDB) uniqueEntries(matcher q.Matcher, field string) ([]string, error) {
+	// get all matching entries
+	var allEntries []FuseEntry
+	query := fdb.DB.Select(matcher)
+	if err := query.Find(&allEntries); err != nil {
+		logThis.Error(err, VERBOSEST)
+		return []string{}, err
+	}
+	// get all different values
+	var allValues []string
+	for _, e := range allEntries {
+		switch field {
+		case "Tags":
+			allValues = append(allValues, e.Tags...)
+		case "Source":
+			allValues = append(allValues, e.Source)
+		case "Format":
+			allValues = append(allValues, e.Format)
+		case "Year":
+			allValues = append(allValues, strconv.Itoa(e.Year))
+		case "RecordLabel":
+			allValues = append(allValues, e.RecordLabel)
+		case "Artists":
+			allValues = append(allValues, e.Artists...)
+		case "FolderName":
+			allValues = append(allValues, e.FolderName)
+		}
+	}
+	return RemoveStringSliceDuplicates(allValues), nil
 }

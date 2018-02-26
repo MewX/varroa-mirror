@@ -58,7 +58,7 @@ func IsValidDownloadState(txt string) bool {
 
 }
 
-//-----------------------
+// -----------------------
 
 type DownloadEntry struct {
 	ID                 int           `storm:"id,increment"`
@@ -177,11 +177,11 @@ func (d *DownloadEntry) getDescription(root, tracker string) []byte {
 		releaseMD = filepath.Join(root, d.FolderName, metadataDir, "Release.md")
 	}
 	if FileExists(releaseMD) {
-		bytes, err := ioutil.ReadFile(releaseMD)
+		fileBytes, err := ioutil.ReadFile(releaseMD)
 		if err != nil {
 			logThis.Error(err, NORMAL)
 		} else {
-			return bytes
+			return fileBytes
 		}
 	}
 	return []byte{}
@@ -333,7 +333,7 @@ func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, fo
 		return d.FolderName // nothing useful here
 	}
 	// parsing info that needs to be worked on before use
-	artists := []string{}
+	var artists []string
 	// for now, using artists, composers categories
 	for _, el := range gt.Response.Group.MusicInfo.Artists {
 		artists = append(artists, el.Name)
@@ -349,29 +349,10 @@ func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, fo
 	originalYear := gt.Response.Group.Year
 
 	// usual edition specifiers, shortened
-	editionReplacer := strings.NewReplacer(
-		"Reissue", "RE",
-		"Repress", "RP",
-		"Remaster", "RM",
-		"Remastered", "RM",
-		"Limited Edition", "LTD",
-		"Deluxe", "DLX",
-		"Deluxe Edition", "DLX",
-		"Special Editon", "SE",
-		"Bonus Tracks", "Bonus",
-		"Bonus Tracks Edition", "Bonus",
-		"Promo", "PR",
-		"Test Pressing", "TP",
-		"Self Released", "SR",
-		"Box Set", "Box set",
-		"Compact Disc Recordable", "CDr",
-		"Japan Edition", "Japan",
-		"Japan Release", "Japan",
-	)
-	editionName := editionReplacer.Replace(gt.Response.Torrent.RemasterTitle)
+	editionName := gt.ShortEdition()
 
 	// identifying info
-	idElements := []string{}
+	var idElements []string
 	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterYear != originalYear {
 		idElements = append(idElements, fmt.Sprintf("%d", gt.Response.Torrent.RemasterYear))
 	}
@@ -396,34 +377,10 @@ func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, fo
 		idElements = append(idElements, getGazelleReleaseType(gt.Response.Group.ReleaseType))
 	}
 	id := strings.Join(idElements, ", ")
-
 	// format
-	var format string
-	switch gt.Response.Torrent.Encoding {
-	case "Lossless":
-		format = "FLAC"
-	case "24bit Lossless":
-		format = "FLAC24"
-	case "V0 (VBR)":
-		format = "V0"
-	case "V2 (VBR)":
-		format = "V2"
-	case "320":
-		format = "320"
-	default:
-		format = "UnF"
-	}
-
+	format := gt.ShortEncoding()
 	// source
-	source := gt.Response.Torrent.Media
-	if source == "CD" && format == "FLAC" {
-		if gt.Response.Torrent.HasLog && gt.Response.Torrent.HasCue && (gt.Response.Torrent.LogScore == 100 || gt.Response.Torrent.Grade == "Silver") {
-			source += "+"
-		}
-		if gt.Response.Torrent.Grade == "Gold" {
-			source += "+"
-		}
-	}
+	source := gt.Source()
 
 	r := strings.NewReplacer(
 		"$id", "{{$id}}",

@@ -37,6 +37,7 @@ func (cg *ConfigGeneral) Check() error {
 	return nil
 }
 
+// String representation for ConfigGeneral.
 func (cg *ConfigGeneral) String() string {
 	txt := "General configuration:\n"
 	txt += "\tLog level: " + strconv.Itoa(cg.LogLevel) + "\n"
@@ -79,6 +80,7 @@ func (ct *ConfigTracker) String() string {
 
 type ConfigAutosnatch struct {
 	Tracker               string
+	LocalAddress          string `yaml:"local_address"`
 	IRCServer             string `yaml:"irc_server"`
 	IRCKey                string `yaml:"irc_key"`
 	IRCSSL                bool   `yaml:"irc_ssl"`
@@ -127,6 +129,9 @@ func (ca *ConfigAutosnatch) Check() error {
 
 func (ca *ConfigAutosnatch) String() string {
 	txt := "Autosnatch configuration for " + ca.Tracker + "\n"
+	if ca.LocalAddress != "" {
+		txt += "\tLocal address: " + ca.LocalAddress + "\n"
+	}
 	txt += "\tIRC server: " + ca.IRCServer + "\n"
 	txt += "\tIRC KeyPassword: " + ca.IRCKey + "\n"
 	txt += "\tUse SSL: " + fmt.Sprintf("%v", ca.IRCSSL) + "\n"
@@ -272,8 +277,9 @@ type ConfigNotifications struct {
 }
 
 type ConfigPushover struct {
-	User  string
-	Token string
+	User               string
+	Token              string
+	IncludeBufferGraph bool `yaml:"include_buffer_graph"`
 }
 
 func (cp *ConfigPushover) Check() error {
@@ -290,6 +296,7 @@ func (cp *ConfigPushover) String() string {
 	txt := "Pushover configuration:\n"
 	txt += "\tUser: " + cp.User + "\n"
 	txt += "\tToken: " + cp.Token + "\n"
+	txt += "\tInclude Buffer Graph: " + fmt.Sprintf("%v", cp.IncludeBufferGraph) + "\n"
 	return txt
 }
 

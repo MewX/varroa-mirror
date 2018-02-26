@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/subosito/norma"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -94,8 +95,9 @@ func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, e
 	return data, nil
 }
 
-//--------------------
+// --------------------
 
+// GazelleTracker allows querying the Gazelle JSON API.
 type GazelleTracker struct {
 	Name     string
 	URL      string
@@ -160,7 +162,8 @@ func (t *GazelleTracker) get(url string) ([]byte, error) {
 	return data, err
 }
 
-func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile string, destinationFolder string) error {
+// DownloadTorrent using its download URL.
+func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile, destinationFolder string) error {
 	if torrentURL == "" || torrentFile == "" {
 		return errors.New(errorUnknownTorrentURL)
 	}
@@ -187,6 +190,16 @@ func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile string, destina
 		logThis.Info(fmt.Sprintf(errorRemovingTempFile, torrentFile), VERBOSE)
 	}
 	return nil
+}
+
+// DownloadTorrentFromID using its ID instead.
+func (t *GazelleTracker) DownloadTorrentFromID(torrentID string, destinationFolder string, useFLToken bool) error {
+	torrentFile := norma.Sanitize(t.Name) + "_id" + torrentID + torrentExt
+	torrentURL := t.URL + "/torrents.php?action=download&id=" + torrentID
+	if useFLToken {
+		torrentURL += "&usetoken=1"
+	}
+	return t.DownloadTorrent(torrentURL, torrentFile, destinationFolder)
 }
 
 func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
@@ -217,12 +230,14 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	}
 	// return StatsEntry
 	stats := &StatsEntry{
-		Tracker:   t.Name,
-		Up:        uint64(s.Response.Stats.Uploaded),
-		Down:      uint64(s.Response.Stats.Downloaded),
-		Ratio:     ratio,
-		Timestamp: time.Now(),
-		Collected: true,
+		Tracker:       t.Name,
+		Up:            uint64(s.Response.Stats.Uploaded),
+		Down:          uint64(s.Response.Stats.Downloaded),
+		Ratio:         ratio,
+		Timestamp:     time.Now(),
+		TimestampUnix: time.Now().Unix(),
+		Collected:     true,
+		SchemaVersion: currentSchemaVersion,
 	}
 	return stats, nil
 }

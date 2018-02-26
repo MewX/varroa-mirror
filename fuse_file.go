@@ -14,23 +14,18 @@ import (
 	"golang.org/x/net/context"
 )
 
-type File struct {
+type FuseFile struct {
 	fs            *FS
-	category      string
-	label         string
-	year          string
-	tag           string
-	artist        string
 	release       string
 	releaseSubdir string
 	name          string
 }
 
-func (f *File) String() string {
-	return fmt.Sprintf("FILE mount %s, category %s, label %s, year %s, tag %s, artist %s, release %s, release subdirectory %s, name %s", f.fs.mountPoint, f.category, f.label, f.year, f.tag, f.artist, f.release, f.releaseSubdir, f.name)
+func (f *FuseFile) String() string {
+	return fmt.Sprintf("FILE mount %s, release %s, release subdirectory %s, name %s", f.fs.mountPoint, f.release, f.releaseSubdir, f.name)
 }
 
-func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
+func (f *FuseFile) Attr(ctx context.Context, a *fuse.Attr) error {
 	defer TimeTrack(time.Now(), fmt.Sprintf("FILE Attr %s.", f.String()))
 	// get stat from the actual file
 	fullPath := filepath.Join(f.fs.mountPoint, f.release, f.releaseSubdir, f.name)
@@ -45,16 +40,17 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Inode = stat.Ino
 	a.Blocks = uint64(stat.Blocks)
 	a.BlockSize = uint32(stat.Blksize)
-	a.Atime = time.Unix(stat.Atim.Sec, stat.Atim.Nsec)
-	a.Ctime = time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec)
+	// forced int64 for FreeBSD compatibility
+	a.Atime = time.Unix(int64(stat.Atim.Sec), int64(stat.Atim.Nsec))
+	a.Ctime = time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec))
 	a.Size = uint64(stat.Size)
 	a.Mode = 0555 // readonly
 	return nil
 }
 
-var _ = fs.NodeOpener(&File{})
+var _ = fs.NodeOpener(&FuseFile{})
 
-func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+func (f *FuseFile) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
 	logThis.Info(fmt.Sprintf("FILE Open %s.", f.String()), VERBOSESTEST)
 
 	fullPath := filepath.Join(f.fs.mountPoint, f.release, f.releaseSubdir, f.name)
@@ -66,19 +62,19 @@ func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenR
 	if err != nil {
 		return nil, errors.Wrap(err, "Error opening file "+fullPath)
 	}
-	return &FileHandle{r: r, f: f}, nil
+	return &FuseFileHandle{r: r, f: f}, nil
 }
 
-type FileHandle struct {
+type FuseFileHandle struct {
 	r *os.File
-	f *File
+	f *FuseFile
 }
 
-var _ fs.Handle = (*FileHandle)(nil)
+var _ fs.Handle = (*FuseFileHandle)(nil)
 
-var _ fs.HandleReleaser = (*FileHandle)(nil)
+var _ fs.HandleReleaser = (*FuseFileHandle)(nil)
 
-func (fh *FileHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
+func (fh *FuseFileHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
 	logThis.Info(fmt.Sprintf("FILE Release %s", fh.f.String()), VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO
@@ -86,9 +82,9 @@ func (fh *FileHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) err
 	return fh.r.Close()
 }
 
-var _ = fs.HandleReader(&FileHandle{})
+var _ = fs.HandleReader(&FuseFileHandle{})
 
-func (fh *FileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
+func (fh *FuseFileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
 	logThis.Info(fmt.Sprintf("FILE Read %s", fh.f.String()), VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO
@@ -106,9 +102,9 @@ func (fh *FileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fus
 	return nil
 }
 
-var _ = fs.HandleFlusher(&FileHandle{})
+var _ = fs.HandleFlusher(&FuseFileHandle{})
 
-func (fh *FileHandle) Flush(ctx context.Context, req *fuse.FlushRequest) error {
+func (fh *FuseFileHandle) Flush(ctx context.Context, req *fuse.FlushRequest) error {
 	logThis.Info(fmt.Sprintf("Entered Flush with path: %s", fh.r.Name()), VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO

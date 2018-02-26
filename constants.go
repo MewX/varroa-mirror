@@ -2,7 +2,7 @@ package varroa
 
 const (
 	FullName      = "varroa musica"
-	Version       = "v19"
+	Version       = "v20"
 	FullVersion   = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
@@ -38,10 +38,15 @@ const (
 	DefaultDownloadsDB        = "downloads.db"
 	DefaultLibraryDB          = "library.db"
 	manualSnatchFilterName    = "remote"
+	overallPrefix             = "overall"
+	lastWeekPrefix            = "lastweek"
+	lastMonthPrefix           = "lastmonth"
+	statsNotificationPrefix   = "stats: "
 
-	// Notable ratios
+	// Notable ratios & constants
 	defaultTargetRatio = 1.0
 	warningRatio       = 0.6
+	minimumSeeders     = 5
 
 	// file extensions
 	yamlExt      = ".yaml"
@@ -104,6 +109,8 @@ const (
 	// command refresh-metadata errors
 	ErrorRefreshingMetadata = "Error refreshing metadata"
 	errorCannotFindID       = "Error with ID#%s, not found in history or in downloads directory."
+	// command reseed
+	ErrorReseed = "error trying to reseed release"
 	// command backup errors
 	errorArchiving = "Error while archiving user files"
 	// set up errors

@@ -108,6 +108,16 @@ Loop:
 					} else {
 						logThis.Info("varroa musica daemon up for "+time.Since(e.startTime).String()+".", NORMAL)
 					}
+				case "status":
+					if e.startTime.IsZero() {
+						logThis.Info("Daemon is not running.", NORMAL)
+					} else {
+						logThis.Info(statusString(e), NORMAL)
+					}
+				case "reseed":
+					if err := Reseed(tracker, orders.Args); err != nil {
+						logThis.Error(errors.Wrap(err, ErrorReseed), NORMAL)
+					}
 				}
 				e.daemonCom.Outgoing <- []byte(stopCommand)
 			case <-e.daemonCom.ClientDisconnected:
@@ -118,6 +128,28 @@ Loop:
 		}
 	}
 	e.daemonCom.StopCurrent()
+}
+
+func statusString(e *Environment) string {
+	// version
+	status := fmt.Sprintf(FullVersion+"\n", FullName, Version)
+	// uptime
+	status += "Daemon up since " + e.startTime.Format("2006.01.02 15h04") + " (uptime: " + time.Since(e.startTime).String() + ").\n"
+	// autosnatch enabled?
+	conf, err := NewConfig(DefaultConfigurationFile)
+	if err == nil {
+		for _, as := range conf.Autosnatch {
+			status += "Autosnatching for tracker " + as.Tracker + ": "
+			if as.disabledAutosnatching {
+				status += "disabled!\n"
+			} else {
+				status += "enabled.\n"
+			}
+		}
+	}
+
+	// TODO last autosnatched release for tracker X: date
+	return status
 }
 
 // GenerateStats for all labels and the associated HTML index.
@@ -167,6 +199,8 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 	for _, id := range IDStrings {
 		var found Release
+		var info *TrackerTorrentInfo
+		var infoErr error
 		findIDsQuery := q.And(q.Eq("Tracker", tracker.Name), q.Eq("TorrentID", id))
 		if err := stats.db.DB.Select(findIDsQuery).First(&found); err != nil {
 			if err == storm.ErrNotFound {
@@ -174,7 +208,7 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				if e.config.DownloadFolderConfigured {
 					logThis.Info("Release with ID "+found.TorrentID+" not found in history, trying to locate in downloads directory.", NORMAL)
 					// get data from tracker
-					info, infoErr := tracker.GetTorrentInfo(id)
+					info, infoErr = tracker.GetTorrentInfo(id)
 					if infoErr != nil {
 						logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 						break
@@ -202,9 +236,9 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 			// was found
 			logThis.Info("Found release with ID "+found.TorrentID+" in history: "+found.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from tracker
-			info, err := tracker.GetTorrentInfo(found.TorrentID)
-			if err != nil {
-				logThis.Error(errors.Wrap(err, errorCouldNotGetTorrentInfo), NORMAL)
+			info, infoErr = tracker.GetTorrentInfo(found.TorrentID)
+			if infoErr != nil {
+				logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
 			}
 			if daemon.WasReborn() {
@@ -213,6 +247,11 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
 			}
 		}
+		// check the number of active seeders
+		if !info.IsWellSeeded() {
+			logThis.Info("This torrent has less than "+strconv.Itoa(minimumSeeders)+" seeders; if that is not already the case, consider reseeding it.", NORMAL)
+		}
+
 	}
 	return nil
 }
@@ -306,6 +345,54 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 			}
 		}
 	}
+	return nil
+}
+
+// Reseed a release using local files and tracker metadata
+func Reseed(tracker *GazelleTracker, path []string) error {
+	// get config.
+	conf, configErr := NewConfig(DefaultConfigurationFile)
+	if configErr != nil {
+		return configErr
+	}
+	if !conf.DownloadFolderConfigured {
+		return errors.New("impossible to reseed release if downloads directory is not configured")
+	}
+	// parse metadata for tracker, and get tid
+	// assuming reseeding one at a time only (as limited by CLI)
+	toc := TrackerOriginJSON{Path: filepath.Join(path[0], metadataDir, originJSONFile)}
+	if err := toc.load(); err != nil {
+		return errors.Wrap(err, "error reading origin.json")
+	}
+	// check that tracker is in list of origins
+	oj, ok := toc.Origins[tracker.Name]
+	if !ok {
+		return errors.New("release does not originate from tracker " + tracker.Name)
+	}
+
+	// copy files if necessary
+	// if the relative path of the downloads directory and the release path is the folder name, it means the path is
+	// directly inside the downloads directory, where we want it to reseed.
+	// if it is not, we need to copy the files.
+	// TODO: maybe hard link instead if in the same filesystem
+	rel, err := filepath.Rel(conf.General.DownloadDir, path[0])
+	if err != nil {
+		return errors.Wrap(err, "error trying to locate the target path relatively to the downloads directory")
+	}
+	// copy files if not in downloads directory
+	if rel != filepath.Base(path[0]) {
+		if err := CopyDir(path[0], filepath.Join(conf.General.DownloadDir, filepath.Base(path[0])), false); err != nil {
+			return errors.Wrap(err, "error copying files to downloads directory")
+		}
+		logThis.Info("Release files have been copied inside the downloads directory", NORMAL)
+	}
+
+	// TODO TO A TEMP DIR, then compare torrent description with path contents; if OK only copy .torrent to conf.General.WatchDir
+	// downloading torrent
+	if err := tracker.DownloadTorrentFromID(strconv.Itoa(oj.ID), conf.General.WatchDir, false); err != nil {
+		return errors.Wrap(err, "error downloading torrent file")
+	}
+	logThis.Info("Torrent downloaded, your bittorrent client should be able to reseed the release.", NORMAL)
 	return nil
 }
 

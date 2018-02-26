@@ -77,6 +77,7 @@ func (sdb *StatsDB) init() error {
 
 func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) {
 	migratedSomething := false
+
 	if FileExists(csvFile) {
 		logThis.Info("Migrating stats for tracker "+tracker, NORMAL)
 
@@ -103,7 +104,7 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) 
 		defer tx.Rollback()
 
 		for i, record := range records {
-			r := &StatsEntry{Tracker: tracker, Collected: true}
+			r := &StatsEntry{Tracker: tracker, Collected: true, SchemaVersion: currentSchemaVersion}
 			if err := r.FromSlice(record); err != nil {
 				logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
 			} else {
@@ -115,7 +116,6 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) 
 		if err := tx.Commit(); err != nil {
 			return migratedSomething, err
 		}
-
 		// checks
 		var allEntries []StatsEntry
 		if err := sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
@@ -133,6 +133,37 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) 
 		}
 	}
 
+	// updating schema for stats
+	var allEntries []StatsEntry
+	if err := sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
+		return migratedSomething, errors.Wrap(err, "Error reading back stats values from db")
+	}
+
+	// transaction for quicker results
+	txSchemaUpdate, err := sdb.db.DB.Begin(true)
+	if err != nil {
+		return migratedSomething, err
+	}
+	defer txSchemaUpdate.Rollback()
+
+	var migratedSchema bool
+	for _, e := range allEntries {
+		if e.SchemaVersion != currentSchemaVersion {
+			migratedSchema = true
+			// Update multiple fields
+			if err := txSchemaUpdate.Update(&StatsEntry{ID: e.ID, SchemaVersion: currentSchemaVersion, TimestampUnix: e.Timestamp.Unix()}); err != nil {
+				return migratedSomething, errors.Wrap(err, "Error updating stats database to new schema")
+			}
+		}
+	}
+	if migratedSchema {
+		if err := txSchemaUpdate.Commit(); err != nil {
+			return migratedSomething, err
+		}
+		migratedSomething = true
+	}
+
+	// migrating old snatch history files
 	if FileExists(msgpackFile) {
 		logThis.Info("Migrating snatch history for tracker "+tracker, NORMAL)
 
@@ -187,6 +218,7 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) 
 			return migratedSomething, err
 		}
 	}
+
 	return migratedSomething, nil
 }
 
@@ -240,7 +272,7 @@ func (sdb *StatsDB) Update() error {
 					// get closest collected stats before midnight & after, and do some simple linear interpolation
 					// get previous collected stats
 					var previous StatsEntry
-					if selectErr := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Eq("Collected", true), q.Lte("Timestamp", currentStartOfDay))).OrderBy("Timestamp").Reverse().First(&previous); selectErr != nil {
+					if selectErr := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Eq("Collected", true), q.Lte("Timestamp", currentStartOfDay))).OrderBy("TimestampUnix").Reverse().First(&previous); selectErr != nil {
 						if selectErr == storm.ErrNotFound {
 							// first day, use the first known stats as the reference
 							previous = firstTrackerStats
@@ -251,7 +283,7 @@ func (sdb *StatsDB) Update() error {
 					}
 					// get following collected stats
 					var next StatsEntry
-					if selectErr := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Eq("Collected", true), q.Gte("Timestamp", currentStartOfDay))).OrderBy("Timestamp").First(&next); selectErr != nil {
+					if selectErr := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Eq("Collected", true), q.Gte("Timestamp", currentStartOfDay))).OrderBy("TimestampUnix").First(&next); selectErr != nil {
 						if selectErr == storm.ErrNotFound {
 							// last day, missing information to create the daily stats
 							continue
@@ -267,7 +299,7 @@ func (sdb *StatsDB) Update() error {
 					if previous.Timestamp.Equal(next.Timestamp) {
 						// if they are the same, it's probably the first day.
 						// creating first day without interpolation.
-						newDailyStats = &StatsEntry{Tracker: previous.Tracker, Timestamp: currentStartOfDay, Up: previous.Up, Down: previous.Down, Ratio: previous.Ratio, StartOfDay: true}
+						newDailyStats = &StatsEntry{Tracker: previous.Tracker, Timestamp: currentStartOfDay, TimestampUnix: currentStartOfDay.Unix(), Up: previous.Up, Down: previous.Down, Ratio: previous.Ratio, StartOfDay: true}
 					} else {
 						// interpolate stats at the start of the day being considered
 						newDailyStats, statsErr = InterpolateStats(previous, next, currentStartOfDay)
@@ -350,7 +382,7 @@ func (sdb *StatsDB) FilterByTracker(tracker string, statsType string) ([]StatsEn
 	}
 
 	var entries []StatsEntry
-	err := sdb.db.DB.Select(q.And(q.Eq(statsType, true), q.Eq("Tracker", tracker))).OrderBy("Timestamp").Find(&entries)
+	err := sdb.db.DB.Select(q.And(q.Eq(statsType, true), q.Eq("Tracker", tracker))).OrderBy("TimestampUnix").Find(&entries)
 	return entries, err
 }
 
@@ -360,19 +392,19 @@ func (sdb *StatsDB) Save(entry *StatsEntry) error {
 
 func (sdb *StatsDB) getFirstTimestamp() (time.Time, error) {
 	var firstEntry StatsEntry
-	err := sdb.db.DB.Select(q.Eq("Collected", true)).OrderBy("Timestamp").First(&firstEntry)
+	err := sdb.db.DB.Select(q.Eq("Collected", true)).OrderBy("TimestampUnix").First(&firstEntry)
 	return firstEntry.Timestamp, err
 }
 
 func (sdb *StatsDB) getFirstStatsForTracker(tracker string) (StatsEntry, error) {
 	var firstEntry StatsEntry
-	err := sdb.db.DB.Select(q.And(q.Eq("Collected", true), q.Eq("Tracker", tracker))).OrderBy("Timestamp").First(&firstEntry)
+	err := sdb.db.DB.Select(q.And(q.Eq("Collected", true), q.Eq("Tracker", tracker))).OrderBy("TimestampUnix").First(&firstEntry)
 	return firstEntry, err
 }
 
 func (sdb *StatsDB) GetLastCollected(tracker string, limit int) ([]StatsEntry, error) {
 	var lastEntries []StatsEntry
-	err := sdb.db.DB.Select(q.And(q.Eq("Collected", true), q.Eq("Tracker", tracker))).Limit(limit).OrderBy("Timestamp").Reverse().Find(&lastEntries)
+	err := sdb.db.DB.Select(q.And(q.Eq("Collected", true), q.Eq("Tracker", tracker))).Limit(limit).OrderBy("TimestampUnix").Reverse().Find(&lastEntries)
 	return lastEntries, err
 }
 
@@ -389,7 +421,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	if err != nil {
 		return errors.New("could not get all collected stats for " + tracker)
 	}
-	if err := generateGraphs(tracker, "overall", allStatsEntries, firstStats.Timestamp); err != nil {
+	if err := generateGraphs(tracker, overallPrefix, allStatsEntries, firstStats.Timestamp); err != nil {
 		return err
 	}
 	// 2. collect stats since last week
@@ -397,13 +429,13 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	firstWeekTimestamp := time.Now().Add(-7 * 24 * time.Hour)
 	lastWeekQuery := q.And(q.Eq("Collected", true), q.Eq("Tracker", tracker), q.Gte("Timestamp", firstWeekTimestamp))
 	var lastWeekStatsEntries []StatsEntry
-	if err := sdb.db.DB.Select(lastWeekQuery).OrderBy("Timestamp").Find(&lastWeekStatsEntries); err != nil {
+	if err := sdb.db.DB.Select(lastWeekQuery).OrderBy("TimestampUnix").Find(&lastWeekStatsEntries); err != nil {
 		if err != storm.ErrNotFound {
 			return errors.Wrap(err, "error querying database")
 		}
 	}
 	if len(lastWeekStatsEntries) != 0 {
-		if err := generateGraphs(tracker, "lastweek", lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
+		if err := generateGraphs(tracker, lastWeekPrefix, lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
@@ -414,13 +446,13 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	firstMonthTimestamp := time.Now().Add(-30 * 24 * time.Hour)
 	lastMonthQuery := q.And(q.Eq("Collected", true), q.Eq("Tracker", tracker), q.Gte("Timestamp", firstMonthTimestamp))
 	var lastMonthStatsEntries []StatsEntry
-	if err := sdb.db.DB.Select(lastMonthQuery).OrderBy("Timestamp").Find(&lastMonthStatsEntries); err != nil {
+	if err := sdb.db.DB.Select(lastMonthQuery).OrderBy("TimestampUnix").Find(&lastMonthStatsEntries); err != nil {
 		if err != storm.ErrNotFound {
 			return errors.Wrap(err, "error querying database")
 		}
 	}
 	if len(lastMonthStatsEntries) != 0 {
-		if err := generateGraphs(tracker, "lastmonth", lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
+		if err := generateGraphs(tracker, lastMonthPrefix, lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
@@ -430,7 +462,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// get all daily stats
 	var allDailyStats []StatsEntry
 	dailyStatsQuery := q.And(q.Eq("StartOfDay", true), q.Eq("Tracker", tracker))
-	if err := sdb.db.DB.Select(dailyStatsQuery).OrderBy("Timestamp").Find(&allDailyStats); err != nil {
+	if err := sdb.db.DB.Select(dailyStatsQuery).OrderBy("TimestampUnix").Find(&allDailyStats); err != nil {
 		if err != storm.ErrNotFound {
 			return errors.Wrap(err, "error querying database")
 		}
@@ -438,7 +470,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allDailyDeltas := CalculateDeltas(allDailyStats)
 	// generate graphs
 	if len(allDailyDeltas) != 0 {
-		if err := generateDeltaGraphs(tracker, "overall_per_day", allDailyDeltas, allDailyDeltas[0].Timestamp); err != nil {
+		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_day", allDailyDeltas, allDailyDeltas[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
@@ -448,7 +480,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// get all weekly stats
 	var allWeeklyStats []StatsEntry
 	weeklyStatsQuery := q.And(q.Eq("StartOfWeek", true), q.Eq("Tracker", tracker))
-	if err := sdb.db.DB.Select(weeklyStatsQuery).OrderBy("Timestamp").Find(&allWeeklyStats); err != nil {
+	if err := sdb.db.DB.Select(weeklyStatsQuery).OrderBy("TimestampUnix").Find(&allWeeklyStats); err != nil {
 		if err != storm.ErrNotFound {
 			return errors.Wrap(err, "error querying database")
 		}
@@ -456,7 +488,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allWeeklyDeltas := CalculateDeltas(allWeeklyStats)
 	// generate graphs
 	if len(allWeeklyDeltas) != 0 {
-		if err := generateDeltaGraphs(tracker, "overall_per_week", allWeeklyDeltas, allWeeklyDeltas[0].Timestamp); err != nil {
+		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_week", allWeeklyDeltas, allWeeklyDeltas[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}
@@ -466,7 +498,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// get all monthly stats
 	var allMonthlyStats []StatsEntry
 	monthlyStatsQuery := q.And(q.Eq("StartOfMonth", true), q.Eq("Tracker", tracker))
-	if err := sdb.db.DB.Select(monthlyStatsQuery).OrderBy("Timestamp").Find(&allMonthlyStats); err != nil {
+	if err := sdb.db.DB.Select(monthlyStatsQuery).OrderBy("TimestampUnix").Find(&allMonthlyStats); err != nil {
 		if err != storm.ErrNotFound {
 			return errors.Wrap(err, "error querying database")
 		}
@@ -474,7 +506,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	allMonthlyDeltas := CalculateDeltas(allMonthlyStats)
 	// generate graphs
 	if len(allMonthlyDeltas) != 0 {
-		if err := generateDeltaGraphs(tracker, "overall_per_month", allMonthlyDeltas, allMonthlyDeltas[0].Timestamp); err != nil {
+		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_month", allMonthlyDeltas, allMonthlyDeltas[0].Timestamp); err != nil {
 			logThis.Error(err, NORMAL)
 			atLeastOneFailed = true
 		}

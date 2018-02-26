@@ -1,10 +1,9 @@
 package varroa
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"fmt"
 
 	"github.com/fhs/gompd/mpd"
 	"github.com/pkg/errors"
