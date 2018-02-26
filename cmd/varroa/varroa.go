@@ -277,7 +277,7 @@ func main() {
 		}
 		// at last, sending signals for shutdown
 		if cli.stop {
-			varroa.Notify("Stopping daemon!", "varroa daemon", "info")
+			varroa.Notify("Stopping daemon!", varroa.FullName, "info")
 			d.Stop(daemonProcess)
 			return
 		}
