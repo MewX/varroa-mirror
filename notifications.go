@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
@@ -29,7 +30,7 @@ func Notify(msg, tracker, msgType string) error {
 		if config.pushoverConfigured {
 			pushOver := &Notification{client: pushover.New(config.Notifications.Pushover.Token), recipient: pushover.NewRecipient(config.Notifications.Pushover.User)}
 			var pngLink string
-			if tracker != FullName && config.Notifications.Pushover.IncludeBufferGraph {
+			if tracker != FullName && strings.HasPrefix(msg, statsNotificationPrefix) && config.Notifications.Pushover.IncludeBufferGraph {
 				pngLink = filepath.Join(StatsDir, tracker+"_"+lastWeekPrefix+"_"+bufferStatsFile+pngExt)
 			}
 			if err := pushOver.Send(tracker+": "+msg, config.gitlabPagesConfigured, link, pngLink); err != nil {

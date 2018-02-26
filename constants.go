@@ -41,6 +41,7 @@ const (
 	overallPrefix             = "overall"
 	lastWeekPrefix            = "lastweek"
 	lastMonthPrefix           = "lastmonth"
+	statsNotificationPrefix   = "stats: "
 
 	// Notable ratios & constants
 	defaultTargetRatio = 1.0
