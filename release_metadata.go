@@ -79,7 +79,7 @@ func SaveMetadataFromTracker(tracker *GazelleTracker, info *TrackerTorrentInfo, 
 	if err := ioutil.WriteFile(filepath.Join(rm.Root, tracker.Name+"_"+trackerMetadataFile), rm.Info.fullJSON, 0666); err != nil {
 		logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 	} else {
-		logThis.Info(infoMetadataSaved+rm.Info.folder, VERBOSE)
+		logThis.Info(infoMetadataSaved+html.UnescapeString(rm.Info.folder), VERBOSE)
 	}
 	// get torrent group info
 	torrentGroupInfo, err := tracker.GetTorrentGroupInfo(rm.Info.groupID)
@@ -91,7 +91,7 @@ func SaveMetadataFromTracker(tracker *GazelleTracker, info *TrackerTorrentInfo, 
 		if err := ioutil.WriteFile(filepath.Join(rm.Root, tracker.Name+"_"+trackerTGroupMetadataFile), rm.Group.fullJSON, 0666); err != nil {
 			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
-			logThis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, rm.Group.name, rm.Info.folder), VERBOSE)
+			logThis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, html.UnescapeString(rm.Group.name), html.UnescapeString(rm.Info.folder)), VERBOSE)
 		}
 	}
 	// get artist info
@@ -107,7 +107,7 @@ func SaveMetadataFromTracker(tracker *GazelleTracker, info *TrackerTorrentInfo, 
 		if err := ioutil.WriteFile(filepath.Join(rm.Root, tracker.Name+"_"+norma.Sanitize(artistInfo.name)+jsonExt), artistInfo.fullJSON, 0666); err != nil {
 			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
-			logThis.Info(fmt.Sprintf(infoArtistMetadataSaved, artistInfo.name, rm.Info.folder), VERBOSE)
+			logThis.Info(fmt.Sprintf(infoArtistMetadataSaved, html.UnescapeString(artistInfo.name), html.UnescapeString(rm.Info.folder)), VERBOSE)
 		}
 	}
 	// generate blank user metadata json
@@ -122,7 +122,7 @@ func SaveMetadataFromTracker(tracker *GazelleTracker, info *TrackerTorrentInfo, 
 	if err := info.DownloadCover(filepath.Join(rm.Root, tracker.Name+"_"+trackerCoverFile)); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTrackerCover), NORMAL)
 	} else {
-		logThis.Info(infoCoverSaved+rm.Info.folder, VERBOSE)
+		logThis.Info(infoCoverSaved+html.UnescapeString(rm.Info.folder), VERBOSE)
 	}
 	logThis.Info(fmt.Sprintf(infoAllMetadataSaved, tracker.Name), VERBOSE)
 	return nil

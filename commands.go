@@ -206,7 +206,7 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 			if err == storm.ErrNotFound {
 				// not found, try to locate download directory nonetheless
 				if e.config.DownloadFolderConfigured {
-					logThis.Info("Release with ID "+found.TorrentID+" not found in history, trying to locate in downloads directory.", NORMAL)
+					logThis.Info("Release not found in history, trying to locate in downloads directory.", NORMAL)
 					// get data from tracker
 					info, infoErr = tracker.GetTorrentInfo(id)
 					if infoErr != nil {

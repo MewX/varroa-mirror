@@ -309,14 +309,14 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 	}
 	// export
 	if Accept("Export as " + newName) {
-		fmt.Println("Exporting files to the library root...")
+		fmt.Println("Exporting files to the library...")
 		if err := CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
 			return errors.Wrap(err, "Error exporting download "+d.FolderName)
 		}
-		fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
+		fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sortings."))
 		d.State = stateExported
 	} else {
-		fmt.Println("The release was not exported. It can be exported later with the 'downloads export' subcommand.")
+		fmt.Println("The release was not exported. It can be exported later by sorting this ID again.")
 	}
 	return nil
 }
@@ -334,10 +334,10 @@ func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, fo
 	var artists []string
 	// for now, using artists, composers categories
 	for _, el := range gt.Response.Group.MusicInfo.Artists {
-		artists = append(artists, el.Name)
+		artists = append(artists, html.UnescapeString(el.Name))
 	}
 	for _, el := range gt.Response.Group.MusicInfo.Composers {
-		artists = append(artists, el.Name)
+		artists = append(artists, html.UnescapeString(el.Name))
 	}
 	artistsShort := strings.Join(artists, ", ")
 	// TODO do better.
@@ -364,9 +364,9 @@ func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, fo
 		idElements = append(idElements, gt.Response.Group.CatalogueNumber)
 	} else {
 		if gt.Response.Torrent.RemasterRecordLabel != "" {
-			idElements = append(idElements, gt.Response.Torrent.RemasterRecordLabel)
+			idElements = append(idElements, html.UnescapeString(gt.Response.Torrent.RemasterRecordLabel))
 		} else if gt.Response.Group.RecordLabel != "" {
-			idElements = append(idElements, gt.Response.Group.RecordLabel)
+			idElements = append(idElements, html.UnescapeString(gt.Response.Group.RecordLabel))
 		}
 		// TODO else unkown release!
 	}
@@ -399,14 +399,14 @@ func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, fo
 	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
 		artistsShort,
 		originalYear,
-		gt.Response.Group.Name, // title
+		html.UnescapeString(gt.Response.Group.Name), // title
 		format,
 		gt.Response.Torrent.Media, // original source
 		source, // source with indicator if 100%/log/cue or Silver/gold
-		gt.Response.Group.RecordLabel,     // label
-		gt.Response.Group.CatalogueNumber, // catalog number
-		editionName,                       // edition
-		id,                                // identifying info
+		html.UnescapeString(gt.Response.Group.RecordLabel), // label
+		gt.Response.Group.CatalogueNumber,                  // catalog number
+		editionName,                                        // edition
+		id,                                                 // identifying info
 		r.Replace(folderTemplate))
 
 	var doc bytes.Buffer
