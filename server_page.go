@@ -123,7 +123,7 @@ type ServerPage struct {
 	theme HistoryTheme
 }
 
-func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
+func (sc *ServerPage) update(e *Environment, downloads *DownloadsDB) {
 	config, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		logThis.Error(err, NORMAL)
@@ -134,7 +134,7 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 	sc.index.Stats = []HTMLStats{}
 	if config.webserverMetadata && downloads != nil {
 		// fetch all dl entries
-		if err := downloads.DB.All(&sc.index.Downloads); err != nil {
+		if err := downloads.db.DB.All(&sc.index.Downloads); err != nil {
 			logThis.Error(err, NORMAL)
 		} else {
 			sc.index.ShowDownloads = true
@@ -190,7 +190,7 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 	}
 }
 
-func (sc *ServerPage) Index(e *Environment, downloads *Downloads) ([]byte, error) {
+func (sc *ServerPage) Index(e *Environment, downloads *DownloadsDB) ([]byte, error) {
 	// updating
 	sc.update(e, downloads)
 	if err := sc.index.SetMainContentStats(); err != nil {
@@ -217,7 +217,7 @@ func (sc *ServerPage) SaveIndex(e *Environment, file string) error {
 	return ioutil.WriteFile(file, data, 0666)
 }
 
-func (sc *ServerPage) DownloadsList(e *Environment, downloads *Downloads) ([]byte, error) {
+func (sc *ServerPage) DownloadsList(e *Environment, downloads *DownloadsDB) ([]byte, error) {
 	// updating
 	sc.update(e, downloads)
 	// getting downloads
@@ -228,7 +228,7 @@ func (sc *ServerPage) DownloadsList(e *Environment, downloads *Downloads) ([]byt
 	return sc.index.MainPage()
 }
 
-func (sc *ServerPage) DownloadsInfo(e *Environment, downloads *Downloads, id string) ([]byte, error) {
+func (sc *ServerPage) DownloadsInfo(e *Environment, downloads *DownloadsDB, id string) ([]byte, error) {
 	// updating
 	sc.update(e, nil)
 

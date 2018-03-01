@@ -50,7 +50,7 @@ func NewStatsDB(path string) (*StatsDB, error) {
 			for _, label := range config.TrackerLabels() {
 				migrated, err := statsDB.migrate(label, filepath.Join(StatsDir, label+"_"+statsFile+csvExt), filepath.Join(StatsDir, label+"_"+historyFile+msgpackExt))
 				if err != nil {
-					logThis.Error(errors.Wrap(err, "Error migrating stats csv to the new database, for tracker "+label), NORMAL)
+					logThis.Error(errors.Wrap(err, "Error migrating stats csv to the new database, for tracker "+label), VERBOSEST)
 				} else if migrated {
 					migratedSomething = migrated
 				}
@@ -136,7 +136,7 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) 
 	// updating schema for stats
 	var allEntries []StatsEntry
 	if err := sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
-		return migratedSomething, errors.Wrap(err, "Error reading back stats values from db")
+		return migratedSomething, errors.Wrap(err, "Error reading stats values from db")
 	}
 
 	// transaction for quicker results

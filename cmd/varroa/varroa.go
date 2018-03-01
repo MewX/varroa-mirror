@@ -78,7 +78,11 @@ func main() {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)
 				return
 			}
-			downloads := varroa.Downloads{Root: config.General.DownloadDir}
+			downloads, err := varroa.NewDownloadsDB(varroa.DefaultDownloadsDB, config.General.DownloadDir)
+			if err != nil {
+				logThis.Error(err, varroa.NORMAL)
+				return
+			}
 			// simple operation, only requires access to download folder, since it will clean unindexed folders
 			if cli.downloadClean {
 				if err := downloads.Clean(); err != nil {
@@ -90,7 +94,7 @@ func main() {
 			}
 			// scanning
 			fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
-			if err := downloads.LoadAndScan(filepath.Join(varroa.StatsDir, varroa.DefaultDownloadsDB)); err != nil {
+			if err := downloads.Scan(); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
@@ -161,7 +165,7 @@ func main() {
 		// using stormDB
 		if cli.downloadFuse {
 			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, filepath.Join(varroa.StatsDir, varroa.DefaultDownloadsDB)); err != nil {
+			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, varroa.DefaultDownloadsDB); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}

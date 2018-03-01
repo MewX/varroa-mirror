@@ -137,12 +137,12 @@ func webServer(e *Environment) {
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
 	}
-	downloads := &Downloads{Root: e.config.General.DownloadDir}
+	downloads, err := NewDownloadsDB(DefaultDownloadsDB, e.config.General.DownloadDir)
+	if err == nil {
+		logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
+		return
+	}
 	if e.config.WebServer.ServeMetadata {
-		if err := downloads.Open(filepath.Join(StatsDir, DefaultDownloadsDB)); err != nil {
-			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
-			return
-		}
 		// scan on startup in goroutine
 		go downloads.Scan()
 	}
