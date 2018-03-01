@@ -140,11 +140,11 @@ func (ri *ReleaseInfo) fromGazelleInfo(tracker *GazelleTracker, info GazelleTorr
 	ri.Quality = info.Response.Torrent.Encoding
 	ri.Year = info.Response.Group.Year
 	ri.RemasterYear = info.Response.Torrent.RemasterYear
-	ri.RemasterLabel = info.Response.Torrent.RemasterRecordLabel
+	ri.RemasterLabel = html.UnescapeString(info.Response.Torrent.RemasterRecordLabel)
 	ri.RemasterCatalogNumber = info.Response.Torrent.RemasterCatalogueNumber
 	ri.RecordLabel = info.Response.Group.RecordLabel
 	ri.CatalogNumber = info.Response.Group.CatalogueNumber
-	ri.EditionName = info.Response.Torrent.RemasterTitle
+	ri.EditionName = html.UnescapeString(info.Response.Torrent.RemasterTitle)
 
 	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
 	if info.Response.Torrent.Description != "" {

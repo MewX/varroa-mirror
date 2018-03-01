@@ -1,6 +1,9 @@
 package varroa
 
-import "strings"
+import (
+	"html"
+	"strings"
+)
 
 const (
 	formatFLAC = "FLAC"
@@ -299,7 +302,7 @@ func (gt *GazelleTorrent) ShortEdition() string {
 		"Japan Edition", "Japan",
 		"Japan Release", "Japan",
 	)
-	return editionReplacer.Replace(gt.Response.Torrent.RemasterTitle)
+	return editionReplacer.Replace(html.UnescapeString(gt.Response.Torrent.RemasterTitle))
 }
 
 type GazelleTorrentGroup struct {
