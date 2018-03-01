@@ -123,6 +123,7 @@ func (d *DownloadEntry) Load(root string) error {
 		// resetting the other fields
 		d.Tracker = []string{}
 		d.TrackerID = []int{}
+		d.Artists = []string{}
 		d.HasTrackerMetadata = false
 
 		// load useful things from JSON
