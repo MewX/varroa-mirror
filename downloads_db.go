@@ -21,11 +21,12 @@ var downloadsDB *DownloadsDB
 var onceDownloadsDB sync.Once
 
 type DownloadsDB struct {
-	root string
-	db   *Database
+	root              string
+	additionalSources []string
+	db                *Database
 }
 
-func NewDownloadsDB(path, root string) (*DownloadsDB, error) {
+func NewDownloadsDB(path, root string, additionalSources []string) (*DownloadsDB, error) {
 	var returnErr error
 	onceDownloadsDB.Do(func() {
 		// db should be opened already
@@ -34,7 +35,7 @@ func NewDownloadsDB(path, root string) (*DownloadsDB, error) {
 			returnErr = errors.Wrap(err, "Error opening stats database")
 			return
 		}
-		downloadsDB = &DownloadsDB{db: db, root: root}
+		downloadsDB = &DownloadsDB{db: db, root: root, additionalSources: additionalSources}
 		if returnErr = downloadsDB.init(); returnErr != nil {
 			logThis.Error(errors.Wrap(returnErr, "Could not prepare database for indexing download entries"), NORMAL)
 			return
@@ -43,7 +44,6 @@ func NewDownloadsDB(path, root string) (*DownloadsDB, error) {
 			logThis.Info("Error finding "+root, NORMAL)
 			return
 		}
-
 	})
 	return downloadsDB, returnErr
 }
@@ -79,7 +79,16 @@ func (d *DownloadsDB) Scan() error {
 	// don't walk, we only want the top-level directories here
 	entries, readErr := ioutil.ReadDir(d.root)
 	if readErr != nil {
-		return errors.Wrap(readErr, "Error reading downloads directory")
+		return errors.Wrap(readErr, "Error reading downloads directory "+d.root)
+	}
+
+	// same from additional sources
+	for _, s := range d.additionalSources {
+		se, err := ioutil.ReadDir(s)
+		if err != nil {
+			return errors.Wrap(readErr, "Error reading downloads directory "+s)
+		}
+		entries = append(entries, se...)
 	}
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)

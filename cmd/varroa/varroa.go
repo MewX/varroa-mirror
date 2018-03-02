@@ -78,7 +78,11 @@ func main() {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)
 				return
 			}
-			downloads, err := varroa.NewDownloadsDB(varroa.DefaultDownloadsDB, config.General.DownloadDir)
+			var additionalSources []string
+			if config.LibraryConfigured {
+				additionalSources = config.Library.AdditionalSources
+			}
+			downloads, err := varroa.NewDownloadsDB(varroa.DefaultDownloadsDB, config.General.DownloadDir, additionalSources)
 			if err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return

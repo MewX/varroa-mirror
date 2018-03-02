@@ -56,6 +56,10 @@ library:
   directory: library
   use_hard_links: true
   folder_template: $a ($y) $t [$f $q] [$s] [$l $n $e]
+  additional_source_directories:
+  - ../varroa/test
+  - ../varroa/cmd
+
 
 mpd:
   server: localhost:1234

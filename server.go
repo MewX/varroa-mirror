@@ -137,7 +137,11 @@ func webServer(e *Environment) {
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
 	}
-	downloads, err := NewDownloadsDB(DefaultDownloadsDB, e.config.General.DownloadDir)
+	var additionalSources []string
+	if e.config.LibraryConfigured {
+		additionalSources = e.config.Library.AdditionalSources
+	}
+	downloads, err := NewDownloadsDB(DefaultDownloadsDB, e.config.General.DownloadDir, additionalSources)
 	if err == nil {
 		logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
 		return
