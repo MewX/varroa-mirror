@@ -11,7 +11,7 @@ const (
 	progress      = "Buffer: %s (%s) | Ratio:  %.3f (%.3f) | Up: %s (%s) | Down: %s (%s) | Warning Buffer: %s (%s)"
 	firstProgress = "Buffer: %s | Ratio: %.3f | Up: %s | Down: %s | Warning Buffer: %s"
 
-	currentSchemaVersion = 1
+	currentStatsDBSchemaVersion = 1
 )
 
 type StatsEntry struct {
@@ -155,7 +155,7 @@ func InterpolateStats(previous, next StatsEntry, targetTime time.Time) (*StatsEn
 	virtualStats.Timestamp = targetTime
 	virtualStats.TimestampUnix = targetTime.Unix()
 	virtualStats.Tracker = previous.Tracker
-	virtualStats.SchemaVersion = currentSchemaVersion
+	virtualStats.SchemaVersion = currentStatsDBSchemaVersion
 	return virtualStats, nil
 }
 

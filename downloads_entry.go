@@ -19,6 +19,8 @@ const (
 	stateAccepted        // has metadata and has been accepted, but not yet exported to library
 	stateExported        // has metadata and has been exported to library
 	stateRejected        // has metadata and is not to be exported to library
+
+	currentDownloadsDBSchemaVersion = 1
 )
 
 var DownloadFolderStates = []string{"unsorted", "accepted", "exported", "rejected"}
@@ -65,6 +67,7 @@ type DownloadEntry struct {
 	TrackerID          []int    `storm:"index"`
 	Artists            []string `storm:"index"`
 	HasTrackerMetadata bool     `storm:"index"`
+	SchemaVersion      int
 }
 
 func (d *DownloadEntry) ShortState() string {
@@ -125,6 +128,10 @@ func (d *DownloadEntry) Load(root string) error {
 		d.TrackerID = []int{}
 		d.Artists = []string{}
 		d.HasTrackerMetadata = false
+		if d.SchemaVersion != currentDownloadsDBSchemaVersion {
+			//  migration if useful
+		}
+		d.SchemaVersion = currentDownloadsDBSchemaVersion
 
 		// load useful things from JSON
 		for tracker, info := range origin.Origins {

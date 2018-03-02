@@ -104,7 +104,7 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) 
 		defer tx.Rollback()
 
 		for i, record := range records {
-			r := &StatsEntry{Tracker: tracker, Collected: true, SchemaVersion: currentSchemaVersion}
+			r := &StatsEntry{Tracker: tracker, Collected: true, SchemaVersion: currentStatsDBSchemaVersion}
 			if err := r.FromSlice(record); err != nil {
 				logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
 			} else {
@@ -148,10 +148,10 @@ func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) 
 
 	var migratedSchema bool
 	for _, e := range allEntries {
-		if e.SchemaVersion != currentSchemaVersion {
+		if e.SchemaVersion != currentStatsDBSchemaVersion {
 			migratedSchema = true
 			// Update multiple fields
-			if err := txSchemaUpdate.Update(&StatsEntry{ID: e.ID, SchemaVersion: currentSchemaVersion, TimestampUnix: e.Timestamp.Unix()}); err != nil {
+			if err := txSchemaUpdate.Update(&StatsEntry{ID: e.ID, SchemaVersion: currentStatsDBSchemaVersion, TimestampUnix: e.Timestamp.Unix()}); err != nil {
 				return migratedSomething, errors.Wrap(err, "Error updating stats database to new schema")
 			}
 		}

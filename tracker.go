@@ -237,7 +237,7 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 		Timestamp:     time.Now(),
 		TimestampUnix: time.Now().Unix(),
 		Collected:     true,
-		SchemaVersion: currentSchemaVersion,
+		SchemaVersion: currentStatsDBSchemaVersion,
 	}
 	return stats, nil
 }
