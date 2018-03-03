@@ -17,7 +17,6 @@ const (
 	trackerMetadataFile       = "release.json"
 	trackerTGroupMetadataFile = "release_group.json"
 	trackerCoverFile          = "cover"
-	summaryFile               = "release.md"
 	perDay                    = "per_day_"
 	uploadStatsFile           = "up"
 	downloadStatsFile         = "down"

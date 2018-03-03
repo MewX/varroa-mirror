@@ -2,7 +2,6 @@ package varroa
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -160,21 +159,11 @@ func (d *DownloadEntry) Load(root string) error {
 }
 
 func (d *DownloadEntry) getDescription(root, tracker string) []byte {
-	// getting release.md info
-	releaseMD := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+summaryFile)
-	if !FileExists(releaseMD) {
-		// if not present, try the old format
-		releaseMD = filepath.Join(root, d.FolderName, metadataDir, "Release.md")
+	md, err := d.getMetadata(root, tracker)
+	if err != nil {
+		return []byte{}
 	}
-	if FileExists(releaseMD) {
-		fileBytes, err := ioutil.ReadFile(releaseMD)
-		if err != nil {
-			logThis.Error(err, NORMAL)
-		} else {
-			return fileBytes
-		}
-	}
-	return []byte{}
+	return []byte(md.HTMLDescription())
 }
 
 func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerMetadata, error) {

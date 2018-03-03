@@ -59,7 +59,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 						return nil, errors.New(errorCouldNotGetTorrentInfo)
 					}
 					downloadedInfo = true
-					logThis.Info(info.GenerateTextDescription(false), VERBOSE)
+					logThis.Info(info.TextDescription(false), VERBOSE)
 				}
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {

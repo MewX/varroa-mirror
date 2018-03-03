@@ -404,14 +404,6 @@ func (tm *TrackerMetadata) SaveFromTracker(tracker *GazelleTracker) error {
 		logThis.Error(errors.Wrap(err, errorGeneratingUserMetadataJSON), NORMAL)
 	}
 
-	// TODO REMOVE
-	/*
-		// generate summary
-		if err := ioutil.WriteFile(filepath.Join(destination, tracker.Name+"_"+summaryFile), []byte(tm.GenerateHTMLDescription()), 0644); err != nil {
-			logThis.Error(errors.Wrap(err, errorGeneratingSummary), NORMAL)
-		}
-	*/
-
 	// download tracker cover to target folder
 	if err := tm.SaveCover(); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTrackerCover), NORMAL)
@@ -453,7 +445,7 @@ func (tm *TrackerMetadata) SaveCover() error {
 	return err
 }
 
-func (tm *TrackerMetadata) GenerateHTMLDescription() string {
+func (tm *TrackerMetadata) HTMLDescription() string {
 
 	// TODO use HTML template directly!!
 
@@ -496,7 +488,7 @@ func (tm *TrackerMetadata) GenerateHTMLDescription() string {
 	return string(blackfriday.Run([]byte(md)))
 }
 
-func (tm *TrackerMetadata) GenerateTextDescription(fancy bool) string {
+func (tm *TrackerMetadata) TextDescription(fancy bool) string {
 	// TODO
 
 	var artists []string
