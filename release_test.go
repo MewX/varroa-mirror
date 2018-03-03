@@ -116,14 +116,14 @@ var (
 		Filter:      "",
 	}
 	// torrent infos
-	i1 = &TrackerTorrentInfo{size: 1234567, logScore: 100, uploader: "that_guy"}
-	i2 = &TrackerTorrentInfo{size: 1234567, logScore: 80, uploader: "someone else"}
-	i3 = &TrackerTorrentInfo{size: 11, logScore: 80}
-	i4 = &TrackerTorrentInfo{size: 123456789, logScore: 80}
-	i5 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
-	i6 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
-	i7 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition", editionYear: 2004}
-	i8 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster", editionYear: 2017}
+	i1 = &TrackerMetadata{Size: 1234567, LogScore: 100, Uploader: "that_guy"}
+	i2 = &TrackerMetadata{Size: 1234567, LogScore: 80, Uploader: "someone else"}
+	i3 = &TrackerMetadata{Size: 11, LogScore: 80}
+	i4 = &TrackerMetadata{Size: 123456789, LogScore: 80}
+	i5 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label1"}
+	i6 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label unknown"}
+	i7 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "deluxe edition", EditionYear: 2004}
+	i8 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "anniversary remaster", EditionYear: 2017}
 )
 
 func TestRelease(t *testing.T) {

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"html/template"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -286,7 +286,7 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(responseOnly bool) error {
 	tm.OriginalYear = gt.Response.Group.Year
 	tm.EditionName = html.UnescapeString(gt.Response.Torrent.RemasterTitle)
 	tm.EditionYear = gt.Response.Torrent.RemasterYear
-	tm.Source = gt.Response.Torrent.Media
+	tm.Source = html.UnescapeString(gt.Response.Torrent.Media)
 	tm.Format = gt.Response.Torrent.Format
 	tm.Quality = gt.Response.Torrent.Encoding
 	tm.LogScore = gt.Response.Torrent.LogScore
