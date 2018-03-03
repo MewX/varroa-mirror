@@ -106,36 +106,6 @@ func (se *StatsEntry) ToSlice() []string {
 	return []string{fmt.Sprintf("%d", se.Timestamp.Unix()), strconv.FormatUint(se.Up, 10), strconv.FormatUint(se.Down, 10), strconv.FormatFloat(se.Ratio, 'f', -1, 64)}
 }
 
-// FromSlice allows parsing a CSV file line. Legacy function, used only for <v19 migration
-func (se *StatsEntry) FromSlice(slice []string) error {
-	// timestamp, up, down, ratio
-	if len(slice) < 4 {
-		return errors.New("incorrect entry, cannot load stats")
-	}
-	timestamp, err := strconv.ParseInt(slice[0], 0, 64)
-	if err != nil {
-		return err
-	}
-	se.TimestampUnix = int64(timestamp)
-	se.Timestamp = time.Unix(timestamp, 0)
-	up, err := strconv.ParseUint(slice[1], 10, 64)
-	if err != nil {
-		return err
-	}
-	se.Up = up
-	down, err := strconv.ParseUint(slice[2], 10, 64)
-	if err != nil {
-		return err
-	}
-	se.Down = down
-	ratio, err := strconv.ParseFloat(slice[3], 64)
-	if err != nil {
-		return err
-	}
-	se.Ratio = ratio
-	return nil
-}
-
 func InterpolateStats(previous, next StatsEntry, targetTime time.Time) (*StatsEntry, error) {
 	// check targetTime is between se.Timest
 	if targetTime.Before(previous.Timestamp) || targetTime.After(next.Timestamp) {

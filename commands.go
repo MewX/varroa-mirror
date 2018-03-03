@@ -417,8 +417,8 @@ func ArchiveUserFiles() error {
 			return errors.Wrap(err, errorArchiving)
 		}
 	}
-
-	// find all .csv + .db files, save them along with the configuration file
+	var backupFiles []string
+	// find all .db files, save them along with the configuration file
 	f, err := os.Open(StatsDir)
 	if err != nil {
 		return errors.Wrap(err, "Error opening "+StatsDir)
@@ -428,8 +428,12 @@ func ArchiveUserFiles() error {
 		return errors.Wrap(err, "Error reading directory "+StatsDir)
 	}
 	f.Close()
-
-	var backupFiles []string
+	for _, c := range contents {
+		if filepath.Ext(c) == msgpackExt {
+			backupFiles = append(backupFiles, filepath.Join(StatsDir, c))
+		}
+	}
+	// backup the configuration file
 	if FileExists(DefaultConfigurationFile) {
 		backupFiles = append(backupFiles, DefaultConfigurationFile)
 	}
@@ -437,13 +441,7 @@ func ArchiveUserFiles() error {
 	if FileExists(encryptedConfigurationFile) {
 		backupFiles = append(backupFiles, encryptedConfigurationFile)
 	}
-	for _, c := range contents {
-		if filepath.Ext(c) == msgpackExt || filepath.Ext(c) == csvExt {
-			backupFiles = append(backupFiles, filepath.Join(StatsDir, c))
-		}
-	}
-
-	// generate file
+	// generate archive
 	err = archiver.Zip.Make(filepath.Join(archivesDir, archiveName), backupFiles)
 	if err != nil {
 		logThis.Error(errors.Wrap(err, errorArchiving), NORMAL)

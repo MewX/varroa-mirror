@@ -52,7 +52,6 @@ const (
 	encryptedExt = ".enc"
 	pngExt       = ".png"
 	svgExt       = ".svg"
-	csvExt       = ".csv"
 	msgpackExt   = ".db"
 	jsonExt      = ".json"
 	torrentExt   = ".torrent"
