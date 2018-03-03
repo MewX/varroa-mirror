@@ -247,7 +247,7 @@ func (sc *ServerPage) DownloadsInfo(e *Environment, downloads *DownloadsDB, id s
 	if dl.HasTrackerMetadata {
 		// TODO if more than 1 tracker, make things prettier
 		for _, t := range dl.Tracker {
-			sc.index.DownloadInfo += template.HTML(blackfriday.Run(dl.getDescription(e.config.General.DownloadDir, t)))
+			sc.index.DownloadInfo += template.HTML(blackfriday.Run(dl.getDescription(e.config.General.DownloadDir, t, true)))
 		}
 	} else {
 		sc.index.DownloadInfo = template.HTML(dl.RawShortString())

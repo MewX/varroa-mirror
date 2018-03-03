@@ -76,18 +76,25 @@ Direct link: %s
 
 **Edition name:** %s
 `
-	txtDescription = `
-%s
-	Release Type: %s
-	Year: %s
-	Cover: %s
-	Tags: %s
-	...
-	Source: %s
-	Format: %s
-	Quality: %s
-		
-`
+	txtDescription = `┌──────────
+│ %s
+└─┬────────
+  │  Release Type: %s
+  │  Year: %s
+  │  Tags: %s
+  │  Record Label: %s
+  │  Catalog Number: %s
+  │  Edition Name: %s
+  │  Tracks: %s	
+  ├────────
+  │  Source: %s
+  │  Format: %s
+  │  Quality: %s
+  ├────────	
+  │  Tracker: %s
+  │  Release Link: %s
+  │  Cover: %s	
+  └────────`
 	trackPattern = `(.*){{{(\d*)}}}`
 )
 
@@ -489,8 +496,6 @@ func (tm *TrackerMetadata) HTMLDescription() string {
 }
 
 func (tm *TrackerMetadata) TextDescription(fancy bool) string {
-	// TODO
-
 	var artists []string
 	for _, a := range tm.Artists {
 		artists = append(artists, a.Name)
@@ -503,11 +508,26 @@ func (tm *TrackerMetadata) TextDescription(fancy bool) string {
 	if fancy {
 		titleStyle = ansi.ColorCode("green+hub")
 		reset = ansi.ColorCode("reset")
-		style = ansi.ColorFunc("blue+h")
+		style = ansi.ColorFunc("blue+hb")
 	}
 	fullTitle := titleStyle + artistNames + " - " + tm.Title + reset
 
-	return fmt.Sprintf(txtDescription, fullTitle, style(tm.ReleaseType), style(fmt.Sprintf("%d", tm.EditionYear)), style(tm.CoverURL), style(strings.Join(tm.Tags, ", ")), style(tm.Source), style(tm.Format), style(tm.Quality))
+	return fmt.Sprintf(txtDescription,
+		fullTitle,
+		style(tm.ReleaseType),
+		style(fmt.Sprintf("%d", tm.EditionYear)),
+		style(strings.Join(tm.Tags, ", ")),
+		style(tm.RecordLabel),
+		style(tm.CatalogNumber),
+		style(tm.EditionName),
+		style(fmt.Sprintf("%d", len(tm.Tracks))),
+		style(tm.SourceFull),
+		style(tm.Format),
+		style(tm.Quality),
+		style(tm.Tracker),
+		style(tm.ReleaseURL),
+		style(tm.CoverURL),
+	)
 }
 
 func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {

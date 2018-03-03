@@ -34,6 +34,9 @@ func TestGeneratePath(t *testing.T) {
 	gt.Response.Group.Year = 1987
 	gt.Response.Group.RecordLabel = "LABEL 1 Group"
 	gt.Response.Group.ReleaseType = 5 // EP
+	gt.Response.Group.Tags = []string{"tag1", "tag2"}
+	gt.Response.Group.WikiImage = "http://cover.jpg"
+	gt.Response.Torrent.ID = 123
 	gt.Response.Torrent.FilePath = "original_path"
 	gt.Response.Torrent.Format = "FLAC"
 	gt.Response.Torrent.Encoding = "Lossless"
@@ -98,6 +101,7 @@ func TestGeneratePath(t *testing.T) {
 	infod7 := &TrackerMetadata{}
 	check.Nil(infod7.LoadFromTracker(tracker, metadataJSONgt6))
 
+	// checking GeneratePath
 	check.Equal("original_path", infod2.GeneratePath(""))
 	check.Equal("Artist A, Artist B", infod2.GeneratePath("$a"))
 	check.Equal("RELEASE 1", infod2.GeneratePath("$t"))
@@ -122,5 +126,10 @@ func TestGeneratePath(t *testing.T) {
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM, EP} [FLAC CD++]", infod6.GeneratePath("$a ($y) $t {$id} [$f $g]"))
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD]", infod7.GeneratePath("$a ($y) $t {$id} [$f $s]"))
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD+]", infod7.GeneratePath("$a ($y) $t {$id} [$f $g]"))
+
+	// checking TextDescription
+
+	fmt.Println(infod2.TextDescription(false))
+	fmt.Println(infod2.TextDescription(true))
 
 }

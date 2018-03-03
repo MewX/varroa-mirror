@@ -84,10 +84,9 @@ func (d *DownloadEntry) String() string {
 func (d *DownloadEntry) Description(root string) string {
 	txt := d.String()
 	if d.HasTrackerMetadata {
-		txt += ", Has tracker metadata: "
-		for i, t := range d.Tracker {
-			txt += fmt.Sprintf("%s (ID #%d) ", t, d.TrackerID[i])
-			txt += fmt.Sprintf("\n%s:\n%s", t, string(d.getDescription(root, t)))
+		txt += "\n"
+		for _, t := range d.Tracker {
+			txt += string(d.getDescription(root, t, false))
 		}
 	} else {
 		txt += ", does not have any tracker metadata."
@@ -158,12 +157,15 @@ func (d *DownloadEntry) Load(root string) error {
 	return nil
 }
 
-func (d *DownloadEntry) getDescription(root, tracker string) []byte {
+func (d *DownloadEntry) getDescription(root, tracker string, html bool) []byte {
 	md, err := d.getMetadata(root, tracker)
 	if err != nil {
 		return []byte{}
 	}
-	return []byte(md.HTMLDescription())
+	if html {
+		return []byte(md.HTMLDescription())
+	}
+	return []byte(md.TextDescription(true))
 }
 
 func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerMetadata, error) {
