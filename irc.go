@@ -43,7 +43,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 		// if satisfies a filter, download
 		var downloadedInfo bool
 		var downloadedTorrent bool
-		var info *TrackerTorrentInfo
+		var info *TrackerMetadata
 		for _, filter := range e.config.Filters {
 			// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
 			if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
@@ -54,12 +54,12 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 			if release.Satisfies(filter) {
 				// get torrent info!
 				if !downloadedInfo {
-					info, err = tracker.GetTorrentInfo(release.TorrentID)
+					info, err = tracker.GetTorrentMetadata(release.TorrentID)
 					if err != nil {
 						return nil, errors.New(errorCouldNotGetTorrentInfo)
 					}
 					downloadedInfo = true
-					logThis.Info(info.String(), VERBOSE)
+					logThis.Info(info.GenerateTextDescription(false), VERBOSE)
 				}
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
@@ -95,7 +95,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					}
 					// save metadata once the download folder is created
 					if e.config.General.AutomaticMetadataRetrieval {
-						go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+						go info.SaveFromTracker(tracker)
 					}
 					// no need to consider other filters
 					break

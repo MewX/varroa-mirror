@@ -168,6 +168,12 @@
   version = "v0.0.3"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/mgutz/ansi"
+  packages = ["."]
+  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
+
+[[projects]]
   name = "github.com/mholt/archiver"
   packages = ["."]
   revision = "cdc68dd1f170b8dfc1a0d2231b5bb0967ed67006"
@@ -380,6 +386,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "20f162e9e49f43f85d9e30776cb3c15c0d7b9fae245bf6f03567b6b7b46d998e"
+  inputs-digest = "5fd0a95b3b259c5ab8e9ca3fdaf1633bcf274f1f7717e898212db3d1ee3f9f77"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -56,12 +56,12 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	}
 
 	// get torrent info
-	info, err := tracker.GetTorrentInfo(id)
+	info, err := tracker.GetTorrentMetadata(id)
 	if err != nil {
 		logThis.Info(errorCouldNotGetTorrentInfo, NORMAL)
 		return nil, err // probably the ID does not exist
 	}
-	release := info.Release(tracker.Name)
+	release := info.Release()
 	if release == nil {
 		logThis.Info("Error parsing Torrent Info", NORMAL)
 		release = &Release{Tracker: tracker.Name, TorrentID: id}
@@ -79,9 +79,9 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
 		if daemon.WasReborn() {
-			go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+			go info.SaveFromTracker(tracker)
 		} else {
-			SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+			info.SaveFromTracker(tracker)
 		}
 	}
 	return release, nil

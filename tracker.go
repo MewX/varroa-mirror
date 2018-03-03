@@ -242,19 +242,20 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	return stats, nil
 }
 
-func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) {
+func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error) {
 	data, err := t.get(t.URL + "/ajax.php?action=torrent&id=" + id)
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
-	info := &TrackerTorrentInfo{}
-	if unmarshalErr := info.LoadFromBytes(data, true); err != nil {
+	// json bytes will be re-saved by info after anonymizing
+	info := &TrackerMetadata{ReleaseJSON: data}
+	if unmarshalErr := info.LoadFromTracker(t, data); err != nil {
 		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
 	return info, nil
 }
 
-func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error) {
+func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerMetadataArtist, error) {
 	data, err := t.get(t.URL + "/ajax.php?action=artist&id=" + strconv.Itoa(artistID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
@@ -263,17 +264,16 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error)
 	if unmarshalErr := json.Unmarshal(data, &gt); unmarshalErr != nil {
 		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
-	// TODO get specific info?
 	// json for metadata
 	metadataJSON, err := json.MarshalIndent(gt.Response, "", "    ")
 	if err != nil {
 		metadataJSON = data // falling back to complete json
 	}
-	info := &TrackerArtistInfo{id: gt.Response.ID, name: gt.Response.Name, fullJSON: metadataJSON}
+	info := &TrackerMetadataArtist{ID: gt.Response.ID, Name: gt.Response.Name, JSON: metadataJSON}
 	return info, nil
 }
 
-func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorrentGroupInfo, error) {
+func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerMetadataTorrentGroup, error) {
 	data, err := t.get(t.URL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
@@ -292,7 +292,7 @@ func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorren
 	if err != nil {
 		metadataJSON = data // falling back to complete json
 	}
-	info := &TrackerTorrentGroupInfo{id: gt.Response.Group.ID, name: gt.Response.Group.Name, fullJSON: metadataJSON}
+	info := &TrackerMetadataTorrentGroup{id: gt.Response.Group.ID, name: gt.Response.Group.Name, fullJSON: metadataJSON}
 	return info, nil
 }
 

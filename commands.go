@@ -3,7 +3,6 @@ package varroa
 import (
 	"encoding/json"
 	"fmt"
-	"html"
 	"os"
 	"os/exec"
 	"os/user"
@@ -199,7 +198,7 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 	for _, id := range IDStrings {
 		var found Release
-		var info *TrackerTorrentInfo
+		var info *TrackerMetadata
 		var infoErr error
 		findIDsQuery := q.And(q.Eq("Tracker", tracker.Name), q.Eq("TorrentID", id))
 		if err := stats.db.DB.Select(findIDsQuery).First(&found); err != nil {
@@ -208,17 +207,17 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				if e.config.DownloadFolderConfigured {
 					logThis.Info("Release not found in history, trying to locate in downloads directory.", NORMAL)
 					// get data from tracker
-					info, infoErr = tracker.GetTorrentInfo(id)
+					info, infoErr = tracker.GetTorrentMetadata(id)
 					if infoErr != nil {
 						logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 						break
 					}
-					fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
+					fullFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
 					if DirectoryExists(fullFolder) {
 						if daemon.WasReborn() {
-							go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+							go info.SaveFromTracker(tracker)
 						} else {
-							SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+							info.SaveFromTracker(tracker)
 						}
 					} else {
 						logThis.Info(fmt.Sprintf(errorCannotFindID, id), NORMAL)
@@ -236,15 +235,15 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 			// was found
 			logThis.Info("Found release with ID "+found.TorrentID+" in history: "+found.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from tracker
-			info, infoErr = tracker.GetTorrentInfo(found.TorrentID)
+			info, infoErr = tracker.GetTorrentMetadata(found.TorrentID)
 			if infoErr != nil {
 				logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
 			}
 			if daemon.WasReborn() {
-				go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+				go info.SaveFromTracker(tracker)
 			} else {
-				SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+				info.SaveFromTracker(tracker)
 			}
 		}
 		// check the number of active seeders
@@ -287,15 +286,14 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 	for _, id := range IDStrings {
 		logThis.Info(fmt.Sprintf("+ Info about %s / %s: \n", tracker.Name, id), NORMAL)
 		// get release info from ID
-		info, err := tracker.GetTorrentInfo(id)
+		info, err := tracker.GetTorrentMetadata(id)
 		if err != nil {
 			logThis.Error(errors.Wrap(err, fmt.Sprintf("Could not get info about torrent %s on %s, may not exist", id, tracker.Name)), NORMAL)
 			continue
 		}
-		release := info.Release(tracker.Name)
-		// TODO better output, might need to add a new info.FullString()
+		release := info.Release()
 		logThis.Info(release.String(), NORMAL)
-		logThis.Info(info.String()+"\n", NORMAL)
+		logThis.Info(info.GenerateTextDescription(true)+"\n", NORMAL)
 
 		// find if in history
 		var found Release
@@ -307,7 +305,7 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 		// checking the files are still there (if snatched with or without varroa)
 		if e.config.DownloadFolderConfigured {
-			releaseFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
+			releaseFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
 			if DirectoryExists(releaseFolder) {
 				logThis.Info(fmt.Sprintf("Files seem to still be in the download directory: %s", releaseFolder), NORMAL)
 				// TODO maybe display when the metadata was last updated?

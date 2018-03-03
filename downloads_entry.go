@@ -1,15 +1,11 @@
 package varroa
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"html"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/pkg/errors"
 )
@@ -146,25 +142,14 @@ func (d *DownloadEntry) Load(root string) error {
 			}
 			if FileExists(infoJSON) {
 				d.HasTrackerMetadata = true
-				// load JSON, get info
-				data, err := ioutil.ReadFile(infoJSON)
-				if err != nil {
+
+				md := TrackerMetadata{}
+				if err := md.LoadFromJSON(tracker, originFile, infoJSON); err != nil {
 					return errors.Wrap(err, "Error loading JSON file "+infoJSON)
 				}
-				var gt GazelleTorrent
-				if err := json.Unmarshal(data, &gt.Response); err != nil {
-					return errors.Wrap(err, "Error parsing JSON file "+infoJSON)
-				}
 				// extract relevant information!
-				// for now, using artists, composers, "with" categories
-				for _, el := range gt.Response.Group.MusicInfo.Artists {
-					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
-				}
-				for _, el := range gt.Response.Group.MusicInfo.With {
-					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
-				}
-				for _, el := range gt.Response.Group.MusicInfo.Composers {
-					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
+				for _, a := range md.Artists {
+					d.Artists = append(d.Artists, a.Name)
 				}
 			}
 		}
@@ -192,10 +177,10 @@ func (d *DownloadEntry) getDescription(root, tracker string) []byte {
 	return []byte{}
 }
 
-func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerTorrentInfo, error) {
+func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerMetadata, error) {
 	// getting release info from json
 	if !d.HasTrackerMetadata {
-		return TrackerTorrentInfo{}, errors.New("Error, does not have tracker metadata")
+		return TrackerMetadata{}, errors.New("Error, does not have tracker metadata")
 	}
 
 	infoJSON := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
@@ -203,13 +188,14 @@ func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerTorrentInfo, e
 		// if not present, try the old format
 		infoJSON = filepath.Join(root, d.FolderName, metadataDir, "Release.json")
 	}
+	originJSON := filepath.Join(root, d.FolderName, metadataDir, originJSONFile)
 
-	info := TrackerTorrentInfo{}
-	if err := info.Load(infoJSON); err != nil {
-		logThis.Error(err, NORMAL)
-		return TrackerTorrentInfo{}, errors.Wrap(err, "Error, could not load release json")
+	info := TrackerMetadata{}
+	err := info.LoadFromJSON(tracker, originJSON, infoJSON)
+	if err != nil {
+		logThis.Error(errors.Wrap(err, "Error, could not load release json"), NORMAL)
 	}
-	return info, nil
+	return info, err
 }
 
 func (d *DownloadEntry) Sort(e *Environment, root string) error {
@@ -303,8 +289,8 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				logThis.Info("Could not find metadata for tracker "+t, NORMAL)
 				continue
 			}
-			candidates = append(candidates, d.generatePath(t, info, defaultFolderTemplate))
-			candidates = append(candidates, d.generatePath(t, info, config.Library.FolderTemplate))
+			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
+			candidates = append(candidates, info.GeneratePath(config.Library.FolderTemplate))
 		}
 	}
 	// select or input a new name
@@ -326,110 +312,4 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 		fmt.Println("The release was not exported. It can be exported later by sorting this ID again.")
 	}
 	return nil
-}
-
-func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, folderTemplate string) string {
-	if folderTemplate == "" || !d.HasTrackerMetadata {
-		return d.FolderName
-	}
-
-	gt := info.FullInfo()
-	if gt == nil {
-		return d.FolderName // nothing useful here
-	}
-	// parsing info that needs to be worked on before use
-	var artists []string
-	// for now, using artists, composers categories
-	for _, el := range gt.Response.Group.MusicInfo.Artists {
-		artists = append(artists, html.UnescapeString(el.Name))
-	}
-	for _, el := range gt.Response.Group.MusicInfo.Composers {
-		artists = append(artists, html.UnescapeString(el.Name))
-	}
-	artistsShort := strings.Join(artists, ", ")
-	// TODO do better.
-	if len(artists) >= 3 {
-		artistsShort = "Various Artists"
-	}
-	originalYear := gt.Response.Group.Year
-
-	// usual edition specifiers, shortened
-	editionName := gt.ShortEdition()
-
-	// identifying info
-	var idElements []string
-	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterYear != originalYear {
-		idElements = append(idElements, fmt.Sprintf("%d", gt.Response.Torrent.RemasterYear))
-	}
-	if editionName != "" {
-		idElements = append(idElements, editionName)
-	}
-	// adding catalog number, or if not specified, the record label
-	if gt.Response.Torrent.RemasterCatalogueNumber != "" {
-		idElements = append(idElements, gt.Response.Torrent.RemasterCatalogueNumber)
-	} else if gt.Response.Group.CatalogueNumber != "" {
-		idElements = append(idElements, gt.Response.Group.CatalogueNumber)
-	} else {
-		if gt.Response.Torrent.RemasterRecordLabel != "" {
-			idElements = append(idElements, html.UnescapeString(gt.Response.Torrent.RemasterRecordLabel))
-		} else if gt.Response.Group.RecordLabel != "" {
-			idElements = append(idElements, html.UnescapeString(gt.Response.Group.RecordLabel))
-		}
-		// TODO else unkown release!
-	}
-	if gt.Response.Group.ReleaseType != 1 {
-		// adding release type if not album
-		idElements = append(idElements, getGazelleReleaseType(gt.Response.Group.ReleaseType))
-	}
-	id := strings.Join(idElements, ", ")
-	// format
-	format := gt.ShortEncoding()
-	// source
-	source := gt.Source()
-
-	r := strings.NewReplacer(
-		"$id", "{{$id}}",
-		"$a", "{{$a}}",
-		"$t", "{{$t}}",
-		"$y", "{{$y}}",
-		"$f", "{{$f}}",
-		"$s", "{{$s}}",
-		"$l", "{{$l}}",
-		"$n", "{{$n}}",
-		"$e", "{{$e}}",
-		"$g", "{{$g}}",
-		"{", "ÆÆ", // otherwise golang's template throws a fit if '{' or '}' are in the user pattern
-		"}", "¢¢", // assuming these character sequences will probably not cause conflicts.
-	)
-
-	// replace with all valid epub parameters
-	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
-		artistsShort,
-		originalYear,
-		html.UnescapeString(gt.Response.Group.Name), // title
-		format,
-		gt.Response.Torrent.Media, // original source
-		source, // source with indicator if 100%/log/cue or Silver/gold
-		html.UnescapeString(gt.Response.Group.RecordLabel), // label
-		gt.Response.Group.CatalogueNumber,                  // catalog number
-		editionName,                                        // edition
-		id,                                                 // identifying info
-		r.Replace(folderTemplate))
-
-	var doc bytes.Buffer
-	te := template.Must(template.New("hop").Parse(tmpl))
-	if err := te.Execute(&doc, nil); err != nil {
-		return d.FolderName
-	}
-	newName := strings.TrimSpace(doc.String())
-
-	// recover brackets
-	r2 := strings.NewReplacer(
-		"ÆÆ", "{",
-		"¢¢", "}",
-	)
-	newName = r2.Replace(newName)
-
-	// making sure the final filename is valid
-	return SanitizeFolder(newName)
 }
