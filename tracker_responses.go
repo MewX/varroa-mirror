@@ -155,19 +155,26 @@ type GazelleUserStats struct {
 	Response struct {
 		Avatar    string `json:"avatar"`
 		Community struct {
-			CollagesContrib int `json:"collagesContrib"`
-			CollagesStarted int `json:"collagesStarted"`
-			Groups          int `json:"groups"`
-			Invited         int `json:"invited"`
-			Leeching        int `json:"leeching"`
-			PerfectFlacs    int `json:"perfectFlacs"`
-			Posts           int `json:"posts"`
-			RequestsFilled  int `json:"requestsFilled"`
-			RequestsVoted   int `json:"requestsVoted"`
-			Seeding         int `json:"seeding"`
-			Snatched        int `json:"snatched"`
-			TorrentComments int `json:"torrentComments"`
-			Uploaded        int `json:"uploaded"`
+			ArtistsAdded    int   `json:"artistsAdded"`
+			ArtistComments  int   `json:"artistComments"`
+			BountyEarned    int   `json:"bountyEarned"`
+			BountySpent     int64 `json:"bountySpent"`
+			CollageComments int   `json:"collageComments"`
+			CollagesContrib int   `json:"collagesContrib"`
+			CollagesStarted int   `json:"collagesStarted"`
+			Groups          int   `json:"groups"`
+			GroupVotes      int   `json:"groupVotes"`
+			Invited         int   `json:"invited"`
+			Leeching        int   `json:"leeching"`
+			PerfectFlacs    int   `json:"perfectFlacs"`
+			Posts           int   `json:"posts"`
+			RequestComments int   `json:"requestComments"`
+			RequestsFilled  int   `json:"requestsFilled"`
+			RequestsVoted   int   `json:"requestsVoted"`
+			Seeding         int   `json:"seeding"`
+			Snatched        int   `json:"snatched"`
+			TorrentComments int   `json:"torrentComments"`
+			Uploaded        int   `json:"uploaded"`
 		} `json:"community"`
 		IsFriend bool `json:"isFriend"`
 		Personal struct {
@@ -191,12 +198,13 @@ type GazelleUserStats struct {
 			Uploads    int `json:"uploads"`
 		} `json:"ranks"`
 		Stats struct {
-			Downloaded    int     `json:"downloaded"`
+			Buffer        int64   `json:"buffer"`
+			Downloaded    uint64  `json:"downloaded"`
 			JoinedDate    string  `json:"joinedDate"`
 			LastAccess    string  `json:"lastAccess"`
 			Ratio         string  `json:"ratio"`
 			RequiredRatio float64 `json:"requiredRatio"`
-			Uploaded      int     `json:"uploaded"`
+			Uploaded      uint64  `json:"uploaded"`
 		} `json:"stats"`
 		Username string `json:"username"`
 	} `json:"response"`
