@@ -14,21 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mgutz/ansi"
 	"github.com/subosito/norma"
-	"github.com/ttacon/chalk"
 )
-
-// -----------------------------------------------------------------------------
-
-func startOfDay(t time.Time) time.Time {
-	return t.Truncate(24 * time.Hour)
-}
-
-func nextDay(t time.Time) time.Time {
-	return t.Add(time.Duration(24) * time.Hour)
-}
-
-// -----------------------------------------------------------------------------
 
 // StringInSlice checks if a string is in a []string, returns bool.
 func StringInSlice(a string, list []string) bool {
@@ -79,14 +67,6 @@ func IntInSlice(a int, list []int) bool {
 		}
 	}
 	return false
-}
-
-func IntSliceToString(in []int) string {
-	b := make([]string, len(in))
-	for i, v := range in {
-		b[i] = strconv.Itoa(v)
-	}
-	return strings.Join(b, " ")
 }
 
 func StringSliceToIntSlice(in []string) ([]int, error) {
@@ -149,17 +129,9 @@ func RemoveStringSliceDuplicates(elements []string) []string {
 	return result
 }
 
-func checkErrors(errs ...error) error {
-	for _, err := range errs {
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // -----------------------------------------------------------------------------
 
+// SanitizeFolder to have an acceptable path
 func SanitizeFolder(path string) string {
 	// making sure the path is relative
 	if strings.HasPrefix(path, "/") {
@@ -413,37 +385,37 @@ func readableInt64Sign(a int64) string {
 
 // BlueBold outputs a string in blue bold.
 func BlueBold(in string) string {
-	return chalk.Bold.TextStyle(chalk.Blue.Color(in))
+	return ansi.ColorFunc("blue+hb")(in)
 }
 
 // Blue outputs a string in blue.
 func Blue(in string) string {
-	return chalk.Blue.Color(in)
+	return ansi.ColorFunc("blue+h")(in)
 }
 
 // GreenBold outputs a string in green bold.
 func GreenBold(in string) string {
-	return chalk.Bold.TextStyle(chalk.Green.Color(in))
+	return ansi.ColorFunc("green+hb")(in)
 }
 
 // Green outputs a string in green.
 func Green(in string) string {
-	return chalk.Green.Color(in)
+	return ansi.ColorFunc("green+h")(in)
 }
 
 // RedBold outputs a string in red bold.
 func RedBold(in string) string {
-	return chalk.Bold.TextStyle(chalk.Red.Color(in))
+	return ansi.ColorFunc("red+hb")(in)
 }
 
 // Red outputs a string in red.
 func Red(in string) string {
-	return chalk.Red.Color(in)
+	return ansi.ColorFunc("red+h")(in)
 }
 
 // Yellow outputs a string in yellow.
 func Yellow(in string) string {
-	return chalk.Yellow.Color(in)
+	return ansi.ColorFunc("yellow+h")(in)
 }
 
 // UserChoice message logging

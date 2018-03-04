@@ -78,6 +78,9 @@ func (sdb *StatsDB) migrate(tracker string) (bool, error) {
 	// updating schema for stats
 	var allEntries []StatsEntry
 	if err = sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
+		if err == storm.ErrNotFound {
+			return migratedSchema, nil
+		}
 		return migratedSchema, errors.Wrap(err, "Error reading stats values from db")
 	}
 

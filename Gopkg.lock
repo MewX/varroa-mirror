@@ -249,12 +249,6 @@
   version = "v2.3.2"
 
 [[projects]]
-  name = "github.com/ttacon/chalk"
-  packages = ["."]
-  revision = "76b3c8b611dea8f83e49e9ce81fc2b189e0ef3d2"
-  version = "v0.1"
-
-[[projects]]
   name = "github.com/ulikunitz/xz"
   packages = [
     ".",
@@ -369,15 +363,6 @@
   version = "v2.0.0"
 
 [[projects]]
-  name = "gopkg.in/vmihailenco/msgpack.v2"
-  packages = [
-    ".",
-    "codes"
-  ]
-  revision = "f4f8982de4ef0de18be76456617cc3f5d8d8141e"
-  version = "v2.9.1"
-
-[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
@@ -386,6 +371,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5fd0a95b3b259c5ab8e9ca3fdaf1633bcf274f1f7717e898212db3d1ee3f9f77"
+  inputs-digest = "d8c5e207aad1b5fa4f2e639c3a8a5f04f84cf09758cc958f2ee9d8f9c473ac6a"
   solver-name = "gps-cdcl"
   solver-version = 1
