@@ -122,8 +122,8 @@ var (
 	i4 = &TrackerMetadata{Size: 123456789, LogScore: 80}
 	i5 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label1"}
 	i6 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label unknown"}
-	i7 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "deluxe edition", EditionYear: 2004}
-	i8 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "anniversary remaster", EditionYear: 2017}
+	i7 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "deluxe edition Clean", EditionYear: 2004}
+	i8 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "anniversary remaster CLEAN", EditionYear: 2017}
 )
 
 func TestRelease(t *testing.T) {
@@ -167,6 +167,7 @@ func TestRelease(t *testing.T) {
 	f29 := &ConfigFilter{Name: "f29", Uploader: []string{"this_guy", "that_guy"}}
 	f30 := &ConfigFilter{Name: "f30", RejectUnknown: true}
 	f31 := &ConfigFilter{Name: "f31", EditionYear: []int{2004}, AllowScene: true}
+	f32 := &ConfigFilter{Name: "f32", PerfectFlac: true, Edition: []string{"r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}}
 
 	// checking filters
 	check.NotNil(f0.Check())
@@ -201,6 +202,7 @@ func TestRelease(t *testing.T) {
 	check.Nil(f29.Check())
 	check.Nil(f30.Check())
 	check.Nil(f31.Check())
+	check.Nil(f32.Check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -367,6 +369,9 @@ func TestRelease(t *testing.T) {
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i6))
 	check.True(r1.HasCompatibleTrackerInfo(f28, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i8))
+	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i6))
+	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i7))
+	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i8))
 
 	// reject unknown releases
 	check.False(r1.HasCompatibleTrackerInfo(f30, []string{}, i1))

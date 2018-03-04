@@ -148,7 +148,7 @@ func TestConfig(t *testing.T) {
 	check.Equal([]string{"blue"}, f.Tracker)
 	check.Equal([]string{"best_uploader_ever", "this other guy"}, f.Uploader)
 	check.True(f.RejectUnknown)
-	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe"}, f.Edition)
+	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}, f.Edition)
 	check.Equal([]int{2014, 2015}, f.EditionYear)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]

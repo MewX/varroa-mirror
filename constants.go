@@ -59,7 +59,8 @@ const (
 	flacExt      = ".flac"
 
 	// filters
-	filterRegExpPrefix = "r/"
+	filterRegExpPrefix        = "r/"
+	filterExcludeRegExpPrefix = "xr/"
 
 	// information
 	InfoUserFilesArchived         = "User files backed up."

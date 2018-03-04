@@ -42,6 +42,7 @@ func StringInSlice(a string, list []string) bool {
 
 // MatchInSlice checks if a string regexp-matches a slice of patterns, returns bool
 func MatchInSlice(a string, b []string) bool {
+	var matchFound bool
 	for _, pattern := range b {
 		if strings.HasPrefix(pattern, filterRegExpPrefix) {
 			pattern = strings.Replace(pattern, filterRegExpPrefix, "", 1)
@@ -51,13 +52,23 @@ func MatchInSlice(a string, b []string) bool {
 				logThis.Error(err, VERBOSE)
 			}
 			if match {
-				return true
+				matchFound = true // found match, but wait to see if it should be excluded
+			}
+		} else if strings.HasPrefix(pattern, filterExcludeRegExpPrefix) {
+			pattern = strings.Replace(pattern, filterExcludeRegExpPrefix, "", 1)
+			// try to match
+			match, err := regexp.MatchString(pattern, a)
+			if err != nil {
+				logThis.Error(err, VERBOSE)
+			}
+			if match {
+				return false // a is excluded
 			}
 		} else if pattern == a {
 			return true
 		}
 	}
-	return false
+	return matchFound
 }
 
 // IntInSlice checks if an int is in a []int, returns bool.

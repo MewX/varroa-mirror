@@ -269,7 +269,6 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 		if MatchInSlice(info.EditionName, filter.Edition) {
 			found = true
 		}
-
 		if !found {
 			logThis.Info(filter.Name+": Edition name does not match any criteria.", VERBOSE)
 			return false
