@@ -124,7 +124,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<ID>]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
+	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
 	varroa library fuse <MOUNT_POINT>
 	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)

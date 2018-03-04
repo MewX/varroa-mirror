@@ -157,10 +157,12 @@ func main() {
 						return
 					}
 				} else {
-					fmt.Println("Sorting a specific download folder.")
-					if err := downloads.SortThisID(env, cli.torrentIDs[0]); err != nil {
-						logThis.Error(errors.Wrap(err, "Error sorting download"), varroa.NORMAL)
-						return
+					fmt.Println("Sorting a specific download folders.")
+					for _, id := range cli.torrentIDs {
+						if err := downloads.SortThisID(env, id); err != nil {
+							logThis.Error(errors.Wrap(err, "Error sorting download"), varroa.NORMAL)
+							return
+						}
 					}
 				}
 				return
