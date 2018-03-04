@@ -38,7 +38,6 @@
 // Checks for current page
 	const settingsPage = window.location.href.match('user.php\\?action=edit&userid=');
 	const userPage = window.location.href.match('user.php\\?id=' + userid);
-	const top10Page = window.location.href.match('top10.php');
 	const torrentPage = window.location.href.match('torrents.php$');
 	const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
 // Check if tokens are available
@@ -55,12 +54,8 @@
 	const statsInfo = 1;
 
 	let obsElem;
-	let linkLabel = 'VM';
-	let linkLabelFL = 'VM FL';
-	if (top10Page) {
-		linkLabel = '[' + linkLabel + ']';
-		linkLabelFL = '[' + linkLabelFL + ']';
-	}
+	const linkLabel = 'VM';
+	const linkLabelFL = 'VM FL';
 	let isWebSocketConnected = false;
 	let vmStatusDiv = null;
 	let vmStatusInfoDiv = null;
