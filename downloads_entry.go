@@ -11,20 +11,18 @@ import (
 
 const (
 	stateUnsorted = iota // has metadata but is unsorted
-	stateAccepted        // has metadata and has been accepted, but not yet exported to library
-	stateExported        // has metadata and has been exported to library
-	stateRejected        // has metadata and is not to be exported to library
+	stateUnused
+	stateAccepted // has metadata and has been accepted and exported to library
+	stateRejected // has metadata and is not to be exported to library
 
 	currentDownloadsDBSchemaVersion = 1
 )
 
-var DownloadFolderStates = []string{"unsorted", "accepted", "exported", "rejected"}
+var DownloadFolderStates = []string{"unsorted", "accepted", "rejected"}
 
 func ColorizeDownloadState(value int, txt string) string {
 	switch value {
 	case stateAccepted:
-		txt = Green(txt)
-	case stateExported:
 		txt = GreenBold(txt)
 	case stateUnsorted:
 		txt = Blue(txt)
@@ -38,8 +36,6 @@ func DownloadState(txt string) int {
 	switch txt {
 	case "accepted":
 		return stateAccepted
-	case "exported":
-		return stateExported
 	case "unsorted":
 		return stateUnsorted
 	case "rejected":
@@ -194,7 +190,7 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 	if err := d.Load(root); err != nil {
 		return err
 	}
-	fmt.Println("Sorting " + d.FolderName)
+	fmt.Println(YellowUnderlined("Sorting " + d.FolderName))
 	// if mpd configured, allow playing the release...
 	if e.config.MPD != nil && Accept("Load release into MPD") {
 		fmt.Println("Sending to MPD.")
@@ -247,16 +243,10 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 			d.State = stateUnsorted
 			validChoice = true
 		} else if strings.ToUpper(choice) == "A" {
-			fmt.Println(Green("This release is ACCEPTED. It will not be removed, but will be ignored in later sorting."))
-			fmt.Println(Green("This can be reverted by sorting its specific download ID."))
-			d.State = stateAccepted
-			if Accept("Do you want to export it now ") {
-				if err := d.export(root, e.config); err != nil {
-					return err
-				}
-			} else {
-				fmt.Println("The release was not exported. It can be exported later by sorting again.")
+			if err := d.export(root, e.config); err != nil {
+				return err
 			}
+			d.State = stateAccepted
 			validChoice = true
 		}
 		if !validChoice {
@@ -297,10 +287,10 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 		if err := CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
 			return errors.Wrap(err, "Error exporting download "+d.FolderName)
 		}
-		fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sortings."))
-		d.State = stateExported
+		fmt.Println(Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sortings."))
 	} else {
-		fmt.Println("The release was not exported. It can be exported later by sorting this ID again.")
+		fmt.Println(Red("The release was not exported. It can be exported later by sorting this ID again. Until then, it will be marked as unsorted again."))
+		d.State = stateUnsorted
 	}
 	return nil
 }
