@@ -418,6 +418,11 @@ func Yellow(in string) string {
 	return ansi.ColorFunc("yellow+h")(in)
 }
 
+// YellowUnderlined outputs a string in yellow, underlined.
+func YellowUnderlined(in string) string {
+	return ansi.ColorFunc("yellow+hu")(in)
+}
+
 // UserChoice message logging
 func UserChoice(msg string, args ...interface{}) {
 	msg = fmt.Sprintf(msg, args...)

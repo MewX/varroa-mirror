@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -63,9 +64,15 @@ func (d *DownloadsDB) String() string {
 		txt += err.Error()
 	} else {
 		for _, dl := range allEntries {
-			txt += "\t" + dl.ShortString() + "\n"
+			txt += " ▹ " + dl.ShortString() + "\n"
 		}
 	}
+	var stateCounts []string
+	for _, s := range DownloadFolderStates {
+		states := d.FindByState(s)
+		stateCounts = append(stateCounts, fmt.Sprintf("%s: %d (%.02f%%)", s, len(states), 100*float32(len(states))/float32(len(allEntries))))
+	}
+	txt += "\n" + YellowUnderlined(fmt.Sprintf("Total: %d entries ~~ ", len(allEntries))+strings.Join(stateCounts, ", "))
 	return txt
 }
 
