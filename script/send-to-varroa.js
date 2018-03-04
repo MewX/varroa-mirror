@@ -5,8 +5,8 @@
 // @include        http*://*redacted.ch/*
 // @include        http*://*notwhat.cd/*
 // @include        http*://*apollo.rip/*
-// @version        20
-// @date           2017-11
+// @version        21
+// @date           2018-03
 // @grant          GM_getValue
 // @grant          GM_setValue
 // @grant          GM_notification
@@ -164,7 +164,7 @@
 		} else {
 			link = 'http://' + link;
 		}
-		return label + `:  <a href="javascript:void(0);" onclick="BBCode.spoiler(this);">Show</a><blockquote class="hidden spoiler"><div style="text-align: center;"><img class="scale_image" onclick="lightbox.init(this, $(this).width());" alt="` + link + `" src="` + link + `" /></div></blockquote><br />`;
+		return label + `:  <a href="javascript:void(0);" onclick="BBCode.spoiler(this);">Show</a><blockquote class="hidden spoiler"><div style="text-align: center;"><img class="scale_image" onclick="lightbox.init(this, $(this).width());" alt="` + link + `" src="` + link + `" /></div></blockquote>`;
 	}
 
 	function addStatsToUserPage() {
@@ -179,9 +179,21 @@
 			const newBoxContent = document.createElement('div');
 			newBoxContent.className = 'pad profileinfo';
 			newBoxContent.id = 'varroa_stats';
-			newBoxContent.innerHTML = makeStatsLink('Full Stats', 'stats.png') + makeStatsLink('Buffer', 'overall_buffer.png') + makeStatsLink('Upload', 'overall_up.png') + makeStatsLink('Download', 'overall_down.png') + makeStatsLink('Ratio', 'overall_ratio.png');
-			newBoxContent.innerHTML += makeStatsLink('Buffer/day', 'overall_per_day_buffer.png') + makeStatsLink('Upload/day', 'overall_per_day_up.png') + makeStatsLink('Download/day', 'overall_per_day_down.png') + makeStatsLink('Ratio/day', 'overall_per_day_ratio.png');
-			newBoxContent.innerHTML += makeStatsLink('Snatched/day', 'snatches_per_day.png') + makeStatsLink('Size snatched/day', 'size_snatched_per_day.png') + makeStatsLink('Top Tags', 'top_tags.png') + makeStatsLink('Snatched/filer', 'total_snatched_by_filter.png');
+			newBoxContent.innerHTML += `<br />
+			<table class="torrent_table" cellpadding="0" cellspacing="0" border="0">
+			        <tr class="colhead_dark"><td width="100%" colspan=4><strong>Graphs</strong></td></tr>
+					<tr><td style="width: 20%;"><strong>Full Stats</strong></td><td>` + makeStatsLink('Full Stats', 'stats.png') + `</td><td></td><td></td></tr>
+					<tr class="rowb"><td style="width: 20%;"><strong>Buffer</strong></td><td>` + makeStatsLink('Overall', 'overall_buffer.png') + `</td><td>` + makeStatsLink('Last Month', 'lastmonth_buffer.png') + `</td><td>` + makeStatsLink('Last Week', 'lastweek_buffer.png') + `</td></tr>
+				    <tr><td style="width: 20%;"><strong>Buffer/period</strong></td><td>` + makeStatsLink('Buffer/day', 'overall_per_day_buffer.png') + `</td><td>` + makeStatsLink('Buffer/week', 'overall_per_week_buffer.png') + `</td><td>` + makeStatsLink('Buffer/month', 'overall_per_month_buffer.png') + `</td></tr>
+					<tr class="rowb"><td style="width: 20%;"><strong>Upload</strong></td><td>` + makeStatsLink('Overall', 'overall_up.png') + `</td><td>` + makeStatsLink('Last Month', 'lastmonth_up.png') + `</td><td>` + makeStatsLink('Last Week', 'lastweek_up.png') + `</td></tr>
+				    <tr><td style="width: 20%;"><strong>Upload/period</strong></td><td>` + makeStatsLink('Upload/day', 'overall_per_day_up.png') + `</td><td>` + makeStatsLink('Upload/week', 'overall_per_week_up.png') + `</td><td>` + makeStatsLink('Upload/month', 'overall_per_month_up.png') + `</td></tr>
+					<tr class="rowb"><td style="width: 20%;"><strong>Download</strong></td><td>` + makeStatsLink('Overall', 'overall_down.png') + `</td><td>` + makeStatsLink('Last Month', 'lastmonth_down.png') + `</td><td>` + makeStatsLink('Last Week', 'lastweek_down.png') + `</td></tr>
+				    <tr><td style="width: 20%;"><strong>Download/period</strong></td><td>` + makeStatsLink('Download/day', 'overall_per_day_down.png') + `</td><td>` + makeStatsLink('Download/week', 'overall_per_week_down.png') + `</td><td>` + makeStatsLink('Download/month', 'overall_per_month_down.png') + `</td></tr>
+					<tr class="rowb"><td style="width: 20%;"><strong>Ratio</strong></td><td>` + makeStatsLink('Overall', 'overall_ratio.png') + `</td><td>` + makeStatsLink('Last Month', 'lastmonth_ratio.png') + `</td><td>` + makeStatsLink('Last Week', 'lastweek_ratio.png') + `</td></tr>
+				    <tr><td style="width: 20%;"><strong>Ratio/period</strong></td><td>` + makeStatsLink('Ratio/day', 'overall_per_day_ratio.png') + `</td><td>` + makeStatsLink('Ratio/week', 'overall_per_week_ratio.png') + `</td><td>` + makeStatsLink('Ratio/month', 'overall_per_month_ratio.png') + `</td></tr>
+ 					<tr class="rowb"><td style="width: 20%;">` + makeStatsLink('Snatched/day', 'snatches_per_day.png') + `</td><td>` + makeStatsLink('Size snatched/day', 'size_snatched_per_day.png') + `</td><td>` + makeStatsLink('Top Tags', 'top_tags.png') + `</td><td>` + makeStatsLink('Snatched/filer', 'total_snatched_by_filter.png') + `</td></tr>
+			</table>`;
+
 			newBox.appendChild(newBoxContent);
 			main.insertBefore(newBox, main.children[1]);
 			if (settings.https) {
