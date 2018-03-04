@@ -165,6 +165,7 @@ const (
 	errorDownloadingTorrent     = "Error downloading torrent"
 	errorRemovingTempFile       = "Error removing temporary file %s"
 	errorAddingToHistory        = "Error adding release to history"
+	announcerBadCredentials     = "Bad credentials."
 	// notifications errors
 	errorNotification  = "Error while sending pushover notification"
 	errorWebhook       = "Error pushing webhook POST"

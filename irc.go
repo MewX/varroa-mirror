@@ -137,6 +137,10 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 		if ev.Nick != autosnatchConfig.Announcer {
 			return // spam
 		}
+		if strings.HasPrefix(ev.Message(), announcerBadCredentials) {
+			logThis.Info("error connecting to IRC: IRC key rejected by "+autosnatchConfig.Announcer+"; disconnecting.", NORMAL)
+			return
+		}
 		// e.Arguments's first element is the message's recipient, the second is the actual message
 		switch strings.ToLower(ev.Arguments[0]) {
 		case strings.ToLower(autosnatchConfig.BotName):
