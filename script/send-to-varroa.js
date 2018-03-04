@@ -260,7 +260,10 @@
 		} else {
 			link = document.createElement('varroa_' + id);
 		}
-		link.appendChild(document.createElement('a'));
+		let a = '';
+		a = document.createElement('a');
+		a.className = 'varroa_link';
+		link.appendChild(a);
 		if (useFLToken) {
 			link.firstChild.appendChild(document.createTextNode(linkLabelFL));
 		} else {
@@ -363,9 +366,11 @@
 		const css = '#varroa {bottom: 20px; left: 20px; position: fixed; width: 310px; height: auto; margin: 0px; list-style-type: none; z-index: 10000000;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; border-radius: 5px; } ';
 		const css2 = '#varroa a {bottom: 0; left: 0px; position: relative; width: auto; height: auto; margin: 0px; background-color: #FFFFFF ;color: #000000; cursor: pointer }';
 		const css3 = '#varroa p {bottom: 0; left: 0px; position: relative; width: auto; height: auto; margin: 0px; background-color: #FFFFFF ;color: #000000;text-decoration: underline; }';
+		const css4 = '.varroa_link:hover  {cursor:pointer;}';
 		GM.addStyle(css);
 		GM.addStyle(css2);
 		GM.addStyle(css3);
+		GM.addStyle(css4);
 	})();
 
 // -- Settings -----------------------------------------------------------------
