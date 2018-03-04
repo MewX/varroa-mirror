@@ -73,7 +73,7 @@ func main() {
 			fmt.Println(config)
 			return
 		}
-		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
+		if cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
 			if !config.DownloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)
 				return
@@ -104,10 +104,6 @@ func main() {
 			}
 			defer downloads.Close()
 
-			if cli.downloadScan {
-				fmt.Println(downloads.String())
-				return
-			}
 			if cli.downloadSearch {
 				hits := downloads.FindByArtist(cli.artistName)
 				if len(hits) == 0 {
@@ -120,12 +116,16 @@ func main() {
 				return
 			}
 			if cli.downloadList {
-				hits := downloads.FindByState(cli.downloadState)
-				if len(hits) == 0 {
-					fmt.Println("Nothing found.")
+				if cli.downloadState == "" {
+					fmt.Println(downloads.String())
 				} else {
-					for _, dl := range hits {
-						fmt.Println(dl.ShortString())
+					hits := downloads.FindByState(cli.downloadState)
+					if len(hits) == 0 {
+						fmt.Println("Nothing found.")
+					} else {
+						for _, dl := range hits {
+							fmt.Println(dl.ShortString())
+						}
 					}
 				}
 				return
