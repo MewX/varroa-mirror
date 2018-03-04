@@ -142,9 +142,8 @@ func webServer(e *Environment) {
 		additionalSources = e.config.Library.AdditionalSources
 	}
 	downloads, err := NewDownloadsDB(DefaultDownloadsDB, e.config.General.DownloadDir, additionalSources)
-	if err == nil {
-		logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
-		return
+	if err != nil {
+		logThis.Error(errors.Wrap(err, "Error loading downloads database"), VERBOSE)
 	}
 	if e.config.WebServer.ServeMetadata {
 		// scan on startup in goroutine

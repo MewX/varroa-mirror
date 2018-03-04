@@ -76,7 +76,8 @@ Direct link: %s
 
 **Edition name:** %s
 `
-	txtDescription = `┌──────────
+	txtDescription = `
+┌──────────
 │ %s
 └─┬────────
   │  Release Type: %s
@@ -92,8 +93,11 @@ Direct link: %s
   │  Quality: %s
   ├────────	
   │  Tracker: %s
+  │  ID: %s
+  │  GroupID: %s
   │  Release Link: %s
   │  Cover: %s	
+  │  Size: %s	
   └────────`
 	trackPattern = `(.*){{{(\d*)}}}`
 )
@@ -349,8 +353,11 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(responseOnly bool) error {
 	}
 	tm.ReleaseJSON = metadataJSON
 
-	// finally, load user JSON for overwriting user-defined values
-	return tm.LoadUserJSON()
+	// finally, load user JSON for overwriting user-defined values, if laoding from files
+	if responseOnly {
+		return tm.LoadUserJSON()
+	}
+	return nil
 }
 
 func (tm *TrackerMetadata) SaveFromTracker(tracker *GazelleTracker) error {
@@ -525,8 +532,11 @@ func (tm *TrackerMetadata) TextDescription(fancy bool) string {
 		style(tm.Format),
 		style(tm.Quality),
 		style(tm.Tracker),
+		style(fmt.Sprintf("%d", tm.ID)),
+		style(fmt.Sprintf("%d", tm.GroupID)),
 		style(tm.ReleaseURL),
 		style(tm.CoverURL),
+		style(humanize.IBytes(uint64(tm.Size))),
 	)
 }
 
@@ -652,7 +662,7 @@ func (tm *TrackerMetadata) LoadUserJSON() error {
 	}
 	userJSON := filepath.Join(config.General.DownloadDir, tm.FolderName, metadataDir, userMetadataJSONFile)
 	if !FileExists(userJSON) {
-		logThis.Info("User metadata JSON does not exist.", VERBOSE)
+		logThis.Info("User metadata JSON does not exist.", VERBOSEST)
 		return nil
 	}
 	// loading user metadata file

@@ -292,7 +292,6 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 			continue
 		}
 		release := info.Release()
-		logThis.Info(release.String(), NORMAL)
 		logThis.Info(info.TextDescription(true)+"\n", NORMAL)
 
 		// find if in history
