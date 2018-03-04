@@ -52,7 +52,8 @@ func (se *StatsEntry) getBufferValues() (int64, int64) {
 func (se *StatsEntry) Diff(previous *StatsEntry) (int64, int64, int64, int64, float64) {
 	buffer, warningBuffer := se.getBufferValues()
 	prevBuffer, prevWarningBuffer := previous.getBufferValues()
-	return int64(se.Up - previous.Up), int64(se.Down - previous.Down), buffer - prevBuffer, warningBuffer - prevWarningBuffer, se.Ratio - previous.Ratio
+	return int64(se.Up - previous.Up), int64(se.Down - previous.Down), buffer - prevBuffer,
+		warningBuffer - prevWarningBuffer, se.Ratio - previous.Ratio
 }
 
 func (se *StatsEntry) Progress(previous *StatsEntry) string {
@@ -61,7 +62,9 @@ func (se *StatsEntry) Progress(previous *StatsEntry) string {
 	}
 	buffer, warningBuffer := se.getBufferValues()
 	dup, ddown, dbuff, dwbuff, dratio := se.Diff(previous)
-	return fmt.Sprintf(progress, readableInt64(buffer), readableInt64(dbuff), se.Ratio, dratio, readableUInt64(se.Up), readableInt64(dup), readableUInt64(se.Down), readableInt64(ddown), readableInt64(warningBuffer), readableInt64(dwbuff))
+	return fmt.Sprintf(progress, readableInt64(buffer), readableInt64(dbuff), se.Ratio, dratio, readableUInt64(se.Up),
+		readableInt64(dup), readableUInt64(se.Down), readableInt64(ddown), readableInt64(warningBuffer),
+		readableInt64(dwbuff))
 }
 
 // TODO do something about this awful thing

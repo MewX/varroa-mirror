@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/asdine/storm"
@@ -503,6 +504,35 @@ func checkQuota() error {
 	return nil
 }
 
+// checkFreeDiskSpace based on the main download directory's location.
+func checkFreeDiskSpace() error {
+	// get config.
+	conf, configErr := NewConfig(DefaultConfigurationFile)
+	if configErr != nil {
+		return configErr
+	}
+	if conf.DownloadFolderConfigured {
+		var stat syscall.Statfs_t
+		if err := syscall.Statfs(conf.General.DownloadDir, &stat); err != nil {
+			return errors.Wrap(err, "error finding free disk space")
+		}
+		// Available blocks * size per block = available space in bytes
+		freeBytes := stat.Bavail * uint64(stat.Bsize)
+		allBytes := stat.Blocks * uint64(stat.Bsize)
+		pcRemaining := 100 * float32(freeBytes) / float32(allBytes)
+		// send warning if this is worrying
+		if pcRemaining <= 2 {
+			logThis.Info(veryLowDiskSpace, NORMAL)
+			return Notify(veryLowDiskSpace, FullName, "info")
+		} else if pcRemaining <= 95 {
+			logThis.Info(lowDiskSpace, NORMAL)
+			return Notify(lowDiskSpace, FullName, "info")
+		}
+		return nil
+	}
+	return errors.New("download directory not configured, cannot check free disk space.")
+}
+
 // automatedTasks is a list of cronjobs for maintenance, backup, or non-critical operations
 func automatedTasks(e *Environment) {
 	// new scheduler
@@ -514,20 +544,28 @@ func automatedTasks(e *Environment) {
 	if e.config.gitlabPagesConfigured {
 		s.Every(1).Day().At("00:05").Do(e.git.Compress)
 	}
-	// 3. checking quota is available
+	// 3. check quota is available
 	_, err := exec.LookPath("quota")
 	if err != nil {
-		logThis.Info("The command 'quota' is not available on this system, not able to check disk usage", NORMAL)
+		logThis.Info("The command 'quota' is not available on this system, not able to check disk quota", NORMAL)
 	} else {
 		// first check
 		if err := checkQuota(); err != nil {
-			logThis.Error(errors.Wrap(err, "error checking user quota: disk usage monitoring off"), NORMAL)
+			logThis.Error(errors.Wrap(err, "error checking user quota: quota usage monitoring off"), NORMAL)
 		} else {
 			// scheduler for subsequent quota checks
 			s.Every(1).Hour().Do(checkQuota)
 		}
 	}
-	// 4. update database stats
+	// 4. check disk space is available
+	// first check
+	if err := checkFreeDiskSpace(); err != nil {
+		logThis.Error(errors.Wrap(err, "error checking free disk space: disk usage monitoring off"), NORMAL)
+	} else {
+		// scheduler for subsequent quota checks
+		s.Every(1).Hour().Do(checkFreeDiskSpace)
+	}
+	// 5. update database stats
 	s.Every(1).Day().At("00:10").Do(GenerateStats, e)
 	// launch scheduler
 	<-s.Start()
