@@ -94,10 +94,6 @@
   version = "1.2.1"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/subosito/norma"
-
-[[constraint]]
   name = "github.com/tdewolff/minify"
   version = "2.3.4"
 

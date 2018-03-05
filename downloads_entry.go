@@ -271,13 +271,11 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				continue
 			}
 			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
-			candidates = append(candidates, info.GeneratePath(config.Library.FolderTemplate))
+			candidates = append(candidates, info.GeneratePath(config.Library.Template))
 		}
 	}
 	// select or input a new name
 	newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
-	// sanitizing in case of user input
-	newName = SanitizeFolder(newName)
 	if err != nil || DirectoryExists(filepath.Join(config.Library.Directory, newName)) {
 		return errors.Wrap(err, "Error generating new release folder name")
 	}

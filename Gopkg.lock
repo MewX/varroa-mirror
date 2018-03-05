@@ -216,12 +216,6 @@
   version = "v1.2.1"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/subosito/norma"
-  packages = ["."]
-  revision = "523a8b2df22122d52ab9f6c7c0ae8aa17bb620eb"
-
-[[projects]]
   name = "github.com/tdewolff/minify"
   packages = [
     ".",
@@ -371,6 +365,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d8c5e207aad1b5fa4f2e639c3a8a5f04f84cf09758cc958f2ee9d8f9c473ac6a"
+  inputs-digest = "f814ab2881252aa779d2c59062bd8346de5d6e062e94372b95c75d0e2debfd7e"
   solver-name = "gps-cdcl"
   solver-version = 1

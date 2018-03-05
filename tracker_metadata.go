@@ -600,16 +600,16 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 
 	// replace with all valid epub parameters
 	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
-		artistsShort,
+		SanitizeFolder(artistsShort),
 		tm.OriginalYear,
-		tm.Title,
+		SanitizeFolder(tm.Title),
 		ShortEncoding(tm.Quality),
 		tm.Source,
 		tm.SourceFull, // source with indicator if 100%/log/cue or Silver/gold
-		tm.RecordLabel,
+		SanitizeFolder(tm.RecordLabel),
 		tm.CatalogNumber,
-		editionName, // edition
-		id,          // identifying info
+		SanitizeFolder(editionName), // edition
+		SanitizeFolder(id),          // identifying info
 		r.Replace(folderTemplate))
 
 	var doc bytes.Buffer
@@ -618,16 +618,12 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		return tm.FolderName
 	}
 	newName := strings.TrimSpace(doc.String())
-
 	// recover brackets
 	r2 := strings.NewReplacer(
 		"ÆÆ", "{",
 		"¢¢", "}",
 	)
-	newName = r2.Replace(newName)
-
-	// making sure the final filename is valid
-	return SanitizeFolder(newName)
+	return r2.Replace(newName)
 }
 
 func (tm *TrackerMetadata) WriteUserJSON() error {

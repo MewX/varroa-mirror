@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/mgutz/ansi"
-	"github.com/subosito/norma"
 )
 
 // StringInSlice checks if a string is in a []string, returns bool.
@@ -134,14 +133,12 @@ func RemoveStringSliceDuplicates(elements []string) []string {
 // SanitizeFolder to have an acceptable path
 func SanitizeFolder(path string) string {
 	// making sure the path is relative
-	if strings.HasPrefix(path, "/") {
+	for strings.HasPrefix(path, "/") {
 		path = path[1:]
 	}
-
-	// TODO check it's not more than 250 characters long!
-
-	// making sure the final filename is valid
-	return norma.Sanitize(path)
+	// replacing internal / with an innoffensive utf8 variant
+	path = strings.Replace(path, "/", "∕", -1)
+	return path
 }
 
 // DirectoryExists checks if a directory exists.
@@ -504,7 +501,9 @@ func SelectOption(title, usage string, options []string) (string, error) {
 			if edited == "" {
 				RedBold("Empty value!")
 			} else {
-				edited = SanitizeFolder(edited)
+				for strings.HasPrefix(edited, "/") {
+					edited = edited[1:]
+				}
 				if Accept("Confirm: " + edited) {
 					return edited, nil
 				}

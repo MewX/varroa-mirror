@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/subosito/norma"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -194,7 +193,7 @@ func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile, destinationFol
 
 // DownloadTorrentFromID using its ID instead.
 func (t *GazelleTracker) DownloadTorrentFromID(torrentID string, destinationFolder string, useFLToken bool) error {
-	torrentFile := norma.Sanitize(t.Name) + "_id" + torrentID + torrentExt
+	torrentFile := SanitizeFolder(t.Name) + "_id" + torrentID + torrentExt
 	torrentURL := t.URL + "/torrents.php?action=download&id=" + torrentID
 	if useFLToken {
 		torrentURL += "&usetoken=1"

@@ -54,3 +54,11 @@ func TestSliceHelpers(t *testing.T) {
 		check.Equal(data.expected, result)
 	}
 }
+
+func TestSanitizeFolder(t *testing.T) {
+	fmt.Println("+ Testing SanitizeFolder...")
+	check := assert.New(t)
+
+	check.Equal("hop", SanitizeFolder("////hop"))
+	check.Equal("hop∕hop", SanitizeFolder("////hop∕hop"))
+}

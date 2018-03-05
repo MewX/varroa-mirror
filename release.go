@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/subosito/norma"
 )
 
 const (
@@ -145,7 +144,7 @@ func (r *Release) ShortString() string {
 
 func (r *Release) TorrentFile() string {
 	torrentFile := fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
-	return norma.Sanitize(torrentFile)
+	return SanitizeFolder(torrentFile)
 }
 
 func (r *Release) Satisfies(filter *ConfigFilter) bool {

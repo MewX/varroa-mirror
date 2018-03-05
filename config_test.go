@@ -101,7 +101,7 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking library")
 	check.Equal("library", c.Library.Directory)
 	check.True(c.Library.UseHardLinks)
-	check.Equal("$a ($y) $t [$f $q] [$s] [$l $n $e]", c.Library.FolderTemplate)
+	check.Equal("$a/$a ($y) $t [$f $q] [$s] [$l $n $e]", c.Library.Template)
 	check.Equal([]string{"../varroa/test", "../varroa/cmd"}, c.Library.AdditionalSources)
 	// webhooks
 	fmt.Println("Checking webhooks")
