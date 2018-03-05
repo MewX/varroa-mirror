@@ -96,7 +96,49 @@ func main() {
 				}
 				return
 			}
-			// scanning
+			if cli.downloadSort {
+				// setting up to load history, etc.
+				if err := env.SetUp(false); err != nil {
+					logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
+					return
+				}
+
+				if !config.LibraryConfigured {
+					logThis.Error(errors.New("Cannot sort downloads, library is not configured"), varroa.NORMAL)
+					return
+				}
+				if len(cli.torrentIDs) == 0 {
+					// scanning
+					fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
+					if err := downloads.Scan(); err != nil {
+						logThis.Error(err, varroa.NORMAL)
+						return
+					}
+					defer downloads.Close()
+					fmt.Println("Considering new or unsorted downloads.")
+					if err := downloads.Sort(env); err != nil {
+						logThis.Error(errors.Wrap(err, "Error sorting downloads"), varroa.NORMAL)
+						return
+					}
+				} else {
+					// scanning
+					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
+					if err := downloads.RescanIDs(cli.torrentIDs); err != nil {
+						logThis.Error(err, varroa.NORMAL)
+						return
+					}
+					fmt.Println("Sorting specific download folders.")
+					for _, id := range cli.torrentIDs {
+						if err := downloads.SortThisID(env, id); err != nil {
+							logThis.Error(errors.Wrap(err, "Error sorting download"), varroa.NORMAL)
+							return
+						}
+					}
+				}
+				return
+			}
+
+			// all subsequent commands require scanning
 			fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
 			if err := downloads.Scan(); err != nil {
 				logThis.Error(err, varroa.NORMAL)
@@ -137,34 +179,6 @@ func main() {
 					return
 				}
 				fmt.Println(dl.Description(config.General.DownloadDir))
-				return
-			}
-			if cli.downloadSort {
-				// setting up to load history, etc.
-				if err := env.SetUp(false); err != nil {
-					logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
-					return
-				}
-
-				if !config.LibraryConfigured {
-					logThis.Error(errors.New("Cannot sort downloads, library is not configured"), varroa.NORMAL)
-					return
-				}
-				if len(cli.torrentIDs) == 0 {
-					fmt.Println("Considering new or unsorted downloads.")
-					if err := downloads.Sort(env); err != nil {
-						logThis.Error(errors.Wrap(err, "Error sorting downloads"), varroa.NORMAL)
-						return
-					}
-				} else {
-					fmt.Println("Sorting a specific download folders.")
-					for _, id := range cli.torrentIDs {
-						if err := downloads.SortThisID(env, id); err != nil {
-							logThis.Error(errors.Wrap(err, "Error sorting download"), varroa.NORMAL)
-							return
-						}
-					}
-				}
 				return
 			}
 		}

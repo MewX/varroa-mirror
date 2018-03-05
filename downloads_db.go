@@ -183,6 +183,58 @@ func (d *DownloadsDB) Scan() error {
 	return nil
 }
 
+func (d *DownloadsDB) RescanIDs(IDs []int) error {
+	// retrieve the associated DownloadEntries
+	var entries []DownloadEntry
+	for _, id := range IDs {
+		dl, err := d.FindByID(id)
+		if err != nil {
+			if err == storm.ErrNotFound {
+				logThis.Error(errors.Wrap(err, fmt.Sprintf("cannot retrieve entry for ID %d", id)), NORMAL)
+			} else {
+				return errors.Wrap(err, fmt.Sprintf("error looking for ID %d", id))
+			}
+		}
+		entries = append(entries, dl)
+	}
+	if len(entries) == 0 {
+		return errors.New("none of the IDs could be found in the database")
+	}
+
+	// begin transaction
+	tx, err := d.db.DB.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// update the entries
+	for _, entry := range entries {
+		if DirectoryExists(entry.FolderName) {
+			// read information from metadata
+			if err := entry.Load(d.root); err != nil {
+				logThis.Info("Error: could not load metadata for "+entry.FolderName, VERBOSEST)
+				continue
+			}
+			if err := tx.Update(&entry); err != nil {
+				logThis.Info("Error: could not save to db "+entry.FolderName, VERBOSEST)
+				continue
+			}
+			logThis.Info("Updated Downloads entry: "+entry.FolderName, VERBOSESTEST)
+		} else {
+			if err := tx.DeleteStruct(&entry); err != nil {
+				logThis.Error(err, VERBOSEST)
+			}
+			logThis.Info("Removed Download entry: "+entry.FolderName, VERBOSESTEST)
+		}
+	}
+	// commiting transaction
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (d *DownloadsDB) FindByID(id int) (DownloadEntry, error) {
 	var downloadEntry DownloadEntry
 	if err := d.db.DB.One("ID", id, &downloadEntry); err != nil {
