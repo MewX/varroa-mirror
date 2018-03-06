@@ -432,6 +432,7 @@ type ConfigFilter struct {
 	Tracker             []string `yaml:"tracker"`
 	Uploader            []string `yaml:"uploader"`
 	RejectUnknown       bool     `yaml:"reject_unknown_releases"`
+	BlacklistedUploader []string `yaml:"blacklisted_uploaders"`
 }
 
 func (cf *ConfigFilter) Check() error {
@@ -517,6 +518,9 @@ func (cf *ConfigFilter) Check() error {
 			}
 		}
 	}
+	if CommonInStringSlices(cf.Uploader, cf.BlacklistedUploader) != nil {
+		return errors.New("The same uploader cannot be both included and excluded")
+	}
 
 	// TODO: check impossible filters: ie format :FLAC + quality: 320
 
@@ -591,5 +595,10 @@ func (cf *ConfigFilter) String() string {
 		description += "\tEdition Year(s): " + strings.Join(IntSliceToStringSlice(cf.EditionYear), ", ") + "\n"
 	}
 	description += "\tReject unknown releases: " + fmt.Sprintf("%v", cf.RejectUnknown) + "\n"
+	if len(cf.BlacklistedUploader) != 0 {
+		description += "\tBlacklisted uploaders: " + strings.Join(cf.BlacklistedUploader, ",") + "\n"
+	} else {
+		description += "\tNo blacklisted uploaders"
+	}
 	return description
 }

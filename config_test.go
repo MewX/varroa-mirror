@@ -150,6 +150,7 @@ func TestConfig(t *testing.T) {
 	check.True(f.RejectUnknown)
 	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}, f.Edition)
 	check.Equal([]int{2014, 2015}, f.EditionYear)
+	check.Equal([]string{"ThisOtherGuy"}, f.BlacklistedUploader)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]
 	check.Equal("test", f.Name)

@@ -255,7 +255,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			return false
 		}
 	}
-	if StringInSlice(info.Uploader, blacklistedUploaders) {
+	if StringInSlice(info.Uploader, blacklistedUploaders) || StringInSlice(info.Uploader, filter.BlacklistedUploader) {
 		logThis.Info(filter.Name+": Uploader "+info.Uploader+" is blacklisted.", VERBOSE)
 		return false
 	}
