@@ -519,10 +519,15 @@ func (tm *TrackerMetadata) TextDescription(fancy bool) string {
 	}
 	fullTitle := titleStyle + artistNames + " - " + tm.Title + reset
 
+	year := tm.OriginalYear
+	if tm.EditionYear != 0 {
+		year = tm.EditionYear
+	}
+
 	return fmt.Sprintf(txtDescription,
 		fullTitle,
 		style(tm.ReleaseType),
-		style(fmt.Sprintf("%d", tm.EditionYear)),
+		style(fmt.Sprintf("%d", year)),
 		style(strings.Join(tm.Tags, ", ")),
 		style(tm.RecordLabel),
 		style(tm.CatalogNumber),
