@@ -22,11 +22,11 @@ type StatsSeries struct {
 
 // AddStats for all entries or a selection to get the correct timeseries
 func (ss *StatsSeries) AddStats(entries ...StatsEntry) error {
-	config, err := NewConfig(DefaultConfigurationFile)
+	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		return err
 	}
-	statsConfig, err := config.GetStats(ss.Tracker)
+	statsConfig, err := conf.GetStats(ss.Tracker)
 	if err != nil {
 		return err
 	}

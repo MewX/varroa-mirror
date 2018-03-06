@@ -185,7 +185,7 @@ func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON 
 	// load Origin JSON
 	var err error
 	origin := TrackerOriginJSON{Path: originJSON}
-	if err := origin.load(); err != nil {
+	if err = origin.load(); err != nil {
 		return err
 	}
 	// getting the information
@@ -204,11 +204,11 @@ func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON 
 }
 
 func (tm *TrackerMetadata) saveOriginJSON() error {
-	config, configErr := NewConfig(DefaultConfigurationFile)
+	conf, configErr := NewConfig(DefaultConfigurationFile)
 	if configErr != nil {
 		return configErr
 	}
-	origin := &TrackerOriginJSON{Path: filepath.Join(config.General.DownloadDir, tm.FolderName, metadataDir, originJSONFile)}
+	origin := &TrackerOriginJSON{Path: filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, originJSONFile)}
 
 	foundOrigin := false
 	if FileExists(origin.Path) {
@@ -361,11 +361,11 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(responseOnly bool) error {
 }
 
 func (tm *TrackerMetadata) SaveFromTracker(tracker *GazelleTracker) error {
-	config, configErr := NewConfig(DefaultConfigurationFile)
+	conf, configErr := NewConfig(DefaultConfigurationFile)
 	if configErr != nil {
 		return configErr
 	}
-	destination := filepath.Join(config.General.DownloadDir, tm.FolderName, metadataDir)
+	destination := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir)
 	// create metadata dir if necessary
 	if err := os.MkdirAll(filepath.Join(destination), 0775); err != nil {
 		return errors.Wrap(err, errorCreatingMetadataDir)
@@ -435,11 +435,11 @@ func (tm *TrackerMetadata) SaveCover() error {
 	if tm.CoverURL == "" {
 		return errors.New("unknown image url")
 	}
-	config, configErr := NewConfig(DefaultConfigurationFile)
+	conf, configErr := NewConfig(DefaultConfigurationFile)
 	if configErr != nil {
 		return configErr
 	}
-	filename := filepath.Join(config.General.DownloadDir, tm.FolderName, metadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
+	filename := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
 
 	if FileExists(filename) {
 		// already downloaded, or exists in folder already: do nothing
@@ -627,11 +627,11 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 }
 
 func (tm *TrackerMetadata) WriteUserJSON() error {
-	config, configErr := NewConfig(DefaultConfigurationFile)
+	conf, configErr := NewConfig(DefaultConfigurationFile)
 	if configErr != nil {
 		return configErr
 	}
-	userJSON := filepath.Join(config.General.DownloadDir, tm.FolderName, metadataDir, userMetadataJSONFile)
+	userJSON := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, userMetadataJSONFile)
 	if FileExists(userJSON) {
 		logThis.Info("User metadata JSON already exists.", VERBOSE)
 		return nil
@@ -652,11 +652,11 @@ func (tm *TrackerMetadata) WriteUserJSON() error {
 }
 
 func (tm *TrackerMetadata) LoadUserJSON() error {
-	config, configErr := NewConfig(DefaultConfigurationFile)
+	conf, configErr := NewConfig(DefaultConfigurationFile)
 	if configErr != nil {
 		return configErr
 	}
-	userJSON := filepath.Join(config.General.DownloadDir, tm.FolderName, metadataDir, userMetadataJSONFile)
+	userJSON := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, userMetadataJSONFile)
 	if !FileExists(userJSON) {
 		logThis.Info("User metadata JSON does not exist.", VERBOSEST)
 		return nil

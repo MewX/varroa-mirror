@@ -15,33 +15,33 @@ import (
 
 // Notify in a goroutine, or directly.
 func Notify(msg, tracker, msgType string) error {
-	config, err := NewConfig(DefaultConfigurationFile)
+	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		return err
 	}
 	notify := func() error {
 		link := ""
-		if config.gitlabPagesConfigured {
-			link = config.GitlabPages.URL
-		} else if config.webserverConfigured && config.WebServer.ServeStats && config.WebServer.PortHTTPS != 0 {
-			link = "https://" + config.WebServer.Hostname + ":" + strconv.Itoa(config.WebServer.PortHTTPS)
+		if conf.gitlabPagesConfigured {
+			link = conf.GitlabPages.URL
+		} else if conf.webserverConfigured && conf.WebServer.ServeStats && conf.WebServer.PortHTTPS != 0 {
+			link = "https://" + conf.WebServer.Hostname + ":" + strconv.Itoa(conf.WebServer.PortHTTPS)
 		}
 		atLeastOneError := false
-		if config.pushoverConfigured {
-			pushOver := &Notification{client: pushover.New(config.Notifications.Pushover.Token), recipient: pushover.NewRecipient(config.Notifications.Pushover.User)}
+		if conf.pushoverConfigured {
+			pushOver := &Notification{client: pushover.New(conf.Notifications.Pushover.Token), recipient: pushover.NewRecipient(conf.Notifications.Pushover.User)}
 			var pngLink string
-			if tracker != FullName && strings.HasPrefix(msg, statsNotificationPrefix) && config.Notifications.Pushover.IncludeBufferGraph {
+			if tracker != FullName && strings.HasPrefix(msg, statsNotificationPrefix) && conf.Notifications.Pushover.IncludeBufferGraph {
 				pngLink = filepath.Join(StatsDir, tracker+"_"+lastWeekPrefix+"_"+bufferStatsFile+pngExt)
 			}
-			if err := pushOver.Send(tracker+": "+msg, config.gitlabPagesConfigured, link, pngLink); err != nil {
+			if err := pushOver.Send(tracker+": "+msg, conf.gitlabPagesConfigured, link, pngLink); err != nil {
 				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
 				atLeastOneError = true
 			}
 		}
-		if config.webhooksConfigured && StringInSlice(tracker, config.Notifications.WebHooks.Trackers) {
+		if conf.webhooksConfigured && StringInSlice(tracker, conf.Notifications.WebHooks.Trackers) {
 			// create json, POST it
 			whJSON := &WebHookJSON{Site: tracker, Message: msg, Link: link, Type: msgType}
-			if err := whJSON.Send(config.Notifications.WebHooks.Address, config.Notifications.WebHooks.Token); err != nil {
+			if err := whJSON.Send(conf.Notifications.WebHooks.Address, conf.Notifications.WebHooks.Token); err != nil {
 				logThis.Error(errors.Wrap(err, errorWebhook), VERBOSE)
 				atLeastOneError = true
 			}

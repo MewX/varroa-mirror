@@ -35,7 +35,7 @@ func NewStatsDB(path string) (*StatsDB, error) {
 			return
 		}
 
-		config, err := NewConfig(DefaultConfigurationFile)
+		conf, err := NewConfig(DefaultConfigurationFile)
 		if err != nil {
 			logThis.Error(err, NORMAL)
 			returnErr = err
@@ -43,7 +43,7 @@ func NewStatsDB(path string) (*StatsDB, error) {
 		} else {
 			// try to import <v19
 			migratedSomething := false
-			for _, label := range config.TrackerLabels() {
+			for _, label := range conf.TrackerLabels() {
 				migrated, err := statsDB.migrate(label)
 				if err != nil && err != storm.ErrNotFound {
 					logThis.Error(errors.Wrap(err, "Error migrating database to a new schema, for tracker "+label), VERBOSEST)
@@ -114,11 +114,11 @@ func (sdb *StatsDB) Update() error {
 	// TODO: add cron job
 
 	// get tracker labels from config.
-	config, err := NewConfig(DefaultConfigurationFile)
+	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		return err
 	}
-	allTrackers := config.TrackerLabels()
+	allTrackers := conf.TrackerLabels()
 
 	// transaction for quicker results
 	tx, err := sdb.db.DB.Begin(true)

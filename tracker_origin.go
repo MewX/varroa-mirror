@@ -41,7 +41,7 @@ func (toc *TrackerOriginJSON) loadFromBytes(data []byte) error {
 	if err != nil || len(toc.Origins) == 0 {
 		// if it fails, try loading as the old format
 		old := &OriginJSON{}
-		if err := json.Unmarshal(data, &old); err != nil || old.Tracker == "" {
+		if err = json.Unmarshal(data, &old); err != nil || old.Tracker == "" {
 			return errors.New("Cannot parse " + originJSONFile + " in " + toc.Path)
 		}
 		// copy into new format

@@ -124,7 +124,7 @@ type ServerPage struct {
 }
 
 func (sc *ServerPage) update(e *Environment, downloads *DownloadsDB) {
-	config, err := NewConfig(DefaultConfigurationFile)
+	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		logThis.Error(err, NORMAL)
 		return
@@ -132,7 +132,7 @@ func (sc *ServerPage) update(e *Environment, downloads *DownloadsDB) {
 
 	// rebuilding
 	sc.index.Stats = []HTMLStats{}
-	if config.webserverMetadata && downloads != nil {
+	if conf.webserverMetadata && downloads != nil {
 		// fetch all dl entries
 		if err := downloads.db.DB.All(&sc.index.Downloads); err != nil {
 			logThis.Error(err, NORMAL)
@@ -141,7 +141,7 @@ func (sc *ServerPage) update(e *Environment, downloads *DownloadsDB) {
 		}
 	}
 	// gathering data
-	for _, label := range config.TrackerLabels() {
+	for _, label := range conf.TrackerLabels() {
 		statsNames := []struct {
 			Name  string
 			Label string
