@@ -524,7 +524,7 @@ func checkFreeDiskSpace() error {
 		if pcRemaining <= 2 {
 			logThis.Info(veryLowDiskSpace, NORMAL)
 			return Notify(veryLowDiskSpace, FullName, "info")
-		} else if pcRemaining <= 95 {
+		} else if pcRemaining <= 10 {
 			logThis.Info(lowDiskSpace, NORMAL)
 			return Notify(lowDiskSpace, FullName, "info")
 		}
