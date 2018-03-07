@@ -393,7 +393,11 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// 7. release stats: top tags
 	var allSnatches []Release
 	if err := sdb.db.DB.Find("Tracker", tracker, &allSnatches); err != nil {
-		return errors.Wrap(err, "Error reading back snatch entries from db")
+		if err == storm.ErrNotFound {
+			logThis.Info("could not find snatched releases in database", VERBOSE)
+		} else {
+			return errors.Wrap(err, "Error reading back snatch entries from db for tracker "+tracker)
+		}
 	}
 	if len(allSnatches) != 0 {
 		popularTags := map[string]int{}
@@ -434,7 +438,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// 9. Snatch history stats
 	var allSnatchStats []SnatchStatsEntry
 	if err := sdb.db.DB.Find("Tracker", tracker, &allSnatchStats); err != nil {
-		return errors.Wrap(err, "Error reading back snatch stats entries from db")
+		return errors.Wrap(err, "Error reading back history stats entries from db")
 	}
 
 	snatchStatsSeries := SnatchStatsSeries{}

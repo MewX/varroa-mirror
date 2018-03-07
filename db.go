@@ -1,15 +1,10 @@
 package varroa
 
 import (
-	"sync"
-
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/codec/msgpack"
 	"github.com/pkg/errors"
 )
-
-var database *Database
-var onceDatabase sync.Once
 
 // Database allows manipulating stats or release entries.
 type Database struct {
@@ -36,16 +31,13 @@ func (db *Database) Close() error {
 	return nil
 }
 
-// NewDatabase opens the Database once.
+// NewDatabase opens the Database.
 func NewDatabase(path string) (*Database, error) {
 	var err error
-	onceDatabase.Do(func() {
-		db := &Database{}
-		if err = db.Open(path); err != nil {
-			err = errors.Wrap(err, "Error opening history database")
-			return
-		}
-		database = db
-	})
-	return database, err
+	db := &Database{}
+	if err = db.Open(path); err != nil {
+		err = errors.Wrap(err, "Error opening history database")
+		return nil, err
+	}
+	return db, err
 }
