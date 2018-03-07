@@ -20,7 +20,8 @@ func TestTrackerOriginJSON(t *testing.T) {
 	env := &Environment{}
 
 	c, err := NewConfig("test/test_complete.yaml")
-	c = &Config{General: &ConfigGeneral{DownloadDir: testDir}}
+	check.Nil(err)
+	c.General.DownloadDir = testDir
 	tr := &ConfigTracker{Name: "tracker1", URL: "http://azerty.com"}
 	tr2 := &ConfigTracker{Name: "tracker2", URL: "http://qwerty.com"}
 	c.Trackers = append(config.Trackers, tr, tr2)

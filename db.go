@@ -11,7 +11,7 @@ import (
 var database *Database
 var onceDatabase sync.Once
 
-// Database allows manupulating stats or release entries.
+// Database allows manipulating stats or release entries.
 type Database struct {
 	path string
 	DB   *storm.DB

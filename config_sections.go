@@ -21,7 +21,7 @@ type ConfigGeneral struct {
 	AutomaticMetadataRetrieval bool   `yaml:"automatic_metadata_retrieval"`
 }
 
-func (cg *ConfigGeneral) Check() error {
+func (cg *ConfigGeneral) check() error {
 	if cg.LogLevel < NORMAL || cg.LogLevel > VERBOSESTEST {
 		return errors.New("Invalid log level")
 	}
@@ -54,7 +54,7 @@ type ConfigTracker struct {
 	URL      string
 }
 
-func (ct *ConfigTracker) Check() error {
+func (ct *ConfigTracker) check() error {
 	if ct.Name == "" {
 		return errors.New("Missing tracker name")
 	}
@@ -93,7 +93,7 @@ type ConfigAutosnatch struct {
 	disabledAutosnatching bool
 }
 
-func (ca *ConfigAutosnatch) Check() error {
+func (ca *ConfigAutosnatch) check() error {
 	if ca.Tracker == "" {
 		return errors.New("Missing tracker name")
 	}
@@ -155,7 +155,7 @@ type ConfigLibrary struct {
 	AdditionalSources []string `yaml:"additional_source_directories"`
 }
 
-func (cl *ConfigLibrary) Check() error {
+func (cl *ConfigLibrary) check() error {
 	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
 		return errors.New("Library directory does not exist")
 	}
@@ -186,7 +186,7 @@ type ConfigStats struct {
 	TargetRatio         float64 `yaml:"target_ratio"`
 }
 
-func (cs *ConfigStats) Check() error {
+func (cs *ConfigStats) check() error {
 	if cs.Tracker == "" {
 		return errors.New("Missing tracker name")
 	}
@@ -233,7 +233,7 @@ type ConfigWebServer struct {
 	Hostname       string `yaml:"https_hostname"`
 }
 
-func (cw *ConfigWebServer) Check() error {
+func (cw *ConfigWebServer) check() error {
 	if !cw.ServeStats && !cw.AllowDownloads && !cw.ServeMetadata {
 		return errors.New("Webserver configured, but not serving stats or allowing remote downloads")
 	}
@@ -288,7 +288,7 @@ type ConfigPushover struct {
 	IncludeBufferGraph bool `yaml:"include_buffer_graph"`
 }
 
-func (cp *ConfigPushover) Check() error {
+func (cp *ConfigPushover) check() error {
 	if cp.User == "" && cp.Token != "" {
 		return errors.New("Pushover userID must be provided")
 	}
@@ -312,7 +312,7 @@ type WebHooksConfig struct {
 	Trackers []string
 }
 
-func (whc *WebHooksConfig) Check() error {
+func (whc *WebHooksConfig) check() error {
 	// TODO check address format!
 	if whc.Address == "" {
 		return errors.New("Webhook configuration must provide remote server address")
@@ -342,7 +342,7 @@ type ConfigGitlabPages struct {
 	Folder   string
 }
 
-func (cg *ConfigGitlabPages) Check() error {
+func (cg *ConfigGitlabPages) check() error {
 	if cg.User == "" {
 		return errors.New("Gitlab username must be provided")
 	}
@@ -387,7 +387,7 @@ func (cm *ConfigMPD) String() string {
 	return txt
 }
 
-func (cm *ConfigMPD) Check() error {
+func (cm *ConfigMPD) check() error {
 	if cm.Server == "" {
 		return errors.New("Server name must be provided")
 	} else {
@@ -435,7 +435,7 @@ type ConfigFilter struct {
 	BlacklistedUploader []string `yaml:"blacklisted_uploaders"`
 }
 
-func (cf *ConfigFilter) Check() error {
+func (cf *ConfigFilter) check() error {
 	if cf.Name == "" {
 		return errors.New("Missing filter name")
 	}

@@ -306,7 +306,6 @@ func main() {
 			return
 		}
 	}
-	return
 }
 
 func closeDB() {

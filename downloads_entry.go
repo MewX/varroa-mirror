@@ -118,9 +118,9 @@ func (d *DownloadEntry) Load(root string) error {
 		d.TrackerID = []int{}
 		d.Artists = []string{}
 		d.HasTrackerMetadata = false
-		if d.SchemaVersion != currentDownloadsDBSchemaVersion {
-			//  migration if useful
-		}
+		// if d.SchemaVersion != currentDownloadsDBSchemaVersion {
+		//  migration if useful
+		// }
 		d.SchemaVersion = currentDownloadsDBSchemaVersion
 
 		// load useful things from JSON

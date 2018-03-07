@@ -121,15 +121,15 @@ func (c *Config) LoadFromBytes(b []byte) error {
 	if err != nil {
 		return errors.Wrap(err, errorLoadingYAML)
 	}
-	return c.Check()
+	return c.check()
 }
 
-func (c *Config) Check() error {
+func (c *Config) check() error {
 	// general checks
 	if c.General == nil {
 		return errors.New("General configuration required")
 	}
-	if err := c.General.Check(); err != nil {
+	if err := c.General.check(); err != nil {
 		return errors.Wrap(err, "Error reading general configuration")
 	}
 	// tracker checks
@@ -137,55 +137,55 @@ func (c *Config) Check() error {
 		return errors.New("Missing tracker information")
 	}
 	for _, t := range c.Trackers {
-		if err := t.Check(); err != nil {
+		if err := t.check(); err != nil {
 			return errors.Wrap(err, "Error reading tracker configuration")
 		}
 	}
 	// autosnatch checks
 	for _, t := range c.Autosnatch {
-		if err := t.Check(); err != nil {
+		if err := t.check(); err != nil {
 			return errors.Wrap(err, "Error reading autosnatch configuration")
 		}
 	}
 	// stats checks
 	for _, t := range c.Stats {
-		if err := t.Check(); err != nil {
+		if err := t.check(); err != nil {
 			return errors.Wrap(err, "Error reading stats configuration")
 		}
 	}
 	// webserver checks
 	if c.WebServer != nil {
-		if err := c.WebServer.Check(); err != nil {
+		if err := c.WebServer.check(); err != nil {
 			return errors.Wrap(err, "Error reading webserver configuration")
 		}
 	}
 	// pushover checks
 	if c.Notifications != nil && c.Notifications.Pushover != nil {
-		if err := c.Notifications.Pushover.Check(); err != nil {
+		if err := c.Notifications.Pushover.check(); err != nil {
 			return errors.Wrap(err, "Error reading pushover configuration")
 		}
 	}
 	// webhook checks
 	if c.Notifications != nil && c.Notifications.WebHooks != nil {
-		if err := c.Notifications.WebHooks.Check(); err != nil {
+		if err := c.Notifications.WebHooks.check(); err != nil {
 			return errors.Wrap(err, "Error reading webhooks configuration")
 		}
 	}
 	// gitlab checks
 	if c.GitlabPages != nil {
-		if err := c.GitlabPages.Check(); err != nil {
+		if err := c.GitlabPages.check(); err != nil {
 			return errors.Wrap(err, "Error reading Gitlab Pages configuration")
 		}
 	}
 	// mpd checks
 	if c.MPD != nil {
-		if err := c.MPD.Check(); err != nil {
+		if err := c.MPD.check(); err != nil {
 			return errors.Wrap(err, "Error reading MPD configuration")
 		}
 	}
 	// filter checks
 	for _, t := range c.Filters {
-		if err := t.Check(); err != nil {
+		if err := t.check(); err != nil {
 			return errors.Wrap(err, "Error reading filter configuration")
 		}
 	}

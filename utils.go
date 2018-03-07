@@ -235,7 +235,7 @@ func copyFileContents(src, dst string) (err error) {
 // CopyDir recursively copies a directory tree, attempting to preserve permissions.
 // Source directory must exist, destination directory must *not* exist.
 // Symlinks are ignored and skipped.
-func CopyDir(src, dst string, useHardLinks bool) (err error) {
+func CopyDir(src, dst string, useHardLinks bool) error {
 	src = filepath.Clean(src)
 	dst = filepath.Clean(dst)
 
@@ -244,43 +244,40 @@ func CopyDir(src, dst string, useHardLinks bool) (err error) {
 		return err
 	}
 	if !si.IsDir() {
-		return errors.New("Source is not a directory")
+		return errors.New("source is not a directory")
 	}
 	_, err = os.Stat(dst)
-	if err != nil && !os.IsNotExist(err) {
-		return
-	}
 	if err == nil {
-		return errors.New("Destination already exists")
+		return errors.New("destination already exists")
 	}
-	err = os.MkdirAll(dst, si.Mode())
-	if err != nil {
-		return
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err = os.MkdirAll(dst, si.Mode()); err != nil {
+		return err
 	}
 	entries, err := ioutil.ReadDir(src)
 	if err != nil {
-		return
+		return err
 	}
 	for _, entry := range entries {
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
 		if entry.IsDir() {
-			err = CopyDir(srcPath, dstPath, useHardLinks)
-			if err != nil {
-				return
+			if err = CopyDir(srcPath, dstPath, useHardLinks); err != nil {
+				return err
 			}
 		} else {
 			// Skip symlinks.
 			if entry.Mode()&os.ModeSymlink != 0 {
 				continue
 			}
-			err = CopyFile(srcPath, dstPath, useHardLinks)
-			if err != nil {
-				return
+			if err = CopyFile(srcPath, dstPath, useHardLinks); err != nil {
+				return err
 			}
 		}
 	}
-	return
+	return nil
 }
 
 // DirectoryIsEmpty checks if a directory is empty.

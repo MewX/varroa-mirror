@@ -178,7 +178,7 @@ func (sdb *StatsDB) Update() error {
 					}
 
 					// calculate the stats at start of day
-					newDailyStats := &StatsEntry{}
+					var newDailyStats *StatsEntry
 					var statsErr error
 					if previous.Timestamp.Equal(next.Timestamp) {
 						// if they are the same, it's probably the first day.
@@ -272,12 +272,6 @@ func (sdb *StatsDB) FilterByTracker(tracker string, statsType string) ([]StatsEn
 
 func (sdb *StatsDB) Save(entry *StatsEntry) error {
 	return sdb.db.DB.Save(entry)
-}
-
-func (sdb *StatsDB) getFirstTimestamp() (time.Time, error) {
-	var firstEntry StatsEntry
-	err := sdb.db.DB.Select(q.Eq("Collected", true)).OrderBy("TimestampUnix").First(&firstEntry)
-	return firstEntry.Timestamp, err
 }
 
 func (sdb *StatsDB) getFirstStatsForTracker(tracker string) (StatsEntry, error) {

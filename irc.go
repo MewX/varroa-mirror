@@ -17,10 +17,10 @@ const (
 	alternativeAnnouncePattern = `(.*?) - (.*) \[([\d]{4})\] \[(Album|Soundtrack|Compilation|Anthology|EP|Single|Live album|Remix|Bootleg|Interview|Mixtape|Demo|Concert Recording|DJ Mix|Unknown)\] - (FLAC|MP3|AAC) / (Lossless|24bit Lossless|V0 \(VBR\)|V2 \(VBR\)|320|256) /( (Log) /)?( (-*\d+)\% /)?( (Cue) /)? (CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray) (/ (Scene) )?- ([\w\., ]*) - (http[s]?://[\w\./:]*torrents\.php\?id=[\d]*) / (http[s]?://[\w\./:]*torrents\.php\?action=download&id=[\d]*)`
 )
 
-func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, autosnatchConfig *ConfigAutosnatch) (*Release, error) {
+func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, autosnatchConfig *ConfigAutosnatch) error {
 	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
 	if err != nil {
-		return nil, errors.Wrap(err, "could not access the stats database")
+		return errors.Wrap(err, "could not access the stats database")
 	}
 
 	// getting information, trying the alternative pattern if the main one fails
@@ -36,7 +36,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 	if len(hits) != 0 {
 		release, err := NewRelease(tracker.Name, hits[0], alternative)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		logThis.Info(release.String(), VERBOSEST)
 
@@ -56,7 +56,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 				if !downloadedInfo {
 					info, err = tracker.GetTorrentMetadata(release.TorrentID)
 					if err != nil {
-						return nil, errors.New(errorCouldNotGetTorrentInfo)
+						return errors.New(errorCouldNotGetTorrentInfo)
 					}
 					downloadedInfo = true
 					logThis.Info(info.TextDescription(false), VERBOSE)
@@ -82,7 +82,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 						destination = filter.WatchDir
 					}
 					if err := tracker.DownloadTorrent(release.torrentURL, release.TorrentFile(), destination); err != nil {
-						return nil, errors.Wrap(err, errorDownloadingTorrent)
+						return errors.Wrap(err, errorDownloadingTorrent)
 					}
 					downloadedTorrent = true
 					// adding to history
@@ -102,15 +102,13 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 				}
 			}
 		}
-		// if torrent was downloaded, remove temp copy
-		if downloadedTorrent {
-			return release, nil
+		if !downloadedTorrent {
+			logThis.Info(fmt.Sprintf(infoNotInteresting, release.ShortString()), VERBOSE)
 		}
-		logThis.Info(fmt.Sprintf(infoNotInteresting, release.ShortString()), VERBOSE)
-		return nil, nil
+		return nil
 	}
 	logThis.Info(infoNotMusic, VERBOSE)
-	return nil, nil
+	return nil
 }
 
 func ircHandler(e *Environment, tracker *GazelleTracker) {
@@ -156,7 +154,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 			if canSnatch {
 				announced := r.Replace(ev.Message())
 				logThis.Info("++ Announced on "+tracker.Name+": "+announced, VERBOSE)
-				if _, err = analyzeAnnounce(announced, e, tracker, autosnatchConfig); err != nil {
+				if err = analyzeAnnounce(announced, e, tracker, autosnatchConfig); err != nil {
 					logThis.Error(errors.Wrap(err, errorDealingWithAnnounce), VERBOSE)
 					return
 				}

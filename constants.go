@@ -2,7 +2,7 @@ package varroa
 
 const (
 	FullName      = "varroa musica"
-	Version       = "v21dev"
+	Version       = "v21"
 	FullVersion   = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
@@ -30,8 +30,6 @@ const (
 	toptagsFile               = "top_tags"
 	gitlabCIYamlFile          = ".gitlab-ci.yml"
 	htmlIndexFile             = "index.html"
-	historyFile               = "history"
-	statsFile                 = "stats"
 	defaultFolderTemplate     = "$a ($y) $t {$id} [$f $s]"
 	DefaultHistoryDB          = "history.db"
 	DefaultDownloadsDB        = "downloads.db"
@@ -147,8 +145,6 @@ const (
 	errorImageNotFound = "Error opening png"
 	errorNoImageFound  = "Error: no image found"
 	// history errors
-	errorLoadingLine     = "Error loading line %d of history file"
-	errorMigratingFile   = "Error migrating file to latest format"
 	errorGeneratingGraph = "Error generating graph"
 	// git errors
 	errorGitInit      = "Error running git init"
@@ -177,9 +173,7 @@ const (
 	errorRetrievingArtistInfo       = "Error getting info for artist %d"
 	errorRetrievingTorrentGroupInfo = "Error getting torrent group info for %d"
 	errorWithOriginJSON             = "Error creating or updating origin.json"
-	errorInfoNoMatchForOrigin       = "Error updating origin.json, no match for tracker and/or torrent ID"
 	errorGeneratingUserMetadataJSON = "Error generating user metadata JSON"
-	errorGeneratingSummary          = "Error generating metadata summary"
 	// stats errors
 	errorGettingStats      = "Error getting stats"
 	ErrorGeneratingGraphs  = "Error generating graphs (may require more data, 24h worth for daily graphs)"

@@ -453,11 +453,11 @@ func ArchiveUserFiles() error {
 func parseQuota(cmdOut string) (float32, int64, error) {
 	output := strings.TrimSpace(cmdOut)
 	if output == "" {
-		return -1, -1, errors.New("No quota defined for user")
+		return -1, -1, errors.New("no quota defined for user")
 	}
 	lines := strings.Split(output, "\n")
 	if len(lines) != 3 {
-		return -1, -1, errors.New("Unexpected quota output")
+		return -1, -1, errors.New("unexpected quota output")
 	}
 	var relevantParts []string
 	for _, p := range strings.Split(lines[2], " ") {
@@ -467,11 +467,11 @@ func parseQuota(cmdOut string) (float32, int64, error) {
 	}
 	used, err := strconv.Atoi(relevantParts[1])
 	if err != nil {
-		return -1, -1, errors.New("Error parsing quota output")
+		return -1, -1, errors.New("error parsing quota output")
 	}
 	quota, err := strconv.Atoi(relevantParts[2])
 	if err != nil {
-		return -1, -1, errors.New("Error parsing quota output")
+		return -1, -1, errors.New("error parsing quota output")
 	}
 	// assuming blocks of 1kb
 	return 100 * float32(used) / float32(quota), int64(quota-used) * 1024, nil
@@ -530,7 +530,7 @@ func checkFreeDiskSpace() error {
 		}
 		return nil
 	}
-	return errors.New("download directory not configured, cannot check free disk space.")
+	return errors.New("download directory not configured, cannot check free disk space")
 }
 
 // automatedTasks is a list of cronjobs for maintenance, backup, or non-critical operations

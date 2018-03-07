@@ -370,12 +370,11 @@ func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
 	r := regexp.MustCompile(logScorePattern)
 	if r.MatchString(returnData) {
 		return "Log score " + r.FindStringSubmatch(returnData)[1], nil
-	} else {
-		if strings.Contains(returnData, "Your log has failed.") {
-			return "Log rejected", nil
-		} else if strings.Contains(returnData, "This too shall pass.") {
-			return "Log checks out, at least Silver", nil
-		}
-		return "", errors.New("Could not find score")
 	}
+	if strings.Contains(returnData, "Your log has failed.") {
+		return "Log rejected", nil
+	} else if strings.Contains(returnData, "This too shall pass.") {
+		return "Log checks out, at least Silver", nil
+	}
+	return "", errors.New("Could not find score")
 }
