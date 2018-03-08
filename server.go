@@ -56,12 +56,12 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	}
 
 	// get torrent info
-	info, err := tracker.GetTorrentInfo(id)
+	info, err := tracker.GetTorrentMetadata(id)
 	if err != nil {
 		logThis.Info(errorCouldNotGetTorrentInfo, NORMAL)
 		return nil, err // probably the ID does not exist
 	}
-	release := info.Release(tracker.Name)
+	release := info.Release()
 	if release == nil {
 		logThis.Info("Error parsing Torrent Info", NORMAL)
 		release = &Release{Tracker: tracker.Name, TorrentID: id}
@@ -79,9 +79,9 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
 		if daemon.WasReborn() {
-			go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+			go info.SaveFromTracker(tracker)
 		} else {
-			SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+			info.SaveFromTracker(tracker)
 		}
 	}
 	return release, nil
@@ -137,12 +137,15 @@ func webServer(e *Environment) {
 		logThis.Info(webServerNotConfigured, NORMAL)
 		return
 	}
-	downloads := &Downloads{Root: e.config.General.DownloadDir}
+	var additionalSources []string
+	if e.config.LibraryConfigured {
+		additionalSources = e.config.Library.AdditionalSources
+	}
+	downloads, err := NewDownloadsDB(DefaultDownloadsDB, e.config.General.DownloadDir, additionalSources)
+	if err != nil {
+		logThis.Error(errors.Wrap(err, "Error loading downloads database"), VERBOSE)
+	}
 	if e.config.WebServer.ServeMetadata {
-		if err := downloads.Open(filepath.Join(StatsDir, DefaultDownloadsDB)); err != nil {
-			logThis.Error(errors.Wrap(err, "Error loading downloads database"), NORMAL)
-			return
-		}
 		// scan on startup in goroutine
 		go downloads.Scan()
 	}

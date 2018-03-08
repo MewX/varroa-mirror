@@ -168,6 +168,12 @@
   version = "v0.0.3"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/mgutz/ansi"
+  packages = ["."]
+  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
+
+[[projects]]
   name = "github.com/mholt/archiver"
   packages = ["."]
   revision = "cdc68dd1f170b8dfc1a0d2231b5bb0967ed67006"
@@ -210,12 +216,6 @@
   version = "v1.2.1"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/subosito/norma"
-  packages = ["."]
-  revision = "523a8b2df22122d52ab9f6c7c0ae8aa17bb620eb"
-
-[[projects]]
   name = "github.com/tdewolff/minify"
   packages = [
     ".",
@@ -241,12 +241,6 @@
   ]
   revision = "639f6272aec6b52094db77b9ec488214b0b4b1a1"
   version = "v2.3.2"
-
-[[projects]]
-  name = "github.com/ttacon/chalk"
-  packages = ["."]
-  revision = "76b3c8b611dea8f83e49e9ce81fc2b189e0ef3d2"
-  version = "v0.1"
 
 [[projects]]
   name = "github.com/ulikunitz/xz"
@@ -363,15 +357,6 @@
   version = "v2.0.0"
 
 [[projects]]
-  name = "gopkg.in/vmihailenco/msgpack.v2"
-  packages = [
-    ".",
-    "codes"
-  ]
-  revision = "f4f8982de4ef0de18be76456617cc3f5d8d8141e"
-  version = "v2.9.1"
-
-[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
@@ -380,6 +365,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "20f162e9e49f43f85d9e30776cb3c15c0d7b9fae245bf6f03567b6b7b46d998e"
+  inputs-digest = "f814ab2881252aa779d2c59062bd8346de5d6e062e94372b95c75d0e2debfd7e"
   solver-name = "gps-cdcl"
   solver-version = 1

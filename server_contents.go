@@ -129,7 +129,7 @@ type HTMLIndex struct {
 	Downloads     []DownloadEntry
 	DownloadInfo  template.HTML
 	MainContent   template.HTML
-	UrlFolder     string
+	URLFolder     string
 }
 
 func (hi *HTMLIndex) execute(t *template.Template) ([]byte, error) {

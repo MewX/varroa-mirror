@@ -1,10 +1,7 @@
 package varroa
 
 import (
-	"encoding/csv"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -15,7 +12,6 @@ import (
 	"github.com/jinzhu/now"
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
-	msgpack "gopkg.in/vmihailenco/msgpack.v2"
 )
 
 var statsDB *StatsDB
@@ -39,7 +35,7 @@ func NewStatsDB(path string) (*StatsDB, error) {
 			return
 		}
 
-		config, err := NewConfig(DefaultConfigurationFile)
+		conf, err := NewConfig(DefaultConfigurationFile)
 		if err != nil {
 			logThis.Error(err, NORMAL)
 			returnErr = err
@@ -47,10 +43,10 @@ func NewStatsDB(path string) (*StatsDB, error) {
 		} else {
 			// try to import <v19
 			migratedSomething := false
-			for _, label := range config.TrackerLabels() {
-				migrated, err := statsDB.migrate(label, filepath.Join(StatsDir, label+"_"+statsFile+csvExt), filepath.Join(StatsDir, label+"_"+historyFile+msgpackExt))
-				if err != nil {
-					logThis.Error(errors.Wrap(err, "Error migrating stats csv to the new database, for tracker "+label), NORMAL)
+			for _, label := range conf.TrackerLabels() {
+				migrated, err := statsDB.migrate(label)
+				if err != nil && err != storm.ErrNotFound {
+					logThis.Error(errors.Wrap(err, "Error migrating database to a new schema, for tracker "+label), VERBOSEST)
 				} else if migrated {
 					migratedSomething = migrated
 				}
@@ -75,151 +71,39 @@ func (sdb *StatsDB) init() error {
 	return sdb.db.DB.Init(&Release{})
 }
 
-func (sdb *StatsDB) migrate(tracker, csvFile, msgpackFile string) (bool, error) {
-	migratedSomething := false
-
-	if FileExists(csvFile) {
-		logThis.Info("Migrating stats for tracker "+tracker, NORMAL)
-
-		// load history file
-		f, errOpening := os.OpenFile(csvFile, os.O_RDONLY, 0644)
-		if errOpening != nil {
-			return migratedSomething, errors.New(errorMigratingFile + csvFile)
-		}
-
-		w := csv.NewReader(f)
-		records, errReading := w.ReadAll()
-		if errReading != nil {
-			return migratedSomething, errors.Wrap(errReading, "Error loading old history file")
-		}
-		if err := f.Close(); err != nil {
-			return migratedSomething, errors.Wrap(err, "Error closing old history file")
-		}
-
-		// transaction for quicker results
-		tx, err := sdb.db.DB.Begin(true)
-		if err != nil {
-			return migratedSomething, err
-		}
-		defer tx.Rollback()
-
-		for i, record := range records {
-			r := &StatsEntry{Tracker: tracker, Collected: true, SchemaVersion: currentSchemaVersion}
-			if err := r.FromSlice(record); err != nil {
-				logThis.Error(errors.Wrap(err, fmt.Sprintf(errorLoadingLine, i)), NORMAL)
-			} else {
-				if err := tx.Save(r); err != nil {
-					return migratedSomething, errors.Wrap(err, "Error saving CSV entry to the new database")
-				}
-			}
-		}
-		if err := tx.Commit(); err != nil {
-			return migratedSomething, err
-		}
-		// checks
-		var allEntries []StatsEntry
-		if err := sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
-			return migratedSomething, errors.Wrap(err, "Error reading back stats values from db")
-		}
-		if len(allEntries) != len(records) {
-			return migratedSomething, fmt.Errorf("error reading back stats, got %d instead of %d entries", len(allEntries), len(records))
-		}
-		// ok
-		migratedSomething = true
-		logThis.Info(fmt.Sprintf("Migrated %d records for tracker %s", len(allEntries), tracker), NORMAL)
-		// once successful, rename csvFile to csv.v18
-		if err := os.Rename(csvFile, csvFile+".v18"); err != nil {
-			return migratedSomething, err
-		}
-	}
+func (sdb *StatsDB) migrate(tracker string) (bool, error) {
+	var migratedSchema bool
+	var err error
 
 	// updating schema for stats
 	var allEntries []StatsEntry
-	if err := sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
-		return migratedSomething, errors.Wrap(err, "Error reading back stats values from db")
+	if err = sdb.db.DB.Find("Tracker", tracker, &allEntries); err != nil {
+		if err == storm.ErrNotFound {
+			return migratedSchema, nil
+		}
+		return migratedSchema, errors.Wrap(err, "Error reading stats values from db")
 	}
 
 	// transaction for quicker results
 	txSchemaUpdate, err := sdb.db.DB.Begin(true)
 	if err != nil {
-		return migratedSomething, err
+		return migratedSchema, err
 	}
 	defer txSchemaUpdate.Rollback()
 
-	var migratedSchema bool
 	for _, e := range allEntries {
-		if e.SchemaVersion != currentSchemaVersion {
+		if e.SchemaVersion != currentStatsDBSchemaVersion {
 			migratedSchema = true
 			// Update multiple fields
-			if err := txSchemaUpdate.Update(&StatsEntry{ID: e.ID, SchemaVersion: currentSchemaVersion, TimestampUnix: e.Timestamp.Unix()}); err != nil {
-				return migratedSomething, errors.Wrap(err, "Error updating stats database to new schema")
+			if err = txSchemaUpdate.Update(&StatsEntry{ID: e.ID, SchemaVersion: currentStatsDBSchemaVersion, TimestampUnix: e.Timestamp.Unix()}); err != nil {
+				return migratedSchema, errors.Wrap(err, "Error updating stats database to new schema")
 			}
 		}
 	}
 	if migratedSchema {
-		if err := txSchemaUpdate.Commit(); err != nil {
-			return migratedSomething, err
-		}
-		migratedSomething = true
+		err = txSchemaUpdate.Commit()
 	}
-
-	// migrating old snatch history files
-	if FileExists(msgpackFile) {
-		logThis.Info("Migrating snatch history for tracker "+tracker, NORMAL)
-
-		// load history file
-		bytes, err := ioutil.ReadFile(msgpackFile)
-		if err != nil {
-			logThis.Error(errors.Wrap(err, "Error reading old history file"), NORMAL)
-			return migratedSomething, err
-		}
-		if len(bytes) == 0 {
-			// newly created file
-			return migratedSomething, nil
-		}
-
-		var oldReleases []Release
-		// load releases from history to in-memory slice
-		err = msgpack.Unmarshal(bytes, &oldReleases)
-		if err != nil {
-			logThis.Error(errors.Wrap(err, "Error loading releases from old history file"), NORMAL)
-		}
-
-		// transaction for quicker results
-		tx, err := sdb.db.DB.Begin(true)
-		if err != nil {
-			return migratedSomething, err
-		}
-		defer tx.Rollback()
-
-		for _, release := range oldReleases {
-			release.Tracker = tracker
-			if err := tx.Save(&release); err != nil {
-				return migratedSomething, errors.Wrap(err, "Error saving snatch entry to the new database")
-			}
-		}
-		if err := tx.Commit(); err != nil {
-			return migratedSomething, err
-		}
-
-		// checks
-		var allSnatches []Release
-		if err := sdb.db.DB.Find("Tracker", tracker, &allSnatches); err != nil {
-			return migratedSomething, errors.Wrap(err, "Error reading back snatch entries from db")
-		}
-		if len(allSnatches) != len(oldReleases) {
-			return migratedSomething, fmt.Errorf("error reading back snatches, got %d instead of %d entries", len(allSnatches), len(oldReleases))
-		}
-		// ok
-		migratedSomething = true
-		logThis.Info(fmt.Sprintf("Migrated %d records for tracker %s", len(allSnatches), tracker), NORMAL)
-		// once successful, rename csvFile to csv.v18
-		if err := os.Rename(msgpackFile, msgpackFile+".v18"); err != nil {
-			return migratedSomething, err
-		}
-	}
-
-	return migratedSomething, nil
+	return migratedSchema, err
 }
 
 // Update needs to be called everyday at midnight (add cron job)
@@ -230,11 +114,11 @@ func (sdb *StatsDB) Update() error {
 	// TODO: add cron job
 
 	// get tracker labels from config.
-	config, err := NewConfig(DefaultConfigurationFile)
+	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		return err
 	}
-	allTrackers := config.TrackerLabels()
+	allTrackers := conf.TrackerLabels()
 
 	// transaction for quicker results
 	tx, err := sdb.db.DB.Begin(true)
@@ -294,7 +178,7 @@ func (sdb *StatsDB) Update() error {
 					}
 
 					// calculate the stats at start of day
-					newDailyStats := &StatsEntry{}
+					var newDailyStats *StatsEntry
 					var statsErr error
 					if previous.Timestamp.Equal(next.Timestamp) {
 						// if they are the same, it's probably the first day.
@@ -388,12 +272,6 @@ func (sdb *StatsDB) FilterByTracker(tracker string, statsType string) ([]StatsEn
 
 func (sdb *StatsDB) Save(entry *StatsEntry) error {
 	return sdb.db.DB.Save(entry)
-}
-
-func (sdb *StatsDB) getFirstTimestamp() (time.Time, error) {
-	var firstEntry StatsEntry
-	err := sdb.db.DB.Select(q.Eq("Collected", true)).OrderBy("TimestampUnix").First(&firstEntry)
-	return firstEntry.Timestamp, err
 }
 
 func (sdb *StatsDB) getFirstStatsForTracker(tracker string) (StatsEntry, error) {
@@ -515,7 +393,11 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// 7. release stats: top tags
 	var allSnatches []Release
 	if err := sdb.db.DB.Find("Tracker", tracker, &allSnatches); err != nil {
-		return errors.Wrap(err, "Error reading back snatch entries from db")
+		if err == storm.ErrNotFound {
+			logThis.Info("could not find snatched releases in database", VERBOSE)
+		} else {
+			return errors.Wrap(err, "Error reading back snatch entries from db for tracker "+tracker)
+		}
 	}
 	if len(allSnatches) != 0 {
 		popularTags := map[string]int{}
@@ -556,7 +438,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// 9. Snatch history stats
 	var allSnatchStats []SnatchStatsEntry
 	if err := sdb.db.DB.Find("Tracker", tracker, &allSnatchStats); err != nil {
-		return errors.Wrap(err, "Error reading back snatch stats entries from db")
+		return errors.Wrap(err, "Error reading back history stats entries from db")
 	}
 
 	snatchStatsSeries := SnatchStatsSeries{}

@@ -21,7 +21,7 @@ type ConfigGeneral struct {
 	AutomaticMetadataRetrieval bool   `yaml:"automatic_metadata_retrieval"`
 }
 
-func (cg *ConfigGeneral) Check() error {
+func (cg *ConfigGeneral) check() error {
 	if cg.LogLevel < NORMAL || cg.LogLevel > VERBOSESTEST {
 		return errors.New("Invalid log level")
 	}
@@ -54,7 +54,7 @@ type ConfigTracker struct {
 	URL      string
 }
 
-func (ct *ConfigTracker) Check() error {
+func (ct *ConfigTracker) check() error {
 	if ct.Name == "" {
 		return errors.New("Missing tracker name")
 	}
@@ -93,7 +93,7 @@ type ConfigAutosnatch struct {
 	disabledAutosnatching bool
 }
 
-func (ca *ConfigAutosnatch) Check() error {
+func (ca *ConfigAutosnatch) check() error {
 	if ca.Tracker == "" {
 		return errors.New("Missing tracker name")
 	}
@@ -149,17 +149,20 @@ func (ca *ConfigAutosnatch) String() string {
 }
 
 type ConfigLibrary struct {
-	Directory      string `yaml:"directory"`
-	UseHardLinks   bool   `yaml:"use_hard_links"`
-	FolderTemplate string `yaml:"folder_template"`
+	Directory         string   `yaml:"directory"`
+	UseHardLinks      bool     `yaml:"use_hard_links"`
+	Template          string   `yaml:"folder_template"`
+	AdditionalSources []string `yaml:"additional_source_directories"`
 }
 
-func (cl *ConfigLibrary) Check() error {
+func (cl *ConfigLibrary) check() error {
 	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
 		return errors.New("Library directory does not exist")
 	}
-	if strings.Contains(cl.FolderTemplate, "/") {
-		return errors.New("Library folder template cannot contains subdirectories")
+	for _, s := range cl.AdditionalSources {
+		if !DirectoryExists(s) {
+			return errors.New("Library directory does not exist")
+		}
 	}
 	return nil
 }
@@ -168,7 +171,10 @@ func (cl *ConfigLibrary) String() string {
 	txt := "Library configuration:\n"
 	txt += "\tDirectory: " + cl.Directory + "\n"
 	txt += "\tUse hard links: " + fmt.Sprintf("%v", cl.UseHardLinks) + "\n"
-	txt += "\tFolder name template: " + cl.FolderTemplate + "\n"
+	txt += "\tTemplate: " + cl.Template + "\n"
+	if len(cl.AdditionalSources) != 0 {
+		txt += "\tAdditional sources: " + strings.Join(cl.AdditionalSources, ",") + "\n"
+	}
 	return txt
 }
 
@@ -180,7 +186,7 @@ type ConfigStats struct {
 	TargetRatio         float64 `yaml:"target_ratio"`
 }
 
-func (cs *ConfigStats) Check() error {
+func (cs *ConfigStats) check() error {
 	if cs.Tracker == "" {
 		return errors.New("Missing tracker name")
 	}
@@ -227,7 +233,7 @@ type ConfigWebServer struct {
 	Hostname       string `yaml:"https_hostname"`
 }
 
-func (cw *ConfigWebServer) Check() error {
+func (cw *ConfigWebServer) check() error {
 	if !cw.ServeStats && !cw.AllowDownloads && !cw.ServeMetadata {
 		return errors.New("Webserver configured, but not serving stats or allowing remote downloads")
 	}
@@ -282,7 +288,7 @@ type ConfigPushover struct {
 	IncludeBufferGraph bool `yaml:"include_buffer_graph"`
 }
 
-func (cp *ConfigPushover) Check() error {
+func (cp *ConfigPushover) check() error {
 	if cp.User == "" && cp.Token != "" {
 		return errors.New("Pushover userID must be provided")
 	}
@@ -306,7 +312,7 @@ type WebHooksConfig struct {
 	Trackers []string
 }
 
-func (whc *WebHooksConfig) Check() error {
+func (whc *WebHooksConfig) check() error {
 	// TODO check address format!
 	if whc.Address == "" {
 		return errors.New("Webhook configuration must provide remote server address")
@@ -336,7 +342,7 @@ type ConfigGitlabPages struct {
 	Folder   string
 }
 
-func (cg *ConfigGitlabPages) Check() error {
+func (cg *ConfigGitlabPages) check() error {
 	if cg.User == "" {
 		return errors.New("Gitlab username must be provided")
 	}
@@ -381,7 +387,7 @@ func (cm *ConfigMPD) String() string {
 	return txt
 }
 
-func (cm *ConfigMPD) Check() error {
+func (cm *ConfigMPD) check() error {
 	if cm.Server == "" {
 		return errors.New("Server name must be provided")
 	} else {
@@ -426,9 +432,10 @@ type ConfigFilter struct {
 	Tracker             []string `yaml:"tracker"`
 	Uploader            []string `yaml:"uploader"`
 	RejectUnknown       bool     `yaml:"reject_unknown_releases"`
+	BlacklistedUploader []string `yaml:"blacklisted_uploaders"`
 }
 
-func (cf *ConfigFilter) Check() error {
+func (cf *ConfigFilter) check() error {
 	if cf.Name == "" {
 		return errors.New("Missing filter name")
 	}
@@ -511,6 +518,9 @@ func (cf *ConfigFilter) Check() error {
 			}
 		}
 	}
+	if CommonInStringSlices(cf.Uploader, cf.BlacklistedUploader) != nil {
+		return errors.New("The same uploader cannot be both included and excluded")
+	}
 
 	// TODO: check impossible filters: ie format :FLAC + quality: 320
 
@@ -585,5 +595,10 @@ func (cf *ConfigFilter) String() string {
 		description += "\tEdition Year(s): " + strings.Join(IntSliceToStringSlice(cf.EditionYear), ", ") + "\n"
 	}
 	description += "\tReject unknown releases: " + fmt.Sprintf("%v", cf.RejectUnknown) + "\n"
+	if len(cf.BlacklistedUploader) != 0 {
+		description += "\tBlacklisted uploaders: " + strings.Join(cf.BlacklistedUploader, ",") + "\n"
+	} else {
+		description += "\tNo blacklisted uploaders"
+	}
 	return description
 }

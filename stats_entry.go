@@ -11,7 +11,7 @@ const (
 	progress      = "Buffer: %s (%s) | Ratio:  %.3f (%.3f) | Up: %s (%s) | Down: %s (%s) | Warning Buffer: %s (%s)"
 	firstProgress = "Buffer: %s | Ratio: %.3f | Up: %s | Down: %s | Warning Buffer: %s"
 
-	currentSchemaVersion = 1
+	currentStatsDBSchemaVersion = 1
 )
 
 type StatsEntry struct {
@@ -52,7 +52,8 @@ func (se *StatsEntry) getBufferValues() (int64, int64) {
 func (se *StatsEntry) Diff(previous *StatsEntry) (int64, int64, int64, int64, float64) {
 	buffer, warningBuffer := se.getBufferValues()
 	prevBuffer, prevWarningBuffer := previous.getBufferValues()
-	return int64(se.Up - previous.Up), int64(se.Down - previous.Down), buffer - prevBuffer, warningBuffer - prevWarningBuffer, se.Ratio - previous.Ratio
+	return int64(se.Up - previous.Up), int64(se.Down - previous.Down), buffer - prevBuffer,
+		warningBuffer - prevWarningBuffer, se.Ratio - previous.Ratio
 }
 
 func (se *StatsEntry) Progress(previous *StatsEntry) string {
@@ -61,7 +62,9 @@ func (se *StatsEntry) Progress(previous *StatsEntry) string {
 	}
 	buffer, warningBuffer := se.getBufferValues()
 	dup, ddown, dbuff, dwbuff, dratio := se.Diff(previous)
-	return fmt.Sprintf(progress, readableInt64(buffer), readableInt64(dbuff), se.Ratio, dratio, readableUInt64(se.Up), readableInt64(dup), readableUInt64(se.Down), readableInt64(ddown), readableInt64(warningBuffer), readableInt64(dwbuff))
+	return fmt.Sprintf(progress, readableInt64(buffer), readableInt64(dbuff), se.Ratio, dratio, readableUInt64(se.Up),
+		readableInt64(dup), readableUInt64(se.Down), readableInt64(ddown), readableInt64(warningBuffer),
+		readableInt64(dwbuff))
 }
 
 // TODO do something about this awful thing
@@ -106,36 +109,6 @@ func (se *StatsEntry) ToSlice() []string {
 	return []string{fmt.Sprintf("%d", se.Timestamp.Unix()), strconv.FormatUint(se.Up, 10), strconv.FormatUint(se.Down, 10), strconv.FormatFloat(se.Ratio, 'f', -1, 64)}
 }
 
-// FromSlice allows parsing a CSV file line. Legacy function, used only for <v19 migration
-func (se *StatsEntry) FromSlice(slice []string) error {
-	// timestamp, up, down, ratio
-	if len(slice) < 4 {
-		return errors.New("incorrect entry, cannot load stats")
-	}
-	timestamp, err := strconv.ParseInt(slice[0], 0, 64)
-	if err != nil {
-		return err
-	}
-	se.TimestampUnix = int64(timestamp)
-	se.Timestamp = time.Unix(timestamp, 0)
-	up, err := strconv.ParseUint(slice[1], 10, 64)
-	if err != nil {
-		return err
-	}
-	se.Up = up
-	down, err := strconv.ParseUint(slice[2], 10, 64)
-	if err != nil {
-		return err
-	}
-	se.Down = down
-	ratio, err := strconv.ParseFloat(slice[3], 64)
-	if err != nil {
-		return err
-	}
-	se.Ratio = ratio
-	return nil
-}
-
 func InterpolateStats(previous, next StatsEntry, targetTime time.Time) (*StatsEntry, error) {
 	// check targetTime is between se.Timest
 	if targetTime.Before(previous.Timestamp) || targetTime.After(next.Timestamp) {
@@ -155,7 +128,7 @@ func InterpolateStats(previous, next StatsEntry, targetTime time.Time) (*StatsEn
 	virtualStats.Timestamp = targetTime
 	virtualStats.TimestampUnix = targetTime.Unix()
 	virtualStats.Tracker = previous.Tracker
-	virtualStats.SchemaVersion = currentSchemaVersion
+	virtualStats.SchemaVersion = currentStatsDBSchemaVersion
 	return virtualStats, nil
 }
 

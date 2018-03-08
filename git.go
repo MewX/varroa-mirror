@@ -80,9 +80,6 @@ func (g *Git) Init() error {
 		return err
 	}
 	_, err = exec.Command(git, "config", "user.email", g.email).Output()
-	if err != nil {
-		return err
-	}
 	return err
 }
 

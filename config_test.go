@@ -101,7 +101,8 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking library")
 	check.Equal("library", c.Library.Directory)
 	check.True(c.Library.UseHardLinks)
-	check.Equal("$a ($y) $t [$f $q] [$s] [$l $n $e]", c.Library.FolderTemplate)
+	check.Equal("$a/$a ($y) $t [$f $q] [$s] [$l $n $e]", c.Library.Template)
+	check.Equal([]string{"../varroa/test", "../varroa/cmd"}, c.Library.AdditionalSources)
 	// webhooks
 	fmt.Println("Checking webhooks")
 	check.Equal("http://some.thing", c.Notifications.WebHooks.Address)
@@ -147,8 +148,9 @@ func TestConfig(t *testing.T) {
 	check.Equal([]string{"blue"}, f.Tracker)
 	check.Equal([]string{"best_uploader_ever", "this other guy"}, f.Uploader)
 	check.True(f.RejectUnknown)
-	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe"}, f.Edition)
+	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}, f.Edition)
 	check.Equal([]int{2014, 2015}, f.EditionYear)
+	check.Equal([]string{"ThisOtherGuy"}, f.BlacklistedUploader)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]
 	check.Equal("test", f.Name)

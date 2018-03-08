@@ -22,3 +22,17 @@ func TestQuota(t *testing.T) {
 	check.Equal(float32(84.27867), ratio)
 	check.Equal(int64(1024*49455024), remaining)
 }
+
+/*
+func TestFreeDiskSpace(t *testing.T) {
+	fmt.Println("\n --- Testing Free disk space ---")
+	check := assert.New(t)
+
+	// setup logger
+	c := &Config{General: &ConfigGeneral{DownloadDir: "test", LogLevel: 2}, DownloadFolderConfigured: true}
+	env := &Environment{config: c}
+	logThis = NewLogThis(env)
+
+	check.Nil(checkFreeDiskSpace())
+}
+*/

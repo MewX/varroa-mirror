@@ -73,12 +73,20 @@ func main() {
 			fmt.Println(config)
 			return
 		}
-		if cli.downloadScan || cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
+		if cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
 			if !config.DownloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)
 				return
 			}
-			downloads := varroa.Downloads{Root: config.General.DownloadDir}
+			var additionalSources []string
+			if config.LibraryConfigured {
+				additionalSources = config.Library.AdditionalSources
+			}
+			downloads, err := varroa.NewDownloadsDB(varroa.DefaultDownloadsDB, config.General.DownloadDir, additionalSources)
+			if err != nil {
+				logThis.Error(err, varroa.NORMAL)
+				return
+			}
 			// simple operation, only requires access to download folder, since it will clean unindexed folders
 			if cli.downloadClean {
 				if err := downloads.Clean(); err != nil {
@@ -86,49 +94,6 @@ func main() {
 				} else {
 					fmt.Println("Downloads directory cleaned of empty folders & folders containing only tracker metadata.")
 				}
-				return
-			}
-			// scanning
-			fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
-			if err := downloads.LoadAndScan(filepath.Join(varroa.StatsDir, varroa.DefaultDownloadsDB)); err != nil {
-				logThis.Error(err, varroa.NORMAL)
-				return
-			}
-			defer downloads.Close()
-
-			if cli.downloadScan {
-				fmt.Println(downloads.String())
-				return
-			}
-			if cli.downloadSearch {
-				hits := downloads.FindByArtist(cli.artistName)
-				if len(hits) == 0 {
-					fmt.Println("Nothing found.")
-				} else {
-					for _, dl := range hits {
-						fmt.Println(dl.ShortString())
-					}
-				}
-				return
-			}
-			if cli.downloadList {
-				hits := downloads.FindByState(cli.downloadState)
-				if len(hits) == 0 {
-					fmt.Println("Nothing found.")
-				} else {
-					for _, dl := range hits {
-						fmt.Println(dl.ShortString())
-					}
-				}
-				return
-			}
-			if cli.downloadInfo {
-				dl, err := downloads.FindByID(cli.torrentIDs[0])
-				if err != nil {
-					logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), varroa.NORMAL)
-					return
-				}
-				fmt.Println(dl.Description(config.General.DownloadDir))
 				return
 			}
 			if cli.downloadSort {
@@ -143,25 +108,84 @@ func main() {
 					return
 				}
 				if len(cli.torrentIDs) == 0 {
+					// scanning
+					fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
+					if err := downloads.Scan(); err != nil {
+						logThis.Error(err, varroa.NORMAL)
+						return
+					}
+					defer downloads.Close()
 					fmt.Println("Considering new or unsorted downloads.")
 					if err := downloads.Sort(env); err != nil {
 						logThis.Error(errors.Wrap(err, "Error sorting downloads"), varroa.NORMAL)
 						return
 					}
 				} else {
-					fmt.Println("Sorting a specific download folder.")
-					if err := downloads.SortThisID(env, cli.torrentIDs[0]); err != nil {
-						logThis.Error(errors.Wrap(err, "Error sorting download"), varroa.NORMAL)
+					// scanning
+					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
+					if err := downloads.RescanIDs(cli.torrentIDs); err != nil {
+						logThis.Error(err, varroa.NORMAL)
 						return
 					}
+					fmt.Println("Sorting specific download folders.")
+					for _, id := range cli.torrentIDs {
+						if err := downloads.SortThisID(env, id); err != nil {
+							logThis.Error(errors.Wrap(err, "Error sorting download"), varroa.NORMAL)
+							return
+						}
+					}
 				}
+				return
+			}
+
+			// all subsequent commands require scanning
+			fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
+			if err := downloads.Scan(); err != nil {
+				logThis.Error(err, varroa.NORMAL)
+				return
+			}
+			defer downloads.Close()
+
+			if cli.downloadSearch {
+				hits := downloads.FindByArtist(cli.artistName)
+				if len(hits) == 0 {
+					fmt.Println("Nothing found.")
+				} else {
+					for _, dl := range hits {
+						fmt.Println(dl.ShortString())
+					}
+				}
+				return
+			}
+			if cli.downloadList {
+				if cli.downloadState == "" {
+					fmt.Println(downloads.String())
+				} else {
+					hits := downloads.FindByState(cli.downloadState)
+					if len(hits) == 0 {
+						fmt.Println("Nothing found.")
+					} else {
+						for _, dl := range hits {
+							fmt.Println(dl.ShortString())
+						}
+					}
+				}
+				return
+			}
+			if cli.downloadInfo {
+				dl, err := downloads.FindByID(cli.torrentIDs[0])
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), varroa.NORMAL)
+					return
+				}
+				fmt.Println(dl.Description(config.General.DownloadDir))
 				return
 			}
 		}
 		// using stormDB
 		if cli.downloadFuse {
 			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, filepath.Join(varroa.StatsDir, varroa.DefaultDownloadsDB)); err != nil {
+			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, varroa.DefaultDownloadsDB); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
@@ -282,12 +306,10 @@ func main() {
 			return
 		}
 	}
-	return
 }
 
 func closeDB() {
 	// closing statsDB properly
-	logThis.Info("Closing stats DB.", varroa.VERBOSESTEST)
 	if stats, err := varroa.NewDatabase(filepath.Join(varroa.StatsDir, varroa.DefaultHistoryDB)); err == nil {
 		if closingErr := stats.Close(); closingErr != nil {
 			logThis.Error(closingErr, varroa.NORMAL)

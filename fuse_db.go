@@ -1,8 +1,6 @@
 package varroa
 
 import (
-	"encoding/json"
-	"html"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
@@ -69,44 +67,22 @@ func (fe *FuseEntry) Load(root string) error {
 			}
 			if FileExists(infoJSON) {
 				// load JSON, get info
-				data, err := ioutil.ReadFile(infoJSON)
-				if err != nil {
+				md := TrackerMetadata{}
+				if err := md.LoadFromJSON(tracker, originFile, infoJSON); err != nil {
 					return errors.Wrap(err, "Error loading JSON file "+infoJSON)
-				}
-				var gt GazelleTorrent
-				if err := json.Unmarshal(data, &gt.Response); err != nil {
-					return errors.Wrap(err, "Error parsing JSON file "+infoJSON)
 				}
 				// extract relevant information!
 				// for now, using artists, composers, "with" categories
-				for _, el := range gt.Response.Group.MusicInfo.Artists {
-					fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
+				// extract relevant information!
+				for _, a := range md.Artists {
+					fe.Artists = append(fe.Artists, a.Name)
 				}
-				for _, el := range gt.Response.Group.MusicInfo.With {
-					fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
-				}
-				for _, el := range gt.Response.Group.MusicInfo.Composers {
-					fe.Artists = append(fe.Artists, SanitizeFolder(html.UnescapeString(el.Name)))
-				}
-				// record label
-				fe.RecordLabel = gt.Response.Group.RecordLabel
-				if gt.Response.Torrent.Remastered {
-					fe.RecordLabel = gt.Response.Torrent.RemasterRecordLabel
-				}
-				fe.RecordLabel = SanitizeFolder(html.UnescapeString(fe.RecordLabel))
-				// year
-				fe.Year = gt.Response.Group.Year
-				if gt.Response.Torrent.Remastered {
-					fe.Year = gt.Response.Torrent.RemasterYear
-				}
-				// title
-				fe.Title = gt.Response.Group.Name
-				// tags
-				fe.Tags = gt.Response.Group.Tags
-				// source
-				fe.Source = gt.Source()
-				// format
-				fe.Format = gt.ShortEncoding()
+				fe.RecordLabel = SanitizeFolder(md.RecordLabel)
+				fe.Year = md.OriginalYear // only show original year
+				fe.Title = md.Title
+				fe.Tags = md.Tags
+				fe.Source = md.SourceFull
+				fe.Format = ShortEncoding(md.Quality)
 			}
 		}
 	} else {

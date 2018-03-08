@@ -14,21 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/subosito/norma"
-	"github.com/ttacon/chalk"
+	"github.com/mgutz/ansi"
 )
-
-// -----------------------------------------------------------------------------
-
-func startOfDay(t time.Time) time.Time {
-	return t.Truncate(24 * time.Hour)
-}
-
-func nextDay(t time.Time) time.Time {
-	return t.Add(time.Duration(24) * time.Hour)
-}
-
-// -----------------------------------------------------------------------------
 
 // StringInSlice checks if a string is in a []string, returns bool.
 func StringInSlice(a string, list []string) bool {
@@ -42,22 +29,64 @@ func StringInSlice(a string, list []string) bool {
 
 // MatchInSlice checks if a string regexp-matches a slice of patterns, returns bool
 func MatchInSlice(a string, b []string) bool {
-	for _, pattern := range b {
-		if strings.HasPrefix(pattern, filterRegExpPrefix) {
-			pattern = strings.Replace(pattern, filterRegExpPrefix, "", 1)
-			// try to match
-			match, err := regexp.MatchString(pattern, a)
-			if err != nil {
-				logThis.Error(err, VERBOSE)
-			}
-			if match {
-				return true
-			}
-		} else if pattern == a {
-			return true
+	// if no slice, match by default
+	if len(b) == 0 {
+		return true
+	}
+
+	// finding the nature of the contents in b
+	var hasIncludes, hasExcludes bool
+	for _, p := range b {
+		if strings.HasPrefix(p, filterExcludeRegExpPrefix) {
+			hasExcludes = true
+		} else {
+			hasIncludes = true
 		}
 	}
-	return false
+
+	// match if we only have exludes and no source string
+	if a == "" {
+		if !hasIncludes {
+			return true
+		}
+		return false
+	} else {
+		var matchFound bool
+		for _, pattern := range b {
+			if strings.HasPrefix(pattern, filterRegExpPrefix) && a != "" {
+				pattern = strings.Replace(pattern, filterRegExpPrefix, "", 1)
+				// try to match
+				match, err := regexp.MatchString(pattern, a)
+				if err != nil {
+					logThis.Error(err, VERBOSE)
+				}
+				if match {
+					if !hasExcludes {
+						return true // if only includes, one match is enough
+					} else {
+						matchFound = true // found match, but wait to see if it should be excluded
+					}
+				}
+			} else if strings.HasPrefix(pattern, filterExcludeRegExpPrefix) && a != "" {
+				pattern = strings.Replace(pattern, filterExcludeRegExpPrefix, "", 1)
+				// try to match
+				match, err := regexp.MatchString(pattern, a)
+				if err != nil {
+					logThis.Error(err, VERBOSE)
+				}
+				if match {
+					return false // a is excluded
+				}
+			} else if pattern == a {
+				if !hasExcludes {
+					return true // if only includes, one match is enough
+				} else {
+					matchFound = true // found match, but wait to see if it should be excluded
+				}
+			}
+		}
+		return matchFound
+	}
 }
 
 // IntInSlice checks if an int is in a []int, returns bool.
@@ -68,14 +97,6 @@ func IntInSlice(a int, list []int) bool {
 		}
 	}
 	return false
-}
-
-func IntSliceToString(in []int) string {
-	b := make([]string, len(in))
-	for i, v := range in {
-		b[i] = strconv.Itoa(v)
-	}
-	return strings.Join(b, " ")
 }
 
 func StringSliceToIntSlice(in []string) ([]int, error) {
@@ -138,27 +159,17 @@ func RemoveStringSliceDuplicates(elements []string) []string {
 	return result
 }
 
-func checkErrors(errs ...error) error {
-	for _, err := range errs {
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // -----------------------------------------------------------------------------
 
+// SanitizeFolder to have an acceptable path
 func SanitizeFolder(path string) string {
 	// making sure the path is relative
-	if strings.HasPrefix(path, "/") {
+	for strings.HasPrefix(path, "/") {
 		path = path[1:]
 	}
-
-	// TODO check it's not more than 250 characters long!
-
-	// making sure the final filename is valid
-	return norma.Sanitize(path)
+	// replacing internal / with an innoffensive utf8 variant
+	path = strings.Replace(path, "/", "∕", -1)
+	return path
 }
 
 // DirectoryExists checks if a directory exists.
@@ -255,7 +266,7 @@ func copyFileContents(src, dst string) (err error) {
 // CopyDir recursively copies a directory tree, attempting to preserve permissions.
 // Source directory must exist, destination directory must *not* exist.
 // Symlinks are ignored and skipped.
-func CopyDir(src, dst string, useHardLinks bool) (err error) {
+func CopyDir(src, dst string, useHardLinks bool) error {
 	src = filepath.Clean(src)
 	dst = filepath.Clean(dst)
 
@@ -264,43 +275,40 @@ func CopyDir(src, dst string, useHardLinks bool) (err error) {
 		return err
 	}
 	if !si.IsDir() {
-		return errors.New("Source is not a directory")
+		return errors.New("source is not a directory")
 	}
 	_, err = os.Stat(dst)
-	if err != nil && !os.IsNotExist(err) {
-		return
-	}
 	if err == nil {
-		return errors.New("Destination already exists")
+		return errors.New("destination already exists")
 	}
-	err = os.MkdirAll(dst, si.Mode())
-	if err != nil {
-		return
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err = os.MkdirAll(dst, si.Mode()); err != nil {
+		return err
 	}
 	entries, err := ioutil.ReadDir(src)
 	if err != nil {
-		return
+		return err
 	}
 	for _, entry := range entries {
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
 		if entry.IsDir() {
-			err = CopyDir(srcPath, dstPath, useHardLinks)
-			if err != nil {
-				return
+			if err = CopyDir(srcPath, dstPath, useHardLinks); err != nil {
+				return err
 			}
 		} else {
 			// Skip symlinks.
 			if entry.Mode()&os.ModeSymlink != 0 {
 				continue
 			}
-			err = CopyFile(srcPath, dstPath, useHardLinks)
-			if err != nil {
-				return
+			if err = CopyFile(srcPath, dstPath, useHardLinks); err != nil {
+				return err
 			}
 		}
 	}
-	return
+	return nil
 }
 
 // DirectoryIsEmpty checks if a directory is empty.
@@ -402,37 +410,42 @@ func readableInt64Sign(a int64) string {
 
 // BlueBold outputs a string in blue bold.
 func BlueBold(in string) string {
-	return chalk.Bold.TextStyle(chalk.Blue.Color(in))
+	return ansi.ColorFunc("blue+hb")(in)
 }
 
 // Blue outputs a string in blue.
 func Blue(in string) string {
-	return chalk.Blue.Color(in)
+	return ansi.ColorFunc("blue+h")(in)
 }
 
 // GreenBold outputs a string in green bold.
 func GreenBold(in string) string {
-	return chalk.Bold.TextStyle(chalk.Green.Color(in))
+	return ansi.ColorFunc("green+hb")(in)
 }
 
 // Green outputs a string in green.
 func Green(in string) string {
-	return chalk.Green.Color(in)
+	return ansi.ColorFunc("green+h")(in)
 }
 
 // RedBold outputs a string in red bold.
 func RedBold(in string) string {
-	return chalk.Bold.TextStyle(chalk.Red.Color(in))
+	return ansi.ColorFunc("red+hb")(in)
 }
 
 // Red outputs a string in red.
 func Red(in string) string {
-	return chalk.Red.Color(in)
+	return ansi.ColorFunc("red+h")(in)
 }
 
 // Yellow outputs a string in yellow.
 func Yellow(in string) string {
-	return chalk.Yellow.Color(in)
+	return ansi.ColorFunc("yellow+h")(in)
+}
+
+// YellowUnderlined outputs a string in yellow, underlined.
+func YellowUnderlined(in string) string {
+	return ansi.ColorFunc("yellow+hu")(in)
 }
 
 // UserChoice message logging
@@ -516,7 +529,9 @@ func SelectOption(title, usage string, options []string) (string, error) {
 			if edited == "" {
 				RedBold("Empty value!")
 			} else {
-				edited = SanitizeFolder(edited)
+				for strings.HasPrefix(edited, "/") {
+					edited = edited[1:]
+				}
 				if Accept("Confirm: " + edited) {
 					return edited, nil
 				}

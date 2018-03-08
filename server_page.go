@@ -85,15 +85,15 @@ const (
 		<div id="menu">
 			<div class="pure-menu">
 				<ul class="pure-menu-list">
-					<li class="pure-menu-item"><a class="pure-menu-link" href="/{{.UrlFolder}}#title">{{.Title}}</a></li>
+					<li class="pure-menu-item"><a class="pure-menu-link" href="/{{.URLFolder}}#title">{{.Title}}</a></li>
 				{{if .ShowDownloads }}
 					<li class="pure-menu-item"><a class="pure-menu-link" href="downloads">Downloads</a></li>
 				{{end}}
 				{{range .Stats}}
 					<li class="pure-menu-heading">{{.Name}}</li>
-					<li class="pure-menu-item"> <a class="pure-menu-link" href="/{{$.UrlFolder}}#stats-{{ .Name }}">Stats</a></li>
+					<li class="pure-menu-item"> <a class="pure-menu-link" href="/{{$.URLFolder}}#stats-{{ .Name }}">Stats</a></li>
 					{{range .GraphLinks}}
-					<li class="pure-menu-item"> <a class="pure-menu-link" href="/{{$.UrlFolder}}{{ .URL }}">{{ .Name }}</a></li>
+					<li class="pure-menu-item"> <a class="pure-menu-link" href="/{{$.URLFolder}}{{ .URL }}">{{ .Name }}</a></li>
 					{{end}}
 				{{end}}
 				</ul>
@@ -123,8 +123,8 @@ type ServerPage struct {
 	theme HistoryTheme
 }
 
-func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
-	config, err := NewConfig(DefaultConfigurationFile)
+func (sc *ServerPage) update(e *Environment, downloads *DownloadsDB) {
+	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		logThis.Error(err, NORMAL)
 		return
@@ -132,16 +132,16 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 
 	// rebuilding
 	sc.index.Stats = []HTMLStats{}
-	if config.webserverMetadata && downloads != nil {
+	if conf.webserverMetadata && downloads != nil {
 		// fetch all dl entries
-		if err := downloads.DB.All(&sc.index.Downloads); err != nil {
+		if err := downloads.db.DB.All(&sc.index.Downloads); err != nil {
 			logThis.Error(err, NORMAL)
 		} else {
 			sc.index.ShowDownloads = true
 		}
 	}
 	// gathering data
-	for _, label := range config.TrackerLabels() {
+	for _, label := range conf.TrackerLabels() {
 		statsNames := []struct {
 			Name  string
 			Label string
@@ -190,7 +190,7 @@ func (sc *ServerPage) update(e *Environment, downloads *Downloads) {
 	}
 }
 
-func (sc *ServerPage) Index(e *Environment, downloads *Downloads) ([]byte, error) {
+func (sc *ServerPage) Index(e *Environment, downloads *DownloadsDB) ([]byte, error) {
 	// updating
 	sc.update(e, downloads)
 	if err := sc.index.SetMainContentStats(); err != nil {
@@ -204,20 +204,20 @@ func (sc *ServerPage) Index(e *Environment, downloads *Downloads) ([]byte, error
 func (sc *ServerPage) SaveIndex(e *Environment, file string) error {
 	// building index
 	if e.config.gitlabPagesConfigured {
-		e.serverData.index.UrlFolder = e.config.GitlabPages.Folder + "/"
+		e.serverData.index.URLFolder = e.config.GitlabPages.Folder + "/"
 	}
 	data, err := sc.Index(e, nil)
 	if err != nil {
 		return err
 	}
 	if e.config.gitlabPagesConfigured {
-		e.serverData.index.UrlFolder = ""
+		e.serverData.index.URLFolder = ""
 	}
 	// write to file
 	return ioutil.WriteFile(file, data, 0666)
 }
 
-func (sc *ServerPage) DownloadsList(e *Environment, downloads *Downloads) ([]byte, error) {
+func (sc *ServerPage) DownloadsList(e *Environment, downloads *DownloadsDB) ([]byte, error) {
 	// updating
 	sc.update(e, downloads)
 	// getting downloads
@@ -228,7 +228,7 @@ func (sc *ServerPage) DownloadsList(e *Environment, downloads *Downloads) ([]byt
 	return sc.index.MainPage()
 }
 
-func (sc *ServerPage) DownloadsInfo(e *Environment, downloads *Downloads, id string) ([]byte, error) {
+func (sc *ServerPage) DownloadsInfo(e *Environment, downloads *DownloadsDB, id string) ([]byte, error) {
 	// updating
 	sc.update(e, nil)
 
@@ -247,7 +247,7 @@ func (sc *ServerPage) DownloadsInfo(e *Environment, downloads *Downloads, id str
 	if dl.HasTrackerMetadata {
 		// TODO if more than 1 tracker, make things prettier
 		for _, t := range dl.Tracker {
-			sc.index.DownloadInfo += template.HTML(blackfriday.Run(dl.getDescription(e.config.General.DownloadDir, t)))
+			sc.index.DownloadInfo += template.HTML(blackfriday.Run(dl.getDescription(e.config.General.DownloadDir, t, true)))
 		}
 	} else {
 		sc.index.DownloadInfo = template.HTML(dl.RawShortString())

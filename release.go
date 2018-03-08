@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/subosito/norma"
 )
 
 const (
@@ -145,7 +144,7 @@ func (r *Release) ShortString() string {
 
 func (r *Release) TorrentFile() string {
 	torrentFile := fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
-	return norma.Sanitize(torrentFile)
+	return SanitizeFolder(torrentFile)
 }
 
 func (r *Release) Satisfies(filter *ConfigFilter) bool {
@@ -218,36 +217,36 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 	return true
 }
 
-func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUploaders []string, info *TrackerTorrentInfo) bool {
+func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUploaders []string, info *TrackerMetadata) bool {
 	// checks
-	if len(filter.EditionYear) != 0 && !IntInSlice(info.editionYear, filter.EditionYear) {
+	if len(filter.EditionYear) != 0 && !IntInSlice(info.EditionYear, filter.EditionYear) {
 		logThis.Info(filter.Name+": Wrong edition year", VERBOSE)
 		return false
 	}
-	if filter.MaxSizeMB != 0 && uint64(filter.MaxSizeMB) < (info.size/(1024*1024)) {
+	if filter.MaxSizeMB != 0 && uint64(filter.MaxSizeMB) < (info.Size/(1024*1024)) {
 		logThis.Info(filter.Name+": Release too big.", VERBOSE)
 		return false
 	}
-	if filter.MinSizeMB > 0 && uint64(filter.MinSizeMB) > (info.size/(1024*1024)) {
+	if filter.MinSizeMB > 0 && uint64(filter.MinSizeMB) > (info.Size/(1024*1024)) {
 		logThis.Info(filter.Name+": Release too small.", VERBOSE)
 		return false
 	}
-	if r.Source == sourceCD && r.Format == formatFLAC && r.HasLog && filter.LogScore != 0 && filter.LogScore > info.logScore {
+	if r.Source == sourceCD && r.Format == formatFLAC && r.HasLog && filter.LogScore != 0 && filter.LogScore > info.LogScore {
 		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
 		return false
 	}
-	if len(filter.RecordLabel) != 0 && !MatchInSlice(info.label, filter.RecordLabel) {
+	if len(filter.RecordLabel) != 0 && !MatchInSlice(info.RecordLabel, filter.RecordLabel) {
 		logThis.Info(filter.Name+": No match for record label", VERBOSE)
 		return false
 	}
 	if len(filter.Artist) != 0 || len(filter.ExcludedArtist) != 0 {
 		var foundAtLeastOneArtist bool
-		for iArtist := range info.artists {
-			if MatchInSlice(iArtist, filter.Artist) {
+		for _, iArtist := range info.Artists {
+			if MatchInSlice(iArtist.Name, filter.Artist) {
 				foundAtLeastOneArtist = true
 			}
-			if MatchInSlice(iArtist, filter.ExcludedArtist) {
-				logThis.Info(filter.Name+": Found excluded artist "+iArtist, VERBOSE)
+			if MatchInSlice(iArtist.Name, filter.ExcludedArtist) {
+				logThis.Info(filter.Name+": Found excluded artist "+iArtist.Name, VERBOSE)
 				return false
 			}
 		}
@@ -256,89 +255,32 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			return false
 		}
 	}
-	if StringInSlice(info.uploader, blacklistedUploaders) {
-		logThis.Info(filter.Name+": Uploader "+info.uploader+" is blacklisted.", VERBOSE)
+	if StringInSlice(info.Uploader, blacklistedUploaders) || StringInSlice(info.Uploader, filter.BlacklistedUploader) {
+		logThis.Info(filter.Name+": Uploader "+info.Uploader+" is blacklisted.", VERBOSE)
 		return false
 	}
-	if len(filter.Uploader) != 0 && !StringInSlice(info.uploader, filter.Uploader) {
+	if len(filter.Uploader) != 0 && !StringInSlice(info.Uploader, filter.Uploader) {
 		logThis.Info(filter.Name+": No match for uploader", VERBOSE)
 		return false
 	}
 	if len(filter.Edition) != 0 {
 		found := false
-		if MatchInSlice(info.edition, filter.Edition) {
+		if MatchInSlice(info.EditionName, filter.Edition) {
 			found = true
 		}
-
 		if !found {
 			logThis.Info(filter.Name+": Edition name does not match any criteria.", VERBOSE)
 			return false
 		}
 	}
-	if filter.RejectUnknown && info.catnum == "" && info.label == "" {
+	if filter.RejectUnknown && info.CatalogNumber == "" && info.RecordLabel == "" {
 		logThis.Info(filter.Name+": Release has neither a record label or catalog number, rejected.", VERBOSE)
 		return false
 	}
 	// taking the opportunity to retrieve and save some info
-	r.Size = info.size
-	r.LogScore = info.logScore
-	r.Folder = info.folder
-	r.GroupID = strconv.Itoa(info.groupID)
+	r.Size = info.Size
+	r.LogScore = info.LogScore
+	r.Folder = info.FolderName
+	r.GroupID = strconv.Itoa(info.GroupID)
 	return true
-}
-
-// ------------------------------------------------
-
-func (r *Release) FromSlice(slice []string) error {
-	// DEPRECATED, only used for migrating old csv files to the new msgpack-based db.
-
-	// slice contains timestamp + filter, which are ignored
-	if len(slice) < 16 {
-		return errors.New("incorrect entry, cannot load release")
-	}
-	// no need to parse the raw Artists announce again, probably
-	timestamp, err := strconv.ParseUint(slice[0], 10, 64)
-	if err != nil {
-		return err
-	}
-	r.Timestamp = time.Unix(int64(timestamp), 0)
-	r.Filter = slice[1]
-	r.Artists = []string{slice[2]}
-	r.Title = slice[3]
-	year, err := strconv.Atoi(slice[4])
-	if err != nil {
-		return err
-	}
-	r.Year = year
-	size, err := strconv.ParseUint(slice[5], 10, 64)
-	if err != nil {
-		return err
-	}
-	r.Size = size
-	r.ReleaseType = slice[6]
-	r.Quality = slice[7]
-	hasLog, err := strconv.ParseBool(slice[8])
-	if err != nil {
-		return err
-	}
-	r.HasLog = hasLog
-	logScore, err := strconv.Atoi(slice[9])
-	if err != nil {
-		return err
-	}
-	r.LogScore = logScore
-	hasCue, err := strconv.ParseBool(slice[10])
-	if err != nil {
-		return err
-	}
-	r.HasCue = hasCue
-	isScene, err := strconv.ParseBool(slice[11])
-	if err != nil {
-		return err
-	}
-	r.IsScene = isScene
-	r.Source = slice[12]
-	r.Format = slice[13]
-	r.Tags = strings.Split(slice[14], ",")
-	return nil
 }

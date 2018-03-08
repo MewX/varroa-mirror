@@ -3,13 +3,13 @@ package varroa
 import (
 	"encoding/json"
 	"fmt"
-	"html"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/asdine/storm"
@@ -199,26 +199,26 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 	for _, id := range IDStrings {
 		var found Release
-		var info *TrackerTorrentInfo
+		var info *TrackerMetadata
 		var infoErr error
 		findIDsQuery := q.And(q.Eq("Tracker", tracker.Name), q.Eq("TorrentID", id))
 		if err := stats.db.DB.Select(findIDsQuery).First(&found); err != nil {
 			if err == storm.ErrNotFound {
 				// not found, try to locate download directory nonetheless
 				if e.config.DownloadFolderConfigured {
-					logThis.Info("Release with ID "+found.TorrentID+" not found in history, trying to locate in downloads directory.", NORMAL)
+					logThis.Info("Release not found in history, trying to locate in downloads directory.", NORMAL)
 					// get data from tracker
-					info, infoErr = tracker.GetTorrentInfo(id)
+					info, infoErr = tracker.GetTorrentMetadata(id)
 					if infoErr != nil {
 						logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 						break
 					}
-					fullFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
+					fullFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
 					if DirectoryExists(fullFolder) {
 						if daemon.WasReborn() {
-							go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+							go info.SaveFromTracker(tracker)
 						} else {
-							SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+							info.SaveFromTracker(tracker)
 						}
 					} else {
 						logThis.Info(fmt.Sprintf(errorCannotFindID, id), NORMAL)
@@ -236,15 +236,15 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 			// was found
 			logThis.Info("Found release with ID "+found.TorrentID+" in history: "+found.ShortString()+". Getting tracker metadata.", NORMAL)
 			// get data from tracker
-			info, infoErr = tracker.GetTorrentInfo(found.TorrentID)
+			info, infoErr = tracker.GetTorrentMetadata(found.TorrentID)
 			if infoErr != nil {
 				logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
 			}
 			if daemon.WasReborn() {
-				go SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+				go info.SaveFromTracker(tracker)
 			} else {
-				SaveMetadataFromTracker(tracker, info, e.config.General.DownloadDir)
+				info.SaveFromTracker(tracker)
 			}
 		}
 		// check the number of active seeders
@@ -287,15 +287,13 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 	for _, id := range IDStrings {
 		logThis.Info(fmt.Sprintf("+ Info about %s / %s: \n", tracker.Name, id), NORMAL)
 		// get release info from ID
-		info, err := tracker.GetTorrentInfo(id)
+		info, err := tracker.GetTorrentMetadata(id)
 		if err != nil {
 			logThis.Error(errors.Wrap(err, fmt.Sprintf("Could not get info about torrent %s on %s, may not exist", id, tracker.Name)), NORMAL)
 			continue
 		}
-		release := info.Release(tracker.Name)
-		// TODO better output, might need to add a new info.FullString()
-		logThis.Info(release.String(), NORMAL)
-		logThis.Info(info.String()+"\n", NORMAL)
+		release := info.Release()
+		logThis.Info(info.TextDescription(true)+"\n", NORMAL)
 
 		// find if in history
 		var found Release
@@ -307,7 +305,7 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 		// checking the files are still there (if snatched with or without varroa)
 		if e.config.DownloadFolderConfigured {
-			releaseFolder := filepath.Join(e.config.General.DownloadDir, html.UnescapeString(info.folder))
+			releaseFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
 			if DirectoryExists(releaseFolder) {
 				logThis.Info(fmt.Sprintf("Files seem to still be in the download directory: %s", releaseFolder), NORMAL)
 				// TODO maybe display when the metadata was last updated?
@@ -419,8 +417,8 @@ func ArchiveUserFiles() error {
 			return errors.Wrap(err, errorArchiving)
 		}
 	}
-
-	// find all .csv + .db files, save them along with the configuration file
+	var backupFiles []string
+	// find all .db files, save them along with the configuration file
 	f, err := os.Open(StatsDir)
 	if err != nil {
 		return errors.Wrap(err, "Error opening "+StatsDir)
@@ -430,8 +428,12 @@ func ArchiveUserFiles() error {
 		return errors.Wrap(err, "Error reading directory "+StatsDir)
 	}
 	f.Close()
-
-	var backupFiles []string
+	for _, c := range contents {
+		if filepath.Ext(c) == msgpackExt {
+			backupFiles = append(backupFiles, filepath.Join(StatsDir, c))
+		}
+	}
+	// backup the configuration file
 	if FileExists(DefaultConfigurationFile) {
 		backupFiles = append(backupFiles, DefaultConfigurationFile)
 	}
@@ -439,13 +441,7 @@ func ArchiveUserFiles() error {
 	if FileExists(encryptedConfigurationFile) {
 		backupFiles = append(backupFiles, encryptedConfigurationFile)
 	}
-	for _, c := range contents {
-		if filepath.Ext(c) == msgpackExt || filepath.Ext(c) == csvExt {
-			backupFiles = append(backupFiles, filepath.Join(StatsDir, c))
-		}
-	}
-
-	// generate file
+	// generate archive
 	err = archiver.Zip.Make(filepath.Join(archivesDir, archiveName), backupFiles)
 	if err != nil {
 		logThis.Error(errors.Wrap(err, errorArchiving), NORMAL)
@@ -457,11 +453,11 @@ func ArchiveUserFiles() error {
 func parseQuota(cmdOut string) (float32, int64, error) {
 	output := strings.TrimSpace(cmdOut)
 	if output == "" {
-		return -1, -1, errors.New("No quota defined for user")
+		return -1, -1, errors.New("no quota defined for user")
 	}
 	lines := strings.Split(output, "\n")
 	if len(lines) != 3 {
-		return -1, -1, errors.New("Unexpected quota output")
+		return -1, -1, errors.New("unexpected quota output")
 	}
 	var relevantParts []string
 	for _, p := range strings.Split(lines[2], " ") {
@@ -471,11 +467,11 @@ func parseQuota(cmdOut string) (float32, int64, error) {
 	}
 	used, err := strconv.Atoi(relevantParts[1])
 	if err != nil {
-		return -1, -1, errors.New("Error parsing quota output")
+		return -1, -1, errors.New("error parsing quota output")
 	}
 	quota, err := strconv.Atoi(relevantParts[2])
 	if err != nil {
-		return -1, -1, errors.New("Error parsing quota output")
+		return -1, -1, errors.New("error parsing quota output")
 	}
 	// assuming blocks of 1kb
 	return 100 * float32(used) / float32(quota), int64(quota-used) * 1024, nil
@@ -508,6 +504,35 @@ func checkQuota() error {
 	return nil
 }
 
+// checkFreeDiskSpace based on the main download directory's location.
+func checkFreeDiskSpace() error {
+	// get config.
+	conf, configErr := NewConfig(DefaultConfigurationFile)
+	if configErr != nil {
+		return configErr
+	}
+	if conf.DownloadFolderConfigured {
+		var stat syscall.Statfs_t
+		if err := syscall.Statfs(conf.General.DownloadDir, &stat); err != nil {
+			return errors.Wrap(err, "error finding free disk space")
+		}
+		// Available blocks * size per block = available space in bytes
+		freeBytes := stat.Bavail * uint64(stat.Bsize)
+		allBytes := stat.Blocks * uint64(stat.Bsize)
+		pcRemaining := 100 * float32(freeBytes) / float32(allBytes)
+		// send warning if this is worrying
+		if pcRemaining <= 2 {
+			logThis.Info(veryLowDiskSpace, NORMAL)
+			return Notify(veryLowDiskSpace, FullName, "info")
+		} else if pcRemaining <= 10 {
+			logThis.Info(lowDiskSpace, NORMAL)
+			return Notify(lowDiskSpace, FullName, "info")
+		}
+		return nil
+	}
+	return errors.New("download directory not configured, cannot check free disk space")
+}
+
 // automatedTasks is a list of cronjobs for maintenance, backup, or non-critical operations
 func automatedTasks(e *Environment) {
 	// new scheduler
@@ -519,20 +544,28 @@ func automatedTasks(e *Environment) {
 	if e.config.gitlabPagesConfigured {
 		s.Every(1).Day().At("00:05").Do(e.git.Compress)
 	}
-	// 3. checking quota is available
+	// 3. check quota is available
 	_, err := exec.LookPath("quota")
 	if err != nil {
-		logThis.Info("The command 'quota' is not available on this system, not able to check disk usage", NORMAL)
+		logThis.Info("The command 'quota' is not available on this system, not able to check disk quota", NORMAL)
 	} else {
 		// first check
 		if err := checkQuota(); err != nil {
-			logThis.Error(errors.Wrap(err, "error checking user quota: disk usage monitoring off"), NORMAL)
+			logThis.Error(errors.Wrap(err, "error checking user quota: quota usage monitoring off"), NORMAL)
 		} else {
 			// scheduler for subsequent quota checks
 			s.Every(1).Hour().Do(checkQuota)
 		}
 	}
-	// 4. update database stats
+	// 4. check disk space is available
+	// first check
+	if err := checkFreeDiskSpace(); err != nil {
+		logThis.Error(errors.Wrap(err, "error checking free disk space: disk usage monitoring off"), NORMAL)
+	} else {
+		// scheduler for subsequent quota checks
+		s.Every(1).Hour().Do(checkFreeDiskSpace)
+	}
+	// 5. update database stats
 	s.Every(1).Day().At("00:10").Do(GenerateStats, e)
 	// launch scheduler
 	<-s.Start()

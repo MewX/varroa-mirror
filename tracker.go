@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/subosito/norma"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -194,7 +193,7 @@ func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile, destinationFol
 
 // DownloadTorrentFromID using its ID instead.
 func (t *GazelleTracker) DownloadTorrentFromID(torrentID string, destinationFolder string, useFLToken bool) error {
-	torrentFile := norma.Sanitize(t.Name) + "_id" + torrentID + torrentExt
+	torrentFile := SanitizeFolder(t.Name) + "_id" + torrentID + torrentExt
 	torrentURL := t.URL + "/torrents.php?action=download&id=" + torrentID
 	if useFLToken {
 		torrentURL += "&usetoken=1"
@@ -231,30 +230,31 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	// return StatsEntry
 	stats := &StatsEntry{
 		Tracker:       t.Name,
-		Up:            uint64(s.Response.Stats.Uploaded),
-		Down:          uint64(s.Response.Stats.Downloaded),
+		Up:            s.Response.Stats.Uploaded,
+		Down:          s.Response.Stats.Downloaded,
 		Ratio:         ratio,
 		Timestamp:     time.Now(),
 		TimestampUnix: time.Now().Unix(),
 		Collected:     true,
-		SchemaVersion: currentSchemaVersion,
+		SchemaVersion: currentStatsDBSchemaVersion,
 	}
 	return stats, nil
 }
 
-func (t *GazelleTracker) GetTorrentInfo(id string) (*TrackerTorrentInfo, error) {
+func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error) {
 	data, err := t.get(t.URL + "/ajax.php?action=torrent&id=" + id)
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
-	info := &TrackerTorrentInfo{}
-	if unmarshalErr := info.LoadFromBytes(data, true); err != nil {
+	// json bytes will be re-saved by info after anonymizing
+	info := &TrackerMetadata{ReleaseJSON: data}
+	if unmarshalErr := info.LoadFromTracker(t, data); err != nil {
 		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
 	return info, nil
 }
 
-func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error) {
+func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerMetadataArtist, error) {
 	data, err := t.get(t.URL + "/ajax.php?action=artist&id=" + strconv.Itoa(artistID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
@@ -263,17 +263,16 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerArtistInfo, error)
 	if unmarshalErr := json.Unmarshal(data, &gt); unmarshalErr != nil {
 		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
 	}
-	// TODO get specific info?
 	// json for metadata
 	metadataJSON, err := json.MarshalIndent(gt.Response, "", "    ")
 	if err != nil {
 		metadataJSON = data // falling back to complete json
 	}
-	info := &TrackerArtistInfo{id: gt.Response.ID, name: gt.Response.Name, fullJSON: metadataJSON}
+	info := &TrackerMetadataArtist{ID: gt.Response.ID, Name: gt.Response.Name, JSON: metadataJSON}
 	return info, nil
 }
 
-func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorrentGroupInfo, error) {
+func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerMetadataTorrentGroup, error) {
 	data, err := t.get(t.URL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
@@ -292,7 +291,7 @@ func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerTorren
 	if err != nil {
 		metadataJSON = data // falling back to complete json
 	}
-	info := &TrackerTorrentGroupInfo{id: gt.Response.Group.ID, name: gt.Response.Group.Name, fullJSON: metadataJSON}
+	info := &TrackerMetadataTorrentGroup{id: gt.Response.Group.ID, name: gt.Response.Group.Name, fullJSON: metadataJSON}
 	return info, nil
 }
 
@@ -371,12 +370,11 @@ func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
 	r := regexp.MustCompile(logScorePattern)
 	if r.MatchString(returnData) {
 		return "Log score " + r.FindStringSubmatch(returnData)[1], nil
-	} else {
-		if strings.Contains(returnData, "Your log has failed.") {
-			return "Log rejected", nil
-		} else if strings.Contains(returnData, "This too shall pass.") {
-			return "Log checks out, at least Silver", nil
-		}
-		return "", errors.New("Could not find score")
 	}
+	if strings.Contains(returnData, "Your log has failed.") {
+		return "Log rejected", nil
+	} else if strings.Contains(returnData, "This too shall pass.") {
+		return "Log checks out, at least Silver", nil
+	}
+	return "", errors.New("Could not find score")
 }

@@ -116,14 +116,14 @@ var (
 		Filter:      "",
 	}
 	// torrent infos
-	i1 = &TrackerTorrentInfo{size: 1234567, logScore: 100, uploader: "that_guy"}
-	i2 = &TrackerTorrentInfo{size: 1234567, logScore: 80, uploader: "someone else"}
-	i3 = &TrackerTorrentInfo{size: 11, logScore: 80}
-	i4 = &TrackerTorrentInfo{size: 123456789, logScore: 80}
-	i5 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label1"}
-	i6 = &TrackerTorrentInfo{size: 1234567, logScore: 100, label: "label unknown"}
-	i7 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "deluxe edition", editionYear: 2004}
-	i8 = &TrackerTorrentInfo{size: 1234567, logScore: 100, edition: "anniversary remaster", editionYear: 2017}
+	i1 = &TrackerMetadata{Size: 1234567, LogScore: 100, Uploader: "that_guy"}
+	i2 = &TrackerMetadata{Size: 1234567, LogScore: 80, Uploader: "someone else"}
+	i3 = &TrackerMetadata{Size: 11, LogScore: 80}
+	i4 = &TrackerMetadata{Size: 123456789, LogScore: 80}
+	i5 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label1"}
+	i6 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label unknown"}
+	i7 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "deluxe edition Clean", EditionYear: 2004}
+	i8 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "anniversary remaster CLEAN", EditionYear: 2017}
 )
 
 func TestRelease(t *testing.T) {
@@ -167,40 +167,46 @@ func TestRelease(t *testing.T) {
 	f29 := &ConfigFilter{Name: "f29", Uploader: []string{"this_guy", "that_guy"}}
 	f30 := &ConfigFilter{Name: "f30", RejectUnknown: true}
 	f31 := &ConfigFilter{Name: "f31", EditionYear: []int{2004}, AllowScene: true}
+	f32 := &ConfigFilter{Name: "f32", PerfectFlac: true, Edition: []string{"r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}}
+	f33 := &ConfigFilter{Name: "f33", BlacklistedUploader: []string{"that_guy"}}
+	f34 := &ConfigFilter{Name: "f34", PerfectFlac: true, Edition: []string{"xr/[cC][lL][eE][aA][nN]"}}
 
 	// checking filters
-	check.NotNil(f0.Check())
-	check.Nil(f1.Check())
-	check.Nil(f2.Check())
-	check.Nil(f3.Check())
-	check.Nil(f4.Check())
-	check.Nil(f5.Check())
-	check.Nil(f6.Check())
-	check.Nil(f7.Check())
-	check.Nil(f8.Check())
-	check.Nil(f9.Check())
-	check.Nil(f10.Check())
-	check.Nil(f11.Check())
-	check.Nil(f12.Check())
-	check.NotNil(f13.Check())
-	check.NotNil(f14.Check())
-	check.NotNil(f15.Check())
-	check.Nil(f16.Check())
-	check.Nil(f17.Check())
-	check.Nil(f18.Check())
-	check.Nil(f19.Check())
-	check.Nil(f20.Check())
-	check.Nil(f21.Check())
-	check.Nil(f22.Check())
-	check.NotNil(f23.Check())
-	check.Nil(f24.Check())
-	check.Nil(f25.Check())
-	check.Nil(f26.Check())
-	check.Nil(f27.Check())
-	check.Nil(f28.Check())
-	check.Nil(f29.Check())
-	check.Nil(f30.Check())
-	check.Nil(f31.Check())
+	check.NotNil(f0.check())
+	check.Nil(f1.check())
+	check.Nil(f2.check())
+	check.Nil(f3.check())
+	check.Nil(f4.check())
+	check.Nil(f5.check())
+	check.Nil(f6.check())
+	check.Nil(f7.check())
+	check.Nil(f8.check())
+	check.Nil(f9.check())
+	check.Nil(f10.check())
+	check.Nil(f11.check())
+	check.Nil(f12.check())
+	check.NotNil(f13.check())
+	check.NotNil(f14.check())
+	check.NotNil(f15.check())
+	check.Nil(f16.check())
+	check.Nil(f17.check())
+	check.Nil(f18.check())
+	check.Nil(f19.check())
+	check.Nil(f20.check())
+	check.Nil(f21.check())
+	check.Nil(f22.check())
+	check.NotNil(f23.check())
+	check.Nil(f24.check())
+	check.Nil(f25.check())
+	check.Nil(f26.check())
+	check.Nil(f27.check())
+	check.Nil(f28.check())
+	check.Nil(f29.check())
+	check.Nil(f30.check())
+	check.Nil(f31.check())
+	check.Nil(f32.check())
+	check.Nil(f33.check())
+	check.Nil(f34.check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -367,6 +373,12 @@ func TestRelease(t *testing.T) {
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i6))
 	check.True(r1.HasCompatibleTrackerInfo(f28, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i8))
+	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i6))
+	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i7))
+	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i8))
+	check.True(r1.HasCompatibleTrackerInfo(f34, []string{}, i6))
+	check.False(r1.HasCompatibleTrackerInfo(f34, []string{}, i7))
+	check.False(r1.HasCompatibleTrackerInfo(f34, []string{}, i8))
 
 	// reject unknown releases
 	check.False(r1.HasCompatibleTrackerInfo(f30, []string{}, i1))
@@ -376,4 +388,11 @@ func TestRelease(t *testing.T) {
 	check.False(r1.HasCompatibleTrackerInfo(f31, []string{}, i6))
 	check.True(r1.HasCompatibleTrackerInfo(f31, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f31, []string{}, i8))
+
+	// filter-level blacklisted uploaders
+	check.False(r1.HasCompatibleTrackerInfo(f33, []string{}, i1))
+	check.False(r1.HasCompatibleTrackerInfo(f33, []string{"that_guy"}, i1))
+	check.False(r1.HasCompatibleTrackerInfo(f33, []string{"another_one"}, i1))
+	check.True(r1.HasCompatibleTrackerInfo(f33, []string{}, i2))
+
 }

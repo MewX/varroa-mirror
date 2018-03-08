@@ -36,5 +36,4 @@ func main() {
 		return
 	}
 	fmt.Println(varroa.Green("Unmounting FUSE filesystem, fusermount -u has presumably been called."))
-	return
 }

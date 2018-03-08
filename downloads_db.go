@@ -1,430 +1,379 @@
 package varroa
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"html"
+	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"text/template"
+	"sync"
+	"time"
 
+	"github.com/asdine/storm"
+	"github.com/asdine/storm/q"
+	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
+	"github.com/sevlyar/go-daemon"
 )
 
-const (
-	stateUnsorted DownloadState = iota // has metadata but is unsorted
-	stateAccepted                      // has metadata and has been accepted, but not yet exported to library
-	stateExported                      // has metadata and has been exported to library
-	stateRejected                      // has metadata and is not to be exported to library
-)
+var downloadsDB *DownloadsDB
+var onceDownloadsDB sync.Once
 
-var DownloadFolderStates = []string{"unsorted", "accepted", "exported", "rejected"}
+type DownloadsDB struct {
+	root              string
+	additionalSources []string
+	db                *Database
+}
 
-type DownloadState int
+func NewDownloadsDB(path, root string, additionalSources []string) (*DownloadsDB, error) {
+	var returnErr error
+	onceDownloadsDB.Do(func() {
+		// db should be opened already
+		db, err := NewDatabase(path)
+		if err != nil {
+			returnErr = errors.Wrap(err, "Error opening stats database")
+			return
+		}
+		downloadsDB = &DownloadsDB{db: db, root: root, additionalSources: additionalSources}
+		if returnErr = downloadsDB.init(); returnErr != nil {
+			logThis.Error(errors.Wrap(returnErr, "Could not prepare database for indexing download entries"), NORMAL)
+			return
+		}
+		if !DirectoryExists(downloadsDB.root) {
+			logThis.Info("Error finding "+root, NORMAL)
+			return
+		}
+	})
+	return downloadsDB, returnErr
+}
 
-func (ds DownloadState) Colorize(txt string) string {
-	switch ds {
-	case stateAccepted:
-		txt = Green(txt)
-	case stateExported:
-		txt = GreenBold(txt)
-	case stateUnsorted:
-		txt = Blue(txt)
-	case stateRejected:
-		txt = RedBold(txt)
+func (d *DownloadsDB) init() error {
+	return d.db.DB.Init(&DownloadEntry{})
+}
+
+func (d *DownloadsDB) Close() error {
+	return d.db.Close()
+}
+
+func (d *DownloadsDB) String() string {
+	txt := "Downloads in database:\n"
+	var allEntries []DownloadEntry
+	if err := d.db.DB.All(&allEntries); err != nil {
+		txt += err.Error()
+	} else {
+		for _, dl := range allEntries {
+			txt += " ▹ " + dl.ShortString() + "\n"
+		}
 	}
+	var stateCounts []string
+	for _, s := range DownloadFolderStates {
+		states := d.FindByState(s)
+		stateCounts = append(stateCounts, fmt.Sprintf("%s: %d (%.02f%%)", s, len(states), 100*float32(len(states))/float32(len(allEntries))))
+	}
+	txt += "\n" + YellowUnderlined(fmt.Sprintf("Total: %d entries ~~ ", len(allEntries))+strings.Join(stateCounts, ", "))
 	return txt
 }
 
-func (ds DownloadState) Get(txt string) DownloadState {
-	switch txt {
-	case "accepted":
-		return stateAccepted
-	case "exported":
-		return stateExported
-	case "unsorted":
-		return stateUnsorted
-	case "rejected":
-		return stateRejected
+func (d *DownloadsDB) Scan() error {
+	defer TimeTrack(time.Now(), "Scan Downloads")
+
+	if d.db.DB == nil {
+		return errors.New("Error db not open")
 	}
-	return -1
-}
 
-func IsValidDownloadState(txt string) bool {
-	return DownloadState(-1).Get(txt) != -1
+	// don't walk, we only want the top-level directories here
+	entries, readErr := ioutil.ReadDir(d.root)
+	if readErr != nil {
+		return errors.Wrap(readErr, "Error reading downloads directory "+d.root)
+	}
 
-}
-
-// -----------------------
-
-type DownloadEntry struct {
-	ID                 int           `storm:"id,increment"`
-	FolderName         string        `storm:"unique"`
-	State              DownloadState `storm:"index"`
-	Tracker            []string      `storm:"index"`
-	TrackerID          []int         `storm:"index"`
-	Artists            []string      `storm:"index"`
-	HasTrackerMetadata bool          `storm:"index"`
-}
-
-func (d *DownloadEntry) ShortState() string {
-	return DownloadFolderStates[d.State][:1]
-}
-
-func (d *DownloadEntry) RawShortString() string {
-	return fmt.Sprintf("[#%d]\t[%s]\t%s", d.ID, DownloadFolderStates[d.State][:1], d.FolderName)
-}
-
-func (d *DownloadEntry) ShortString() string {
-	return d.State.Colorize(d.RawShortString())
-}
-
-func (d *DownloadEntry) String() string {
-	return d.State.Colorize(fmt.Sprintf("ID #%d: %s [%s]", d.ID, d.FolderName, DownloadFolderStates[d.State]))
-}
-
-func (d *DownloadEntry) Description(root string) string {
-	txt := d.String()
-	if d.HasTrackerMetadata {
-		txt += ", Has tracker metadata: "
-		for i, t := range d.Tracker {
-			txt += fmt.Sprintf("%s (ID #%d) ", t, d.TrackerID[i])
-			txt += fmt.Sprintf("\n%s:\n%s", t, string(d.getDescription(root, t)))
+	// same from additional sources
+	for _, s := range d.additionalSources {
+		se, err := ioutil.ReadDir(s)
+		if err != nil {
+			return errors.Wrap(readErr, "Error reading downloads directory "+s)
 		}
-	} else {
-		txt += ", does not have any tracker metadata."
-	}
-	return d.State.Colorize(txt)
-}
-
-// sorting: tracker name, tracker ID, foldername, description (ie releasemd), state
-// generatePath: reads the release.json...
-
-func (d *DownloadEntry) Load(root string) error {
-	if d.FolderName == "" || !DirectoryExists(filepath.Join(root, d.FolderName)) {
-		return errors.New("Wrong or missing path")
+		entries = append(entries, se...)
 	}
 
-	// find origin.json
-	originFile := filepath.Join(root, d.FolderName, metadataDir, originJSONFile)
-	if FileExists(originFile) {
-		origin := TrackerOriginJSON{Path: originFile}
-		if err := origin.load(); err != nil {
-			return errors.Wrap(err, "Error reading origin.json")
-		}
-		// TODO: check last update timestamp, compare with value in db
-		// TODO: if was not updated, skip.
+	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
+	s.Prefix = scanningFiles
+	if !daemon.WasReborn() {
+		s.Start()
+	}
 
-		// TODO: remove duplicate if there are actually several origins
+	// get old entries
+	var previous []DownloadEntry
+	if err := d.db.DB.All(&previous); err != nil {
+		return errors.New("Cannot load previous entries")
+	}
 
-		// state: should be set to unsorted by default,
-		// if it has already been set, leaving it as it is
+	tx, err := d.db.DB.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
-		// resetting the other fields
-		d.Tracker = []string{}
-		d.TrackerID = []int{}
-		d.HasTrackerMetadata = false
-
-		// load useful things from JSON
-		for tracker, info := range origin.Origins {
-			d.Tracker = append(d.Tracker, tracker)
-			d.TrackerID = append(d.TrackerID, info.ID)
-
-			// getting release info from json
-			infoJSON := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
-			infoJSONOldFormat := filepath.Join(root, d.FolderName, metadataDir, "Release.json")
-			if !FileExists(infoJSON) {
-				infoJSON = infoJSONOldFormat
+	var currentFolderNames []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// detect if sound files are present, leave otherwise
+			if !DirectoryContainsMusic(filepath.Join(d.root, entry.Name())) {
+				logThis.Info("Error: no music found in "+entry.Name(), VERBOSEST)
+				continue
 			}
-			if FileExists(infoJSON) {
-				d.HasTrackerMetadata = true
-				// load JSON, get info
-				data, err := ioutil.ReadFile(infoJSON)
-				if err != nil {
-					return errors.Wrap(err, "Error loading JSON file "+infoJSON)
+			// try to find entry
+			var downloadEntry DownloadEntry
+			if dbErr := d.db.DB.One("FolderName", entry.Name(), &downloadEntry); dbErr != nil {
+				if dbErr == storm.ErrNotFound {
+					// not found, create new entry
+					downloadEntry.FolderName = entry.Name()
+					// read information from metadata
+					if err := downloadEntry.Load(d.root); err != nil {
+						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+entry.Name()), VERBOSEST)
+						continue
+					}
+					if err := tx.Save(&downloadEntry); err != nil {
+						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
+						continue
+					}
+					logThis.Info("New Downloads entry: "+entry.Name(), VERBOSESTEST)
+				} else {
+					logThis.Error(dbErr, VERBOSEST)
+					continue
 				}
-				var gt GazelleTorrent
-				if err := json.Unmarshal(data, &gt.Response); err != nil {
-					return errors.Wrap(err, "Error parsing JSON file "+infoJSON)
+			} else {
+				// found entry, update it
+				// TODO for existing entries, maybe only reload if the metadata has been modified?
+				// read information from metadata
+				if err := downloadEntry.Load(d.root); err != nil {
+					logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
+					continue
 				}
-				// extract relevant information!
-				// for now, using artists, composers, "with" categories
-				for _, el := range gt.Response.Group.MusicInfo.Artists {
-					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
+				if err := tx.Update(&downloadEntry); err != nil {
+					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
+					continue
 				}
-				for _, el := range gt.Response.Group.MusicInfo.With {
-					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
-				}
-				for _, el := range gt.Response.Group.MusicInfo.Composers {
-					d.Artists = append(d.Artists, html.UnescapeString(el.Name))
-				}
+				logThis.Info("Updated Downloads entry: "+entry.Name(), VERBOSESTEST)
 			}
+			currentFolderNames = append(currentFolderNames, entry.Name())
 		}
-	} else {
-		return errors.New("Error, no metadata found")
+	}
+
+	// remove entries no longer associated with actual files
+	for _, p := range previous {
+		if !StringInSlice(p.FolderName, currentFolderNames) {
+			if err := tx.DeleteStruct(&p); err != nil {
+				logThis.Error(err, VERBOSEST)
+			}
+			logThis.Info("Removed Download entry: "+p.FolderName, VERBOSESTEST)
+		}
+	}
+
+	defer TimeTrack(time.Now(), "Committing changes to DB")
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	if !daemon.WasReborn() {
+		s.Stop()
 	}
 	return nil
 }
 
-func (d *DownloadEntry) getDescription(root, tracker string) []byte {
-	// getting release.md info
-	releaseMD := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+summaryFile)
-	if !FileExists(releaseMD) {
-		// if not present, try the old format
-		releaseMD = filepath.Join(root, d.FolderName, metadataDir, "Release.md")
-	}
-	if FileExists(releaseMD) {
-		fileBytes, err := ioutil.ReadFile(releaseMD)
+func (d *DownloadsDB) RescanIDs(IDs []int) error {
+	// retrieve the associated DownloadEntries
+	var entries []DownloadEntry
+	for _, id := range IDs {
+		dl, err := d.FindByID(id)
 		if err != nil {
-			logThis.Error(err, NORMAL)
-		} else {
-			return fileBytes
+			if err == storm.ErrNotFound {
+				logThis.Error(errors.Wrap(err, fmt.Sprintf("cannot retrieve entry for ID %d", id)), NORMAL)
+			} else {
+				return errors.Wrap(err, fmt.Sprintf("error looking for ID %d", id))
+			}
 		}
+		entries = append(entries, dl)
 	}
-	return []byte{}
-}
-
-func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerTorrentInfo, error) {
-	// getting release info from json
-	if !d.HasTrackerMetadata {
-		return TrackerTorrentInfo{}, errors.New("Error, does not have tracker metadata")
+	if len(entries) == 0 {
+		return errors.New("none of the IDs could be found in the database")
 	}
 
-	infoJSON := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
-	if !FileExists(infoJSON) {
-		// if not present, try the old format
-		infoJSON = filepath.Join(root, d.FolderName, metadataDir, "Release.json")
-	}
-
-	info := TrackerTorrentInfo{}
-	if err := info.Load(infoJSON); err != nil {
-		logThis.Error(err, NORMAL)
-		return TrackerTorrentInfo{}, errors.Wrap(err, "Error, could not load release json")
-	}
-	return info, nil
-}
-
-func (d *DownloadEntry) Sort(e *Environment, root string) error {
-	// reading metadata
-	if err := d.Load(root); err != nil {
+	// begin transaction
+	tx, err := d.db.DB.Begin(true)
+	if err != nil {
 		return err
 	}
-	fmt.Println("Sorting " + d.FolderName)
-	// if mpd configured, allow playing the release...
-	if e.config.MPD != nil && Accept("Load release into MPD") {
-		fmt.Println("Sending to MPD.")
-		mpdClient := MPD{}
-		if err := mpdClient.Connect(e.config.MPD); err == nil {
-			defer mpdClient.DisableAndDisconnect(root, d.FolderName)
-			if err := mpdClient.SendAndPlay(root, d.FolderName); err != nil {
-				fmt.Println(RedBold("Error sending to MPD: " + err.Error()))
-			}
-		}
-	}
-	// try to refresh metadata
-	if d.HasTrackerMetadata && Accept("Try to refresh metadata from tracker") {
-		for i, t := range d.Tracker {
-			tracker, err := e.Tracker(t)
-			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
+	defer tx.Rollback()
+
+	// update the entries
+	for _, entry := range entries {
+		if DirectoryExists(entry.FolderName) {
+			// read information from metadata
+			if err := entry.Load(d.root); err != nil {
+				logThis.Info("Error: could not load metadata for "+entry.FolderName, VERBOSEST)
 				continue
 			}
-			if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.TrackerID[i])}); err != nil {
-				logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
+			if err := tx.Update(&entry); err != nil {
+				logThis.Info("Error: could not save to db "+entry.FolderName, VERBOSEST)
 				continue
 			}
+			logThis.Info("Updated Downloads entry: "+entry.FolderName, VERBOSESTEST)
+		} else {
+			if err := tx.DeleteStruct(&entry); err != nil {
+				logThis.Error(err, VERBOSEST)
+			}
+			logThis.Info("Removed Download entry: "+entry.FolderName, VERBOSESTEST)
 		}
 	}
-
-	// offer to display metadata
-	if d.HasTrackerMetadata && Accept("Display known metadata") {
-		fmt.Println(d.Description(root))
+	// commiting transaction
+	if err := tx.Commit(); err != nil {
+		return err
 	}
+	return nil
+}
 
-	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
-	validChoice := false
-	errs := 0
-	for !validChoice {
-		UserChoice("[A]ccept, [R]eject, or [D]efer decision : ")
-		choice, scanErr := GetInput()
-		if scanErr != nil {
-			return scanErr
+func (d *DownloadsDB) FindByID(id int) (DownloadEntry, error) {
+	var downloadEntry DownloadEntry
+	if err := d.db.DB.One("ID", id, &downloadEntry); err != nil {
+		return DownloadEntry{}, err
+	}
+	return downloadEntry, nil
+}
+
+func (d *DownloadsDB) Sort(e *Environment) error {
+	var downloadEntries []DownloadEntry
+	query := d.db.DB.Select(q.Or(q.Eq("State", stateUnsorted), q.Eq("State", stateAccepted))).OrderBy("FolderName")
+	if err := query.Find(&downloadEntries); err != nil {
+		if err == storm.ErrNotFound {
+			logThis.Info("Everything is sorted. Congratulations!", NORMAL)
+			return nil
 		}
-
-		if strings.ToUpper(choice) == "R" {
-			fmt.Println(RedBold("This release will be considered REJECTED. It will not be removed, but will be ignored in later sorting."))
-			fmt.Println(RedBold("This can be reverted by sorting its specific download ID (" + strconv.Itoa(d.ID) + ")."))
-			d.State = stateRejected
-			validChoice = true
-		} else if strings.ToUpper(choice) == "D" {
-			fmt.Println(Green("Decision about this download is POSTPONED."))
-
-			d.State = stateUnsorted
-			validChoice = true
-		} else if strings.ToUpper(choice) == "A" {
-			fmt.Println(Green("This release is ACCEPTED. It will not be removed, but will be ignored in later sorting."))
-			fmt.Println(Green("This can be reverted by sorting its specific download ID."))
-			d.State = stateAccepted
-			if Accept("Do you want to export it now ") {
-				if err := d.export(root, e.config); err != nil {
-					return err
+		return err
+	}
+	for _, dl := range downloadEntries {
+		if dl.State == stateUnsorted {
+			if !Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.ID, dl.FolderName)) {
+				return nil
+			}
+			if err := dl.Sort(e, d.root); err != nil {
+				return errors.Wrap(err, "Error sorting download "+strconv.Itoa(dl.ID))
+			}
+		} else if dl.State == stateAccepted {
+			if Accept(fmt.Sprintf("Do you want to export already accepted release #%d (%s) ", dl.ID, dl.FolderName)) {
+				if err := dl.export(d.root, e.config); err != nil {
+					return errors.Wrap(err, "Error exporting download "+strconv.Itoa(dl.ID))
 				}
 			} else {
 				fmt.Println("The release was not exported. It can be exported later by sorting again.")
 			}
-			validChoice = true
 		}
-		if !validChoice {
-			fmt.Println(Red("Invalid choice."))
-			errs++
-			if errs > 10 {
-				return errors.New("Error sorting download, too many incorrect choices")
-			}
+		if err := d.db.DB.Update(&dl); err != nil {
+			return errors.Wrap(err, "Error saving new state for download "+dl.FolderName)
 		}
 	}
 	return nil
 }
 
-func (d *DownloadEntry) export(root string, config *Config) error {
-	// getting candidates for new folder name
-	candidates := []string{d.FolderName}
-	if d.HasTrackerMetadata {
-		for _, t := range d.Tracker {
-			info, err := d.getMetadata(root, t)
+func (d *DownloadsDB) SortThisID(e *Environment, id int) error {
+	dl, err := d.FindByID(id)
+	if err != nil {
+		return errors.Wrap(err, "Error finding such an ID in the downloads database")
+	}
+	if err := dl.Sort(e, d.root); err != nil {
+		return errors.Wrap(err, "Error sorting selected download")
+	}
+	if err := d.db.DB.Update(&dl); err != nil {
+		return errors.Wrap(err, "Error saving new state for download "+dl.FolderName)
+	}
+	return nil
+}
+
+func (d *DownloadsDB) FindByState(state string) []DownloadEntry {
+	if !StringInSlice(state, DownloadFolderStates) {
+		logThis.Info("Invalid state", NORMAL)
+	}
+	var hits []DownloadEntry
+	dlState := DownloadState(state)
+	if dlState == -1 {
+		logThis.Info("Unknown state", VERBOSEST)
+	} else {
+		if err := d.db.DB.Select(q.Eq("State", dlState)).Find(&hits); err != nil {
+			if err == storm.ErrNotFound {
+				logThis.Error(errors.Wrap(err, "Could not find downloads by state"), VERBOSEST)
+			} else {
+				logThis.Error(errors.Wrap(err, "Could not search downloads database"), VERBOSEST)
+			}
+		}
+	}
+	return hits
+}
+
+func (d *DownloadsDB) FindByArtist(artist string) []DownloadEntry {
+	var hits []DownloadEntry
+	query := d.db.DB.Select(InSlice("Artists", artist))
+	if err := query.Find(&hits); err != nil && err != storm.ErrNotFound {
+		logThis.Error(errors.Wrap(err, "Could not find downloads by artist "+artist), VERBOSEST)
+	}
+	return hits
+}
+
+func (d *DownloadsDB) Clean() error {
+	// prepare directory for cleaned folders if necessary
+	cleanDir := filepath.Join(d.root, downloadsCleanDir)
+	if !DirectoryExists(cleanDir) {
+		if err := os.MkdirAll(cleanDir, 0777); err != nil {
+			return errors.Wrap(err, errorCreatingDownloadsCleanDir)
+		}
+	}
+
+	// don't walk, we only want the top-level directories here
+	var toBeMoved []os.FileInfo
+
+	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
+	s.Prefix = scanningFiles
+	if !daemon.WasReborn() {
+		s.Start()
+	}
+
+	// don't walk, we only want the top-level directories here
+	entries, err := ioutil.ReadDir(d.root)
+	if err != nil {
+		return errors.Wrap(err, "Error readingg directory "+d.root)
+	}
+	for _, entry := range entries {
+		if entry.Name() != downloadsCleanDir && entry.IsDir() {
+			// read at most 2 entries insinde entry
+			f, err := os.Open(filepath.Join(d.root, entry.Name()))
 			if err != nil {
-				logThis.Info("Could not find metadata for tracker "+t, NORMAL)
+				logThis.Error(errors.Wrap(err, "Error opening "+entry.Name()), VERBOSE)
 				continue
 			}
-			candidates = append(candidates, d.generatePath(t, info, defaultFolderTemplate))
-			candidates = append(candidates, d.generatePath(t, info, config.Library.FolderTemplate))
+			contents, err := f.Readdir(2)
+			f.Close()
+			// move if empty or if the directory only contains tracker metadata
+			if err != nil {
+				if err == io.EOF {
+					toBeMoved = append(toBeMoved, entry)
+				} else {
+					logThis.Error(errors.Wrap(err, "Error listing contents of "+entry.Name()), VERBOSE)
+				}
+			} else if len(contents) == 1 && contents[0].IsDir() && contents[0].Name() == metadataDir {
+				toBeMoved = append(toBeMoved, entry)
+			}
 		}
 	}
-	// select or input a new name
-	newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
-	// sanitizing in case of user input
-	newName = SanitizeFolder(newName)
-	if err != nil || DirectoryExists(filepath.Join(config.Library.Directory, newName)) {
-		return errors.Wrap(err, "Error generating new release folder name")
+	if !daemon.WasReborn() {
+		s.Stop()
 	}
-	// export
-	if Accept("Export as " + newName) {
-		fmt.Println("Exporting files to the library root...")
-		if err := CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
-			return errors.Wrap(err, "Error exporting download "+d.FolderName)
+
+	// clean
+	for _, r := range toBeMoved {
+		if err := os.Rename(filepath.Join(d.root, r.Name()), filepath.Join(cleanDir, r.Name())); err != nil {
+			return errors.Wrap(err, errorCleaningDownloads+r.Name())
 		}
-		fmt.Println(Green("This release is now EXPORTED. It will not be removed, but will be ignored in later sorting."))
-		d.State = stateExported
-	} else {
-		fmt.Println("The release was not exported. It can be exported later with the 'downloads export' subcommand.")
 	}
 	return nil
-}
-
-func (d *DownloadEntry) generatePath(tracker string, info TrackerTorrentInfo, folderTemplate string) string {
-	if folderTemplate == "" || !d.HasTrackerMetadata {
-		return d.FolderName
-	}
-
-	gt := info.FullInfo()
-	if gt == nil {
-		return d.FolderName // nothing useful here
-	}
-	// parsing info that needs to be worked on before use
-	var artists []string
-	// for now, using artists, composers categories
-	for _, el := range gt.Response.Group.MusicInfo.Artists {
-		artists = append(artists, el.Name)
-	}
-	for _, el := range gt.Response.Group.MusicInfo.Composers {
-		artists = append(artists, el.Name)
-	}
-	artistsShort := strings.Join(artists, ", ")
-	// TODO do better.
-	if len(artists) >= 3 {
-		artistsShort = "Various Artists"
-	}
-	originalYear := gt.Response.Group.Year
-
-	// usual edition specifiers, shortened
-	editionName := gt.ShortEdition()
-
-	// identifying info
-	var idElements []string
-	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterYear != originalYear {
-		idElements = append(idElements, fmt.Sprintf("%d", gt.Response.Torrent.RemasterYear))
-	}
-	if editionName != "" {
-		idElements = append(idElements, editionName)
-	}
-	// adding catalog number, or if not specified, the record label
-	if gt.Response.Torrent.RemasterCatalogueNumber != "" {
-		idElements = append(idElements, gt.Response.Torrent.RemasterCatalogueNumber)
-	} else if gt.Response.Group.CatalogueNumber != "" {
-		idElements = append(idElements, gt.Response.Group.CatalogueNumber)
-	} else {
-		if gt.Response.Torrent.RemasterRecordLabel != "" {
-			idElements = append(idElements, gt.Response.Torrent.RemasterRecordLabel)
-		} else if gt.Response.Group.RecordLabel != "" {
-			idElements = append(idElements, gt.Response.Group.RecordLabel)
-		}
-		// TODO else unkown release!
-	}
-	if gt.Response.Group.ReleaseType != 1 {
-		// adding release type if not album
-		idElements = append(idElements, getGazelleReleaseType(gt.Response.Group.ReleaseType))
-	}
-	id := strings.Join(idElements, ", ")
-	// format
-	format := gt.ShortEncoding()
-	// source
-	source := gt.Source()
-
-	r := strings.NewReplacer(
-		"$id", "{{$id}}",
-		"$a", "{{$a}}",
-		"$t", "{{$t}}",
-		"$y", "{{$y}}",
-		"$f", "{{$f}}",
-		"$s", "{{$s}}",
-		"$l", "{{$l}}",
-		"$n", "{{$n}}",
-		"$e", "{{$e}}",
-		"$g", "{{$g}}",
-		"{", "ÆÆ", // otherwise golang's template throws a fit if '{' or '}' are in the user pattern
-		"}", "¢¢", // assuming these character sequences will probably not cause conflicts.
-	)
-
-	// replace with all valid epub parameters
-	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
-		artistsShort,
-		originalYear,
-		gt.Response.Group.Name, // title
-		format,
-		gt.Response.Torrent.Media, // original source
-		source, // source with indicator if 100%/log/cue or Silver/gold
-		gt.Response.Group.RecordLabel,     // label
-		gt.Response.Group.CatalogueNumber, // catalog number
-		editionName,                       // edition
-		id,                                // identifying info
-		r.Replace(folderTemplate))
-
-	var doc bytes.Buffer
-	te := template.Must(template.New("hop").Parse(tmpl))
-	if err := te.Execute(&doc, nil); err != nil {
-		return d.FolderName
-	}
-	newName := strings.TrimSpace(doc.String())
-
-	// recover brackets
-	r2 := strings.NewReplacer(
-		"ÆÆ", "{",
-		"¢¢", "}",
-	)
-	newName = r2.Replace(newName)
-
-	// making sure the final filename is valid
-	return SanitizeFolder(newName)
 }

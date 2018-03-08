@@ -94,16 +94,8 @@
   version = "1.2.1"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/subosito/norma"
-
-[[constraint]]
   name = "github.com/tdewolff/minify"
   version = "2.3.4"
-
-[[constraint]]
-  name = "github.com/ttacon/chalk"
-  version = "0.1.0"
 
 [[constraint]]
   name = "github.com/wcharczuk/go-chart"
@@ -116,10 +108,6 @@
 [[constraint]]
   branch = "master"
   name = "golang.org/x/net"
-
-[[constraint]]
-  name = "gopkg.in/vmihailenco/msgpack.v2"
-  version = "2.9.1"
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"

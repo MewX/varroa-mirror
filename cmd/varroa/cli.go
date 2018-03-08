@@ -124,7 +124,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa (downloads|dl) (scan|search <ARTIST>|metadata <ID>|sort [<ID>]|list <STATE>|clean|fuse <MOUNT_POINT>)
+	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
 	varroa library fuse <MOUNT_POINT>
 	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)
@@ -152,7 +152,6 @@ type varroaArguments struct {
 	showConfig      bool
 	encrypt         bool
 	decrypt         bool
-	downloadScan    bool
 	downloadSearch  bool
 	downloadInfo    bool
 	downloadSort    bool
@@ -200,7 +199,6 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.encrypt = args["encrypt"].(bool)
 	b.decrypt = args["decrypt"].(bool)
 	if args["downloads"].(bool) || args["dl"].(bool) {
-		b.downloadScan = args["scan"].(bool)
 		b.downloadSearch = args["search"].(bool)
 		if b.downloadSearch {
 			b.artistName = args["<ARTIST>"].(string)
@@ -255,9 +253,12 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 	}
 	if b.downloadList {
-		b.downloadState = args["<STATE>"].(string)
-		if !varroa.IsValidDownloadState(b.downloadState) {
-			return errors.New("Invalid download state, must be among: " + strings.Join(varroa.DownloadFolderStates, ", "))
+		state, ok := args["<STATE>"].(string)
+		if ok {
+			b.downloadState = state
+			if !varroa.IsValidDownloadState(b.downloadState) {
+				return errors.New("Invalid download state, must be among: " + strings.Join(varroa.DownloadFolderStates, ", "))
+			}
 		}
 	}
 	if b.snatch {
@@ -277,11 +278,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.reseed {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.reseed {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadScan || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse {
 		b.canUseDaemon = false
 	}
 	return nil
