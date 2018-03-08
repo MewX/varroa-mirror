@@ -169,6 +169,7 @@ func TestRelease(t *testing.T) {
 	f31 := &ConfigFilter{Name: "f31", EditionYear: []int{2004}, AllowScene: true}
 	f32 := &ConfigFilter{Name: "f32", PerfectFlac: true, Edition: []string{"r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}}
 	f33 := &ConfigFilter{Name: "f33", BlacklistedUploader: []string{"that_guy"}}
+	f34 := &ConfigFilter{Name: "f34", PerfectFlac: true, Edition: []string{"xr/[cC][lL][eE][aA][nN]"}}
 
 	// checking filters
 	check.NotNil(f0.check())
@@ -205,6 +206,7 @@ func TestRelease(t *testing.T) {
 	check.Nil(f31.check())
 	check.Nil(f32.check())
 	check.Nil(f33.check())
+	check.Nil(f34.check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -374,6 +376,9 @@ func TestRelease(t *testing.T) {
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i6))
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i8))
+	check.True(r1.HasCompatibleTrackerInfo(f34, []string{}, i6))
+	check.False(r1.HasCompatibleTrackerInfo(f34, []string{}, i7))
+	check.False(r1.HasCompatibleTrackerInfo(f34, []string{}, i8))
 
 	// reject unknown releases
 	check.False(r1.HasCompatibleTrackerInfo(f30, []string{}, i1))
@@ -389,4 +394,5 @@ func TestRelease(t *testing.T) {
 	check.False(r1.HasCompatibleTrackerInfo(f33, []string{"that_guy"}, i1))
 	check.False(r1.HasCompatibleTrackerInfo(f33, []string{"another_one"}, i1))
 	check.True(r1.HasCompatibleTrackerInfo(f33, []string{}, i2))
+
 }
