@@ -70,9 +70,6 @@ Commands:
 	backup:
 		backup user files (stats, history, configuration file) to a
 		timestamped zip file. Automatically triggered every day.
-	downloads scan:
-		scan the downloads folder and refreshes the database of known
-		downloads. list the downloads and show the ID for each release.
 	downloads search:
 		return all known downloads on which an artist has worked.
 	downloads metadata:
@@ -80,11 +77,17 @@ Commands:
 		db ID as argument.
 	downloads sort:
 		sort all unsorted downloads, or sort a specific release
+		(identified by its path). sorting allows you to tag which
+		release to keep and which to only seed; selected downloads
+		can be exported to an external folder.
+	downloads sort-id:
+		sort all unsorted downloads, or sort a specific release
 		(identified by its db ID). sorting allows you to tag which
 		release to keep and which to only seed; selected downloads
 		can be exported to an external folder.
 	downloads list:
-		list downloads by state: unsorted, accepted, exported, rejected.
+		list all downloads, of filter by state: unsorted, accepted, 
+	    exported, rejected.
 	downloads clean:
 		clean up the downloads directory by moving all empty folders,
 		and folders with only tracker metadata, to a dedicated subfolder.
@@ -124,7 +127,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
+	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
 	varroa library fuse <MOUNT_POINT>
 	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)
@@ -155,6 +158,7 @@ type varroaArguments struct {
 	downloadSearch  bool
 	downloadInfo    bool
 	downloadSort    bool
+	downloadSortID  bool
 	downloadList    bool
 	downloadState   string
 	downloadClean   bool
@@ -190,6 +194,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.uptime = args["uptime"].(bool)
 	b.status = args["status"].(bool)
 	b.stats = args["stats"].(bool)
+	b.reseed = args["reseed"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
 	b.snatch = args["snatch"].(bool)
@@ -205,6 +210,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		b.downloadInfo = args["metadata"].(bool)
 		b.downloadSort = args["sort"].(bool)
+		b.downloadSortID = args["sort-id"].(bool)
 		b.downloadList = args["list"].(bool)
 		b.downloadClean = args["clean"].(bool)
 		b.downloadFuse = args["fuse"].(bool)
@@ -212,8 +218,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	if args["library"].(bool) {
 		b.libraryFuse = args["fuse"].(bool)
 	}
-	if args["reseed"].(bool) {
-		b.reseed = true
+	if b.reseed || b.downloadSort {
 		b.path = args["<PATH>"].(string)
 		if !varroa.DirectoryExists(b.path) {
 			return errors.New("Target path does not exist")
@@ -223,7 +228,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 	}
 	// arguments
-	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
+	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSortID || b.info {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
 			return errors.New("Invalid torrent IDs.")
@@ -278,11 +283,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.reseed {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.reseed {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse {
 		b.canUseDaemon = false
 	}
 	return nil
