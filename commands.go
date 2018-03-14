@@ -373,6 +373,7 @@ func Reseed(tracker *GazelleTracker, path []string) error {
 	// directly inside the downloads directory, where we want it to reseed.
 	// if it is not, we need to copy the files.
 	// TODO: maybe hard link instead if in the same filesystem
+	// TODO : deal with more than one path
 	rel, err := filepath.Rel(conf.General.DownloadDir, path[0])
 	if err != nil {
 		return errors.Wrap(err, "error trying to locate the target path relatively to the downloads directory")

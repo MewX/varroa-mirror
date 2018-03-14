@@ -127,7 +127,7 @@ Usage:
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
+	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>...]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
 	varroa library fuse <MOUNT_POINT>
 	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)
@@ -169,7 +169,7 @@ type varroaArguments struct {
 	torrentIDs      []int
 	logFile         string
 	trackerLabel    string
-	path            string
+	paths           []string
 	artistName      string
 	mountPoint      string
 	requiresDaemon  bool
@@ -219,12 +219,14 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.libraryFuse = args["fuse"].(bool)
 	}
 	if b.reseed || b.downloadSort {
-		b.path = args["<PATH>"].(string)
-		if !varroa.DirectoryExists(b.path) {
-			return errors.New("Target path does not exist")
-		}
-		if !varroa.DirectoryContainsMusicAndMetadata(b.path) {
-			return errors.New("Target path does not seem to contain music files and tracker metadata")
+		b.paths = args["<PATH>"].([]string)
+		for _, p := range b.paths {
+			if !varroa.DirectoryExists(p) {
+				return errors.New("Target path does not exist")
+			}
+			if !varroa.DirectoryContainsMusicAndMetadata(p) {
+				return errors.New("Target path does not seem to contain music files and tracker metadata")
+			}
 		}
 	}
 	// arguments
@@ -327,7 +329,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	if b.reseed {
 		out.Command = "reseed"
-		out.Args = []string{b.path}
+		out.Args = b.paths
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {

@@ -107,7 +107,7 @@ func main() {
 					return
 				}
 				// if no argument, sort everything
-				if (cli.downloadSortID && len(cli.torrentIDs) == 0) || (cli.downloadSort && cli.path == "") {
+				if (cli.downloadSortID && len(cli.torrentIDs) == 0) || (cli.downloadSort && len(cli.paths) == 0) {
 					// scanning
 					fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
 					if err := downloads.Scan(); err != nil {
@@ -125,16 +125,18 @@ func main() {
 				if cli.downloadSort {
 					// scanning
 					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
-					if err := downloads.RescanPath(cli.path); err != nil {
-						logThis.Error(err, varroa.NORMAL)
-						return
+					for _, p := range cli.paths {
+						if err := downloads.RescanPath(p); err != nil {
+							logThis.Error(err, varroa.NORMAL)
+							return
+						}
+						dl, err := downloads.FindByFolderName(p)
+						if err != nil {
+							logThis.Error(errors.Wrap(err, "error looking for "), varroa.NORMAL)
+							return
+						}
+						cli.torrentIDs = append(cli.torrentIDs, dl.ID)
 					}
-					dl, err := downloads.FindByFolderName(cli.path)
-					if err != nil {
-						logThis.Error(errors.Wrap(err, "error looking for "), varroa.NORMAL)
-						return
-					}
-					cli.torrentIDs = append(cli.torrentIDs, dl.ID)
 				} else {
 					// scanning
 					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
@@ -304,7 +306,7 @@ func main() {
 			}
 		}
 		if cli.reseed {
-			if err := varroa.Reseed(tracker, []string{cli.path}); err != nil {
+			if err := varroa.Reseed(tracker, cli.paths); err != nil {
 				logThis.Error(errors.Wrap(err, varroa.ErrorReseed), varroa.NORMAL)
 			}
 		}
