@@ -276,8 +276,11 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 	}
 	// select or input a new name
 	newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
-	if err != nil || DirectoryExists(filepath.Join(config.Library.Directory, newName)) {
-		return errors.Wrap(err, "Error generating new release folder name")
+	if err != nil {
+		return err
+	}
+	if DirectoryExists(filepath.Join(config.Library.Directory, newName)) {
+		return errors.New("destination already exists")
 	}
 	// export
 	if Accept("Export as " + newName) {
