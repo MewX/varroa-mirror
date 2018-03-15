@@ -29,9 +29,9 @@ func StringInSlice(a string, list []string) bool {
 
 // MatchInSlice checks if a string regexp-matches a slice of patterns, returns bool
 func MatchInSlice(a string, b []string) bool {
-	// if no slice, match by default
+	// if no slice, no match by default
 	if len(b) == 0 {
-		return true
+		return false
 	}
 
 	// finding the nature of the contents in b
