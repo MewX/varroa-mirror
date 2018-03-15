@@ -221,6 +221,19 @@ func main() {
 			logThis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", varroa.VERBOSE)
 			return
 		}
+		if cli.libraryReorg {
+			if !config.LibraryConfigured {
+				logThis.Info("Cannot mount FUSE filesystem for the library, missing relevant configuration section.", varroa.NORMAL)
+				return
+			}
+			logThis.Info("Reorganizing releases in the library directory.", varroa.NORMAL)
+			if varroa.Accept("Confirm") {
+				if err := varroa.ReorganizeLibrary(); err != nil {
+					logThis.Error(err, varroa.NORMAL)
+				}
+			}
+			return
+		}
 	}
 
 	// loading configuration

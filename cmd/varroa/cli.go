@@ -128,7 +128,7 @@ Usage:
 	varroa backup
 	varroa show-config
 	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>...]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
-	varroa library fuse <MOUNT_POINT>
+	varroa library (fuse <MOUNT_POINT>|reorganize)
 	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)
 	varroa --version
@@ -164,6 +164,7 @@ type varroaArguments struct {
 	downloadClean   bool
 	downloadFuse    bool
 	libraryFuse     bool
+	libraryReorg    bool
 	reseed          bool
 	useFLToken      bool
 	torrentIDs      []int
@@ -217,6 +218,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	if args["library"].(bool) {
 		b.libraryFuse = args["fuse"].(bool)
+		b.libraryReorg = args["reorganize"].(bool)
 	}
 	if b.reseed || b.downloadSort {
 		b.paths = args["<PATH>"].([]string)
@@ -285,11 +287,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.reseed {
+	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.reseed {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse {
+	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg {
 		b.canUseDaemon = false
 	}
 	return nil
