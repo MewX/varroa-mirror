@@ -95,6 +95,9 @@ Commands:
 		mount a read-only filesystem exposing your downloads using the
 		tracker metadata, using the following categories: artists, tags,
 		record labels, years. Call 'fusermount -u MOUNT_POINT' to stop.
+	library reorganize:
+		renames all releases in the library (including parent folders) 
+		using tracker metadata and the user-defined folder template.
 	library fuse:
 		similar to downloads fuse, but for your music library.
 	reseed:

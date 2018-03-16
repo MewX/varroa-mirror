@@ -41,6 +41,7 @@ func MoveToNewPath(current, new string, doNothing bool) (bool, error) {
 	return false, nil
 }
 
+// ReorganizeLibrary using tracker metadata and the user-defined template
 func ReorganizeLibrary() error {
 	defer TimeTrack(time.Now(), "Reorganize Library")
 

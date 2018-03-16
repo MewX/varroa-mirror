@@ -226,7 +226,8 @@ func main() {
 				logThis.Info("Cannot mount FUSE filesystem for the library, missing relevant configuration section.", varroa.NORMAL)
 				return
 			}
-			logThis.Info("Reorganizing releases in the library directory.", varroa.NORMAL)
+			logThis.Info("Reorganizing releases in the library directory. ", varroa.NORMAL)
+			fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
 			if varroa.Accept("Confirm") {
 				if err := varroa.ReorganizeLibrary(); err != nil {
 					logThis.Error(err, varroa.NORMAL)
