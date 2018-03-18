@@ -86,7 +86,7 @@ Loop:
 				case stopCommand:
 					logThis.Info("Stopping daemon...", NORMAL)
 					break Loop
-				case "refresh-metadata":
+				case "refresh-metadata-by-id":
 					if err := RefreshMetadata(e, tracker, orders.Args); err != nil {
 						logThis.Error(errors.Wrap(err, ErrorRefreshingMetadata), NORMAL)
 					}

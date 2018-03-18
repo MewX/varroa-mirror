@@ -291,6 +291,19 @@ func main() {
 			}
 			return
 		}
+		if cli.refreshMetadata {
+			for t, ids := range cli.toRefresh {
+				tracker, err := env.Tracker(t)
+				if err != nil {
+					logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), varroa.NORMAL)
+					return
+				}
+				if err := varroa.RefreshMetadata(env, tracker, varroa.IntSliceToStringSlice(ids)); err != nil {
+					logThis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), varroa.NORMAL)
+				}
+			}
+			return
+		}
 
 		// commands that require tracker label
 		tracker, err := env.Tracker(cli.trackerLabel)
@@ -298,7 +311,7 @@ func main() {
 			logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), varroa.NORMAL)
 			return
 		}
-		if cli.refreshMetadata {
+		if cli.refreshMetadataByID {
 			if err := varroa.RefreshMetadata(env, tracker, varroa.IntSliceToStringSlice(cli.torrentIDs)); err != nil {
 				logThis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), varroa.NORMAL)
 			}
