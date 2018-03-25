@@ -87,6 +87,8 @@ func main() {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
+			defer downloads.Close()
+
 			// simple operation, only requires access to download folder, since it will clean unindexed folders
 			if cli.downloadClean {
 				if err := downloads.Clean(); err != nil {

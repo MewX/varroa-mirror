@@ -18,7 +18,7 @@ const (
 	currentDownloadsDBSchemaVersion = 1
 )
 
-var DownloadFolderStates = []string{"unsorted", "accepted", "rejected"}
+var DownloadFolderStates = []string{"unsorted", "UNUSED", "accepted", "rejected"}
 
 func ColorizeDownloadState(value int, txt string) string {
 	switch value {

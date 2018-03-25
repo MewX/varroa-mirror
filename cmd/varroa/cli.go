@@ -237,12 +237,15 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	if b.reseed || b.downloadSort {
 		b.paths = args["<PATH>"].([]string)
-		for _, p := range b.paths {
+		for i, p := range b.paths {
 			if !varroa.DirectoryExists(p) {
 				return errors.New("Target path does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
 				return errors.New("Target path does not seem to contain music files and tracker metadata")
+			}
+			if strings.HasSuffix(p, "/") {
+				b.paths[i] = p[:len(p)-1]
 			}
 		}
 	}

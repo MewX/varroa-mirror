@@ -287,11 +287,11 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(responseOnly bool) error {
 	tm.Tags = gt.Response.Group.Tags
 	tm.ReleaseType = getGazelleReleaseType(gt.Response.Group.ReleaseType)
 	tm.RecordLabel = html.UnescapeString(gt.Response.Group.RecordLabel)
-	if gt.Response.Torrent.Remastered {
+	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterRecordLabel != "" {
 		tm.RecordLabel = html.UnescapeString(gt.Response.Torrent.RemasterRecordLabel)
 	}
 	tm.CatalogNumber = gt.Response.Group.CatalogueNumber
-	if gt.Response.Torrent.Remastered {
+	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterCatalogueNumber != "" {
 		tm.CatalogNumber = gt.Response.Torrent.RemasterCatalogueNumber
 	}
 	tm.OriginalYear = gt.Response.Group.Year
