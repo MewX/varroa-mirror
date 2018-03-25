@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -25,7 +26,6 @@ type FuseDir struct {
 	trueRelativePath string
 	release          string
 	releaseSubdir    string
-	currentDirs      map[string]string
 }
 
 func (d *FuseDir) String() string {
@@ -57,22 +57,6 @@ func (d *FuseDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 var _ = fs.NodeStringLookuper(&FuseDir{})
-
-type sliceMatcher struct {
-	value string
-}
-
-func (c *sliceMatcher) MatchField(v interface{}) (bool, error) {
-	key, ok := v.([]string)
-	if !ok {
-		return false, nil
-	}
-	return StringInSlice(c.value, key), nil
-}
-
-func InSlice(field, v string) q.Matcher {
-	return q.NewFieldMatcher(field, &sliceMatcher{value: v})
-}
 
 func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	defer TimeTrack(time.Now(), "DIR LOOKUP "+name)
@@ -173,24 +157,20 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	// if we have an artist but not a release, return the filtered releases for this artist
 	if d.release == "" {
 		// name is a release name
-		// getting the relative path that was saved in fuseDirs previously
-		trueRelativePath, ok := d.currentDirs[name]
-		if !ok {
-			logThis.Info("could not find original path for "+name, NORMAL)
-			return nil, fuse.EIO
-		}
-		query := d.fs.contents.DB.Select(q.And(matcher, q.Eq("FolderName", trueRelativePath))).Limit(1)
+		// NOTE: assumes that "name" is unique! will return the first hit. Only the complete FolderName should be unique in the db, however "name" will be the album folder, it should
+		// be the part of the path that is unique. It might not be true, depending on library folder structure.
+		query := d.fs.contents.DB.Select(q.And(matcher, HasSuffix("FolderName", name))).Limit(1)
 		var entry FuseEntry
 		if err := query.First(&entry); err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Info("Unknown release "+trueRelativePath, VERBOSEST)
+				logThis.Info("Unknown release "+name, VERBOSEST)
 				return nil, fuse.EIO
 			}
 			logThis.Error(err, VERBOSEST)
 			return nil, fuse.EIO
 		}
 		// release was found
-		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, trueRelativePath: trueRelativePath, release: name, fs: d.fs}, nil
+		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, trueRelativePath: entry.FolderName, release: name, fs: d.fs}, nil
 	}
 	logThis.Info("Error during lookup, nothing matched "+name, VERBOSESTEST)
 	return nil, nil
@@ -204,11 +184,8 @@ func (d *FuseDir) fuseDirs(matcher q.Matcher, field string) ([]fuse.Dirent, erro
 	if err != nil {
 		return allDirents, err
 	}
-	// keeping the association between full relative path and fuse path
-	d.currentDirs = make(map[string]string)
 	for _, a := range allItems {
 		allDirents = append(allDirents, fuse.Dirent{Name: filepath.Base(a), Type: fuse.DT_Dir})
-		d.currentDirs[filepath.Base(a)] = a
 	}
 	return allDirents, nil
 }
@@ -286,4 +263,41 @@ func (d *FuseDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		return d.fuseDirs(matcher, "FolderName")
 	}
 	return []fuse.Dirent{}, nil
+}
+
+// ------------
+// custom db matchers
+
+type sliceMatcher struct {
+	value string
+}
+
+func (c *sliceMatcher) MatchField(v interface{}) (bool, error) {
+	key, ok := v.([]string)
+	if !ok {
+		return false, nil
+	}
+	return StringInSlice(c.value, key), nil
+}
+
+// InSlice matches if one element of a []string is equal to the argument
+func InSlice(field, v string) q.Matcher {
+	return q.NewFieldMatcher(field, &sliceMatcher{value: v})
+}
+
+type suffixMatcher struct {
+	value string
+}
+
+func (c *suffixMatcher) MatchField(v interface{}) (bool, error) {
+	key, ok := v.(string)
+	if !ok {
+		return false, nil
+	}
+	return strings.HasSuffix(key, "/"+c.value), nil
+}
+
+// HasSuffix matches if the field value has the argument as suffix (subfolder)
+func HasSuffix(field, v string) q.Matcher {
+	return q.NewFieldMatcher(field, &suffixMatcher{value: v})
 }
