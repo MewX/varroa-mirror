@@ -124,7 +124,7 @@ var (
 	i2 = &TrackerMetadata{Size: 1234567, LogScore: 80, Uploader: "someone else", Artists: []TrackerMetadataArtist{art2}}
 	i3 = &TrackerMetadata{Size: 11, LogScore: 80, Artists: []TrackerMetadataArtist{art3}}
 	i4 = &TrackerMetadata{Size: 123456789, LogScore: 80}
-	i5 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label1"}
+	i5 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label1", EditionName: "Remastered"}
 	i6 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label unknown"}
 	i7 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "deluxe edition Clean", EditionYear: 2004}
 	i8 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "anniversary remaster CLEAN", EditionYear: 2017}
@@ -385,12 +385,15 @@ func TestRelease(t *testing.T) {
 	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i4))
 
 	// edition
+	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i5))
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i6))
 	check.True(r1.HasCompatibleTrackerInfo(f28, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i8))
+	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i5))
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i6))
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i8))
+	check.True(r1.HasCompatibleTrackerInfo(f34, []string{}, i5))
 	check.True(r1.HasCompatibleTrackerInfo(f34, []string{}, i6))
 	check.False(r1.HasCompatibleTrackerInfo(f34, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f34, []string{}, i8))

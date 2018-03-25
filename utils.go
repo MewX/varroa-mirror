@@ -53,7 +53,7 @@ func MatchInSlice(a string, b []string) bool {
 	} else {
 		var matchFound bool
 		for _, pattern := range b {
-			if strings.HasPrefix(pattern, filterRegExpPrefix) && a != "" {
+			if strings.HasPrefix(pattern, filterRegExpPrefix) {
 				pattern = strings.Replace(pattern, filterRegExpPrefix, "", 1)
 				// try to match
 				match, err := regexp.MatchString(pattern, a)
@@ -67,7 +67,7 @@ func MatchInSlice(a string, b []string) bool {
 						matchFound = true // found match, but wait to see if it should be excluded
 					}
 				}
-			} else if strings.HasPrefix(pattern, filterExcludeRegExpPrefix) && a != "" {
+			} else if strings.HasPrefix(pattern, filterExcludeRegExpPrefix) {
 				pattern = strings.Replace(pattern, filterExcludeRegExpPrefix, "", 1)
 				// try to match
 				match, err := regexp.MatchString(pattern, a)
@@ -84,6 +84,10 @@ func MatchInSlice(a string, b []string) bool {
 					matchFound = true // found match, but wait to see if it should be excluded
 				}
 			}
+		}
+		if hasExcludes && !hasIncludes {
+			// if we're here, no exludes were triggered and that's the only thing that counts
+			return true
 		}
 		return matchFound
 	}
