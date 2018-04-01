@@ -328,7 +328,6 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		tm.MainArtist = "Various Artists"
 	}
 
-	// TODO ARTIST ALIAS: FIND IN CONFIG
 	// default: artist alias = main artist
 	tm.MainArtistAlias = tm.MainArtist
 
@@ -659,6 +658,39 @@ func (tm *TrackerMetadata) WriteUserJSON(destination string) error {
 	blank.MainArtistAlias = tm.MainArtistAlias
 	blank.Category = tm.Category
 	metadataJSON, err := json.MarshalIndent(blank, "", "    ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(userJSON, metadataJSON, 0644)
+}
+
+func (tm *TrackerMetadata) UpdateUserJSON(destination, mainArtist, mainArtistAlias, category string) error {
+	userJSON := filepath.Join(destination, userMetadataJSONFile)
+	if !FileExists(userJSON) {
+		// try to create the file
+		if err := tm.WriteUserJSON(destination); err != nil {
+			return errors.New("User metadata JSON does not already exist and could not be written.")
+		}
+	}
+
+	// loading user metadata file
+	userJSONBytes, err := ioutil.ReadFile(userJSON)
+	if err != nil {
+		return errors.New("Could not read user JSON.")
+	}
+	var userInfo *TrackerMetadata
+	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
+		logThis.Info("Error parsing torrent info JSON", NORMAL)
+		return nil
+	}
+	// overwriting select values
+	// NOTE: since we are sorting from the downloads folder to the library, there is no reason why these values would have been set by the user
+	// So nothing should be lost.
+	userInfo.MainArtist = mainArtist
+	userInfo.MainArtistAlias = mainArtistAlias
+	userInfo.Category = category
+	// write back
+	metadataJSON, err := json.MarshalIndent(userInfo, "", "    ")
 	if err != nil {
 		return err
 	}

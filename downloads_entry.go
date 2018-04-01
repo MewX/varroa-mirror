@@ -267,6 +267,58 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				logThis.Info("Could not find metadata for tracker "+t, NORMAL)
 				continue
 			}
+
+			// questions about how to file this release
+			var artists []string
+			for _, a := range info.Artists {
+				// not taking feat. artists
+				if a.Role == "Main" || a.Role == "Composer" {
+					artists = append(artists, a.Name)
+				}
+			}
+			// if only one artist, select them by default
+			mainArtist := artists[0]
+			if len(artists) > 1 {
+				mainArtistCandidates := []string{strings.Join(artists, ", ")}
+				mainArtistCandidates = append(mainArtistCandidates, artists...)
+				if len(artists) >= 3 {
+					mainArtistCandidates = append(mainArtistCandidates, "Various Artists")
+				}
+
+				mainArtist, err = SelectOption("Main artist:\n", "You can change this value if several artists are listed, for organization purposes.", mainArtistCandidates)
+				if err != nil {
+					return err
+				}
+			}
+
+			// main artist alias
+			aliasCandidates := []string{mainArtist}
+			// TODO if alias in config file, retrieve and put first
+			mainArtistAlias, err := SelectOption("Main artist alias:\n", "You can change this value if the main artist uses several aliases and you want to regroup their releases in the library.", aliasCandidates)
+			if err != nil {
+				return err
+			}
+
+			// category
+			categoryCandidates := info.Tags
+			if !StringInSlice(info.Category, info.Tags) {
+				categoryCandidates = append([]string{info.Category}, info.Tags...)
+			}
+			// TODO if category in config file, retrieve and put first
+			category, err := SelectOption("User category:\n", "Allows custom library organization.", categoryCandidates)
+			if err != nil {
+				return err
+			}
+			// saving values
+			info.MainArtist = mainArtist
+			info.MainArtistAlias = mainArtistAlias
+			info.Category = category
+			// write to original user_metadata.json
+			if err := info.UpdateUserJSON(filepath.Join(root, info.FolderName, metadataDir), mainArtist, mainArtistAlias, category); err != nil {
+				logThis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), NORMAL)
+				return err
+			}
+			// generating new possible paths
 			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
 			candidates = append(candidates, info.GeneratePath(config.Library.Template))
 		}
