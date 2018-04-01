@@ -313,8 +313,9 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		}
 	}
 
-	// organization info
 	// parsing info that needs to be worked on before use
+
+	// default organization info
 	var artists []string
 	for _, a := range tm.Artists {
 		// not taking feat. artists
@@ -330,7 +331,6 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 
 	// default: artist alias = main artist
 	tm.MainArtistAlias = tm.MainArtist
-
 	// default: category == first tag
 	if len(tm.Tags) != 0 {
 		tm.Category = tm.Tags[0]
@@ -378,7 +378,37 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 
 	// finally, load user JSON for overwriting user-defined values, if loading from files
 	if responseOnly {
-		return tm.LoadUserJSON(parentFolder)
+		if err := tm.LoadUserJSON(parentFolder); err != nil {
+			return err
+		}
+	}
+	// try to find if the configuration has overriding artist aliases/categories
+	conf, configErr := NewConfig(DefaultConfigurationFile)
+	if configErr != nil {
+		return configErr
+	}
+	if conf.LibraryConfigured {
+		var changed bool
+		// try to find main artist alias
+		for alias, aliasArtists := range conf.Library.Aliases {
+			if StringInSlice(tm.MainArtist, aliasArtists) {
+				tm.MainArtistAlias = alias
+				changed = true
+				break
+			}
+		}
+		// try to find category for main artist alias
+		for category, categoryArtists := range conf.Library.Categories {
+			if StringInSlice(tm.MainArtistAlias, categoryArtists) {
+				tm.Category = category
+				changed = true
+				break
+			}
+		}
+		if changed {
+			logThis.Info("Updating user metadata with information from the configuration.", VERBOSEST)
+			return tm.UpdateUserJSON(parentFolder, tm.MainArtist, tm.MainArtistAlias, tm.Category)
+		}
 	}
 	return nil
 }

@@ -163,6 +163,10 @@ type ConfigLibrary struct {
 }
 
 func (cl *ConfigLibrary) check() error {
+	// init
+	cl.Aliases = make(map[string][]string)
+	cl.Categories = make(map[string][]string)
+	// checks
 	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
 		return errors.New("library directory does not exist")
 	}
@@ -223,7 +227,7 @@ func (cl *ConfigLibrary) String() string {
 		txt += "\t - " + main + ": " + strings.Join(aliases, ", ") + "\n"
 	}
 	txt += "\tCategories File: " + cl.CategoriesFile + "\n"
-	for category, artists := range cl.Aliases {
+	for category, artists := range cl.Categories {
 		txt += "\t - " + category + ": " + strings.Join(artists, ", ") + "\n"
 	}
 	return txt
