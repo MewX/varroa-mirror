@@ -216,9 +216,9 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 					fullFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
 					if DirectoryExists(fullFolder) {
 						if daemon.WasReborn() {
-							go info.SaveFromTracker(tracker)
+							go info.SaveFromTracker(fullFolder, tracker)
 						} else {
-							info.SaveFromTracker(tracker)
+							info.SaveFromTracker(fullFolder, tracker)
 						}
 					} else {
 						logThis.Info(fmt.Sprintf(errorCannotFindID, id), NORMAL)
@@ -241,10 +241,11 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
 			}
+			fullFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
 			if daemon.WasReborn() {
-				go info.SaveFromTracker(tracker)
+				go info.SaveFromTracker(fullFolder, tracker)
 			} else {
-				info.SaveFromTracker(tracker)
+				info.SaveFromTracker(fullFolder, tracker)
 			}
 		}
 		// check the number of active seeders

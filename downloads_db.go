@@ -69,8 +69,10 @@ func (d *DownloadsDB) String() string {
 	}
 	var stateCounts []string
 	for _, s := range DownloadFolderStates {
-		states := d.FindByState(s)
-		stateCounts = append(stateCounts, fmt.Sprintf("%s: %d (%.02f%%)", s, len(states), 100*float32(len(states))/float32(len(allEntries))))
+		if s != "UNUSED" {
+			states := d.FindByState(s)
+			stateCounts = append(stateCounts, fmt.Sprintf("%s: %d (%.02f%%)", s, len(states), 100*float32(len(states))/float32(len(allEntries))))
+		}
 	}
 	txt += "\n" + YellowUnderlined(fmt.Sprintf("Total: %d entries ~~ ", len(allEntries))+strings.Join(stateCounts, ", "))
 	return txt

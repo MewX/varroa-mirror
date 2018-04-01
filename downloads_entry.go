@@ -217,11 +217,8 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 		}
 	}
 
-	// offer to display metadata
-	if d.HasTrackerMetadata && Accept("Display known metadata") {
-		fmt.Println(d.Description(root))
-	}
-
+	// display metadata
+	fmt.Println(d.Description(root))
 	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
 	validChoice := false
 	errs := 0
