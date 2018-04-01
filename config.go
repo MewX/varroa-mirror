@@ -177,6 +177,12 @@ func (c *Config) check() error {
 			return errors.Wrap(err, "Error reading Gitlab Pages configuration")
 		}
 	}
+	// library checks
+	if c.Library != nil {
+		if err := c.Library.check(); err != nil {
+			return errors.Wrap(err, "Error reading library configuration")
+		}
+	}
 	// mpd checks
 	if c.MPD != nil {
 		if err := c.MPD.check(); err != nil {

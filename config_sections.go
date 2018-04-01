@@ -1,12 +1,15 @@
 package varroa
 
 import (
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -149,22 +152,62 @@ func (ca *ConfigAutosnatch) String() string {
 }
 
 type ConfigLibrary struct {
-	Directory         string   `yaml:"directory"`
-	UseHardLinks      bool     `yaml:"use_hard_links"`
-	Template          string   `yaml:"folder_template"`
-	AdditionalSources []string `yaml:"additional_source_directories"`
+	Directory         string              `yaml:"directory"`
+	UseHardLinks      bool                `yaml:"use_hard_links"`
+	Template          string              `yaml:"folder_template"`
+	AdditionalSources []string            `yaml:"additional_source_directories"`
+	AliasesFile       string              `yaml:"aliases_file"`
+	Aliases           map[string][]string `yaml:"-"`
+	CategoriesFile    string              `yaml:"categories_file"`
+	Categories        map[string][]string `yaml:"-"`
 }
 
 func (cl *ConfigLibrary) check() error {
 	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
-		return errors.New("Library directory does not exist")
+		return errors.New("library directory does not exist")
 	}
 	for _, s := range cl.AdditionalSources {
 		if !DirectoryExists(s) {
-			return errors.New("Library directory does not exist")
+			return errors.New("library directory does not exist")
 		}
 	}
+	if cl.AliasesFile != "" {
+		if !FileExists(cl.AliasesFile) {
+			return errors.New("aliases file does not exist")
+		}
+		// load the aliases
+		aliases, err := cl.loadMap(cl.AliasesFile)
+		if err != nil {
+			return errors.Wrap(err, "could not load aliases")
+		}
+		cl.Aliases = *aliases
+	}
+	if cl.CategoriesFile != "" {
+		if !FileExists(cl.CategoriesFile) {
+			return errors.New("categories file does not exist")
+		}
+		// load the categories
+		categories, err := cl.loadMap(cl.CategoriesFile)
+		if err != nil {
+			return errors.Wrap(err, "could not load aliases")
+		}
+		cl.Categories = *categories
+	}
 	return nil
+}
+
+// Load the configuration file where the aliases are defined.
+func (cl *ConfigLibrary) loadMap(path string) (*map[string][]string, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string][]string)
+	err = yaml.Unmarshal(data, &m)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
 }
 
 func (cl *ConfigLibrary) String() string {
@@ -174,6 +217,14 @@ func (cl *ConfigLibrary) String() string {
 	txt += "\tTemplate: " + cl.Template + "\n"
 	if len(cl.AdditionalSources) != 0 {
 		txt += "\tAdditional sources: " + strings.Join(cl.AdditionalSources, ",") + "\n"
+	}
+	txt += "\tAliases File: " + cl.AliasesFile + "\n"
+	for main, aliases := range cl.Aliases {
+		txt += "\t - " + main + ": " + strings.Join(aliases, ", ") + "\n"
+	}
+	txt += "\tCategories File: " + cl.CategoriesFile + "\n"
+	for category, artists := range cl.Aliases {
+		txt += "\t - " + category + ": " + strings.Join(artists, ", ") + "\n"
 	}
 	return txt
 }
