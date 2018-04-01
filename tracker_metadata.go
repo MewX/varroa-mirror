@@ -622,6 +622,9 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		idElements = append(idElements, tm.ReleaseType)
 	}
 	id := strings.Join(idElements, ", ")
+	if id == "" {
+		id = "Unknown"
+	}
 
 	r := strings.NewReplacer(
 		"$id", "{{$id}}",
@@ -662,12 +665,17 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		return tm.FolderName
 	}
 	newName := strings.TrimSpace(doc.String())
+	// trim spaces around all internal folder names
+	var trimmedParts = strings.Split(newName, "/")
+	for i, part := range trimmedParts {
+		trimmedParts[i] = strings.TrimSpace(part)
+	}
 	// recover brackets
 	r2 := strings.NewReplacer(
 		"ÆÆ", "{",
 		"¢¢", "}",
 	)
-	return r2.Replace(newName)
+	return r2.Replace(strings.Join(trimmedParts, "/"))
 }
 
 func (tm *TrackerMetadata) WriteUserJSON(destination string) error {
