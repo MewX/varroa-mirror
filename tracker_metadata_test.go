@@ -136,8 +136,25 @@ func TestGeneratePath(t *testing.T) {
 	check.Equal("[Artist A, Artist B]/Artist A, Artist B (1987) RELEASE 1 ∕ RELEASE 2!!&éçà©§Ð‘®¢ {PR, CATNUM} [FLAC CD+]", infod8.GeneratePath("[$a]/$a ($y) $t {$id} [$f $g]"))
 
 	// checking TextDescription
-
 	fmt.Println(infod2.TextDescription(false))
 	fmt.Println(infod2.TextDescription(true))
 
+}
+
+func TestArtistInSlice(t *testing.T) {
+	fmt.Println("+ Testing TrackerMetadata/artistInSlice...")
+	check := assert.New(t)
+
+	list := []string{"thing", "VA| other thing", "VA|anoother thing", "VA |nope", "noope | VA"}
+	check.True(artistInSlice("thing", "useless", list))
+	check.False(artistInSlice("Thing", "useless", list))
+	check.True(artistInSlice("Various Artists", "other thing", list))
+	check.False(artistInSlice("Single Artist", "other thing", list))
+	check.True(artistInSlice("Various Artists", "anoother thing", list))
+	check.False(artistInSlice("Single Artist", "anoother thing", list))
+	check.False(artistInSlice("Various Artists", "nope", list))
+	check.False(artistInSlice("Single Artist", "nope", list))
+	check.False(artistInSlice("Various Artists", "noope", list))
+	check.False(artistInSlice("Various Artists", "VA | other thing", list))
+	check.False(artistInSlice("Various Artists", "VA| other thing", list))
 }

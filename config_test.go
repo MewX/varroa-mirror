@@ -104,11 +104,11 @@ func TestConfig(t *testing.T) {
 	check.Equal("$a/$a ($y) $t [$f $q] [$s] [$l $n $e]", c.Library.Template)
 	check.Equal([]string{"../varroa/test", "../varroa/cmd"}, c.Library.AdditionalSources)
 	check.Equal("test/aliases.yaml", c.Library.AliasesFile)
-	check.Equal(13, len(c.Library.Aliases["MF DOOM"]))
+	check.Equal(14, len(c.Library.Aliases["MF DOOM"]))
 	check.Equal([]string{"Bergman Rock"}, c.Library.Aliases["bob hund"])
 	check.Equal("test/categories.yaml", c.Library.CategoriesFile)
 	check.Equal(2, len(c.Library.Categories))
-	check.Equal([]string{"Skip James"}, c.Library.Categories["Blues"])
+	check.Equal([]string{"Skip James", "VA| All the Blues: All of it"}, c.Library.Categories["Blues"])
 	check.Equal([]string{"The Black Keys", "The Jon Spencer Blues Explosion"}, c.Library.Categories["Blues-Rock"])
 	// webhooks
 	fmt.Println("Checking webhooks")

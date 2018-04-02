@@ -259,7 +259,7 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 
 func (d *DownloadEntry) export(root string, config *Config) error {
 	// getting candidates for new folder name
-	candidates := []string{d.FolderName}
+	var candidates []string
 	if d.HasTrackerMetadata {
 		for _, t := range d.Tracker {
 			info, err := d.getMetadata(root, t)
@@ -282,7 +282,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				mainArtistCandidates := []string{strings.Join(artists, ", ")}
 				mainArtistCandidates = append(mainArtistCandidates, artists...)
 				if len(artists) >= 3 {
-					mainArtistCandidates = append(mainArtistCandidates, "Various Artists")
+					mainArtistCandidates = append(mainArtistCandidates, variousArtists)
 				}
 
 				mainArtist, err = SelectOption("Main artist:\n", "You can change this value if several artists are listed, for organization purposes.", mainArtistCandidates)
@@ -290,39 +290,48 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 					return err
 				}
 			}
-
+			// retrieving main artist alias from the configuration
+			info.MainArtist = mainArtist
+			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, metadataDir)); err != nil {
+				return err
+			}
 			// main artist alias
-			aliasCandidates := []string{mainArtist}
-			// TODO if alias in config file, retrieve and put first
+			aliasCandidates := []string{info.MainArtistAlias}
+			if info.MainArtistAlias != info.MainArtist {
+				aliasCandidates = append(aliasCandidates, info.MainArtist)
+			}
 			mainArtistAlias, err := SelectOption("Main artist alias:\n", "You can change this value if the main artist uses several aliases and you want to regroup their releases in the library.", aliasCandidates)
 			if err != nil {
 				return err
 			}
-
+			// retrieving category from the configuration
+			info.MainArtistAlias = mainArtistAlias
+			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, metadataDir)); err != nil {
+				return err
+			}
 			// category
 			categoryCandidates := info.Tags
 			if !StringInSlice(info.Category, info.Tags) {
 				categoryCandidates = append([]string{info.Category}, info.Tags...)
 			}
-			// TODO if category in config file, retrieve and put first
 			category, err := SelectOption("User category:\n", "Allows custom library organization.", categoryCandidates)
 			if err != nil {
 				return err
 			}
-			// saving values
-			info.MainArtist = mainArtist
-			info.MainArtistAlias = mainArtistAlias
+			// saving value
 			info.Category = category
 			// write to original user_metadata.json
-			if err := info.UpdateUserJSON(filepath.Join(root, info.FolderName, metadataDir), mainArtist, mainArtistAlias, category); err != nil {
+			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, metadataDir), mainArtist, mainArtistAlias, category); err != nil {
 				logThis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), NORMAL)
 				return err
 			}
 			// generating new possible paths
-			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
 			candidates = append(candidates, info.GeneratePath(config.Library.Template))
+			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
 		}
 	}
+	// adding current folder name last
+	candidates = append(candidates, d.FolderName)
 	// select or input a new name
 	newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
 	if err != nil {

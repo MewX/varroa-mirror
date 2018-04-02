@@ -99,7 +99,9 @@ Direct link: %s
   │  Cover: %s	
   │  Size: %s	
   └────────`
-	trackPattern = `(.*){{{(\d*)}}}`
+	trackPattern    = `(.*){{{(\d*)}}}`
+	vaReleasePrexif = "VA|"
+	variousArtists  = "Various Artists"
 )
 
 type TrackerMetadataTorrentGroup struct {
@@ -324,9 +326,8 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		}
 	}
 	tm.MainArtist = strings.Join(artists, ", ")
-	// TODO do better.
 	if len(artists) >= 3 {
-		tm.MainArtist = "Various Artists"
+		tm.MainArtist = variousArtists
 	}
 
 	// default: artist alias = main artist
@@ -383,6 +384,10 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		}
 	}
 	// try to find if the configuration has overriding artist aliases/categories
+	return tm.checkAliasAndCategory(parentFolder)
+}
+
+func (tm *TrackerMetadata) checkAliasAndCategory(parentFolder string) error {
 	conf, configErr := NewConfig(DefaultConfigurationFile)
 	if configErr != nil {
 		return configErr
@@ -391,7 +396,7 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		var changed bool
 		// try to find main artist alias
 		for alias, aliasArtists := range conf.Library.Aliases {
-			if StringInSlice(tm.MainArtist, aliasArtists) {
+			if artistInSlice(tm.MainArtist, tm.Title, aliasArtists) {
 				tm.MainArtistAlias = alias
 				changed = true
 				break
@@ -399,7 +404,7 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		}
 		// try to find category for main artist alias
 		for category, categoryArtists := range conf.Library.Categories {
-			if StringInSlice(tm.MainArtistAlias, categoryArtists) {
+			if artistInSlice(tm.MainArtistAlias, tm.Title, categoryArtists) {
 				tm.Category = category
 				changed = true
 				break
@@ -411,6 +416,16 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		}
 	}
 	return nil
+}
+
+// artistInSlice checks if an artist is in a []string (taking VA releases into account), returns bool.
+func artistInSlice(artist, title string, list []string) bool {
+	for _, b := range list {
+		if artist == b || artist == variousArtists && title == strings.TrimSpace(strings.Replace(b, vaReleasePrexif, "", -1)) {
+			return true
+		}
+	}
+	return false
 }
 
 func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *GazelleTracker) error {
