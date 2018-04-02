@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"gitlab.com/passelecasque/varroa"
@@ -294,13 +295,13 @@ func main() {
 			return
 		}
 		if cli.refreshMetadata {
-			for t, ids := range cli.toRefresh {
-				tracker, err := env.Tracker(t)
+			for _, r := range cli.toRefresh {
+				tracker, err := env.Tracker(r.tracker)
 				if err != nil {
 					logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), varroa.NORMAL)
 					return
 				}
-				if err := varroa.RefreshMetadata(env, tracker, varroa.IntSliceToStringSlice(ids)); err != nil {
+				if err = varroa.RefreshLibraryMetadata(r.path, tracker, strconv.Itoa(r.id)); err != nil {
 					logThis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), varroa.NORMAL)
 				}
 			}

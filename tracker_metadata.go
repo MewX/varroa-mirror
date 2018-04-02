@@ -428,6 +428,7 @@ func artistInSlice(artist, title string, list []string) bool {
 	return false
 }
 
+// SaveFromTracker all of the relevant metadata.
 func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *GazelleTracker) error {
 	destination := filepath.Join(parentFolder, metadataDir)
 	// create metadata dir if necessary
@@ -440,13 +441,13 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *Gazelle
 		return errors.Wrap(err, errorWithOriginJSON)
 	}
 
-	// NOTE: errors are not returned (for now) in case the following things can be retrieved
+	// NOTE: errors are not returned (for now) in case the next JSONs can be retrieved
 
 	// write tracker metadata to target folder
 	if err := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+"_"+trackerMetadataFile), tm.ReleaseJSON, 0666); err != nil {
 		logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 	} else {
-		logThis.Info(infoMetadataSaved+tm.FolderName, VERBOSE)
+		logThis.Info(infoMetadataSaved+filepath.Base(parentFolder), VERBOSE)
 	}
 
 	// get torrent group info
@@ -458,7 +459,7 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *Gazelle
 		if err := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+"_"+trackerTGroupMetadataFile), torrentGroupInfo.fullJSON, 0666); err != nil {
 			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
-			logThis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, tm.Title, tm.FolderName), VERBOSE)
+			logThis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, tm.Title, filepath.Base(parentFolder)), VERBOSE)
 		}
 	}
 
@@ -474,7 +475,7 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *Gazelle
 		if err := ioutil.WriteFile(filepath.Join(destination, tracker.Name+"_"+a.Name+jsonExt), artistInfo.JSON, 0666); err != nil {
 			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
-			logThis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Name, tm.FolderName), VERBOSE)
+			logThis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Name, filepath.Base(parentFolder)), VERBOSE)
 		}
 	}
 	// generate blank user metadata json
@@ -483,27 +484,20 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *Gazelle
 	}
 
 	// download tracker cover to target folder
-	if err := tm.SaveCover(); err != nil {
+	if err := tm.SaveCover(parentFolder); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTrackerCover), NORMAL)
 	} else {
-		logThis.Info(infoCoverSaved+tm.FolderName, VERBOSE)
+		logThis.Info(infoCoverSaved+filepath.Base(parentFolder), VERBOSE)
 	}
 	logThis.Info(fmt.Sprintf(infoAllMetadataSaved, tracker.Name), VERBOSE)
-
-	// replaces release_md SaveMetadataFromTracker; keep a shell for use with goroutines
-
 	return nil
 }
 
-func (tm *TrackerMetadata) SaveCover() error {
+func (tm *TrackerMetadata) SaveCover(releaseFolder string) error {
 	if tm.CoverURL == "" {
 		return errors.New("unknown image url")
 	}
-	conf, configErr := NewConfig(DefaultConfigurationFile)
-	if configErr != nil {
-		return configErr
-	}
-	filename := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
+	filename := filepath.Join(releaseFolder, metadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
 
 	if FileExists(filename) {
 		// already downloaded, or exists in folder already: do nothing

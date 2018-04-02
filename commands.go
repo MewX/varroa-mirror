@@ -257,6 +257,19 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 	return nil
 }
 
+// RefreshLibraryMetadata for a list of releases on a tracker, using the given location instead of assuming they are in the download directory.
+func RefreshLibraryMetadata(path string, tracker *GazelleTracker, id string) error {
+	if !DirectoryContainsMusicAndMetadata(path) {
+		return fmt.Errorf(ErrorFindingMusicAndMetadata, path)
+	}
+	// get data from tracker
+	info, infoErr := tracker.GetTorrentMetadata(id)
+	if infoErr != nil {
+		return errors.Wrap(infoErr, errorCouldNotGetTorrentInfo)
+	}
+	return info.SaveFromTracker(path, tracker)
+}
+
 // SnatchTorrents on a tracker using their TorrentIDs
 func SnatchTorrents(e *Environment, tracker *GazelleTracker, IDStrings []string, useFLToken bool) error {
 	if len(IDStrings) == 0 {

@@ -174,6 +174,7 @@ const (
 	errorRetrievingTorrentGroupInfo = "Error getting torrent group info for %d"
 	errorWithOriginJSON             = "Error creating or updating origin.json"
 	errorGeneratingUserMetadataJSON = "Error generating user metadata JSON"
+	ErrorFindingMusicAndMetadata    = "directory %s does not contain music files and tracker metadata"
 	// stats errors
 	errorGettingStats      = "Error getting stats"
 	ErrorGeneratingGraphs  = "Error generating graphs (may require more data, 24h worth for daily graphs)"
@@ -192,9 +193,8 @@ const (
 	errorCouldNotReadLog          = "Could not read log"
 	errorGazelleRateLimitExceeded = "rate limit exceeded"
 	// downloads db errors
-	errorLoadingDownloadsDB = "Error loading downloads database"
-	foundMusic              = "Found music"
-	errorCleaningDownloads  = "Error cleaning up download: "
+	foundMusic             = "Found music"
+	errorCleaningDownloads = "Error cleaning up download: "
 	// disk space usage
 	currentUsage     = "Current disk usage: %.2f%% used, remaining: %s"
 	lowDiskSpace     = "Warning: low disk space available (<5%)"

@@ -151,6 +151,12 @@ Options:
 `
 )
 
+type refreshTarget struct {
+	path    string
+	tracker string
+	id      int
+}
+
 type varroaArguments struct {
 	builtin             bool
 	start               bool
@@ -187,7 +193,7 @@ type varroaArguments struct {
 	mountPoint          string
 	requiresDaemon      bool
 	canUseDaemon        bool
-	toRefresh           map[string][]int
+	toRefresh           []refreshTarget
 }
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
@@ -201,8 +207,6 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.builtin = true
 		return nil
 	}
-	b.toRefresh = make(map[string][]int)
-
 	// commands
 	b.start = args["start"].(bool)
 	b.stop = args["stop"].(bool)
@@ -242,7 +246,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 				return errors.New("Target path does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
-				return errors.New("Target path does not seem to contain music files and tracker metadata")
+				return fmt.Errorf(varroa.ErrorFindingMusicAndMetadata, p)
 			}
 			if strings.HasSuffix(p, "/") {
 				b.paths[i] = p[:len(p)-1]
@@ -310,10 +314,10 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		for _, p := range paths {
 			if !varroa.DirectoryExists(p) {
-				return errors.New("Target path does not exist")
+				return errors.New("Target path " + p + " does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
-				return errors.New("Target path does not seem to contain music files and tracker metadata")
+				return fmt.Errorf(varroa.ErrorFindingMusicAndMetadata, p)
 			}
 			// find the parent directory
 			root := currentPath
@@ -326,8 +330,8 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 				return err
 			}
 			// get tracker + ids
-			for i, t := range d.Tracker {
-				b.toRefresh[t] = append(b.toRefresh[t], d.TrackerID[i])
+			for i := range d.Tracker {
+				b.toRefresh = append(b.toRefresh, refreshTarget{path: p, tracker: d.Tracker[i], id: d.TrackerID[i]})
 			}
 		}
 	}
