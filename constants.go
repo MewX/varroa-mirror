@@ -55,6 +55,7 @@ const (
 	torrentExt   = ".torrent"
 	mp3Ext       = ".mp3"
 	flacExt      = ".flac"
+	m3uExt       = ".m3u"
 
 	// filters
 	filterRegExpPrefix        = "r/"

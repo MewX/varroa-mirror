@@ -65,6 +65,29 @@ func ReorganizeLibrary() error {
 		template = c.Library.Template
 	}
 
+	var playlists []Playlist
+	if c.playlistDirectoryConfigured {
+		// load all playlists
+		e = filepath.Walk(c.Library.PlaylistDirectory, func(path string, fileInfo os.FileInfo, walkError error) error {
+			if os.IsNotExist(walkError) {
+				return nil
+			}
+			// load all found playlists
+			if filepath.Ext(path) == m3uExt {
+				p := Playlist{}
+				if err := p.Load(path); err != nil {
+					logThis.Error(err, VERBOSE)
+				} else {
+					playlists = append(playlists, p)
+				}
+			}
+			return nil
+		})
+		if e != nil {
+			logThis.Error(e, NORMAL)
+		}
+	}
+
 	walkErr := filepath.Walk(c.Library.Directory, func(path string, fileInfo os.FileInfo, walkError error) error {
 		// when an album has just been moved, Walk goes through it a second
 		// time with an "file does not exist" error
@@ -101,6 +124,23 @@ func ReorganizeLibrary() error {
 			}
 			if hasMoved {
 				movedAlbums += 1
+				if c.playlistDirectoryConfigured {
+					relativePath, err := filepath.Rel(c.Library.Directory, path)
+					if err != nil {
+						return err
+					}
+					// find all playlists mentionning the release that was moved, update the path
+					for _, p := range playlists {
+						if p.Contains(relativePath) {
+							// update the playlist
+							p.Update(relativePath, newName)
+							// save the new playlist
+							if err := p.Save(); err != nil {
+								logThis.Error(err, VERBOSE)
+							}
+						}
+					}
+				}
 			}
 		}
 		return nil

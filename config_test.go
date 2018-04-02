@@ -110,6 +110,7 @@ func TestConfig(t *testing.T) {
 	check.Equal(2, len(c.Library.Categories))
 	check.Equal([]string{"Skip James", "VA| All the Blues: All of it"}, c.Library.Categories["Blues"])
 	check.Equal([]string{"The Black Keys", "The Jon Spencer Blues Explosion"}, c.Library.Categories["Blues-Rock"])
+	check.Equal("test", c.Library.PlaylistDirectory)
 	// webhooks
 	fmt.Println("Checking webhooks")
 	check.Equal("http://some.thing", c.Notifications.WebHooks.Address)
@@ -197,6 +198,7 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
 	check.True(c.LibraryConfigured)
+	check.True(c.playlistDirectoryConfigured)
 
 	// disabling autosnatch
 	check.False(c.Autosnatch[0].disabledAutosnatching)

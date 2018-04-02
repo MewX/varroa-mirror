@@ -160,6 +160,7 @@ type ConfigLibrary struct {
 	Aliases           map[string][]string `yaml:"-"`
 	CategoriesFile    string              `yaml:"categories_file"`
 	Categories        map[string][]string `yaml:"-"`
+	PlaylistDirectory string              `yaml:"playlist_directory"`
 }
 
 func (cl *ConfigLibrary) check() error {
@@ -169,6 +170,9 @@ func (cl *ConfigLibrary) check() error {
 	// checks
 	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
 		return errors.New("library directory does not exist")
+	}
+	if cl.PlaylistDirectory == "" || !DirectoryExists(cl.PlaylistDirectory) {
+		return errors.New("playlist directory does not exist")
 	}
 	for _, s := range cl.AdditionalSources {
 		if !DirectoryExists(s) {

@@ -343,10 +343,17 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 	// export
 	if Accept("Export as " + newName) {
 		fmt.Println("Exporting files to the library...")
-		if err := CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
+		if err = CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
 			return errors.Wrap(err, "Error exporting download "+d.FolderName)
 		}
 		fmt.Println(Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sortings."))
+		// if exported, write playlists
+		if config.playlistDirectoryConfigured && Accept("Add release to daily/monthly playlists") {
+			if err = AddReleaseToCurrentPlaylists(config.Library.PlaylistDirectory, config.Library.Directory, newName); err != nil {
+				return err
+			}
+			fmt.Println(Green("Playlists generated or updated."))
+		}
 	} else {
 		fmt.Println(Red("The release was not exported. It can be exported later by sorting this ID again. Until then, it will be marked as unsorted again."))
 		d.State = stateUnsorted
