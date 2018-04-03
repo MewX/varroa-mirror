@@ -14,28 +14,29 @@ var config *Config
 var onceConfig sync.Once
 
 type Config struct {
-	General                  *ConfigGeneral
-	Trackers                 []*ConfigTracker
-	Autosnatch               []*ConfigAutosnatch
-	Stats                    []*ConfigStats
-	WebServer                *ConfigWebServer
-	Notifications            *ConfigNotifications
-	GitlabPages              *ConfigGitlabPages `yaml:"gitlab_pages"`
-	Filters                  []*ConfigFilter
-	Library                  *ConfigLibrary
-	MPD                      *ConfigMPD
-	autosnatchConfigured     bool
-	statsConfigured          bool
-	webserverConfigured      bool
-	webserverHTTP            bool
-	webserverHTTPS           bool
-	webserverMetadata        bool
-	gitlabPagesConfigured    bool
-	pushoverConfigured       bool
-	webhooksConfigured       bool
-	DownloadFolderConfigured bool
-	LibraryConfigured        bool
-	mpdConfigured            bool
+	General                     *ConfigGeneral
+	Trackers                    []*ConfigTracker
+	Autosnatch                  []*ConfigAutosnatch
+	Stats                       []*ConfigStats
+	WebServer                   *ConfigWebServer
+	Notifications               *ConfigNotifications
+	GitlabPages                 *ConfigGitlabPages `yaml:"gitlab_pages"`
+	Filters                     []*ConfigFilter
+	Library                     *ConfigLibrary
+	MPD                         *ConfigMPD
+	autosnatchConfigured        bool
+	statsConfigured             bool
+	webserverConfigured         bool
+	webserverHTTP               bool
+	webserverHTTPS              bool
+	webserverMetadata           bool
+	gitlabPagesConfigured       bool
+	pushoverConfigured          bool
+	webhooksConfigured          bool
+	DownloadFolderConfigured    bool
+	LibraryConfigured           bool
+	playlistDirectoryConfigured bool
+	mpdConfigured               bool
 }
 
 func NewConfig(path string) (*Config, error) {
@@ -177,6 +178,12 @@ func (c *Config) check() error {
 			return errors.Wrap(err, "Error reading Gitlab Pages configuration")
 		}
 	}
+	// library checks
+	if c.Library != nil {
+		if err := c.Library.check(); err != nil {
+			return errors.Wrap(err, "Error reading library configuration")
+		}
+	}
 	// mpd checks
 	if c.MPD != nil {
 		if err := c.MPD.check(); err != nil {
@@ -201,6 +208,7 @@ func (c *Config) check() error {
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0
 	c.webserverHTTPS = c.webserverConfigured && c.WebServer.PortHTTPS != 0
 	c.LibraryConfigured = c.Library != nil
+	c.playlistDirectoryConfigured = c.LibraryConfigured && c.Library.PlaylistDirectory != ""
 	c.mpdConfigured = c.MPD != nil
 	c.webserverMetadata = c.DownloadFolderConfigured && c.webserverConfigured && c.WebServer.ServeMetadata
 

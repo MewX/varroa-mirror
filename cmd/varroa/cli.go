@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	docopt "github.com/docopt/docopt-go"
@@ -56,6 +58,11 @@ Commands:
 		generates the stats immediately based on currently saved
 		history.
 	refresh-metadata:
+		retrieves all metadata for releases with the given local
+		path, updating the files that were downloaded when they
+		were first snatched (allows updating local metadata if a
+		torrent has been edited since upload).
+	refresh-metadata-by-id:
 		retrieves all metadata for all torrents with IDs given as
 		arguments, updating the files that were downloaded when they
 		were first snatched (allows updating local metadata if a
@@ -70,9 +77,6 @@ Commands:
 	backup:
 		backup user files (stats, history, configuration file) to a
 		timestamped zip file. Automatically triggered every day.
-	downloads scan:
-		scan the downloads folder and refreshes the database of known
-		downloads. list the downloads and show the ID for each release.
 	downloads search:
 		return all known downloads on which an artist has worked.
 	downloads metadata:
@@ -80,11 +84,17 @@ Commands:
 		db ID as argument.
 	downloads sort:
 		sort all unsorted downloads, or sort a specific release
+		(identified by its path). sorting allows you to tag which
+		release to keep and which to only seed; selected downloads
+		can be exported to an external folder.
+	downloads sort-id:
+		sort all unsorted downloads, or sort a specific release
 		(identified by its db ID). sorting allows you to tag which
 		release to keep and which to only seed; selected downloads
 		can be exported to an external folder.
 	downloads list:
-		list downloads by state: unsorted, accepted, exported, rejected.
+		list all downloads, of filter by state: unsorted, accepted, 
+	    exported, rejected.
 	downloads clean:
 		clean up the downloads directory by moving all empty folders,
 		and folders with only tracker metadata, to a dedicated subfolder.
@@ -92,6 +102,9 @@ Commands:
 		mount a read-only filesystem exposing your downloads using the
 		tracker metadata, using the following categories: artists, tags,
 		record labels, years. Call 'fusermount -u MOUNT_POINT' to stop.
+	library reorganize:
+		renames all releases in the library (including parent folders) 
+		using tracker metadata and the user-defined folder template.
 	library fuse:
 		similar to downloads fuse, but for your music library.
 	reseed:
@@ -118,14 +131,15 @@ Configuration Commands:
 Usage:
 	varroa (start|stop|uptime|status)
 	varroa stats
-	varroa refresh-metadata <TRACKER> <ID>...
+	varroa refresh-metadata <PATH>...
+	varroa refresh-metadata-by-id <TRACKER> <ID>...
 	varroa check-log <TRACKER> <LOG_FILE>
 	varroa snatch [--fl] <TRACKER> <ID>...
 	varroa info <TRACKER> <ID>...
 	varroa backup
 	varroa show-config
-	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
-	varroa library fuse <MOUNT_POINT>
+	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>...]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
+	varroa library (fuse <MOUNT_POINT>|reorganize)
 	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)
 	varroa --version
@@ -137,39 +151,49 @@ Options:
 `
 )
 
+type refreshTarget struct {
+	path    string
+	tracker string
+	id      int
+}
+
 type varroaArguments struct {
-	builtin         bool
-	start           bool
-	stop            bool
-	uptime          bool
-	status          bool
-	stats           bool
-	refreshMetadata bool
-	checkLog        bool
-	snatch          bool
-	info            bool
-	backup          bool
-	showConfig      bool
-	encrypt         bool
-	decrypt         bool
-	downloadSearch  bool
-	downloadInfo    bool
-	downloadSort    bool
-	downloadList    bool
-	downloadState   string
-	downloadClean   bool
-	downloadFuse    bool
-	libraryFuse     bool
-	reseed          bool
-	useFLToken      bool
-	torrentIDs      []int
-	logFile         string
-	trackerLabel    string
-	path            string
-	artistName      string
-	mountPoint      string
-	requiresDaemon  bool
-	canUseDaemon    bool
+	builtin             bool
+	start               bool
+	stop                bool
+	uptime              bool
+	status              bool
+	stats               bool
+	refreshMetadata     bool
+	refreshMetadataByID bool
+	checkLog            bool
+	snatch              bool
+	info                bool
+	backup              bool
+	showConfig          bool
+	encrypt             bool
+	decrypt             bool
+	downloadSearch      bool
+	downloadInfo        bool
+	downloadSort        bool
+	downloadSortID      bool
+	downloadList        bool
+	downloadState       string
+	downloadClean       bool
+	downloadFuse        bool
+	libraryFuse         bool
+	libraryReorg        bool
+	reseed              bool
+	useFLToken          bool
+	torrentIDs          []int
+	logFile             string
+	trackerLabel        string
+	paths               []string
+	artistName          string
+	mountPoint          string
+	requiresDaemon      bool
+	canUseDaemon        bool
+	toRefresh           []refreshTarget
 }
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
@@ -183,13 +207,14 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.builtin = true
 		return nil
 	}
-
 	// commands
 	b.start = args["start"].(bool)
 	b.stop = args["stop"].(bool)
 	b.uptime = args["uptime"].(bool)
 	b.status = args["status"].(bool)
 	b.stats = args["stats"].(bool)
+	b.reseed = args["reseed"].(bool)
+	b.refreshMetadataByID = args["refresh-metadata-by-id"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
 	b.snatch = args["snatch"].(bool)
@@ -205,25 +230,31 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		b.downloadInfo = args["metadata"].(bool)
 		b.downloadSort = args["sort"].(bool)
+		b.downloadSortID = args["sort-id"].(bool)
 		b.downloadList = args["list"].(bool)
 		b.downloadClean = args["clean"].(bool)
 		b.downloadFuse = args["fuse"].(bool)
 	}
 	if args["library"].(bool) {
 		b.libraryFuse = args["fuse"].(bool)
+		b.libraryReorg = args["reorganize"].(bool)
 	}
-	if args["reseed"].(bool) {
-		b.reseed = true
-		b.path = args["<PATH>"].(string)
-		if !varroa.DirectoryExists(b.path) {
-			return errors.New("Target path does not exist")
-		}
-		if !varroa.DirectoryContainsMusicAndMetadata(b.path) {
-			return errors.New("Target path does not seem to contain music files and tracker metadata")
+	if b.reseed || b.downloadSort {
+		b.paths = args["<PATH>"].([]string)
+		for i, p := range b.paths {
+			if !varroa.DirectoryExists(p) {
+				return errors.New("Target path does not exist")
+			}
+			if !varroa.DirectoryContainsMusicAndMetadata(p) {
+				return fmt.Errorf(varroa.ErrorFindingMusicAndMetadata, p)
+			}
+			if strings.HasSuffix(p, "/") {
+				b.paths[i] = p[:len(p)-1]
+			}
 		}
 	}
 	// arguments
-	if b.refreshMetadata || b.snatch || b.downloadInfo || b.downloadSort || b.info {
+	if b.refreshMetadataByID || b.snatch || b.downloadInfo || b.downloadSortID || b.info {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
 			return errors.New("Invalid torrent IDs.")
@@ -271,18 +302,48 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		b.logFile = logPath
 	}
-	if b.refreshMetadata || b.snatch || b.checkLog || b.info || b.reseed {
+	if b.refreshMetadataByID || b.snatch || b.checkLog || b.info || b.reseed {
 		b.trackerLabel = args["<TRACKER>"].(string)
+	}
+
+	if b.refreshMetadata {
+		paths := args["<PATH>"].([]string)
+		currentPath, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		for _, p := range paths {
+			if !varroa.DirectoryExists(p) {
+				return errors.New("Target path " + p + " does not exist")
+			}
+			if !varroa.DirectoryContainsMusicAndMetadata(p) {
+				return fmt.Errorf(varroa.ErrorFindingMusicAndMetadata, p)
+			}
+			// find the parent directory
+			root := currentPath
+			if filepath.IsAbs(p) {
+				root = filepath.Dir(p)
+			}
+			// load metadata
+			d := varroa.DownloadEntry{FolderName: p}
+			if err := d.Load(root); err != nil {
+				return err
+			}
+			// get tracker + ids
+			for i := range d.Tracker {
+				b.toRefresh = append(b.toRefresh, refreshTarget{path: p, tracker: d.Tracker[i], id: d.TrackerID[i]})
+			}
+		}
 	}
 
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.reseed {
+	if b.refreshMetadataByID || b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.reseed {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse {
+	if b.refreshMetadata || b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg {
 		b.canUseDaemon = false
 	}
 	return nil
@@ -303,8 +364,8 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	if b.status {
 		out.Command = "status"
 	}
-	if b.refreshMetadata {
-		out.Command = "refresh-metadata"
+	if b.refreshMetadataByID {
+		out.Command = "refresh-metadata-by-id"
 		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
 	}
 	if b.snatch {
@@ -322,7 +383,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	if b.reseed {
 		out.Command = "reseed"
-		out.Args = []string{b.path}
+		out.Args = b.paths
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {

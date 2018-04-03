@@ -69,8 +69,10 @@ func (d *DownloadsDB) String() string {
 	}
 	var stateCounts []string
 	for _, s := range DownloadFolderStates {
-		states := d.FindByState(s)
-		stateCounts = append(stateCounts, fmt.Sprintf("%s: %d (%.02f%%)", s, len(states), 100*float32(len(states))/float32(len(allEntries))))
+		if s != "UNUSED" {
+			states := d.FindByState(s)
+			stateCounts = append(stateCounts, fmt.Sprintf("%s: %d (%.02f%%)", s, len(states), 100*float32(len(states))/float32(len(allEntries))))
+		}
 	}
 	txt += "\n" + YellowUnderlined(fmt.Sprintf("Total: %d entries ~~ ", len(allEntries))+strings.Join(stateCounts, ", "))
 	return txt
@@ -229,15 +231,112 @@ func (d *DownloadsDB) RescanIDs(IDs []int) error {
 		}
 	}
 	// commiting transaction
-	if err := tx.Commit(); err != nil {
-		return err
+	return tx.Commit()
+}
+
+func (d *DownloadsDB) locateFolderName(folderName string) (string, string, error) {
+	// getting the absolute path
+	absFolderName, err := filepath.Abs(folderName)
+	if err != nil {
+		return "", "", err
 	}
-	return nil
+
+	var found bool
+	var basePath string
+	c, err := NewConfig(DefaultConfigurationFile)
+	if err != nil {
+		return "", "", err
+	}
+	if !c.LibraryConfigured || !c.DownloadFolderConfigured {
+		return "", "", errors.New("insufficient information from the configuration file: download directory, library section.")
+	}
+
+	rel, err := filepath.Rel(c.General.DownloadDir, absFolderName)
+	if err != nil {
+		return "", "", err
+	}
+	if filepath.Clean(folderName) == rel {
+		basePath = c.General.DownloadDir
+		found = true
+	}
+	if !found {
+		for _, s := range c.Library.AdditionalSources {
+			rel, err = filepath.Rel(s, absFolderName)
+			if err != nil {
+				logThis.Error(err, VERBOSESTEST)
+				continue
+			}
+			if filepath.Clean(folderName) == rel {
+				basePath = s
+				found = true
+			}
+		}
+	}
+	if !found {
+		return "", "", errors.New("this directory could not be found in the download directory or in other defined sources")
+	}
+	return absFolderName, basePath, nil
+}
+
+func (d *DownloadsDB) RescanPath(folderName string) error {
+	if DirectoryExists(folderName) {
+		// checking it's inside a known directory (download directory or additional source)
+		absFolderName, basePath, err := d.locateFolderName(folderName)
+		if err != nil {
+			return err
+		}
+
+		// begin transaction
+		tx, err := d.db.DB.Begin(true)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		var newEntry bool
+		dl, err := d.FindByFolderName(folderName)
+		if err != nil {
+			if err == storm.ErrNotFound {
+				logThis.Info("Adding new entry!", NORMAL)
+				newEntry = true
+				dl.FolderName = folderName
+			} else {
+				return errors.Wrap(err, fmt.Sprintf("error looking for entry %s", absFolderName))
+			}
+		}
+
+		// read information from metadata
+		if err := dl.Load(basePath); err != nil {
+			return errors.Wrap(err, "error: could not load metadata for "+absFolderName)
+		}
+		if newEntry {
+			if err := tx.Save(&dl); err != nil {
+				return errors.Wrap(err, "error: could not save to db "+absFolderName)
+			}
+		} else {
+			if err := tx.Update(&dl); err != nil {
+				return errors.Wrap(err, "error: could not save to db "+absFolderName)
+			}
+			logThis.Info("Updated Downloads entry: "+absFolderName, VERBOSESTEST)
+		}
+
+		// commiting transaction
+		return tx.Commit()
+	}
+	return errors.New(folderName + " could not be found")
 }
 
 func (d *DownloadsDB) FindByID(id int) (DownloadEntry, error) {
 	var downloadEntry DownloadEntry
 	if err := d.db.DB.One("ID", id, &downloadEntry); err != nil {
+		return DownloadEntry{}, err
+	}
+	return downloadEntry, nil
+}
+
+func (d *DownloadsDB) FindByFolderName(folderName string) (DownloadEntry, error) {
+	var downloadEntry DownloadEntry
+	if err := d.db.DB.One("FolderName", folderName, &downloadEntry); err != nil {
 		return DownloadEntry{}, err
 	}
 	return downloadEntry, nil
@@ -281,6 +380,9 @@ func (d *DownloadsDB) SortThisID(e *Environment, id int) error {
 	dl, err := d.FindByID(id)
 	if err != nil {
 		return errors.Wrap(err, "Error finding such an ID in the downloads database")
+	}
+	if dl.State != stateUnsorted && !Accept(fmt.Sprintf("Download #%d (%s) has already been accepted or rejected. Do you want to sort it again ", dl.ID, dl.FolderName)) {
+		return nil
 	}
 	if err := dl.Sort(e, d.root); err != nil {
 		return errors.Wrap(err, "Error sorting selected download")

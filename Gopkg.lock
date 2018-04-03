@@ -50,6 +50,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/djherbis/times"
+  packages = ["."]
+  revision = "95292e44976d1217cf3611dc7c8d9466877d3ed5"
+  version = "v1.0.1"
+
+[[projects]]
   name = "github.com/docopt/docopt-go"
   packages = ["."]
   revision = "784ddc588536785e7299f7272f39101f7faccc3f"
@@ -365,6 +371,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f814ab2881252aa779d2c59062bd8346de5d6e062e94372b95c75d0e2debfd7e"
+  inputs-digest = "3b9e8686e098357e0ef9bc6538df4fa0d0bb6aa74d94ba0fc322612554ea56c0"
   solver-name = "gps-cdcl"
   solver-version = 1

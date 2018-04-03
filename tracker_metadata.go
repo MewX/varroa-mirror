@@ -17,7 +17,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/dustin/go-humanize"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/mgutz/ansi"
 	"github.com/pkg/errors"
 	blackfriday "gopkg.in/russross/blackfriday.v2"
@@ -99,7 +99,9 @@ Direct link: %s
   │  Cover: %s	
   │  Size: %s	
   └────────`
-	trackPattern = `(.*){{{(\d*)}}}`
+	trackPattern    = `(.*){{{(\d*)}}}`
+	vaReleasePrexif = "VA|"
+	variousArtists  = "Various Artists"
 )
 
 type TrackerMetadataTorrentGroup struct {
@@ -160,17 +162,19 @@ type TrackerMetadata struct {
 	OriginalYear  int
 	EditionName   string
 	EditionYear   int
-
-	// TODO use things from generatePath/downloads
-	Source     string
-	SourceFull string
-	Format     string
-	Quality    string
-	LogScore   int
-	HasLog     bool
-	HasCue     bool
-	IsScene    bool
-
+	Source        string
+	SourceFull    string
+	Format        string
+	Quality       string
+	LogScore      int
+	HasLog        bool
+	HasCue        bool
+	IsScene       bool
+	// for library organization
+	MainArtist      string
+	MainArtistAlias string
+	Category        string
+	// contents
 	Tracks      []TrackerMetadataTrack
 	TotalTime   string
 	Lineage     []TrackerMetadataLineage
@@ -195,20 +199,16 @@ func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON 
 	tm.Tracker = tracker
 	tm.TrackerURL = origin.Origins[tracker].Tracker
 
-	// TODO load Release JSON
+	// load Release JSON
 	tm.ReleaseJSON, err = ioutil.ReadFile(releaseJSON)
 	if err != nil {
 		return errors.Wrap(err, "Error loading JSON file "+releaseJSON)
 	}
-	return tm.loadReleaseJSONFromBytes(true)
+	return tm.loadReleaseJSONFromBytes(filepath.Dir(releaseJSON), true)
 }
 
-func (tm *TrackerMetadata) saveOriginJSON() error {
-	conf, configErr := NewConfig(DefaultConfigurationFile)
-	if configErr != nil {
-		return configErr
-	}
-	origin := &TrackerOriginJSON{Path: filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, originJSONFile)}
+func (tm *TrackerMetadata) saveOriginJSON(destination string) error {
+	origin := &TrackerOriginJSON{Path: filepath.Join(destination, originJSONFile)}
 
 	foundOrigin := false
 	if FileExists(origin.Path) {
@@ -244,10 +244,10 @@ func (tm *TrackerMetadata) LoadFromTracker(tracker *GazelleTracker, data []byte)
 	tm.IsAlive = true
 	// load GazelleTorrent data
 	tm.ReleaseJSON = data
-	return tm.loadReleaseJSONFromBytes(false)
+	return tm.loadReleaseJSONFromBytes("", false)
 }
 
-func (tm *TrackerMetadata) loadReleaseJSONFromBytes(responseOnly bool) error {
+func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, responseOnly bool) error {
 	var gt GazelleTorrent
 	var unmarshalErr error
 	if responseOnly {
@@ -287,11 +287,11 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(responseOnly bool) error {
 	tm.Tags = gt.Response.Group.Tags
 	tm.ReleaseType = getGazelleReleaseType(gt.Response.Group.ReleaseType)
 	tm.RecordLabel = html.UnescapeString(gt.Response.Group.RecordLabel)
-	if gt.Response.Torrent.Remastered {
+	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterRecordLabel != "" {
 		tm.RecordLabel = html.UnescapeString(gt.Response.Torrent.RemasterRecordLabel)
 	}
 	tm.CatalogNumber = gt.Response.Group.CatalogueNumber
-	if gt.Response.Torrent.Remastered {
+	if gt.Response.Torrent.Remastered && gt.Response.Torrent.RemasterCatalogueNumber != "" {
 		tm.CatalogNumber = gt.Response.Torrent.RemasterCatalogueNumber
 	}
 	tm.OriginalYear = gt.Response.Group.Year
@@ -313,6 +313,30 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(responseOnly bool) error {
 		if gt.Response.Torrent.Grade == "Gold" {
 			tm.SourceFull += "+"
 		}
+	}
+
+	// parsing info that needs to be worked on before use
+
+	// default organization info
+	var artists []string
+	for _, a := range tm.Artists {
+		// not taking feat. artists
+		if a.Role == "Main" || a.Role == "Composer" {
+			artists = append(artists, a.Name)
+		}
+	}
+	tm.MainArtist = strings.Join(artists, ", ")
+	if len(artists) >= 3 {
+		tm.MainArtist = variousArtists
+	}
+
+	// default: artist alias = main artist
+	tm.MainArtistAlias = tm.MainArtist
+	// default: category == first tag
+	if len(tm.Tags) != 0 {
+		tm.Category = tm.Tags[0]
+	} else {
+		tm.Category = "UNKNOWN"
 	}
 
 	// parsing track list
@@ -353,36 +377,77 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(responseOnly bool) error {
 	}
 	tm.ReleaseJSON = metadataJSON
 
-	// finally, load user JSON for overwriting user-defined values, if laoding from files
+	// finally, load user JSON for overwriting user-defined values, if loading from files
 	if responseOnly {
-		return tm.LoadUserJSON()
+		if err := tm.LoadUserJSON(parentFolder); err != nil {
+			return err
+		}
 	}
-	return nil
+	// try to find if the configuration has overriding artist aliases/categories
+	return tm.checkAliasAndCategory(parentFolder)
 }
 
-func (tm *TrackerMetadata) SaveFromTracker(tracker *GazelleTracker) error {
+func (tm *TrackerMetadata) checkAliasAndCategory(parentFolder string) error {
 	conf, configErr := NewConfig(DefaultConfigurationFile)
 	if configErr != nil {
 		return configErr
 	}
-	destination := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir)
+	if conf.LibraryConfigured {
+		var changed bool
+		// try to find main artist alias
+		for alias, aliasArtists := range conf.Library.Aliases {
+			if artistInSlice(tm.MainArtist, tm.Title, aliasArtists) {
+				tm.MainArtistAlias = alias
+				changed = true
+				break
+			}
+		}
+		// try to find category for main artist alias
+		for category, categoryArtists := range conf.Library.Categories {
+			if artistInSlice(tm.MainArtistAlias, tm.Title, categoryArtists) {
+				tm.Category = category
+				changed = true
+				break
+			}
+		}
+		if changed {
+			logThis.Info("Updating user metadata with information from the configuration.", VERBOSEST)
+			return tm.UpdateUserJSON(parentFolder, tm.MainArtist, tm.MainArtistAlias, tm.Category)
+		}
+	}
+	return nil
+}
+
+// artistInSlice checks if an artist is in a []string (taking VA releases into account), returns bool.
+func artistInSlice(artist, title string, list []string) bool {
+	for _, b := range list {
+		if artist == b || artist == variousArtists && title == strings.TrimSpace(strings.Replace(b, vaReleasePrexif, "", -1)) {
+			return true
+		}
+	}
+	return false
+}
+
+// SaveFromTracker all of the relevant metadata.
+func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *GazelleTracker) error {
+	destination := filepath.Join(parentFolder, metadataDir)
 	// create metadata dir if necessary
 	if err := os.MkdirAll(filepath.Join(destination), 0775); err != nil {
 		return errors.Wrap(err, errorCreatingMetadataDir)
 	}
 
 	// creating or updating origin.json
-	if err := tm.saveOriginJSON(); err != nil {
+	if err := tm.saveOriginJSON(destination); err != nil {
 		return errors.Wrap(err, errorWithOriginJSON)
 	}
 
-	// NOTE: errors are not returned (for now) in case the following things can be retrieved
+	// NOTE: errors are not returned (for now) in case the next JSONs can be retrieved
 
 	// write tracker metadata to target folder
 	if err := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+"_"+trackerMetadataFile), tm.ReleaseJSON, 0666); err != nil {
 		logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 	} else {
-		logThis.Info(infoMetadataSaved+tm.FolderName, VERBOSE)
+		logThis.Info(infoMetadataSaved+filepath.Base(parentFolder), VERBOSE)
 	}
 
 	// get torrent group info
@@ -394,7 +459,7 @@ func (tm *TrackerMetadata) SaveFromTracker(tracker *GazelleTracker) error {
 		if err := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+"_"+trackerTGroupMetadataFile), torrentGroupInfo.fullJSON, 0666); err != nil {
 			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
-			logThis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, tm.Title, tm.FolderName), VERBOSE)
+			logThis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, tm.Title, filepath.Base(parentFolder)), VERBOSE)
 		}
 	}
 
@@ -410,36 +475,29 @@ func (tm *TrackerMetadata) SaveFromTracker(tracker *GazelleTracker) error {
 		if err := ioutil.WriteFile(filepath.Join(destination, tracker.Name+"_"+a.Name+jsonExt), artistInfo.JSON, 0666); err != nil {
 			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
 		} else {
-			logThis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Name, tm.FolderName), VERBOSE)
+			logThis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Name, filepath.Base(parentFolder)), VERBOSE)
 		}
 	}
 	// generate blank user metadata json
-	if err := tm.WriteUserJSON(); err != nil {
+	if err := tm.WriteUserJSON(destination); err != nil {
 		logThis.Error(errors.Wrap(err, errorGeneratingUserMetadataJSON), NORMAL)
 	}
 
 	// download tracker cover to target folder
-	if err := tm.SaveCover(); err != nil {
+	if err := tm.SaveCover(parentFolder); err != nil {
 		logThis.Error(errors.Wrap(err, errorDownloadingTrackerCover), NORMAL)
 	} else {
-		logThis.Info(infoCoverSaved+tm.FolderName, VERBOSE)
+		logThis.Info(infoCoverSaved+filepath.Base(parentFolder), VERBOSE)
 	}
 	logThis.Info(fmt.Sprintf(infoAllMetadataSaved, tracker.Name), VERBOSE)
-
-	// replaces release_md SaveMetadataFromTracker; keep a shell for use with goroutines
-
 	return nil
 }
 
-func (tm *TrackerMetadata) SaveCover() error {
+func (tm *TrackerMetadata) SaveCover(releaseFolder string) error {
 	if tm.CoverURL == "" {
 		return errors.New("unknown image url")
 	}
-	conf, configErr := NewConfig(DefaultConfigurationFile)
-	if configErr != nil {
-		return configErr
-	}
-	filename := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
+	filename := filepath.Join(releaseFolder, metadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
 
 	if FileExists(filename) {
 		// already downloaded, or exists in folder already: do nothing
@@ -550,20 +608,6 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		return tm.FolderName
 	}
 
-	// parsing info that needs to be worked on before use
-	var artists []string
-	for _, a := range tm.Artists {
-		// not taking feat. artists
-		if a.Role == "Main" || a.Role == "Composer" {
-			artists = append(artists, a.Name)
-		}
-	}
-	artistsShort := strings.Join(artists, ", ")
-	// TODO do better.
-	if len(artists) >= 3 {
-		artistsShort = "Various Artists"
-	}
-
 	// usual edition specifiers, shortened
 	editionName := ShortEdition(tm.EditionName)
 
@@ -582,15 +626,21 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		idElements = append(idElements, tm.RecordLabel)
 	} // TODO when we have neither catnum nor label
 
+	var releaseTypeExceptAlbum string
 	if tm.ReleaseType != releaseAlbum {
 		// adding release type if not album
-		idElements = append(idElements, tm.ReleaseType)
+		releaseTypeExceptAlbum = tm.ReleaseType
 	}
 	id := strings.Join(idElements, ", ")
+	if id == "" {
+		id = "Unknown"
+	}
 
 	r := strings.NewReplacer(
 		"$id", "{{$id}}",
 		"$a", "{{$a}}",
+		"$ma", "{{$ma}}",
+		"$c", "{{$c}}",
 		"$t", "{{$t}}",
 		"$y", "{{$y}}",
 		"$f", "{{$f}}",
@@ -599,13 +649,17 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		"$n", "{{$n}}",
 		"$e", "{{$e}}",
 		"$g", "{{$g}}",
+		"$r", "{{$r}}",
+		"$xar", "{{$xar}}",
 		"{", "ÆÆ", // otherwise golang's template throws a fit if '{' or '}' are in the user pattern
 		"}", "¢¢", // assuming these character sequences will probably not cause conflicts.
 	)
 
 	// replace with all valid epub parameters
-	tmpl := fmt.Sprintf(`{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
-		SanitizeFolder(artistsShort),
+	tmpl := fmt.Sprintf(`{{$c := "%s"}}{{$ma := "%s"}}{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}{{$r := "%s"}}{{$xar := "%s"}}%s`,
+		SanitizeFolder(tm.Category),
+		SanitizeFolder(tm.MainArtistAlias),
+		SanitizeFolder(tm.MainArtist),
 		tm.OriginalYear,
 		SanitizeFolder(tm.Title),
 		ShortEncoding(tm.Quality),
@@ -615,6 +669,8 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		tm.CatalogNumber,
 		SanitizeFolder(editionName), // edition
 		SanitizeFolder(id),          // identifying info
+		tm.ReleaseType,
+		releaseTypeExceptAlbum,
 		r.Replace(folderTemplate))
 
 	var doc bytes.Buffer
@@ -623,20 +679,21 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		return tm.FolderName
 	}
 	newName := strings.TrimSpace(doc.String())
+	// trim spaces around all internal folder names
+	var trimmedParts = strings.Split(newName, "/")
+	for i, part := range trimmedParts {
+		trimmedParts[i] = strings.TrimSpace(part)
+	}
 	// recover brackets
 	r2 := strings.NewReplacer(
 		"ÆÆ", "{",
 		"¢¢", "}",
 	)
-	return r2.Replace(newName)
+	return r2.Replace(strings.Join(trimmedParts, "/"))
 }
 
-func (tm *TrackerMetadata) WriteUserJSON() error {
-	conf, configErr := NewConfig(DefaultConfigurationFile)
-	if configErr != nil {
-		return configErr
-	}
-	userJSON := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, userMetadataJSONFile)
+func (tm *TrackerMetadata) WriteUserJSON(destination string) error {
+	userJSON := filepath.Join(destination, userMetadataJSONFile)
 	if FileExists(userJSON) {
 		logThis.Info("User metadata JSON already exists.", VERBOSE)
 		return nil
@@ -649,6 +706,9 @@ func (tm *TrackerMetadata) WriteUserJSON() error {
 	blank.HasLog = tm.HasLog
 	blank.HasCue = tm.HasCue
 	blank.IsScene = tm.IsScene
+	blank.MainArtist = tm.MainArtist
+	blank.MainArtistAlias = tm.MainArtistAlias
+	blank.Category = tm.Category
 	metadataJSON, err := json.MarshalIndent(blank, "", "    ")
 	if err != nil {
 		return err
@@ -656,12 +716,41 @@ func (tm *TrackerMetadata) WriteUserJSON() error {
 	return ioutil.WriteFile(userJSON, metadataJSON, 0644)
 }
 
-func (tm *TrackerMetadata) LoadUserJSON() error {
-	conf, configErr := NewConfig(DefaultConfigurationFile)
-	if configErr != nil {
-		return configErr
+func (tm *TrackerMetadata) UpdateUserJSON(destination, mainArtist, mainArtistAlias, category string) error {
+	userJSON := filepath.Join(destination, userMetadataJSONFile)
+	if !FileExists(userJSON) {
+		// try to create the file
+		if err := tm.WriteUserJSON(destination); err != nil {
+			return errors.New("User metadata JSON does not already exist and could not be written.")
+		}
 	}
-	userJSON := filepath.Join(conf.General.DownloadDir, tm.FolderName, metadataDir, userMetadataJSONFile)
+
+	// loading user metadata file
+	userJSONBytes, err := ioutil.ReadFile(userJSON)
+	if err != nil {
+		return errors.New("Could not read user JSON.")
+	}
+	var userInfo *TrackerMetadata
+	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
+		logThis.Info("Error parsing torrent info JSON", NORMAL)
+		return nil
+	}
+	// overwriting select values
+	// NOTE: since we are sorting from the downloads folder to the library, there is no reason why these values would have been set by the user
+	// So nothing should be lost.
+	userInfo.MainArtist = mainArtist
+	userInfo.MainArtistAlias = mainArtistAlias
+	userInfo.Category = category
+	// write back
+	metadataJSON, err := json.MarshalIndent(userInfo, "", "    ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(userJSON, metadataJSON, 0644)
+}
+
+func (tm *TrackerMetadata) LoadUserJSON(parentFolder string) error {
+	userJSON := filepath.Join(parentFolder, userMetadataJSONFile)
 	if !FileExists(userJSON) {
 		logThis.Info("User metadata JSON does not exist.", VERBOSEST)
 		return nil

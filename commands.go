@@ -86,7 +86,7 @@ Loop:
 				case stopCommand:
 					logThis.Info("Stopping daemon...", NORMAL)
 					break Loop
-				case "refresh-metadata":
+				case "refresh-metadata-by-id":
 					if err := RefreshMetadata(e, tracker, orders.Args); err != nil {
 						logThis.Error(errors.Wrap(err, ErrorRefreshingMetadata), NORMAL)
 					}
@@ -216,9 +216,9 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 					fullFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
 					if DirectoryExists(fullFolder) {
 						if daemon.WasReborn() {
-							go info.SaveFromTracker(tracker)
+							go info.SaveFromTracker(fullFolder, tracker)
 						} else {
-							info.SaveFromTracker(tracker)
+							info.SaveFromTracker(fullFolder, tracker)
 						}
 					} else {
 						logThis.Info(fmt.Sprintf(errorCannotFindID, id), NORMAL)
@@ -241,10 +241,11 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 				logThis.Error(errors.Wrap(infoErr, errorCouldNotGetTorrentInfo), NORMAL)
 				continue
 			}
+			fullFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
 			if daemon.WasReborn() {
-				go info.SaveFromTracker(tracker)
+				go info.SaveFromTracker(fullFolder, tracker)
 			} else {
-				info.SaveFromTracker(tracker)
+				info.SaveFromTracker(fullFolder, tracker)
 			}
 		}
 		// check the number of active seeders
@@ -254,6 +255,19 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 
 	}
 	return nil
+}
+
+// RefreshLibraryMetadata for a list of releases on a tracker, using the given location instead of assuming they are in the download directory.
+func RefreshLibraryMetadata(path string, tracker *GazelleTracker, id string) error {
+	if !DirectoryContainsMusicAndMetadata(path) {
+		return fmt.Errorf(ErrorFindingMusicAndMetadata, path)
+	}
+	// get data from tracker
+	info, infoErr := tracker.GetTorrentMetadata(id)
+	if infoErr != nil {
+		return errors.Wrap(infoErr, errorCouldNotGetTorrentInfo)
+	}
+	return info.SaveFromTracker(path, tracker)
 }
 
 // SnatchTorrents on a tracker using their TorrentIDs
@@ -373,6 +387,7 @@ func Reseed(tracker *GazelleTracker, path []string) error {
 	// directly inside the downloads directory, where we want it to reseed.
 	// if it is not, we need to copy the files.
 	// TODO: maybe hard link instead if in the same filesystem
+	// TODO : deal with more than one path
 	rel, err := filepath.Rel(conf.General.DownloadDir, path[0])
 	if err != nil {
 		return errors.Wrap(err, "error trying to locate the target path relatively to the downloads directory")

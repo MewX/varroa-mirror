@@ -116,11 +116,15 @@ var (
 		Filter:      "",
 	}
 	// torrent infos
-	i1 = &TrackerMetadata{Size: 1234567, LogScore: 100, Uploader: "that_guy"}
-	i2 = &TrackerMetadata{Size: 1234567, LogScore: 80, Uploader: "someone else"}
-	i3 = &TrackerMetadata{Size: 11, LogScore: 80}
+	art1 = TrackerMetadataArtist{Name: "a"}
+	art2 = TrackerMetadataArtist{Name: "b"}
+	art3 = TrackerMetadataArtist{Name: "c"}
+
+	i1 = &TrackerMetadata{Size: 1234567, LogScore: 100, Uploader: "that_guy", Artists: []TrackerMetadataArtist{art1}}
+	i2 = &TrackerMetadata{Size: 1234567, LogScore: 80, Uploader: "someone else", Artists: []TrackerMetadataArtist{art2}}
+	i3 = &TrackerMetadata{Size: 11, LogScore: 80, Artists: []TrackerMetadataArtist{art3}}
 	i4 = &TrackerMetadata{Size: 123456789, LogScore: 80}
-	i5 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label1"}
+	i5 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label1", EditionName: "Remastered"}
 	i6 = &TrackerMetadata{Size: 1234567, LogScore: 100, RecordLabel: "label unknown"}
 	i7 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "deluxe edition Clean", EditionYear: 2004}
 	i8 = &TrackerMetadata{Size: 1234567, LogScore: 100, EditionName: "anniversary remaster CLEAN", EditionYear: 2017}
@@ -153,8 +157,8 @@ func TestRelease(t *testing.T) {
 	f15 := &ConfigFilter{Name: "f15", LogScore: 80, Source: []string{"WEB"}}
 	f16 := &ConfigFilter{Name: "f16", LogScore: 80, Source: []string{"CD"}}
 	f17 := &ConfigFilter{Name: "f17", LogScore: 100, Source: []string{"CD"}}
-	f18 := &ConfigFilter{Name: "f18", Artist: []string{"a"}}
-	f19 := &ConfigFilter{Name: "f19", Artist: []string{"a"}, ExcludedArtist: []string{"b"}}
+	f18 := &ConfigFilter{Name: "f18", Artist: []string{"a"}, AllowScene: true}
+	f19 := &ConfigFilter{Name: "f19", Artist: []string{"a"}, ExcludedArtist: []string{"b"}, AllowScene: true}
 	f20 := &ConfigFilter{Name: "f20", Year: []int{2016}, AllowScene: true}
 	f21 := &ConfigFilter{Name: "f21", MaxSizeMB: 100, MinSizeMB: 1, AllowScene: true} // cannot be checked with Satisfies
 	f22 := &ConfigFilter{Name: "f22", Source: []string{"CD"}, HasLog: true, HasCue: true, AllowScene: true}
@@ -162,7 +166,7 @@ func TestRelease(t *testing.T) {
 	f24 := &ConfigFilter{Name: "f24", ExcludedReleaseType: []string{"Album"}, AllowScene: true}
 	f25 := &ConfigFilter{Name: "f25", HasCue: true, HasLog: true, LogScore: 100, Source: []string{"CD"}, ReleaseType: []string{"Album"}, Format: []string{"FLAC"}}
 	f26 := &ConfigFilter{Name: "f26", RecordLabel: []string{"label1", "label2"}}
-	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"b", "k"}, AllowScene: true}
+	f27 := &ConfigFilter{Name: "f27", ExcludedArtist: []string{"a", "k"}, AllowScene: true}
 	f28 := &ConfigFilter{Name: "f28", PerfectFlac: true, Edition: []string{"r/[dD]eluxe", "Bonus"}}
 	f29 := &ConfigFilter{Name: "f29", Uploader: []string{"this_guy", "that_guy"}}
 	f30 := &ConfigFilter{Name: "f30", RejectUnknown: true}
@@ -295,13 +299,13 @@ func TestRelease(t *testing.T) {
 
 	check.True(r1.Satisfies(f18))
 	check.True(r2.Satisfies(f18))
-	check.False(r3.Satisfies(f18))
+	check.True(r3.Satisfies(f18)) // false with torrent info only
 	check.True(r4.Satisfies(f18))
 	check.True(r5.Satisfies(f18))
 
 	check.True(r1.Satisfies(f19)) // artists are checked with torrent info only
 	check.True(r2.Satisfies(f19))
-	check.False(r3.Satisfies(f19))
+	check.True(r3.Satisfies(f19)) // false with torrent info only
 	check.True(r4.Satisfies(f19))
 	check.True(r5.Satisfies(f19))
 
@@ -345,6 +349,17 @@ func TestRelease(t *testing.T) {
 
 	// checking with TorrentInfo
 
+	// artist
+	check.True(r1.HasCompatibleTrackerInfo(f18, []string{}, i1))
+	check.False(r1.HasCompatibleTrackerInfo(f18, []string{}, i2))
+	check.False(r1.HasCompatibleTrackerInfo(f18, []string{}, i3))
+	check.True(r1.HasCompatibleTrackerInfo(f19, []string{}, i1))
+	check.False(r1.HasCompatibleTrackerInfo(f19, []string{}, i2))
+	check.False(r1.HasCompatibleTrackerInfo(f19, []string{}, i3))
+	check.False(r1.HasCompatibleTrackerInfo(f27, []string{}, i1))
+	check.True(r1.HasCompatibleTrackerInfo(f27, []string{}, i2))
+	check.True(r1.HasCompatibleTrackerInfo(f27, []string{}, i3))
+
 	// log score
 	check.True(r1.HasCompatibleTrackerInfo(f17, []string{}, i1))
 	check.False(r1.HasCompatibleTrackerInfo(f17, []string{}, i2))
@@ -370,12 +385,15 @@ func TestRelease(t *testing.T) {
 	check.False(r5.HasCompatibleTrackerInfo(f21, []string{}, i4))
 
 	// edition
+	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i5))
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i6))
 	check.True(r1.HasCompatibleTrackerInfo(f28, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f28, []string{}, i8))
+	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i5))
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i6))
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f32, []string{}, i8))
+	check.True(r1.HasCompatibleTrackerInfo(f34, []string{}, i5))
 	check.True(r1.HasCompatibleTrackerInfo(f34, []string{}, i6))
 	check.False(r1.HasCompatibleTrackerInfo(f34, []string{}, i7))
 	check.False(r1.HasCompatibleTrackerInfo(f34, []string{}, i8))

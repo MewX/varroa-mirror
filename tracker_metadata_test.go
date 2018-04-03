@@ -122,22 +122,43 @@ func TestGeneratePath(t *testing.T) {
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB]", infod2.GeneratePath("$a ($y) $t [$f] [$s]"))
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB] {DLX, LABEL 1-CATNUM}", infod2.GeneratePath("$a ($y) $t [$f] [$s] {$e, $l-$n}"))
 	check.Equal("DLX/DLX", infod2.GeneratePath("$e/$e")) // sanitized to remove "/"
-	check.Equal("2017, DLX, CATNUM, EP", infod2.GeneratePath("$id"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM, EP} [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM, EP} [FLAC CD]", infod3.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM, EP} [FLAC CD+]", infod3.GeneratePath("$a ($y) $t {$id} [$f $g]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, Bonus, CATNUM, EP} [V0 CD]", infod4.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM, EP} [FLAC24 Vinyl]", infod5.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM, EP} [FLAC CD]", infod6.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM, EP} [FLAC CD++]", infod6.GeneratePath("$a ($y) $t {$id} [$f $g]"))
+	check.Equal("2017, DLX, CATNUM", infod2.GeneratePath("$id"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC CD]", infod3.GeneratePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC CD+]", infod3.GeneratePath("$a ($y) $t {$id} [$f $g]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, Bonus, CATNUM} [V0 CD]", infod4.GeneratePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC24 Vinyl]", infod5.GeneratePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC CD]", infod6.GeneratePath("$a ($y) $t {$id} [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC CD++]", infod6.GeneratePath("$a ($y) $t {$id} [$f $g]"))
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD]", infod7.GeneratePath("$a ($y) $t {$id} [$f $s]"))
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD+]", infod7.GeneratePath("$a ($y) $t {$id} [$f $g]"))
 	check.Equal("[Artist A, Artist B]/Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD+]", infod7.GeneratePath("[$a]/$a ($y) $t {$id} [$f $g]"))
 	check.Equal("[Artist A, Artist B]/Artist A, Artist B (1987) RELEASE 1 ∕ RELEASE 2!!&éçà©§Ð‘®¢ {PR, CATNUM} [FLAC CD+]", infod8.GeneratePath("[$a]/$a ($y) $t {$id} [$f $g]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} EP [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} $xar [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} EP [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} $r [$f $s]"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD]", infod7.GeneratePath("$a ($y) $t {$id} [$f $s] $xar"))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD] Album", infod7.GeneratePath("$a ($y) $t {$id} [$f $s] $r"))
 
 	// checking TextDescription
-
 	fmt.Println(infod2.TextDescription(false))
 	fmt.Println(infod2.TextDescription(true))
 
+}
+
+func TestArtistInSlice(t *testing.T) {
+	fmt.Println("+ Testing TrackerMetadata/artistInSlice...")
+	check := assert.New(t)
+
+	list := []string{"thing", "VA| other thing", "VA|anoother thing", "VA |nope", "noope | VA"}
+	check.True(artistInSlice("thing", "useless", list))
+	check.False(artistInSlice("Thing", "useless", list))
+	check.True(artistInSlice("Various Artists", "other thing", list))
+	check.False(artistInSlice("Single Artist", "other thing", list))
+	check.True(artistInSlice("Various Artists", "anoother thing", list))
+	check.False(artistInSlice("Single Artist", "anoother thing", list))
+	check.False(artistInSlice("Various Artists", "nope", list))
+	check.False(artistInSlice("Single Artist", "nope", list))
+	check.False(artistInSlice("Various Artists", "noope", list))
+	check.False(artistInSlice("Various Artists", "VA | other thing", list))
+	check.False(artistInSlice("Various Artists", "VA| other thing", list))
 }

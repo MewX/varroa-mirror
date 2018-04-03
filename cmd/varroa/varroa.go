@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"gitlab.com/passelecasque/varroa"
@@ -53,14 +54,14 @@ func main() {
 			passphraseBytes := make([]byte, 32)
 			copy(passphraseBytes[:], passphrase)
 			if cli.encrypt {
-				if err := config.Encrypt(varroa.DefaultConfigurationFile, passphraseBytes); err != nil {
+				if err = config.Encrypt(varroa.DefaultConfigurationFile, passphraseBytes); err != nil {
 					logThis.Info(err.Error(), varroa.NORMAL)
 					return
 				}
 				logThis.Info(varroa.InfoEncrypted, varroa.NORMAL)
 			}
 			if cli.decrypt {
-				if err := config.DecryptTo(varroa.DefaultConfigurationFile, passphraseBytes); err != nil {
+				if err = config.DecryptTo(varroa.DefaultConfigurationFile, passphraseBytes); err != nil {
 					logThis.Error(err, varroa.NORMAL)
 					return
 				}
@@ -73,7 +74,7 @@ func main() {
 			fmt.Println(config)
 			return
 		}
-		if cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadList || cli.downloadClean {
+		if cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadSortID || cli.downloadList || cli.downloadClean {
 			if !config.DownloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)
 				return
@@ -87,52 +88,70 @@ func main() {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
+			defer downloads.Close()
+
 			// simple operation, only requires access to download folder, since it will clean unindexed folders
 			if cli.downloadClean {
-				if err := downloads.Clean(); err != nil {
+				if err = downloads.Clean(); err != nil {
 					logThis.Error(err, varroa.NORMAL)
 				} else {
 					fmt.Println("Downloads directory cleaned of empty folders & folders containing only tracker metadata.")
 				}
 				return
 			}
-			if cli.downloadSort {
+			if cli.downloadSort || cli.downloadSortID {
 				// setting up to load history, etc.
-				if err := env.SetUp(false); err != nil {
+				if err = env.SetUp(false); err != nil {
 					logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
 					return
 				}
-
 				if !config.LibraryConfigured {
 					logThis.Error(errors.New("Cannot sort downloads, library is not configured"), varroa.NORMAL)
 					return
 				}
-				if len(cli.torrentIDs) == 0 {
+				// if no argument, sort everything
+				if (cli.downloadSortID && len(cli.torrentIDs) == 0) || (cli.downloadSort && len(cli.paths) == 0) {
 					// scanning
 					fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
-					if err := downloads.Scan(); err != nil {
+					if err = downloads.Scan(); err != nil {
 						logThis.Error(err, varroa.NORMAL)
 						return
 					}
 					defer downloads.Close()
 					fmt.Println("Considering new or unsorted downloads.")
-					if err := downloads.Sort(env); err != nil {
+					if err = downloads.Sort(env); err != nil {
 						logThis.Error(errors.Wrap(err, "Error sorting downloads"), varroa.NORMAL)
 						return
+					}
+					return
+				}
+				if cli.downloadSort {
+					// scanning
+					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
+					for _, p := range cli.paths {
+						if err = downloads.RescanPath(p); err != nil {
+							logThis.Error(err, varroa.NORMAL)
+							return
+						}
+						dl, err := downloads.FindByFolderName(p)
+						if err != nil {
+							logThis.Error(errors.Wrap(err, "error looking for "), varroa.NORMAL)
+							return
+						}
+						cli.torrentIDs = append(cli.torrentIDs, dl.ID)
 					}
 				} else {
 					// scanning
 					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
-					if err := downloads.RescanIDs(cli.torrentIDs); err != nil {
+					if err = downloads.RescanIDs(cli.torrentIDs); err != nil {
 						logThis.Error(err, varroa.NORMAL)
 						return
 					}
-					fmt.Println("Sorting specific download folders.")
-					for _, id := range cli.torrentIDs {
-						if err := downloads.SortThisID(env, id); err != nil {
-							logThis.Error(errors.Wrap(err, "Error sorting download"), varroa.NORMAL)
-							return
-						}
+				}
+				fmt.Println("Sorting specific download folders.")
+				for _, id := range cli.torrentIDs {
+					if err = downloads.SortThisID(env, id); err != nil {
+						logThis.Error(err, varroa.NORMAL)
 					}
 				}
 				return
@@ -140,7 +159,7 @@ func main() {
 
 			// all subsequent commands require scanning
 			fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
-			if err := downloads.Scan(); err != nil {
+			if err = downloads.Scan(); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
@@ -182,10 +201,24 @@ func main() {
 				return
 			}
 		}
+		if cli.libraryReorg {
+			if !config.LibraryConfigured {
+				logThis.Info("Library is not configured, missing relevant configuration section.", varroa.NORMAL)
+				return
+			}
+			logThis.Info("Reorganizing releases in the library directory. ", varroa.NORMAL)
+			fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
+			if varroa.Accept("Confirm") {
+				if err = varroa.ReorganizeLibrary(); err != nil {
+					logThis.Error(err, varroa.NORMAL)
+				}
+			}
+			return
+		}
 		// using stormDB
 		if cli.downloadFuse {
 			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-			if err := varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, varroa.DefaultDownloadsDB); err != nil {
+			if err = varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, varroa.DefaultDownloadsDB); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
@@ -198,7 +231,7 @@ func main() {
 				return
 			}
 			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
-			if err := varroa.FuseMount(config.Library.Directory, cli.mountPoint, filepath.Join(varroa.StatsDir, varroa.DefaultLibraryDB)); err != nil {
+			if err = varroa.FuseMount(config.Library.Directory, cli.mountPoint, varroa.DefaultLibraryDB); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
 			}
@@ -261,6 +294,19 @@ func main() {
 			}
 			return
 		}
+		if cli.refreshMetadata {
+			for _, r := range cli.toRefresh {
+				tracker, err := env.Tracker(r.tracker)
+				if err != nil {
+					logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), varroa.NORMAL)
+					return
+				}
+				if err = varroa.RefreshLibraryMetadata(r.path, tracker, strconv.Itoa(r.id)); err != nil {
+					logThis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), varroa.NORMAL)
+				}
+			}
+			return
+		}
 
 		// commands that require tracker label
 		tracker, err := env.Tracker(cli.trackerLabel)
@@ -268,7 +314,7 @@ func main() {
 			logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), varroa.NORMAL)
 			return
 		}
-		if cli.refreshMetadata {
+		if cli.refreshMetadataByID {
 			if err := varroa.RefreshMetadata(env, tracker, varroa.IntSliceToStringSlice(cli.torrentIDs)); err != nil {
 				logThis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), varroa.NORMAL)
 			}
@@ -289,7 +335,7 @@ func main() {
 			}
 		}
 		if cli.reseed {
-			if err := varroa.Reseed(tracker, []string{cli.path}); err != nil {
+			if err := varroa.Reseed(tracker, cli.paths); err != nil {
 				logThis.Error(errors.Wrap(err, varroa.ErrorReseed), varroa.NORMAL)
 			}
 		}

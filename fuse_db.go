@@ -1,7 +1,7 @@
 package varroa
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -96,7 +96,7 @@ type FuseDB struct {
 	Root string
 }
 
-func (fdb *FuseDB) Scan(path string) error {
+func (fdb *FuseDB) Scan(rootPath string) error {
 	defer TimeTrack(time.Now(), "Scan FuseDB")
 
 	if fdb.DB == nil {
@@ -106,16 +106,10 @@ func (fdb *FuseDB) Scan(path string) error {
 		return errors.New("Could not prepare database for indexing fuse entries")
 	}
 
-	if !DirectoryExists(path) {
-		return errors.New("Error finding " + path)
+	if !DirectoryExists(rootPath) {
+		return errors.New("Error finding " + rootPath)
 	}
-	fdb.Root = path
-
-	// don't walk, we only want the top-level directories here
-	entries, readErr := ioutil.ReadDir(fdb.Root)
-	if readErr != nil {
-		return errors.Wrap(readErr, "Error reading target directory")
-	}
+	fdb.Root = rootPath
 
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
 	s.Prefix = scanningFiles
@@ -134,49 +128,60 @@ func (fdb *FuseDB) Scan(path string) error {
 	defer tx.Rollback()
 
 	var currentFolderNames []string
-	for _, entry := range entries {
-		if entry.IsDir() {
-			// detect if sound files are present, leave otherwise
-			if !DirectoryContainsMusic(filepath.Join(fdb.Root, entry.Name())) {
-				logThis.Info("Error: no music found in "+entry.Name(), VERBOSEST)
-				continue
-			}
+
+	walkErr := filepath.Walk(fdb.Root, func(path string, fileInfo os.FileInfo, walkError error) error {
+		// when an album has just been moved, Walk goes through it a second
+		// time with an "file does not exist" error
+		if os.IsNotExist(walkError) {
+			return nil
+		}
+		// if it is the top directory of a release with metadata
+		if fileInfo.IsDir() && DirectoryContainsMusicAndMetadata(path) {
 			// try to find entry
 			var fuseEntry FuseEntry
-			if dbErr := fdb.DB.One("FolderName", entry.Name(), &fuseEntry); dbErr != nil {
+
+			relativeFolderName, err := filepath.Rel(rootPath, path)
+			if err != nil {
+				return err
+			}
+			if dbErr := fdb.DB.One("FolderName", relativeFolderName, &fuseEntry); dbErr != nil {
 				if dbErr == storm.ErrNotFound {
 					// not found, create new entry
-					fuseEntry.FolderName = entry.Name()
+					fuseEntry.FolderName = relativeFolderName
 					// read information from metadata
 					if err := fuseEntry.Load(fdb.Root); err != nil {
-						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+entry.Name()), VERBOSEST)
-						continue
+						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+relativeFolderName), VERBOSEST)
+						return err
 					}
 					if err := tx.Save(&fuseEntry); err != nil {
-						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
-						continue
+						logThis.Info("Error: could not save to db "+relativeFolderName, VERBOSEST)
+						return err
 					}
-					logThis.Info("New FuseDB entry: "+entry.Name(), VERBOSESTEST)
+					logThis.Info("New FuseDB entry: "+relativeFolderName, VERBOSESTEST)
 				} else {
 					logThis.Error(dbErr, VERBOSEST)
-					continue
+					return dbErr
 				}
 			} else {
 				// found entry, update it
 				// TODO for existing entries, maybe only reload if the metadata has been modified?
 				// read information from metadata
 				if err := fuseEntry.Load(fdb.Root); err != nil {
-					logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
-					continue
+					logThis.Info("Error: could not load metadata for "+relativeFolderName, VERBOSEST)
+					return err
 				}
 				if err := tx.Update(&fuseEntry); err != nil {
-					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
-					continue
+					logThis.Info("Error: could not save to db "+relativeFolderName, VERBOSEST)
+					return err
 				}
-				logThis.Info("Updated FuseDB entry: "+entry.Name(), VERBOSESTEST)
+				logThis.Info("Updated FuseDB entry: "+relativeFolderName, VERBOSESTEST)
 			}
-			currentFolderNames = append(currentFolderNames, entry.Name())
+			currentFolderNames = append(currentFolderNames, relativeFolderName)
 		}
+		return nil
+	})
+	if walkErr != nil {
+		logThis.Error(walkErr, NORMAL)
 	}
 
 	// remove entries no longer associated with actual files

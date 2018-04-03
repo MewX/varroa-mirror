@@ -18,7 +18,7 @@ const (
 	currentDownloadsDBSchemaVersion = 1
 )
 
-var DownloadFolderStates = []string{"unsorted", "accepted", "rejected"}
+var DownloadFolderStates = []string{"unsorted", "UNUSED", "accepted", "rejected"}
 
 func ColorizeDownloadState(value int, txt string) string {
 	switch value {
@@ -217,11 +217,8 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 		}
 	}
 
-	// offer to display metadata
-	if d.HasTrackerMetadata && Accept("Display known metadata") {
-		fmt.Println(d.Description(root))
-	}
-
+	// display metadata
+	fmt.Println(d.Description(root))
 	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
 	validChoice := false
 	errs := 0
@@ -262,7 +259,7 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 
 func (d *DownloadEntry) export(root string, config *Config) error {
 	// getting candidates for new folder name
-	candidates := []string{d.FolderName}
+	var candidates []string
 	if d.HasTrackerMetadata {
 		for _, t := range d.Tracker {
 			info, err := d.getMetadata(root, t)
@@ -270,22 +267,93 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				logThis.Info("Could not find metadata for tracker "+t, NORMAL)
 				continue
 			}
-			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
+
+			// questions about how to file this release
+			var artists []string
+			for _, a := range info.Artists {
+				// not taking feat. artists
+				if a.Role == "Main" || a.Role == "Composer" {
+					artists = append(artists, a.Name)
+				}
+			}
+			// if only one artist, select them by default
+			mainArtist := artists[0]
+			if len(artists) > 1 {
+				mainArtistCandidates := []string{strings.Join(artists, ", ")}
+				mainArtistCandidates = append(mainArtistCandidates, artists...)
+				if len(artists) >= 3 {
+					mainArtistCandidates = append(mainArtistCandidates, variousArtists)
+				}
+
+				mainArtist, err = SelectOption("Main artist:\n", "You can change this value if several artists are listed, for organization purposes.", mainArtistCandidates)
+				if err != nil {
+					return err
+				}
+			}
+			// retrieving main artist alias from the configuration
+			info.MainArtist = mainArtist
+			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, metadataDir)); err != nil {
+				return err
+			}
+			// main artist alias
+			aliasCandidates := []string{info.MainArtistAlias}
+			if info.MainArtistAlias != info.MainArtist {
+				aliasCandidates = append(aliasCandidates, info.MainArtist)
+			}
+			mainArtistAlias, err := SelectOption("Main artist alias:\n", "You can change this value if the main artist uses several aliases and you want to regroup their releases in the library.", aliasCandidates)
+			if err != nil {
+				return err
+			}
+			// retrieving category from the configuration
+			info.MainArtistAlias = mainArtistAlias
+			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, metadataDir)); err != nil {
+				return err
+			}
+			// category
+			categoryCandidates := info.Tags
+			if !StringInSlice(info.Category, info.Tags) {
+				categoryCandidates = append([]string{info.Category}, info.Tags...)
+			}
+			category, err := SelectOption("User category:\n", "Allows custom library organization.", categoryCandidates)
+			if err != nil {
+				return err
+			}
+			// saving value
+			info.Category = category
+			// write to original user_metadata.json
+			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, metadataDir), mainArtist, mainArtistAlias, category); err != nil {
+				logThis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), NORMAL)
+				return err
+			}
+			// generating new possible paths
 			candidates = append(candidates, info.GeneratePath(config.Library.Template))
+			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
 		}
 	}
+	// adding current folder name last
+	candidates = append(candidates, d.FolderName)
 	// select or input a new name
 	newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
-	if err != nil || DirectoryExists(filepath.Join(config.Library.Directory, newName)) {
-		return errors.Wrap(err, "Error generating new release folder name")
+	if err != nil {
+		return err
+	}
+	if DirectoryExists(filepath.Join(config.Library.Directory, newName)) {
+		return errors.New("destination already exists")
 	}
 	// export
 	if Accept("Export as " + newName) {
 		fmt.Println("Exporting files to the library...")
-		if err := CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
+		if err = CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
 			return errors.Wrap(err, "Error exporting download "+d.FolderName)
 		}
 		fmt.Println(Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sortings."))
+		// if exported, write playlists
+		if config.playlistDirectoryConfigured && Accept("Add release to daily/monthly playlists") {
+			if err = AddReleaseToCurrentPlaylists(config.Library.PlaylistDirectory, config.Library.Directory, newName); err != nil {
+				return err
+			}
+			fmt.Println(Green("Playlists generated or updated."))
+		}
 	} else {
 		fmt.Println(Red("The release was not exported. It can be exported later by sorting this ID again. Until then, it will be marked as unsorted again."))
 		d.State = stateUnsorted

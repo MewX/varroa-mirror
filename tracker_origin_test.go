@@ -39,9 +39,9 @@ func TestTrackerOriginJSON(t *testing.T) {
 
 	// saving origin JSON to file
 	check.False(FileExists(expectedFilePath))
-	check.Nil(info1.saveOriginJSON())
+	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, metadataDir)))
 	check.True(FileExists(expectedFilePath))
-	check.Nil(info2.saveOriginJSON())
+	check.Nil(info2.saveOriginJSON(filepath.Join(testDir, metadataDir)))
 
 	// reading file that was created and comparing with expected
 	b, err := ioutil.ReadFile(expectedFilePath)
@@ -64,7 +64,7 @@ func TestTrackerOriginJSON(t *testing.T) {
 
 	// update
 	info1.LastUpdated = 2
-	check.Nil(info1.saveOriginJSON())
+	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, metadataDir)))
 
 	// read from file again
 	b, err = ioutil.ReadFile(expectedFilePath)

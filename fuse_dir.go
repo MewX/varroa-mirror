@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,21 +21,22 @@ import (
 // Top directory == exposed categories, such as artists, tags.
 // ex: artists/Radiohead/OK Computer/FILES
 type FuseDir struct {
-	fs            *FS
-	path          FusePath
-	release       string
-	releaseSubdir string
+	fs               *FS
+	path             FusePath
+	trueRelativePath string
+	release          string
+	releaseSubdir    string
 }
 
 func (d *FuseDir) String() string {
-	return fmt.Sprintf("DIR mount %s, path: %s, release %s, release subdirectory %s", d.fs.mountPoint, d.path.String(), d.release, d.releaseSubdir)
+	return fmt.Sprintf("DIR mount %s, path: %s, trueRelativePath %s, release %s, release subdirectory %s", d.fs.mountPoint, d.path.String(), d.trueRelativePath, d.release, d.releaseSubdir)
 }
 
 var _ = fs.Node(&FuseDir{})
 
 func (d *FuseDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	defer TimeTrack(time.Now(), fmt.Sprintf("DIR ATTR %s", d.String()))
-	fullPath := filepath.Join(d.fs.mountPoint, d.release, d.releaseSubdir)
+	fullPath := filepath.Join(d.fs.mountPoint, d.trueRelativePath, d.releaseSubdir)
 	if !DirectoryExists(fullPath) {
 		return errors.New("Cannot find directory " + fullPath)
 	}
@@ -55,22 +57,6 @@ func (d *FuseDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 var _ = fs.NodeStringLookuper(&FuseDir{})
-
-type sliceMatcher struct {
-	value string
-}
-
-func (c *sliceMatcher) MatchField(v interface{}) (bool, error) {
-	key, ok := v.([]string)
-	if !ok {
-		return false, nil
-	}
-	return StringInSlice(c.value, key), nil
-}
-
-func InSlice(field, v string) q.Matcher {
-	return q.NewFieldMatcher(field, &sliceMatcher{value: v})
-}
 
 func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	defer TimeTrack(time.Now(), "DIR LOOKUP "+name)
@@ -94,11 +80,10 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	// if we have a release, no need to look further, we can find what we need
 	if d.release != "" {
 		// find d.release and get its path
-		// TODO: but d.release == folder name for now...
 		var entry FuseEntry
-		if err := d.fs.contents.DB.One("FolderName", d.release, &entry); err != nil {
+		if err := d.fs.contents.DB.One("FolderName", d.trueRelativePath, &entry); err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Info("Unkown release, could not find by path: "+d.release, VERBOSEST)
+				logThis.Info("Unknown release, could not find by path: "+d.trueRelativePath, VERBOSEST)
 			} else {
 				logThis.Error(err, VERBOSEST)
 			}
@@ -113,9 +98,9 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		for _, f := range fileInfos {
 			if f.Name() == name {
 				if f.IsDir() {
-					return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, release: d.release, releaseSubdir: filepath.Join(d.releaseSubdir, name), fs: d.fs}, nil
+					return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, trueRelativePath: d.trueRelativePath, release: d.release, releaseSubdir: filepath.Join(d.releaseSubdir, name), fs: d.fs}, nil
 				}
-				return &FuseFile{release: d.release, releaseSubdir: d.releaseSubdir, name: name, fs: d.fs}, nil
+				return &FuseFile{trueRelativePath: d.trueRelativePath, releaseSubdir: d.releaseSubdir, name: name, fs: d.fs}, nil
 			}
 		}
 		logThis.Info("Unknown name among files "+d.releaseSubdir+"/"+name, VERBOSEST)
@@ -172,7 +157,9 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	// if we have an artist but not a release, return the filtered releases for this artist
 	if d.release == "" {
 		// name is a release name
-		query := d.fs.contents.DB.Select(q.And(matcher, q.Eq("FolderName", name))).Limit(1)
+		// NOTE: assumes that "name" is unique! will return the first hit. Only the complete FolderName should be unique in the db, however "name" will be the album folder, it should
+		// be the part of the path that is unique. It might not be true, depending on library folder structure.
+		query := d.fs.contents.DB.Select(q.And(matcher, HasSuffix("FolderName", name))).Limit(1)
 		var entry FuseEntry
 		if err := query.First(&entry); err != nil {
 			if err == storm.ErrNotFound {
@@ -183,7 +170,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			return nil, fuse.EIO
 		}
 		// release was found
-		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, release: name, fs: d.fs}, nil
+		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, trueRelativePath: entry.FolderName, release: name, fs: d.fs}, nil
 	}
 	logThis.Info("Error during lookup, nothing matched "+name, VERBOSESTEST)
 	return nil, nil
@@ -198,7 +185,7 @@ func (d *FuseDir) fuseDirs(matcher q.Matcher, field string) ([]fuse.Dirent, erro
 		return allDirents, err
 	}
 	for _, a := range allItems {
-		allDirents = append(allDirents, fuse.Dirent{Name: a, Type: fuse.DT_Dir})
+		allDirents = append(allDirents, fuse.Dirent{Name: filepath.Base(a), Type: fuse.DT_Dir})
 	}
 	return allDirents, nil
 }
@@ -221,9 +208,9 @@ func (d *FuseDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		// find d.release and get its path
 		// TODO: but d.release == folder name for now...
 		var entry FuseEntry
-		if err := d.fs.contents.DB.One("FolderName", d.release, &entry); err != nil {
+		if err := d.fs.contents.DB.One("FolderName", d.trueRelativePath, &entry); err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Info("Unkown release, could not find by path: "+d.release, VERBOSEST)
+				logThis.Info("Unknown release, could not find by path: "+d.trueRelativePath, VERBOSEST)
 			} else {
 				logThis.Error(err, VERBOSEST)
 			}
@@ -276,4 +263,41 @@ func (d *FuseDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		return d.fuseDirs(matcher, "FolderName")
 	}
 	return []fuse.Dirent{}, nil
+}
+
+// ------------
+// custom db matchers
+
+type sliceMatcher struct {
+	value string
+}
+
+func (c *sliceMatcher) MatchField(v interface{}) (bool, error) {
+	key, ok := v.([]string)
+	if !ok {
+		return false, nil
+	}
+	return StringInSlice(c.value, key), nil
+}
+
+// InSlice matches if one element of a []string is equal to the argument
+func InSlice(field, v string) q.Matcher {
+	return q.NewFieldMatcher(field, &sliceMatcher{value: v})
+}
+
+type suffixMatcher struct {
+	value string
+}
+
+func (c *suffixMatcher) MatchField(v interface{}) (bool, error) {
+	key, ok := v.(string)
+	if !ok {
+		return false, nil
+	}
+	return strings.HasSuffix(key, "/"+c.value), nil
+}
+
+// HasSuffix matches if the field value has the argument as suffix (subfolder)
+func HasSuffix(field, v string) q.Matcher {
+	return q.NewFieldMatcher(field, &suffixMatcher{value: v})
 }

@@ -26,6 +26,7 @@ var matchTestData = []matchTestStructs{
 	{[]string{"r/test"}, "greatests", true},
 	{[]string{"r/test$"}, "greatests", false},
 	{[]string{"r/^test"}, "greatests", false},
+	{[]string{}, "greatests", false},
 }
 
 func TestSliceHelpers(t *testing.T) {
