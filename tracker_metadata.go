@@ -626,9 +626,10 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		idElements = append(idElements, tm.RecordLabel)
 	} // TODO when we have neither catnum nor label
 
+	var releaseTypeExceptAlbum string
 	if tm.ReleaseType != releaseAlbum {
 		// adding release type if not album
-		idElements = append(idElements, tm.ReleaseType)
+		releaseTypeExceptAlbum = tm.ReleaseType
 	}
 	id := strings.Join(idElements, ", ")
 	if id == "" {
@@ -648,12 +649,14 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		"$n", "{{$n}}",
 		"$e", "{{$e}}",
 		"$g", "{{$g}}",
+		"$r", "{{$r}}",
+		"$xar", "{{$xar}}",
 		"{", "ÆÆ", // otherwise golang's template throws a fit if '{' or '}' are in the user pattern
 		"}", "¢¢", // assuming these character sequences will probably not cause conflicts.
 	)
 
 	// replace with all valid epub parameters
-	tmpl := fmt.Sprintf(`{{$c := "%s"}}{{$ma := "%s"}}{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}%s`,
+	tmpl := fmt.Sprintf(`{{$c := "%s"}}{{$ma := "%s"}}{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}{{$r := "%s"}}{{$xar := "%s"}}%s`,
 		SanitizeFolder(tm.Category),
 		SanitizeFolder(tm.MainArtistAlias),
 		SanitizeFolder(tm.MainArtist),
@@ -666,6 +669,8 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		tm.CatalogNumber,
 		SanitizeFolder(editionName), // edition
 		SanitizeFolder(id),          // identifying info
+		tm.ReleaseType,
+		releaseTypeExceptAlbum,
 		r.Replace(folderTemplate))
 
 	var doc bytes.Buffer
