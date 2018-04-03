@@ -10,6 +10,7 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
+	"github.com/djherbis/times"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -40,11 +41,18 @@ func (f *FuseFile) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Inode = stat.Ino
 	a.Blocks = uint64(stat.Blocks)
 	a.BlockSize = uint32(stat.Blksize)
-	// forced int64 for FreeBSD compatibility
-	a.Atime = time.Unix(int64(stat.Atim.Sec), int64(stat.Atim.Nsec))
-	a.Ctime = time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec))
 	a.Size = uint64(stat.Size)
 	a.Mode = 0555 // readonly
+	// times are platform-specific
+	t, err := times.Stat(fullPath)
+	if err != nil {
+		return errors.Wrap(err, "Error getting file times for "+fullPath)
+	}
+	a.Atime = t.AccessTime()
+	a.Mtime = t.ModTime()
+	if t.HasChangeTime() {
+		a.Ctime = t.ChangeTime()
+	}
 	return nil
 }
 
