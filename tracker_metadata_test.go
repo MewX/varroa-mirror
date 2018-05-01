@@ -11,9 +11,13 @@ import (
 func TestGeneratePath(t *testing.T) {
 	fmt.Println("+ Testing TrackerMetadata/generatePath...")
 	check := assert.New(t)
+
+	conf, configErr := NewConfig("test/test_complete.yaml")
+	check.Nil(configErr)
+
 	// setup logger
-	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{config: c}
+	conf = &Config{General: &ConfigGeneral{LogLevel: 2}}
+	env := &Environment{config: conf}
 	logThis = NewLogThis(env)
 
 	// test API JSON responses
@@ -88,6 +92,10 @@ func TestGeneratePath(t *testing.T) {
 	metadataJSONgt7, err := json.MarshalIndent(gt, "", "    ")
 	check.Nil(err)
 
+	gt.Response.Group.Name = "\"Thing\""
+	metadataJSONgt8, err := json.MarshalIndent(gt, "", "    ")
+	check.Nil(err)
+
 	// tracker
 	tracker := &GazelleTracker{Name: "BLUE", URL: "http://blue"}
 
@@ -106,6 +114,8 @@ func TestGeneratePath(t *testing.T) {
 	check.Nil(infod7.LoadFromTracker(tracker, metadataJSONgt6))
 	infod8 := &TrackerMetadata{}
 	check.Nil(infod8.LoadFromTracker(tracker, metadataJSONgt7))
+	infod9 := &TrackerMetadata{}
+	check.Nil(infod9.LoadFromTracker(tracker, metadataJSONgt8))
 
 	// checking GeneratePath
 	check.Equal("original_path", infod2.GeneratePath(""))
@@ -138,6 +148,7 @@ func TestGeneratePath(t *testing.T) {
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} EP [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} $r [$f $s]"))
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD]", infod7.GeneratePath("$a ($y) $t {$id} [$f $s] $xar"))
 	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD] Album", infod7.GeneratePath("$a ($y) $t {$id} [$f $s] $r"))
+	check.Equal("Artist A, Artist B (1987) \"Thing\" {PR, CATNUM} [FLAC CD] Album", infod9.GeneratePath("$a ($y) $t {$id} [$f $s] $r"))
 
 	// checking TextDescription
 	fmt.Println(infod2.TextDescription(false))

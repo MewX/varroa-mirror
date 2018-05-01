@@ -656,7 +656,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 	)
 
 	// replace with all valid epub parameters
-	tmpl := fmt.Sprintf(`{{$c := "%s"}}{{$ma := "%s"}}{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}{{$r := "%s"}}{{$xar := "%s"}}%s`,
+	tmpl := fmt.Sprintf(`{{$c := %q}}{{$ma := %q}}{{$a := %q}}{{$y := "%d"}}{{$t := %q}}{{$f := %q}}{{$s := %q}}{{$g := %q}}{{$l := %q}}{{$n := %q}}{{$e := %q}}{{$id := %q}}{{$r := %q}}{{$xar := %q}}%s`,
 		SanitizeFolder(tm.Category),
 		SanitizeFolder(tm.MainArtistAlias),
 		SanitizeFolder(tm.MainArtist),
