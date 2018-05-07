@@ -139,7 +139,7 @@ Usage:
 	varroa backup
 	varroa show-config
 	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>...]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
-	varroa library (fuse <MOUNT_POINT>|reorganize)
+	varroa library (fuse <MOUNT_POINT>|reorganize [--simulate])
 	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)
 	varroa --version
@@ -147,6 +147,7 @@ Usage:
 Options:
  	-h, --help             Show this screen.
  	--fl                   Use personal Freeleech torrent if available.
+	--simulate             Simulate library reorganization to show what would be renamed.
   	--version              Show version.
 `
 )
@@ -158,42 +159,43 @@ type refreshTarget struct {
 }
 
 type varroaArguments struct {
-	builtin             bool
-	start               bool
-	stop                bool
-	uptime              bool
-	status              bool
-	stats               bool
-	refreshMetadata     bool
-	refreshMetadataByID bool
-	checkLog            bool
-	snatch              bool
-	info                bool
-	backup              bool
-	showConfig          bool
-	encrypt             bool
-	decrypt             bool
-	downloadSearch      bool
-	downloadInfo        bool
-	downloadSort        bool
-	downloadSortID      bool
-	downloadList        bool
-	downloadState       string
-	downloadClean       bool
-	downloadFuse        bool
-	libraryFuse         bool
-	libraryReorg        bool
-	reseed              bool
-	useFLToken          bool
-	torrentIDs          []int
-	logFile             string
-	trackerLabel        string
-	paths               []string
-	artistName          string
-	mountPoint          string
-	requiresDaemon      bool
-	canUseDaemon        bool
-	toRefresh           []refreshTarget
+	builtin              bool
+	start                bool
+	stop                 bool
+	uptime               bool
+	status               bool
+	stats                bool
+	refreshMetadata      bool
+	refreshMetadataByID  bool
+	checkLog             bool
+	snatch               bool
+	info                 bool
+	backup               bool
+	showConfig           bool
+	encrypt              bool
+	decrypt              bool
+	downloadSearch       bool
+	downloadInfo         bool
+	downloadSort         bool
+	downloadSortID       bool
+	downloadList         bool
+	downloadState        string
+	downloadClean        bool
+	downloadFuse         bool
+	libraryFuse          bool
+	libraryReorg         bool
+	libraryReorgSimulate bool
+	reseed               bool
+	useFLToken           bool
+	torrentIDs           []int
+	logFile              string
+	trackerLabel         string
+	paths                []string
+	artistName           string
+	mountPoint           string
+	requiresDaemon       bool
+	canUseDaemon         bool
+	toRefresh            []refreshTarget
 }
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
@@ -238,6 +240,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	if args["library"].(bool) {
 		b.libraryFuse = args["fuse"].(bool)
 		b.libraryReorg = args["reorganize"].(bool)
+		b.libraryReorgSimulate = args["--simulate"].(bool)
 	}
 	if b.reseed || b.downloadSort {
 		b.paths = args["<PATH>"].([]string)

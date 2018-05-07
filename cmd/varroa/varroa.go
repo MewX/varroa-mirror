@@ -207,9 +207,13 @@ func main() {
 				return
 			}
 			logThis.Info("Reorganizing releases in the library directory. ", varroa.NORMAL)
-			fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
+			if cli.libraryReorgSimulate {
+				fmt.Println(varroa.Green("This will simulate the library reorganization, applying the library folder template to all releases, using known tracker metadata. Nothing will actually be renamed or moved."))
+			} else {
+				fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
+			}
 			if varroa.Accept("Confirm") {
-				if err = varroa.ReorganizeLibrary(); err != nil {
+				if err = varroa.ReorganizeLibrary(cli.libraryReorgSimulate); err != nil {
 					logThis.Error(err, varroa.NORMAL)
 				}
 			}

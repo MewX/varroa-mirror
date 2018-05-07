@@ -34,16 +34,20 @@ func MoveToNewPath(current, new string, doNothing bool) (bool, error) {
 			}
 			return true, nil
 		} else {
-			// would have moved, but must do nothing
-			return false, nil
+			// would have moved, but must do nothing, so here we pretend.
+			return true, nil
 		}
 	}
 	return false, nil
 }
 
 // ReorganizeLibrary using tracker metadata and the user-defined template
-func ReorganizeLibrary() error {
+func ReorganizeLibrary(doNothing bool) error {
 	defer TimeTrack(time.Now(), "Reorganize Library")
+
+	if doNothing {
+		logThis.Info("Simulating library reorganization...", NORMAL)
+	}
 
 	c, e := NewConfig(DefaultConfigurationFile)
 	if e != nil {
@@ -118,13 +122,14 @@ func ReorganizeLibrary() error {
 				return errors.New("could not generate path for " + fileInfo.Name())
 			}
 
-			hasMoved, err := MoveToNewPath(path, filepath.Join(c.Library.Directory, newName), false)
+			hasMoved, err := MoveToNewPath(path, filepath.Join(c.Library.Directory, newName), doNothing)
 			if err != nil {
 				return err
 			}
 			if hasMoved {
 				movedAlbums += 1
-				if c.playlistDirectoryConfigured {
+				logThis.Info("Moved "+path+" -> "+newName, VERBOSE)
+				if !doNothing && c.playlistDirectoryConfigured {
 					relativePath, err := filepath.Rel(c.Library.Directory, path)
 					if err != nil {
 						return err
