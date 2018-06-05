@@ -186,7 +186,7 @@
 				    <tr><td style="width: 20%;"><strong>Download/period</strong></td><td>` + makeStatsLink('Download/day', 'overall_per_day_down.png') + `</td><td>` + makeStatsLink('Download/week', 'overall_per_week_down.png') + `</td><td>` + makeStatsLink('Download/month', 'overall_per_month_down.png') + `</td></tr>
 					<tr class="rowb"><td style="width: 20%;"><strong>Ratio</strong></td><td>` + makeStatsLink('Overall', 'overall_ratio.png') + `</td><td>` + makeStatsLink('Last Month', 'lastmonth_ratio.png') + `</td><td>` + makeStatsLink('Last Week', 'lastweek_ratio.png') + `</td></tr>
 				    <tr><td style="width: 20%;"><strong>Ratio/period</strong></td><td>` + makeStatsLink('Ratio/day', 'overall_per_day_ratio.png') + `</td><td>` + makeStatsLink('Ratio/week', 'overall_per_week_ratio.png') + `</td><td>` + makeStatsLink('Ratio/month', 'overall_per_month_ratio.png') + `</td></tr>
- 					<tr class="rowb"><td style="width: 20%;">` + makeStatsLink('Snatched/day', 'snatches_per_day.png') + `</td><td>` + makeStatsLink('Size snatched/day', 'size_snatched_per_day.png') + `</td><td>` + makeStatsLink('Top Tags', 'top_tags.png') + `</td><td>` + makeStatsLink('Snatched/filer', 'total_snatched_by_filter.png') + `</td></tr>
+ 					<tr class="rowb"><td style="width: 20%;">` + makeStatsLink('Snatched/day', 'snatches_per_day.png') + `</td><td>` + makeStatsLink('Size snatched/day', 'size_snatched_per_day.png') + `</td><td>` + makeStatsLink('Top Tags', 'top_tags.png') + `</td><td>` + makeStatsLink('Snatched/filter', 'total_snatched_by_filter.png') + `</td></tr>
 			</table>`;
 
 			newBox.appendChild(newBoxContent);
