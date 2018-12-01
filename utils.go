@@ -548,7 +548,7 @@ func GetInput() (string, error) {
 
 // Accept asks a question and returns the answer
 func Accept(question string) bool {
-	fmt.Printf(BlueBold("%s Y/N : "), question)
+	fmt.Printf(BlueBold("%s? y/N : "), question)
 	input, err := GetInput()
 	if err == nil {
 		switch input {

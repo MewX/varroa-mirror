@@ -99,7 +99,7 @@ Direct link: %s
   │  Cover: %s	
   │  Size: %s	
   └────────`
-	trackPattern    = `(.*){{{(\d*)}}}`
+	trackPattern    = `(.*[.flac|.FLAC|.mp3|.MP3]){{{(\d*)}}}`
 	vaReleasePrexif = "VA|"
 	variousArtists  = "Various Artists"
 )
@@ -347,13 +347,15 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		hits := r.FindAllStringSubmatch(f, -1)
 		if len(hits) != 0 {
 			// TODO instead of path, actually find the title
+			// only detect actual music files
 			track.Title = html.UnescapeString(hits[0][1])
 			size, _ := strconv.ParseUint(hits[0][2], 10, 64)
 			track.Size = humanize.IBytes(size)
 			tm.Tracks = append(tm.Tracks, track)
 			// TODO Duration  + Disc + number
-		} else {
-			logThis.Info("Could not parse filelist.", NORMAL)
+		}
+		if len(tm.Tracks) == 0 {
+			logThis.Info("Could not parse filelist, no music tracks found.", NORMAL)
 		}
 	}
 	// TODO tm.TotalTime
