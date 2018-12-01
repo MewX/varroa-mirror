@@ -139,6 +139,8 @@ filters:
     watch_directory: test
     min_size_mb: 10
     max_size_mb: 500
+    required_tags:
+    - indie
     included_tags:
     - hip.hop
     - pop

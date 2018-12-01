@@ -27,6 +27,16 @@ func StringInSlice(a string, list []string) bool {
 	return false
 }
 
+// MatchAllInSlice checks if all strings in slice a are in slice b
+func MatchAllInSlice(a []string, b []string) bool {
+	for _, el := range a {
+		if !MatchInSlice(el, b) {
+			return false
+		}
+	}
+	return true
+}
+
 // MatchInSlice checks if a string regexp-matches a slice of patterns, returns bool
 func MatchInSlice(a string, b []string) bool {
 	// if no slice, no match by default

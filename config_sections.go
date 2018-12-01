@@ -472,6 +472,7 @@ type ConfigFilter struct {
 	RecordLabel         []string `yaml:"record_label"`
 	TagsIncluded        []string `yaml:"included_tags"`
 	TagsExcluded        []string `yaml:"excluded_tags"`
+	TagsRequired        []string `yaml:"required_tags"`
 	ReleaseType         []string `yaml:"type"`
 	ExcludedReleaseType []string `yaml:"excluded_type"`
 	Edition             []string `yaml:"edition"`
@@ -515,6 +516,9 @@ func (cf *ConfigFilter) check() error {
 	}
 	if CommonInStringSlices(cf.TagsExcluded, cf.TagsIncluded) != nil {
 		return errors.New("The same tag cannot be both included and excluded")
+	}
+	if CommonInStringSlices(cf.TagsExcluded, cf.TagsRequired) != nil {
+		return errors.New("The same tag cannot be both required and excluded")
 	}
 	if len(cf.ExcludedReleaseType) != 0 && len(cf.ReleaseType) != 0 {
 		return errors.New("Release types should be either included or excluded, not both")
@@ -597,8 +601,11 @@ func (cf *ConfigFilter) String() string {
 	if len(cf.RecordLabel) != 0 {
 		description += "\tRecord Label(s): " + strings.Join(cf.RecordLabel, ", ") + "\n"
 	}
+	if len(cf.TagsRequired) != 0 {
+		description += "\tRequired tags: " + strings.Join(cf.TagsRequired, ", ") + "\n"
+	}
 	if len(cf.TagsIncluded) != 0 {
-		description += "\tRequired tags: " + strings.Join(cf.TagsIncluded, ", ") + "\n"
+		description += "\tIncluded tags: " + strings.Join(cf.TagsIncluded, ", ") + "\n"
 	}
 	if len(cf.TagsExcluded) != 0 {
 		description += "\tExcluded tags: " + strings.Join(cf.TagsExcluded, ", ") + "\n"

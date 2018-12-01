@@ -38,6 +38,11 @@ func TestSliceHelpers(t *testing.T) {
 	c := []string{"4", "8", "3"}
 	d := []string{"9"}
 
+	// matchAllInSlice
+	check.True(MatchAllInSlice(b, a))
+	check.False(MatchAllInSlice(a, b))
+	check.False(MatchAllInSlice(d, a))
+
 	res1 := CommonInStringSlices(a, b)
 	check.Equal([]string{"2", "3"}, res1)
 	res2 := CommonInStringSlices(a, c)
@@ -54,6 +59,7 @@ func TestSliceHelpers(t *testing.T) {
 		result := MatchInSlice(data.candidate, data.patterns)
 		check.Equal(data.expected, result)
 	}
+
 }
 
 func TestSanitizeFolder(t *testing.T) {
