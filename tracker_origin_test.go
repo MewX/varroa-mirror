@@ -32,16 +32,16 @@ func TestTrackerOriginJSON(t *testing.T) {
 	info2 := TrackerMetadata{ID: 1234, GroupID: 12, Tracker: tracker2.Name, TrackerURL: tracker2.URL}
 
 	// make directory
-	check.Nil(os.MkdirAll(filepath.Join(testDir, metadataDir), 0775))
-	defer os.Remove(filepath.Join(testDir, metadataDir))
-	expectedFilePath := filepath.Join(testDir, metadataDir, originJSONFile)
+	check.Nil(os.MkdirAll(filepath.Join(testDir, MetadataDir), 0775))
+	defer os.Remove(filepath.Join(testDir, MetadataDir))
+	expectedFilePath := filepath.Join(testDir, MetadataDir, OriginJSONFile)
 	defer os.Remove(expectedFilePath)
 
 	// saving origin JSON to file
 	check.False(FileExists(expectedFilePath))
-	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, metadataDir)))
+	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, MetadataDir)))
 	check.True(FileExists(expectedFilePath))
-	check.Nil(info2.saveOriginJSON(filepath.Join(testDir, metadataDir)))
+	check.Nil(info2.saveOriginJSON(filepath.Join(testDir, MetadataDir)))
 
 	// reading file that was created and comparing with expected
 	b, err := ioutil.ReadFile(expectedFilePath)
@@ -64,7 +64,7 @@ func TestTrackerOriginJSON(t *testing.T) {
 
 	// update
 	info1.LastUpdated = 2
-	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, metadataDir)))
+	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, MetadataDir)))
 
 	// read from file again
 	b, err = ioutil.ReadFile(expectedFilePath)

@@ -10,10 +10,10 @@ const (
 	// directories & files
 	DefaultConfigurationFile  = "config.yaml"
 	StatsDir                  = "stats"
-	metadataDir               = "TrackerMetadata"
+	MetadataDir               = "TrackerMetadata"
 	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
-	originJSONFile            = "origin.json"
+	OriginJSONFile            = "origin.json"
 	trackerMetadataFile       = "release.json"
 	trackerTGroupMetadataFile = "release_group.json"
 	trackerCoverFile          = "cover"

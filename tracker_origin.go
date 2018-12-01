@@ -22,7 +22,7 @@ type OriginJSON struct {
 	IsAlive             bool   `json:"is_alive"`
 }
 
-func (toc *TrackerOriginJSON) load() error {
+func (toc *TrackerOriginJSON) Load() error {
 	if toc.Path == "" {
 		return errors.New("No path defined")
 	}
@@ -42,7 +42,7 @@ func (toc *TrackerOriginJSON) loadFromBytes(data []byte) error {
 		// if it fails, try loading as the old format
 		old := &OriginJSON{}
 		if err = json.Unmarshal(data, &old); err != nil || old.Tracker == "" {
-			return errors.New("Cannot parse " + originJSONFile + " in " + toc.Path)
+			return errors.New("Cannot parse " + OriginJSONFile + " in " + toc.Path)
 		}
 		// copy into new format
 		if toc.Origins == nil {

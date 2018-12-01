@@ -4,7 +4,6 @@ watch/
 stats/
 certs/
 archives/
-*.csv
 config*.yaml
 *.txt
 *.pem

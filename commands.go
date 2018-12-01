@@ -372,8 +372,8 @@ func Reseed(tracker *GazelleTracker, path []string) error {
 	}
 	// parse metadata for tracker, and get tid
 	// assuming reseeding one at a time only (as limited by CLI)
-	toc := TrackerOriginJSON{Path: filepath.Join(path[0], metadataDir, originJSONFile)}
-	if err := toc.load(); err != nil {
+	toc := TrackerOriginJSON{Path: filepath.Join(path[0], MetadataDir, OriginJSONFile)}
+	if err := toc.Load(); err != nil {
 		return errors.Wrap(err, "error reading origin.json")
 	}
 	// check that tracker is in list of origins

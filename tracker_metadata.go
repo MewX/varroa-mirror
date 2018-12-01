@@ -189,7 +189,7 @@ func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON 
 	// load Origin JSON
 	var err error
 	origin := TrackerOriginJSON{Path: originJSON}
-	if err = origin.load(); err != nil {
+	if err = origin.Load(); err != nil {
 		return err
 	}
 	// getting the information
@@ -208,11 +208,11 @@ func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON 
 }
 
 func (tm *TrackerMetadata) saveOriginJSON(destination string) error {
-	origin := &TrackerOriginJSON{Path: filepath.Join(destination, originJSONFile)}
+	origin := &TrackerOriginJSON{Path: filepath.Join(destination, OriginJSONFile)}
 
 	foundOrigin := false
 	if FileExists(origin.Path) {
-		if err := origin.load(); err != nil {
+		if err := origin.Load(); err != nil {
 			return err
 		}
 		for i, o := range origin.Origins {
@@ -430,7 +430,7 @@ func artistInSlice(artist, title string, list []string) bool {
 
 // SaveFromTracker all of the relevant metadata.
 func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *GazelleTracker) error {
-	destination := filepath.Join(parentFolder, metadataDir)
+	destination := filepath.Join(parentFolder, MetadataDir)
 	// create metadata dir if necessary
 	if err := os.MkdirAll(filepath.Join(destination), 0775); err != nil {
 		return errors.Wrap(err, errorCreatingMetadataDir)
@@ -497,7 +497,7 @@ func (tm *TrackerMetadata) SaveCover(releaseFolder string) error {
 	if tm.CoverURL == "" {
 		return errors.New("unknown image url")
 	}
-	filename := filepath.Join(releaseFolder, metadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
+	filename := filepath.Join(releaseFolder, MetadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
 
 	if FileExists(filename) {
 		// already downloaded, or exists in folder already: do nothing
