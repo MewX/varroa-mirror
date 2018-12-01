@@ -176,6 +176,7 @@ const (
 	errorWithOriginJSON             = "Error creating or updating origin.json"
 	errorGeneratingUserMetadataJSON = "Error generating user metadata JSON"
 	ErrorFindingMusicAndMetadata    = "directory %s does not contain music files and tracker metadata"
+	couldNotFindMetadataAge         = "No information about metadata age found."
 	// stats errors
 	errorGettingStats      = "Error getting stats"
 	ErrorGeneratingGraphs  = "Error generating graphs (may require more data, 24h worth for daily graphs)"

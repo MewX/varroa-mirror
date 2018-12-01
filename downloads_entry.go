@@ -200,16 +200,26 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 		}
 	}
 	// try to refresh metadata
-	if d.HasTrackerMetadata && Accept("Try to refresh metadata from tracker") {
-		for i, t := range d.Tracker {
-			tracker, err := e.Tracker(t)
-			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
-				continue
-			}
-			if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.TrackerID[i])}); err != nil {
-				logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
-				continue
+	if d.HasTrackerMetadata {
+		// reading metadata age to quickly check if it is worth refreshing metadata.
+		originJSON := filepath.Join(root, d.FolderName, MetadataDir, OriginJSONFile)
+		origin := TrackerOriginJSON{Path: originJSON}
+		if err := origin.Load(); err == nil {
+			// Note: if there is a problem with the file, it'll be found later.
+			fmt.Println(Green(origin.lastUpdatedString()))
+		}
+
+		if Accept("Try to refresh metadata from tracker") {
+			for i, t := range d.Tracker {
+				tracker, err := e.Tracker(t)
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
+					continue
+				}
+				if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.TrackerID[i])}); err != nil {
+					logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
+					continue
+				}
 			}
 		}
 	}

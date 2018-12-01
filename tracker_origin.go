@@ -3,6 +3,7 @@ package varroa
 import (
 	"encoding/json"
 	"io/ioutil"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -63,4 +64,25 @@ func (toc *TrackerOriginJSON) write() error {
 		return err
 	}
 	return ioutil.WriteFile(toc.Path, b, 0644)
+}
+
+func (toc TrackerOriginJSON) lastUpdated() map[string]int64 {
+	out := make(map[string]int64)
+	for label, origin := range toc.Origins {
+		out[label] = origin.LastUpdatedMetadata
+	}
+	return out
+}
+
+func (toc TrackerOriginJSON) lastUpdatedString() string {
+	updates := toc.lastUpdated()
+	if len(updates) > 0 {
+		txt := "Metadata was last updated: "
+		for label, timestamp := range updates {
+			tm := time.Unix(timestamp, 0)
+			txt += tm.Format("2006.01.02 15:04:05") + " (" + label + ") "
+		}
+		return txt
+	}
+	return couldNotFindMetadataAge
 }
