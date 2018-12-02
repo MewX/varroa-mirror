@@ -174,6 +174,20 @@
   version = "v0.0.3"
 
 [[projects]]
+  name = "github.com/mewkiz/flac"
+  packages = [
+    ".",
+    "frame",
+    "internal/bits",
+    "internal/hashutil",
+    "internal/hashutil/crc16",
+    "internal/hashutil/crc8",
+    "meta"
+  ]
+  revision = "5d94ee8c15da5a101247ef7a62aa174291454b8c"
+  version = "v1.0.5"
+
+[[projects]]
   branch = "master"
   name = "github.com/mgutz/ansi"
   packages = ["."]
@@ -371,6 +385,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3b9e8686e098357e0ef9bc6538df4fa0d0bb6aa74d94ba0fc322612554ea56c0"
+  inputs-digest = "6f707532878070ba1307fb07ca5d50ed35385426e49f376174f205b8fabd8623"
   solver-name = "gps-cdcl"
   solver-version = 1
