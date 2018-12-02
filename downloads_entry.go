@@ -333,8 +333,8 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				return err
 			}
 			// generating new possible paths
-			candidates = append(candidates, info.GeneratePath(config.Library.Template))
-			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
+			candidates = append(candidates, info.GeneratePath(config.Library.Template, filepath.Join(root, d.FolderName)))
+			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate, filepath.Join(root, d.FolderName)))
 		}
 	}
 	// adding current folder name last

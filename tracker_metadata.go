@@ -18,6 +18,7 @@ import (
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
+	"github.com/mewkiz/flac"
 	"github.com/mgutz/ansi"
 	"github.com/pkg/errors"
 	blackfriday "gopkg.in/russross/blackfriday.v2"
@@ -355,7 +356,7 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 			// TODO Duration  + Disc + number
 		}
 		if len(tm.Tracks) == 0 {
-			logThis.Info("Could not parse filelist, no music tracks found.", NORMAL)
+			logThis.Info("Could not parse filelist, no music tracks found.", VERBOSEST)
 		}
 	}
 	// TODO tm.TotalTime
@@ -605,7 +606,39 @@ func (tm *TrackerMetadata) TextDescription(fancy bool) string {
 	)
 }
 
-func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
+func getAudioInfo(f string) (string, string, error) {
+	stream, err := flac.ParseFile(f)
+	if err != nil {
+		return "", "", errors.Wrap(err, "could not get FLAC information")
+	}
+	defer stream.Close()
+
+	format := "FLAC"
+	if stream.Info.BitsPerSample == 24 {
+		format += "24"
+	}
+
+	var sampleRate string
+	if stream.Info.SampleRate%1000 == 0 {
+		sampleRate = fmt.Sprintf("%d", int32(stream.Info.SampleRate/1000))
+	} else {
+		sampleRate = fmt.Sprintf("%.1f", float32(stream.Info.SampleRate)/1000)
+	}
+	return format, sampleRate, nil
+}
+
+func getFullAudioFormat(f string) (string, error) {
+	format, sampleRate, err := getAudioInfo(f)
+	if err != nil {
+		return "", err
+	}
+	if format == "FLAC" && sampleRate == "44.1" {
+		return format, nil
+	}
+	return fmt.Sprintf("%s-%skHz", format, sampleRate), nil
+}
+
+func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) string {
 	if folderTemplate == "" {
 		return tm.FolderName
 	}
@@ -638,6 +671,19 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		id = "Unknown"
 	}
 
+	quality := ShortEncoding(tm.Quality)
+	if quality == "FLAC" || quality == "FLAC24" {
+		// get one music file then find sample rate
+		//firstTrackFilename := filepath.Join(releaseFolder, tm.Tracks[0].Title)
+		firstTrackFilename := GetFirstFLACFound(releaseFolder)
+		fullFormat, err := getFullAudioFormat(firstTrackFilename)
+		if err != nil {
+			logThis.Error(err, VERBOSEST)
+		} else {
+			quality = fullFormat
+		}
+	}
+
 	r := strings.NewReplacer(
 		"$id", "{{$id}}",
 		"$a", "{{$a}}",
@@ -664,7 +710,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		SanitizeFolder(tm.MainArtist),
 		tm.OriginalYear,
 		SanitizeFolder(tm.Title),
-		ShortEncoding(tm.Quality),
+		quality,
 		tm.Source,
 		tm.SourceFull, // source with indicator if 100%/log/cue or Silver/gold
 		SanitizeFolder(tm.RecordLabel),

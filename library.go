@@ -84,7 +84,7 @@ func ReorganizeLibrary(doNothing bool) error {
 					logThis.Info("Could not find metadata for tracker "+t, NORMAL)
 					continue
 				}
-				newName = info.GeneratePath(template)
+				newName = info.GeneratePath(template, filepath.Dir(path))
 				break // stop once we have a name.
 			}
 

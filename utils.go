@@ -369,6 +369,23 @@ func DirectoryContainsMusicAndMetadata(directoryPath string) bool {
 	return true
 }
 
+// GetFirstFLACFound returns the first FLAC file found in a directory
+func GetFirstFLACFound(directoryPath string) string {
+	var firstPath string
+	err := filepath.Walk(directoryPath, func(path string, f os.FileInfo, err error) error {
+		if strings.ToLower(filepath.Ext(path)) == flacExt {
+			// stop walking the directory as soon as a track is found
+			firstPath = path
+			return errors.New(foundMusic)
+		}
+		return nil
+	})
+	if err != nil && err.Error() == foundMusic {
+		return firstPath
+	}
+	return ""
+}
+
 // MoveToNewPath moves a directory to its new home.
 func MoveToNewPath(current, new string, doNothing bool) (bool, error) {
 	if new == "" {
