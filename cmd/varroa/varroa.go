@@ -213,7 +213,7 @@ func main() {
 				fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
 			}
 			if varroa.Accept("Confirm") {
-				if err = varroa.ReorganizeLibrary(cli.libraryReorgSimulate); err != nil {
+				if err = varroa.ReorganizeLibrary(cli.libraryReorgSimulate, cli.libraryReorgInteractive); err != nil {
 					logThis.Error(err, varroa.NORMAL)
 				}
 			}

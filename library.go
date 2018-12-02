@@ -12,7 +12,7 @@ import (
 )
 
 // ReorganizeLibrary using tracker metadata and the user-defined template
-func ReorganizeLibrary(doNothing bool) error {
+func ReorganizeLibrary(doNothing, interactive bool) error {
 	defer TimeTrack(time.Now(), "Reorganize Library")
 
 	if doNothing {
@@ -27,9 +27,10 @@ func ReorganizeLibrary(doNothing bool) error {
 		return errors.New("library section of the configuration file not found")
 	}
 
+	// display spinner if not interactive
 	s := spinner.New([]string{"    ", ".   ", "..  ", "... "}, 150*time.Millisecond)
 	s.Prefix = "Reorganizing library"
-	if !daemon.WasReborn() {
+	if !interactive && !daemon.WasReborn() {
 		s.Start()
 	}
 
@@ -92,7 +93,7 @@ func ReorganizeLibrary(doNothing bool) error {
 				return errors.New("could not generate path for " + fileInfo.Name())
 			}
 
-			hasMoved, err := MoveToNewPath(path, filepath.Join(c.Library.Directory, newName), doNothing)
+			hasMoved, err := MoveToNewPath(path, filepath.Join(c.Library.Directory, newName), doNothing, interactive)
 			if err != nil {
 				return err
 			}
@@ -123,7 +124,8 @@ func ReorganizeLibrary(doNothing bool) error {
 	if walkErr != nil {
 		logThis.Error(walkErr, NORMAL)
 	}
-	if !daemon.WasReborn() {
+
+	if !interactive && !daemon.WasReborn() {
 		s.Stop()
 	}
 	logThis.Info(fmt.Sprintf("Moved %d release(s).", movedAlbums), NORMAL)

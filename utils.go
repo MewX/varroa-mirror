@@ -387,7 +387,7 @@ func GetFirstFLACFound(directoryPath string) string {
 }
 
 // MoveToNewPath moves a directory to its new home.
-func MoveToNewPath(current, new string, doNothing bool) (bool, error) {
+func MoveToNewPath(current, new string, doNothing, interactive bool) (bool, error) {
 	if new == "" {
 		return false, errors.New("no new path for this folder")
 	}
@@ -395,6 +395,12 @@ func MoveToNewPath(current, new string, doNothing bool) (bool, error) {
 	if new != current {
 		// if different, move folder
 		if !doNothing {
+			// if interactive and not in simulation mode, must be accepted else we just move on.
+			if interactive {
+				if !Accept("Move:\n  " + current + "\n->\n  " + new + "\n") {
+					return false, nil
+				}
+			}
 			newPathParent := filepath.Dir(new)
 			if _, err := os.Stat(newPathParent); os.IsNotExist(err) {
 				// newPathParent does not exist, creating
