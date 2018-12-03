@@ -207,7 +207,7 @@ func (e *Environment) DeployToGitlabPages() error {
 	return nil
 }
 
-func GoGoRoutines(e *Environment) {
+func GoGoRoutines(e *Environment, noDaemon bool) {
 	//  tracker-dependent goroutines
 	for _, t := range e.Trackers {
 		if e.config.autosnatchConfigured {
@@ -222,6 +222,8 @@ func GoGoRoutines(e *Environment) {
 		go webServer(e)
 	}
 	// background goroutines
-	go awaitOrders(e)
 	go automatedTasks(e)
+	if !noDaemon {
+		go awaitOrders(e)
+	}
 }

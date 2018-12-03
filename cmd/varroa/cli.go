@@ -129,7 +129,7 @@ Configuration Commands:
 		decrypts your encrypted configuration file.
 
 Usage:
-	varroa (start|stop|uptime|status)
+	varroa (start [--no-daemon]|stop|uptime|status)
 	varroa stats
 	varroa refresh-metadata <PATH>...
 	varroa refresh-metadata-by-id <TRACKER> <ID>...
@@ -146,6 +146,7 @@ Usage:
 
 Options:
  	-h, --help             Show this screen.
+	--no-daemon            Starts varroa but without turning it into a daemon. No log will be kept. Ctrl+C to quit.
  	--fl                   Use personal Freeleech torrent if available.
 	--simulate             Simulate library reorganization to show what would be renamed.
 	--interactive          Library reorganization requires user confirmation for each release if necessary.
@@ -162,6 +163,7 @@ type refreshTarget struct {
 type varroaArguments struct {
 	builtin                 bool
 	start                   bool
+	noDaemon                bool
 	stop                    bool
 	uptime                  bool
 	status                  bool
@@ -213,6 +215,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	// commands
 	b.start = args["start"].(bool)
+	b.noDaemon = args["--no-daemon"].(bool)
 	b.stop = args["stop"].(bool)
 	b.uptime = args["uptime"].(bool)
 	b.status = args["status"].(bool)

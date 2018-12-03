@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
 
 	"github.com/pkg/errors"
 	"gitlab.com/passelecasque/varroa"
@@ -251,28 +253,40 @@ func main() {
 	}
 
 	d := varroa.NewDaemon()
-	// launching daemon
 	if cli.start {
-		// daemonizing process
-		if err := d.Start(os.Args); err != nil {
-			logThis.Error(errors.Wrap(err, varroa.ErrorGettingDaemonContext), varroa.NORMAL)
-			return
+		// launching daemon
+		if !cli.noDaemon {
+			// daemonizing process
+			if err := d.Start(os.Args); err != nil {
+				logThis.Error(errors.Wrap(err, varroa.ErrorGettingDaemonContext), varroa.NORMAL)
+				return
+			}
+			// if not in daemon, job is over; exiting.
+			// the spawned daemon will continue.
+			if !d.IsRunning() {
+				return
+			}
 		}
-		// if not in daemon, job is over; exiting.
-		// the spawned daemon will continue.
-		if !d.IsRunning() {
-			return
-		}
-		// setting up for the daemon
+		// setting up for the daemon or main process
 		if err := env.SetUp(true); err != nil {
 			logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
 			return
 		}
 		// launch goroutines
-		varroa.GoGoRoutines(env)
+		varroa.GoGoRoutines(env, cli.noDaemon)
 
-		// wait until daemon is stopped.
-		d.WaitForStop()
+		if !cli.noDaemon {
+			// wait until daemon is stopped.
+			d.WaitForStop()
+		} else {
+			// wait for ^C to quit.
+			fmt.Println(varroa.Red("Running in no-daemon mode. Ctrl+C to quit."))
+			c := make(chan os.Signal)
+			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+			// waiting...
+			<-c
+			fmt.Println(varroa.Red("Terminating."))
+		}
 		return
 	}
 
