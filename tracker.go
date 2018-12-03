@@ -29,7 +29,8 @@ const (
 
 	statusSuccess = "success"
 
-	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
+	logScorePattern           = `(-?\d*)</span> \(out of 100\)</blockquote>`
+	deletedFromTrackerPattern = `<span class="log_deleted"> Torrent <a href="torrents\.php\?torrentid=\d+">(\d+)</a>(.*)</span>`
 )
 
 func (t *GazelleTracker) apiCallRateLimiter() {
@@ -244,6 +245,12 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error) {
 	data, err := t.get(t.URL + "/ajax.php?action=torrent&id=" + id)
 	if err != nil {
+		isDeleted, deletedText, errCheck := t.CheckIfDeleted(id)
+		if errCheck != nil {
+			logThis.Error(errors.Wrap(errCheck, "could not get information from site log"), VERBOSE)
+		} else if isDeleted {
+			logThis.Info(Red(deletedText), NORMAL)
+		}
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
 	// json bytes will be re-saved by info after anonymizing
@@ -377,4 +384,33 @@ func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
 		return "Log checks out, at least Silver", nil
 	}
 	return "", errors.New("Could not find score")
+}
+
+func (t *GazelleTracker) CheckIfDeleted(torrentID string) (bool, string, error) {
+	// get request
+	resp, err := t.client.Get(t.URL + "/log.php?search=Torrent+" + torrentID)
+	if err != nil {
+		return false, "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, "", errors.New("Returned status: " + resp.Status)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, "", errors.New("Could not read response")
+	}
+
+	// getting log score
+	returnData := string(data)
+	//fmt.Println(returnData)
+	r := regexp.MustCompile(deletedFromTrackerPattern)
+	if r.MatchString(returnData) {
+		if r.FindStringSubmatch(returnData)[1] == torrentID {
+			return true, "Site log: Torrent " + r.FindStringSubmatch(returnData)[1] + " " + r.FindStringSubmatch(returnData)[2], nil
+		}
+	}
+	return false, "", nil
 }
