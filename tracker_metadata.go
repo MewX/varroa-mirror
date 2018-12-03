@@ -140,19 +140,19 @@ type TrackerMetadata struct {
 	ReleaseJSON []byte `json:"-"`
 	OriginJSON  []byte `json:"-"`
 	// tracker related metadata
-	ID             int
-	GroupID        int
-	Tracker        string
-	TrackerURL     string
-	ReleaseURL     string
-	TimeSnatched   int64
-	LastUpdated    int64
-	IsAlive        bool
-	Size           uint64
-	Uploader       string
-	FolderName     string
-	CoverURL       string
-	CurrentSeeders int
+	ID           int
+	GroupID      int
+	Tracker      string
+	TrackerURL   string
+	ReleaseURL   string
+	TimeSnatched int64
+	LastUpdated  int64
+	IsAlive      bool
+	Size         uint64
+	Uploader     string
+	FolderName   string
+	CoverURL     string
+
 	// release related metadata
 	Artists       []TrackerMetadataArtist
 	Title         string
@@ -180,6 +180,9 @@ type TrackerMetadata struct {
 	TotalTime   string
 	Lineage     []TrackerMetadataLineage
 	Description string
+	// current tracker state
+	CurrentSeeders int  `json:"-"`
+	Reported       bool `json:"-"`
 }
 
 func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON string) error {
@@ -271,6 +274,7 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 	tm.FolderName = html.UnescapeString(gt.Response.Torrent.FilePath)
 	tm.CoverURL = gt.Response.Group.WikiImage
 	tm.CurrentSeeders = gt.Response.Torrent.Seeders
+	tm.Reported = gt.Response.Torrent.Reported
 
 	// release related metadata
 	// for now, using artists, composers, "with" categories

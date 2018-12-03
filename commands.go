@@ -250,7 +250,11 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 		}
 		// check the number of active seeders
 		if !info.IsWellSeeded() {
-			logThis.Info("This torrent has less than "+strconv.Itoa(minimumSeeders)+" seeders; if that is not already the case, consider reseeding it.", NORMAL)
+			logThis.Info(Red("This torrent has less than "+strconv.Itoa(minimumSeeders)+" seeders; if that is not already the case, consider reseeding it."), NORMAL)
+		}
+		// if release is reported, warn and offer link.
+		if info.Reported {
+			logThis.Info(Red("This torrent has been reported. For more information, see: "+info.ReleaseURL), NORMAL)
 		}
 
 	}
