@@ -188,14 +188,14 @@ type GazelleUserStats struct {
 		} `json:"personal"`
 		ProfileText string `json:"profileText"`
 		Ranks       struct {
-			Artists    int `json:"artists"`
-			Bounty     int `json:"bounty"`
-			Downloaded int `json:"downloaded"`
-			Overall    int `json:"overall"`
-			Posts      int `json:"posts"`
-			Requests   int `json:"requests"`
-			Uploaded   int `json:"uploaded"`
-			Uploads    int `json:"uploads"`
+			Artists    int         `json:"artists"`
+			Bounty     int         `json:"bounty"`
+			Downloaded int         `json:"downloaded"`
+			Overall    interface{} `json:"overall"`
+			Posts      int         `json:"posts"`
+			Requests   int         `json:"requests"`
+			Uploaded   int         `json:"uploaded"`
+			Uploads    int         `json:"uploads"`
 		} `json:"ranks"`
 		Stats struct {
 			Buffer        int64   `json:"buffer"`

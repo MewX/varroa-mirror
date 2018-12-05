@@ -234,6 +234,7 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
+
 	var s GazelleUserStats
 	if unmarshalErr := json.Unmarshal(data, &s); unmarshalErr != nil {
 		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
