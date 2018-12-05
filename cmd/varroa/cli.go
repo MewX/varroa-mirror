@@ -30,7 +30,8 @@ Description:
 	- host said graphs on its embedded webserver or on Gitlab Pages
 	- save and update all snatched torrents metadata
 	- be remotely controlled from your browser with a GreaseMonkey script.
-	- send notifications to your Android device about stats and snatches.
+	- send notifications to your Android device or to a given IRC user 
+	  about stats and snatches.
 	- check local logs agains logchecker.php
 	- sort downloads, export them to your library, automatically rename
 	  folders using tracker metadata
