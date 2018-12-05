@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
 	"github.com/wcharczuk/go-chart/drawing"
+	"gitlab.com/passelecasque/go-ircevent"
 )
 
 const (
@@ -43,6 +44,7 @@ type Environment struct {
 	git             *Git
 	daemonCom       *DaemonCom
 	startTime       time.Time
+	ircClient       *irc.Connection
 }
 
 // NewEnvironment prepares a new Environment.
@@ -62,6 +64,8 @@ func NewEnvironment() *Environment {
 	e.websocketOutput = false
 	e.daemonCom = NewDaemonComServer()
 	e.sendToWebsocket = make(chan string, 10)
+	// irc
+	e.ircClient = nil
 	return e
 }
 

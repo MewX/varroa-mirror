@@ -51,6 +51,9 @@ notifications:
     token: tokenwebhooktoken
     trackers:
     - blue
+  irc:
+    tracker: blue
+    user: irc_name
 
 library:
   directory: test

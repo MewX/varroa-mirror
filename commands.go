@@ -497,7 +497,7 @@ func parseQuota(cmdOut string) (float32, int64, error) {
 }
 
 // checkQuota on the machine the daemon is run
-func checkQuota() error {
+func checkQuota(e *Environment) error {
 	u, err := user.Current()
 	if err != nil {
 		return err
@@ -515,16 +515,16 @@ func checkQuota() error {
 	// send warning if this is worrying
 	if pc >= 98 {
 		logThis.Info(veryLowDiskSpace, NORMAL)
-		return Notify(veryLowDiskSpace, FullName, "info")
+		return Notify(veryLowDiskSpace, FullName, "info", e)
 	} else if pc >= 95 {
 		logThis.Info(lowDiskSpace, NORMAL)
-		return Notify(lowDiskSpace, FullName, "info")
+		return Notify(lowDiskSpace, FullName, "info", e)
 	}
 	return nil
 }
 
 // checkFreeDiskSpace based on the main download directory's location.
-func checkFreeDiskSpace() error {
+func checkFreeDiskSpace(e *Environment) error {
 	// get config.
 	conf, configErr := NewConfig(DefaultConfigurationFile)
 	if configErr != nil {
@@ -542,10 +542,10 @@ func checkFreeDiskSpace() error {
 		// send warning if this is worrying
 		if pcRemaining <= 2 {
 			logThis.Info(veryLowDiskSpace, NORMAL)
-			return Notify(veryLowDiskSpace, FullName, "info")
+			return Notify(veryLowDiskSpace, FullName, "info", e)
 		} else if pcRemaining <= 5 {
 			logThis.Info(lowDiskSpace, NORMAL)
-			return Notify(lowDiskSpace, FullName, "info")
+			return Notify(lowDiskSpace, FullName, "info", e)
 		}
 		return nil
 	}
@@ -569,7 +569,7 @@ func automatedTasks(e *Environment) {
 		logThis.Info("The command 'quota' is not available on this system, not able to check disk quota", NORMAL)
 	} else {
 		// first check
-		if err := checkQuota(); err != nil {
+		if err := checkQuota(e); err != nil {
 			logThis.Error(errors.Wrap(err, "error checking user quota: quota usage monitoring off"), NORMAL)
 		} else {
 			// scheduler for subsequent quota checks
@@ -578,7 +578,7 @@ func automatedTasks(e *Environment) {
 	}
 	// 4. check disk space is available
 	// first check
-	if err := checkFreeDiskSpace(); err != nil {
+	if err := checkFreeDiskSpace(e); err != nil {
 		logThis.Error(errors.Wrap(err, "error checking free disk space: disk usage monitoring off"), NORMAL)
 	} else {
 		// scheduler for subsequent quota checks

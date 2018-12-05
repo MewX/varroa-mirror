@@ -339,6 +339,7 @@ func (cw *ConfigWebServer) String() string {
 type ConfigNotifications struct {
 	Pushover *ConfigPushover
 	WebHooks *WebHooksConfig
+	Irc      *ConfigIRC
 }
 
 type ConfigPushover struct {
@@ -390,6 +391,25 @@ func (whc *WebHooksConfig) String() string {
 	txt += "\tAddress: " + whc.Address + "\n"
 	txt += "\tToken: " + whc.Token + "\n"
 	txt += "\tTrackers: " + strings.Join(whc.Trackers, ", ") + "\n"
+	return txt
+}
+
+type ConfigIRC struct {
+	Tracker string
+	User    string
+}
+
+func (ci *ConfigIRC) check() error {
+	if ci.User == "" || ci.Tracker == "" {
+		return errors.New("IRC notifications require both a tracker name & IRC username")
+	}
+	return nil
+}
+
+func (ci *ConfigIRC) String() string {
+	txt := "IRC notification configuration:\n"
+	txt += "\tIRC server for tracker: " + ci.Tracker + "\n"
+	txt += "\tUser: " + ci.User + "\n"
 	return txt
 }
 

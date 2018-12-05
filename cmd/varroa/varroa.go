@@ -287,6 +287,7 @@ func main() {
 			<-c
 			fmt.Println(varroa.Red("Terminating."))
 		}
+		varroa.Notify("Stopping varroa!", varroa.FullName, "info", env)
 		return
 	}
 
@@ -365,7 +366,6 @@ func main() {
 		}
 		// at last, sending signals for shutdown
 		if cli.stop {
-			varroa.Notify("Stopping daemon!", varroa.FullName, "info")
 			d.Stop(daemonProcess)
 			return
 		}

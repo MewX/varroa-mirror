@@ -45,7 +45,7 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 	// compare with new stats
 	logThis.Info(newStats.Progress(&previousStats), NORMAL)
 	// send notification
-	if notifyErr := Notify("stats: "+newStats.Progress(&previousStats), tracker, "info"); notifyErr != nil {
+	if notifyErr := Notify("stats: "+newStats.Progress(&previousStats), tracker, "info", e); notifyErr != nil {
 		logThis.Error(notifyErr, NORMAL)
 	}
 
@@ -55,14 +55,14 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 			// unacceptable because of low ratio
 			logThis.Info(tracker+": "+errorBelowWarningRatio, NORMAL)
 			// sending notification
-			if err := Notify(tracker+": "+errorBelowWarningRatio, tracker, "error"); err != nil {
+			if err := Notify(tracker+": "+errorBelowWarningRatio, tracker, "error", e); err != nil {
 				logThis.Error(err, NORMAL)
 			}
 		} else {
 			// unacceptable because of ratio drop
 			logThis.Info(tracker+": "+errorBufferDrop, NORMAL)
 			// sending notification
-			if err := Notify(tracker+": "+errorBufferDrop, tracker, "error"); err != nil {
+			if err := Notify(tracker+": "+errorBufferDrop, tracker, "error", e); err != nil {
 				logThis.Error(err, NORMAL)
 			}
 		}
