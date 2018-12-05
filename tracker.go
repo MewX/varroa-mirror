@@ -33,6 +33,10 @@ const (
 	deletedFromTrackerPattern = `<span class="log_deleted"> Torrent <a href="torrents\.php\?torrentid=\d+">(\d+)</a>(.*)</span>`
 )
 
+func userAgent() string {
+	return FullNameAlt + "/" + Version[1:]
+}
+
 // GazelleTracker allows querying the Gazelle JSON API.
 type GazelleTracker struct {
 	Name     string
@@ -68,7 +72,7 @@ func (t *GazelleTracker) getRequest(client *http.Client, url string) (resp *http
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("User-Agent", FullNameAlt+"/"+Version)
+	req.Header.Add("User-Agent", userAgent())
 	return client.Do(req)
 }
 
@@ -145,7 +149,7 @@ func (t *GazelleTracker) Login() error {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("User-Agent", FullNameAlt+"/"+Version)
+	req.Header.Add("User-Agent", userAgent())
 
 	options := cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
@@ -355,7 +359,7 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req
 		return nil, err
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
-	req.Header.Add("User-Agent", FullNameAlt+"/"+Version)
+	req.Header.Add("User-Agent", userAgent())
 	return
 }
 
@@ -403,10 +407,8 @@ func (t *GazelleTracker) CheckIfDeleted(torrentID string) (bool, string, error) 
 	if err != nil {
 		return false, "", err
 	}
-
-	// getting log score
+	// getting deletion reason
 	returnData := string(data)
-	//fmt.Println(returnData)
 	r := regexp.MustCompile(deletedFromTrackerPattern)
 	if r.MatchString(returnData) {
 		if r.FindStringSubmatch(returnData)[1] == torrentID {

@@ -45,7 +45,7 @@ func TestTrackerAPI(t *testing.T) {
 		verify.Nil(err)
 		var r HttpBinResponse
 		verify.Nil(json.Unmarshal(data, &r))
-		verify.Equal(FullNameAlt+"/"+Version, r.Headers.User_Agent)
+		verify.Equal(userAgent(), r.Headers.User_Agent)
 	}
 
 	elapsed := time.Since(start)
