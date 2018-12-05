@@ -58,8 +58,8 @@ func FuseMount(path, mountpoint, dbPath string) error {
 
 	// mounting
 	mountOptions := []fuse.MountOption{
-		fuse.FSName("VarroaMusica"),
-		fuse.Subtype("VarroaMusicaFS"),
+		fuse.FSName(FullNameAlt),
+		fuse.Subtype(FullNameAlt + "FS"),
 		fuse.VolumeName("Varroa Musica Library"),
 	}
 	c, err := fuse.Mount(mountpoint, mountOptions...)

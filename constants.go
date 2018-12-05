@@ -2,7 +2,8 @@ package varroa
 
 const (
 	FullName      = "varroa musica"
-	Version       = "v22dev"
+	FullNameAlt   = "VarroaMusica"
+	Version       = "v23"
 	FullVersion   = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
@@ -10,10 +11,10 @@ const (
 	// directories & files
 	DefaultConfigurationFile  = "config.yaml"
 	StatsDir                  = "stats"
-	metadataDir               = "TrackerMetadata"
+	MetadataDir               = "TrackerMetadata"
 	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
-	originJSONFile            = "origin.json"
+	OriginJSONFile            = "origin.json"
 	trackerMetadataFile       = "release.json"
 	trackerTGroupMetadataFile = "release_group.json"
 	trackerCoverFile          = "cover"
@@ -157,7 +158,7 @@ const (
 	// irc errors
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"
 	errorConnectingToIRC        = "Error connecting to IRC"
-	errorCouldNotGetTorrentInfo = "Error retrieving torrent info from tracker (release may have been deleted)"
+	errorCouldNotGetTorrentInfo = "Error retrieving torrent info from tracker"
 	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder"
 	errorDownloadingTorrent     = "Error downloading torrent"
 	errorRemovingTempFile       = "Error removing temporary file %s"
@@ -176,6 +177,7 @@ const (
 	errorWithOriginJSON             = "Error creating or updating origin.json"
 	errorGeneratingUserMetadataJSON = "Error generating user metadata JSON"
 	ErrorFindingMusicAndMetadata    = "directory %s does not contain music files and tracker metadata"
+	couldNotFindMetadataAge         = "No information about metadata age found."
 	// stats errors
 	errorGettingStats      = "Error getting stats"
 	ErrorGeneratingGraphs  = "Error generating graphs (may require more data, 24h worth for daily graphs)"

@@ -29,8 +29,24 @@ const (
 
 	statusSuccess = "success"
 
-	logScorePattern = `(-?\d*)</span> \(out of 100\)</blockquote>`
+	logScorePattern           = `(-?\d*)</span> \(out of 100\)</blockquote>`
+	deletedFromTrackerPattern = `<span class="log_deleted"> Torrent <a href="torrents\.php\?torrentid=\d+">(\d+)</a>(.*)</span>`
 )
+
+func userAgent() string {
+	return FullNameAlt + "/" + Version[1:]
+}
+
+// GazelleTracker allows querying the Gazelle JSON API.
+type GazelleTracker struct {
+	Name     string
+	URL      string
+	User     string
+	Password string
+	client   *http.Client
+	userID   int
+	limiter  chan bool //  <- 1/tracker
+}
 
 func (t *GazelleTracker) apiCallRateLimiter() {
 	// fill the rate limiter the first time
@@ -51,14 +67,23 @@ func (t *GazelleTracker) apiCallRateLimiter() {
 	}
 }
 
-func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, error) {
-	if client == nil {
+func (t *GazelleTracker) getRequest(client *http.Client, url string) (resp *http.Response, err error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("User-Agent", userAgent())
+	return client.Do(req)
+}
+
+func (t *GazelleTracker) rateLimitedGetRequest(url string, expectingJSON bool) ([]byte, error) {
+	if t.client == nil {
 		return []byte{}, errors.New(errorNotLoggedIn)
 	}
 	// wait for rate limiter
 	<-t.limiter
 	// get request
-	resp, err := client.Get(url)
+	resp, err := t.getRequest(t.client, url)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -71,40 +96,43 @@ func (t *GazelleTracker) callJSONAPI(client *http.Client, url string) ([]byte, e
 	if err != nil {
 		return []byte{}, err
 	}
-	// check success
-	var r GazelleGenericResponse
-	if err := json.Unmarshal(data, &r); err != nil {
-		logThis.Info("BAD JSON, Received: \n"+string(data), VERBOSEST)
-		return []byte{}, errors.Wrap(err, errorUnmarshallingJSON)
-	}
-	if r.Status != statusSuccess {
-		if r.Status == "" {
-			return data, errors.New(errorInvalidResponse)
+	if expectingJSON {
+		// check success
+		var r GazelleGenericResponse
+		if err := json.Unmarshal(data, &r); err != nil {
+			logThis.Info("BAD JSON, Received: \n"+string(data), VERBOSEST)
+			return []byte{}, errors.Wrap(err, errorUnmarshallingJSON)
 		}
-		if r.Error == errorGazelleRateLimitExceeded {
-			logThis.Info(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
-			// calling again, waiting for the rate limiter again should do the trick.
-			// that way 2 limiter slots will have passed before the next call is made,
-			// the server should allow it.
-			<-t.limiter
-			return t.callJSONAPI(client, url)
+		if r.Status != statusSuccess {
+			if r.Status == "" {
+				return data, errors.New(errorInvalidResponse)
+			}
+			if r.Error == errorGazelleRateLimitExceeded {
+				logThis.Info(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
+				// calling again, waiting for the rate limiter again should do the trick.
+				// that way 2 limiter slots will have passed before the next call is made,
+				// the server should allow it.
+				<-t.limiter
+				return t.rateLimitedGetRequest(url, expectingJSON)
+			}
+			return data, errors.New(errorAPIResponseStatus + r.Status)
 		}
-		return data, errors.New(errorAPIResponseStatus + r.Status)
+		return data, nil
 	}
 	return data, nil
 }
 
-// --------------------
-
-// GazelleTracker allows querying the Gazelle JSON API.
-type GazelleTracker struct {
-	Name     string
-	URL      string
-	User     string
-	Password string
-	client   *http.Client
-	userID   int
-	limiter  chan bool //  <- 1/tracker
+func (t *GazelleTracker) ApiCall(endpoint string) ([]byte, error) {
+	data, err := t.rateLimitedGetRequest(t.URL+"/ajax.php?"+endpoint, true)
+	if err != nil {
+		logThis.Error(errors.Wrap(err, errorJSONAPI), VERBOSEST)
+		// if error, try once again after logging in again
+		if loginErr := t.Login(); loginErr == nil {
+			return t.rateLimitedGetRequest(endpoint, true)
+		}
+		return nil, errors.New("Could not log in and send get request to " + endpoint)
+	}
+	return data, err
 }
 
 func (t *GazelleTracker) Login() error {
@@ -121,6 +149,7 @@ func (t *GazelleTracker) Login() error {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("User-Agent", userAgent())
 
 	options := cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
@@ -148,25 +177,12 @@ func (t *GazelleTracker) Login() error {
 	return nil
 }
 
-func (t *GazelleTracker) get(url string) ([]byte, error) {
-	data, err := t.callJSONAPI(t.client, url)
-	if err != nil {
-		logThis.Error(errors.Wrap(err, errorJSONAPI), VERBOSEST)
-		// if error, try once again after logging in again
-		if loginErr := t.Login(); loginErr == nil {
-			return t.callJSONAPI(t.client, url)
-		}
-		return nil, errors.New("Could not log in and send get request to " + url)
-	}
-	return data, err
-}
-
 // DownloadTorrent using its download URL.
 func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile, destinationFolder string) error {
 	if torrentURL == "" || torrentFile == "" {
 		return errors.New(errorUnknownTorrentURL)
 	}
-	response, err := t.client.Get(torrentURL)
+	response, err := t.getRequest(t.client, torrentURL)
 	if err != nil {
 		return err
 	}
@@ -203,7 +219,7 @@ func (t *GazelleTracker) DownloadTorrentFromID(torrentID string, destinationFold
 
 func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	if t.userID == 0 {
-		data, err := t.get(t.URL + "/ajax.php?action=index")
+		data, err := t.ApiCall("action=index")
 		if err != nil {
 			return nil, errors.Wrap(err, errorJSONAPI)
 		}
@@ -214,10 +230,11 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
-	data, err := t.get(t.URL + "/ajax.php?action=user&id=" + strconv.Itoa(t.userID))
+	data, err := t.ApiCall("action=user&id=" + strconv.Itoa(t.userID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
+
 	var s GazelleUserStats
 	if unmarshalErr := json.Unmarshal(data, &s); unmarshalErr != nil {
 		return nil, errors.Wrap(unmarshalErr, errorUnmarshallingJSON)
@@ -242,8 +259,14 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 }
 
 func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error) {
-	data, err := t.get(t.URL + "/ajax.php?action=torrent&id=" + id)
+	data, err := t.ApiCall("action=torrent&id=" + id)
 	if err != nil {
+		isDeleted, deletedText, errCheck := t.CheckIfDeleted(id)
+		if errCheck != nil {
+			logThis.Error(errors.Wrap(errCheck, "could not get information from site log"), VERBOSE)
+		} else if isDeleted {
+			logThis.Info(Red(deletedText), NORMAL)
+		}
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
 	// json bytes will be re-saved by info after anonymizing
@@ -255,7 +278,7 @@ func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error)
 }
 
 func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerMetadataArtist, error) {
-	data, err := t.get(t.URL + "/ajax.php?action=artist&id=" + strconv.Itoa(artistID))
+	data, err := t.ApiCall("action=artist&id=" + strconv.Itoa(artistID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -273,7 +296,7 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerMetadataArtist, er
 }
 
 func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerMetadataTorrentGroup, error) {
-	data, err := t.get(t.URL + "/ajax.php?action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
+	data, err := t.ApiCall("action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -337,6 +360,7 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req
 		return nil, err
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.Header.Add("User-Agent", userAgent())
 	return
 }
 
@@ -377,4 +401,20 @@ func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
 		return "Log checks out, at least Silver", nil
 	}
 	return "", errors.New("Could not find score")
+}
+
+func (t *GazelleTracker) CheckIfDeleted(torrentID string) (bool, string, error) {
+	data, err := t.rateLimitedGetRequest(t.URL+"/log.php?search=Torrent+"+torrentID, false)
+	if err != nil {
+		return false, "", err
+	}
+	// getting deletion reason
+	returnData := string(data)
+	r := regexp.MustCompile(deletedFromTrackerPattern)
+	if r.MatchString(returnData) {
+		if r.FindStringSubmatch(returnData)[1] == torrentID {
+			return true, "Site log: Torrent " + r.FindStringSubmatch(returnData)[1] + " " + r.FindStringSubmatch(returnData)[2], nil
+		}
+	}
+	return false, "", nil
 }

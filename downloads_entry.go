@@ -90,19 +90,16 @@ func (d *DownloadEntry) Description(root string) string {
 	return ColorizeDownloadState(d.State, txt)
 }
 
-// sorting: tracker name, tracker ID, foldername, description (ie releasemd), state
-// generatePath: reads the release.json...
-
 func (d *DownloadEntry) Load(root string) error {
 	if d.FolderName == "" || !DirectoryExists(filepath.Join(root, d.FolderName)) {
 		return errors.New("Wrong or missing path")
 	}
 
 	// find origin.json
-	originFile := filepath.Join(root, d.FolderName, metadataDir, originJSONFile)
+	originFile := filepath.Join(root, d.FolderName, MetadataDir, OriginJSONFile)
 	if FileExists(originFile) {
 		origin := TrackerOriginJSON{Path: originFile}
-		if err := origin.load(); err != nil {
+		if err := origin.Load(); err != nil {
 			return errors.Wrap(err, "Error reading origin.json")
 		}
 		// TODO: check last update timestamp, compare with value in db
@@ -129,8 +126,8 @@ func (d *DownloadEntry) Load(root string) error {
 			d.TrackerID = append(d.TrackerID, info.ID)
 
 			// getting release info from json
-			infoJSON := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
-			infoJSONOldFormat := filepath.Join(root, d.FolderName, metadataDir, "Release.json")
+			infoJSON := filepath.Join(root, d.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
+			infoJSONOldFormat := filepath.Join(root, d.FolderName, MetadataDir, "Release.json")
 			if !FileExists(infoJSON) {
 				infoJSON = infoJSONOldFormat
 			}
@@ -170,12 +167,12 @@ func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerMetadata, erro
 		return TrackerMetadata{}, errors.New("Error, does not have tracker metadata")
 	}
 
-	infoJSON := filepath.Join(root, d.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
+	infoJSON := filepath.Join(root, d.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
 	if !FileExists(infoJSON) {
 		// if not present, try the old format
-		infoJSON = filepath.Join(root, d.FolderName, metadataDir, "Release.json")
+		infoJSON = filepath.Join(root, d.FolderName, MetadataDir, "Release.json")
 	}
-	originJSON := filepath.Join(root, d.FolderName, metadataDir, originJSONFile)
+	originJSON := filepath.Join(root, d.FolderName, MetadataDir, OriginJSONFile)
 
 	info := TrackerMetadata{}
 	err := info.LoadFromJSON(tracker, originJSON, infoJSON)
@@ -203,16 +200,26 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 		}
 	}
 	// try to refresh metadata
-	if d.HasTrackerMetadata && Accept("Try to refresh metadata from tracker") {
-		for i, t := range d.Tracker {
-			tracker, err := e.Tracker(t)
-			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
-				continue
-			}
-			if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.TrackerID[i])}); err != nil {
-				logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
-				continue
+	if d.HasTrackerMetadata {
+		// reading metadata age to quickly check if it is worth refreshing metadata.
+		originJSON := filepath.Join(root, d.FolderName, MetadataDir, OriginJSONFile)
+		origin := TrackerOriginJSON{Path: originJSON}
+		if err := origin.Load(); err == nil {
+			// Note: if there is a problem with the file, it'll be found later.
+			fmt.Println(Green(origin.lastUpdatedString()))
+		}
+
+		if Accept("Try to refresh metadata from tracker") {
+			for i, t := range d.Tracker {
+				tracker, err := e.Tracker(t)
+				if err != nil {
+					logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
+					continue
+				}
+				if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.TrackerID[i])}); err != nil {
+					logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
+					continue
+				}
 			}
 		}
 	}
@@ -292,7 +299,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 			}
 			// retrieving main artist alias from the configuration
 			info.MainArtist = mainArtist
-			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, metadataDir)); err != nil {
+			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, MetadataDir)); err != nil {
 				return err
 			}
 			// main artist alias
@@ -306,7 +313,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 			}
 			// retrieving category from the configuration
 			info.MainArtistAlias = mainArtistAlias
-			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, metadataDir)); err != nil {
+			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, MetadataDir)); err != nil {
 				return err
 			}
 			// category
@@ -321,13 +328,13 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 			// saving value
 			info.Category = category
 			// write to original user_metadata.json
-			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, metadataDir), mainArtist, mainArtistAlias, category); err != nil {
+			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, MetadataDir), mainArtist, mainArtistAlias, category); err != nil {
 				logThis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), NORMAL)
 				return err
 			}
 			// generating new possible paths
-			candidates = append(candidates, info.GeneratePath(config.Library.Template))
-			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate))
+			candidates = append(candidates, info.GeneratePath(config.Library.Template, filepath.Join(root, d.FolderName)))
+			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate, filepath.Join(root, d.FolderName)))
 		}
 	}
 	// adding current folder name last

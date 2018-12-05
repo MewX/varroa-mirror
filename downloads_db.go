@@ -462,7 +462,7 @@ func (d *DownloadsDB) Clean() error {
 				} else {
 					logThis.Error(errors.Wrap(err, "Error listing contents of "+entry.Name()), VERBOSE)
 				}
-			} else if len(contents) == 1 && contents[0].IsDir() && contents[0].Name() == metadataDir {
+			} else if len(contents) == 1 && contents[0].IsDir() && contents[0].Name() == MetadataDir {
 				toBeMoved = append(toBeMoved, entry)
 			}
 		}

@@ -28,20 +28,20 @@ func TestTrackerOriginJSON(t *testing.T) {
 	env.config = c
 	tracker1 := &GazelleTracker{Name: "tracker1", URL: "http://azerty.com"}
 	tracker2 := &GazelleTracker{Name: "tracker2", URL: "http://qwerty.com"}
-	info1 := TrackerMetadata{ID: 1234, GroupID: 11, Tracker: tracker1.Name, TrackerURL: tracker1.URL, LastUpdated: 1, IsAlive: true}
-	info2 := TrackerMetadata{ID: 1234, GroupID: 12, Tracker: tracker2.Name, TrackerURL: tracker2.URL}
+	info1 := TrackerMetadata{ID: 1234, GroupID: 11, Tracker: tracker1.Name, TrackerURL: tracker1.URL, LastUpdated: 1531651670, IsAlive: true}
+	info2 := TrackerMetadata{ID: 1234, GroupID: 12, Tracker: tracker2.Name, TrackerURL: tracker2.URL, LastUpdated: 1543701948}
 
 	// make directory
-	check.Nil(os.MkdirAll(filepath.Join(testDir, metadataDir), 0775))
-	defer os.Remove(filepath.Join(testDir, metadataDir))
-	expectedFilePath := filepath.Join(testDir, metadataDir, originJSONFile)
+	check.Nil(os.MkdirAll(filepath.Join(testDir, MetadataDir), 0775))
+	defer os.Remove(filepath.Join(testDir, MetadataDir))
+	expectedFilePath := filepath.Join(testDir, MetadataDir, OriginJSONFile)
 	defer os.Remove(expectedFilePath)
 
 	// saving origin JSON to file
 	check.False(FileExists(expectedFilePath))
-	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, metadataDir)))
+	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, MetadataDir)))
 	check.True(FileExists(expectedFilePath))
-	check.Nil(info2.saveOriginJSON(filepath.Join(testDir, metadataDir)))
+	check.Nil(info2.saveOriginJSON(filepath.Join(testDir, MetadataDir)))
 
 	// reading file that was created and comparing with expected
 	b, err := ioutil.ReadFile(expectedFilePath)
@@ -62,9 +62,13 @@ func TestTrackerOriginJSON(t *testing.T) {
 	check.Equal(info2.TimeSnatched, tojCheck.Origins[tracker2.Name].TimeSnatched)
 	check.Equal(info2.LastUpdated, tojCheck.Origins[tracker2.Name].LastUpdatedMetadata)
 
+	lastUpdated := tojCheck.lastUpdated()
+	check.Equal(2, len(lastUpdated))
+	check.NotEqual(couldNotFindMetadataAge, tojCheck.lastUpdatedString())
+
 	// update
 	info1.LastUpdated = 2
-	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, metadataDir)))
+	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, MetadataDir)))
 
 	// read from file again
 	b, err = ioutil.ReadFile(expectedFilePath)

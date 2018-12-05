@@ -32,6 +32,7 @@ type Config struct {
 	webserverMetadata           bool
 	gitlabPagesConfigured       bool
 	pushoverConfigured          bool
+	ircNotifsConfigured         bool
 	webhooksConfigured          bool
 	DownloadFolderConfigured    bool
 	LibraryConfigured           bool
@@ -93,11 +94,14 @@ func (c *Config) String() string {
 	if c.pushoverConfigured {
 		txt += c.Notifications.Pushover.String() + "\n"
 	}
-	if c.gitlabPagesConfigured {
-		txt += c.GitlabPages.String() + "\n"
+	if c.ircNotifsConfigured {
+		txt += c.Notifications.Irc.String() + "\n"
 	}
 	if c.webhooksConfigured {
 		txt += c.Notifications.WebHooks.String() + "\n"
+	}
+	if c.gitlabPagesConfigured {
+		txt += c.GitlabPages.String() + "\n"
 	}
 	if c.mpdConfigured {
 		txt += c.MPD.String() + "\n"
@@ -166,6 +170,12 @@ func (c *Config) check() error {
 			return errors.Wrap(err, "Error reading pushover configuration")
 		}
 	}
+	// irc notifications checks
+	if c.Notifications != nil && c.Notifications.Irc != nil {
+		if err := c.Notifications.Irc.check(); err != nil {
+			return errors.Wrap(err, "Error reading IRC notifications configuration")
+		}
+	}
 	// webhook checks
 	if c.Notifications != nil && c.Notifications.WebHooks != nil {
 		if err := c.Notifications.WebHooks.check(); err != nil {
@@ -203,6 +213,7 @@ func (c *Config) check() error {
 	c.webserverConfigured = c.WebServer != nil
 	c.gitlabPagesConfigured = c.GitlabPages != nil
 	c.pushoverConfigured = c.Notifications != nil && c.Notifications.Pushover != nil
+	c.ircNotifsConfigured = c.Notifications != nil && c.Notifications.Irc != nil
 	c.webhooksConfigured = c.Notifications != nil && c.Notifications.WebHooks != nil
 	c.DownloadFolderConfigured = c.General.DownloadDir != ""
 	c.webserverHTTP = c.webserverConfigured && c.WebServer.PortHTTP != 0
@@ -274,6 +285,19 @@ func (c *Config) check() error {
 	}
 	if c.mpdConfigured && !c.DownloadFolderConfigured {
 		return errors.New("To use the MPD server, a valid download directory must be provided")
+	}
+	if c.ircNotifsConfigured && !c.autosnatchConfigured {
+		return errors.New("To use IRC notifications, a correctly configured IRC server must be defined in the autosnatch section")
+	}
+	if c.ircNotifsConfigured {
+		// check the tracker has an associated IRC server defined
+		var configuredIRCServers []string
+		for _, a := range c.Autosnatch {
+			configuredIRCServers = append(configuredIRCServers, a.Tracker)
+		}
+		if !StringInSlice(c.Notifications.Irc.Tracker, configuredIRCServers) {
+			return errors.New("IRC server for tracker " + c.Notifications.Irc.Tracker + " is not defined in the autosnatch section.")
+		}
 	}
 
 	// TODO check filter uploaders not blacklisted

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
+	"github.com/mewkiz/flac"
 	"github.com/mgutz/ansi"
 	"github.com/pkg/errors"
 	blackfriday "gopkg.in/russross/blackfriday.v2"
@@ -99,7 +100,7 @@ Direct link: %s
   │  Cover: %s	
   │  Size: %s	
   └────────`
-	trackPattern    = `(.*){{{(\d*)}}}`
+	trackPattern    = `(.*[.flac|.FLAC|.mp3|.MP3]){{{(\d*)}}}`
 	vaReleasePrexif = "VA|"
 	variousArtists  = "Various Artists"
 )
@@ -139,19 +140,19 @@ type TrackerMetadata struct {
 	ReleaseJSON []byte `json:"-"`
 	OriginJSON  []byte `json:"-"`
 	// tracker related metadata
-	ID             int
-	GroupID        int
-	Tracker        string
-	TrackerURL     string
-	ReleaseURL     string
-	TimeSnatched   int64
-	LastUpdated    int64
-	IsAlive        bool
-	Size           uint64
-	Uploader       string
-	FolderName     string
-	CoverURL       string
-	CurrentSeeders int
+	ID           int
+	GroupID      int
+	Tracker      string
+	TrackerURL   string
+	ReleaseURL   string
+	TimeSnatched int64
+	LastUpdated  int64
+	IsAlive      bool
+	Size         uint64
+	Uploader     string
+	FolderName   string
+	CoverURL     string
+
 	// release related metadata
 	Artists       []TrackerMetadataArtist
 	Title         string
@@ -179,6 +180,9 @@ type TrackerMetadata struct {
 	TotalTime   string
 	Lineage     []TrackerMetadataLineage
 	Description string
+	// current tracker state
+	CurrentSeeders int  `json:"-"`
+	Reported       bool `json:"-"`
 }
 
 func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON string) error {
@@ -189,7 +193,7 @@ func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON 
 	// load Origin JSON
 	var err error
 	origin := TrackerOriginJSON{Path: originJSON}
-	if err = origin.load(); err != nil {
+	if err = origin.Load(); err != nil {
 		return err
 	}
 	// getting the information
@@ -208,11 +212,11 @@ func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON 
 }
 
 func (tm *TrackerMetadata) saveOriginJSON(destination string) error {
-	origin := &TrackerOriginJSON{Path: filepath.Join(destination, originJSONFile)}
+	origin := &TrackerOriginJSON{Path: filepath.Join(destination, OriginJSONFile)}
 
 	foundOrigin := false
 	if FileExists(origin.Path) {
-		if err := origin.load(); err != nil {
+		if err := origin.Load(); err != nil {
 			return err
 		}
 		for i, o := range origin.Origins {
@@ -270,6 +274,7 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 	tm.FolderName = html.UnescapeString(gt.Response.Torrent.FilePath)
 	tm.CoverURL = gt.Response.Group.WikiImage
 	tm.CurrentSeeders = gt.Response.Torrent.Seeders
+	tm.Reported = gt.Response.Torrent.Reported
 
 	// release related metadata
 	// for now, using artists, composers, "with" categories
@@ -347,13 +352,15 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		hits := r.FindAllStringSubmatch(f, -1)
 		if len(hits) != 0 {
 			// TODO instead of path, actually find the title
+			// only detect actual music files
 			track.Title = html.UnescapeString(hits[0][1])
 			size, _ := strconv.ParseUint(hits[0][2], 10, 64)
 			track.Size = humanize.IBytes(size)
 			tm.Tracks = append(tm.Tracks, track)
 			// TODO Duration  + Disc + number
-		} else {
-			logThis.Info("Could not parse filelist.", NORMAL)
+		}
+		if len(tm.Tracks) == 0 {
+			logThis.Info("Could not parse filelist, no music tracks found.", VERBOSEST)
 		}
 	}
 	// TODO tm.TotalTime
@@ -430,7 +437,7 @@ func artistInSlice(artist, title string, list []string) bool {
 
 // SaveFromTracker all of the relevant metadata.
 func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *GazelleTracker) error {
-	destination := filepath.Join(parentFolder, metadataDir)
+	destination := filepath.Join(parentFolder, MetadataDir)
 	// create metadata dir if necessary
 	if err := os.MkdirAll(filepath.Join(destination), 0775); err != nil {
 		return errors.Wrap(err, errorCreatingMetadataDir)
@@ -497,7 +504,7 @@ func (tm *TrackerMetadata) SaveCover(releaseFolder string) error {
 	if tm.CoverURL == "" {
 		return errors.New("unknown image url")
 	}
-	filename := filepath.Join(releaseFolder, metadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
+	filename := filepath.Join(releaseFolder, MetadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
 
 	if FileExists(filename) {
 		// already downloaded, or exists in folder already: do nothing
@@ -603,7 +610,39 @@ func (tm *TrackerMetadata) TextDescription(fancy bool) string {
 	)
 }
 
-func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
+func getAudioInfo(f string) (string, string, error) {
+	stream, err := flac.ParseFile(f)
+	if err != nil {
+		return "", "", errors.Wrap(err, "could not get FLAC information")
+	}
+	defer stream.Close()
+
+	format := "FLAC"
+	if stream.Info.BitsPerSample == 24 {
+		format += "24"
+	}
+
+	var sampleRate string
+	if stream.Info.SampleRate%1000 == 0 {
+		sampleRate = fmt.Sprintf("%d", int32(stream.Info.SampleRate/1000))
+	} else {
+		sampleRate = fmt.Sprintf("%.1f", float32(stream.Info.SampleRate)/1000)
+	}
+	return format, sampleRate, nil
+}
+
+func getFullAudioFormat(f string) (string, error) {
+	format, sampleRate, err := getAudioInfo(f)
+	if err != nil {
+		return "", err
+	}
+	if format == "FLAC" && sampleRate == "44.1" {
+		return format, nil
+	}
+	return fmt.Sprintf("%s-%skHz", format, sampleRate), nil
+}
+
+func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) string {
 	if folderTemplate == "" {
 		return tm.FolderName
 	}
@@ -636,6 +675,19 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 		id = "Unknown"
 	}
 
+	quality := ShortEncoding(tm.Quality)
+	if quality == "FLAC" || quality == "FLAC24" {
+		// get one music file then find sample rate
+		//firstTrackFilename := filepath.Join(releaseFolder, tm.Tracks[0].Title)
+		firstTrackFilename := GetFirstFLACFound(releaseFolder)
+		fullFormat, err := getFullAudioFormat(firstTrackFilename)
+		if err != nil {
+			logThis.Error(err, VERBOSEST)
+		} else {
+			quality = fullFormat
+		}
+	}
+
 	r := strings.NewReplacer(
 		"$id", "{{$id}}",
 		"$a", "{{$a}}",
@@ -656,13 +708,13 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate string) string {
 	)
 
 	// replace with all valid epub parameters
-	tmpl := fmt.Sprintf(`{{$c := "%s"}}{{$ma := "%s"}}{{$a := "%s"}}{{$y := "%d"}}{{$t := "%s"}}{{$f := "%s"}}{{$s := "%s"}}{{$g := "%s"}}{{$l := "%s"}}{{$n := "%s"}}{{$e := "%s"}}{{$id := "%s"}}{{$r := "%s"}}{{$xar := "%s"}}%s`,
+	tmpl := fmt.Sprintf(`{{$c := %q}}{{$ma := %q}}{{$a := %q}}{{$y := "%d"}}{{$t := %q}}{{$f := %q}}{{$s := %q}}{{$g := %q}}{{$l := %q}}{{$n := %q}}{{$e := %q}}{{$id := %q}}{{$r := %q}}{{$xar := %q}}%s`,
 		SanitizeFolder(tm.Category),
 		SanitizeFolder(tm.MainArtistAlias),
 		SanitizeFolder(tm.MainArtist),
 		tm.OriginalYear,
 		SanitizeFolder(tm.Title),
-		ShortEncoding(tm.Quality),
+		quality,
 		tm.Source,
 		tm.SourceFull, // source with indicator if 100%/log/cue or Silver/gold
 		SanitizeFolder(tm.RecordLabel),

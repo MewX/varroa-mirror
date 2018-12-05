@@ -14,7 +14,7 @@ import (
 )
 
 // Notify in a goroutine, or directly.
-func Notify(msg, tracker, msgType string) error {
+func Notify(msg, tracker, msgType string, e *Environment) error {
 	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		return err
@@ -27,6 +27,8 @@ func Notify(msg, tracker, msgType string) error {
 			link = "https://" + conf.WebServer.Hostname + ":" + strconv.Itoa(conf.WebServer.PortHTTPS)
 		}
 		atLeastOneError := false
+
+		// pushover notifications
 		if conf.pushoverConfigured {
 			pushOver := &Notification{client: pushover.New(conf.Notifications.Pushover.Token), recipient: pushover.NewRecipient(conf.Notifications.Pushover.User)}
 			var pngLink string
@@ -38,6 +40,7 @@ func Notify(msg, tracker, msgType string) error {
 				atLeastOneError = true
 			}
 		}
+		// webhooks
 		if conf.webhooksConfigured && StringInSlice(tracker, conf.Notifications.WebHooks.Trackers) {
 			// create json, POST it
 			whJSON := &WebHookJSON{Site: tracker, Message: msg, Link: link, Type: msgType}
@@ -46,6 +49,11 @@ func Notify(msg, tracker, msgType string) error {
 				atLeastOneError = true
 			}
 		}
+		// IRC notifications
+		if conf.ircNotifsConfigured && e.ircClient != nil {
+			e.ircClient.Privmsg(conf.Notifications.Irc.User, msg)
+		}
+
 		if atLeastOneError {
 			return errors.New(errorNotifications)
 		}

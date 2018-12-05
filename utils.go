@@ -27,6 +27,16 @@ func StringInSlice(a string, list []string) bool {
 	return false
 }
 
+// MatchAllInSlice checks if all strings in slice a are in slice b
+func MatchAllInSlice(a []string, b []string) bool {
+	for _, el := range a {
+		if !MatchInSlice(el, b) {
+			return false
+		}
+	}
+	return true
+}
+
 // MatchInSlice checks if a string regexp-matches a slice of patterns, returns bool
 func MatchInSlice(a string, b []string) bool {
 	// if no slice, no match by default
@@ -350,13 +360,107 @@ func DirectoryContainsMusicAndMetadata(directoryPath string) bool {
 	if !DirectoryContainsMusic(directoryPath) {
 		return false
 	}
-	if !DirectoryExists(filepath.Join(directoryPath, metadataDir)) {
+	if !DirectoryExists(filepath.Join(directoryPath, MetadataDir)) {
 		return false
 	}
-	if !FileExists(filepath.Join(directoryPath, metadataDir, originJSONFile)) {
+	if !FileExists(filepath.Join(directoryPath, MetadataDir, OriginJSONFile)) {
 		return false
 	}
 	return true
+}
+
+// GetFirstFLACFound returns the first FLAC file found in a directory
+func GetFirstFLACFound(directoryPath string) string {
+	var firstPath string
+	err := filepath.Walk(directoryPath, func(path string, f os.FileInfo, err error) error {
+		if strings.ToLower(filepath.Ext(path)) == flacExt {
+			// stop walking the directory as soon as a track is found
+			firstPath = path
+			return errors.New(foundMusic)
+		}
+		return nil
+	})
+	if err != nil && err.Error() == foundMusic {
+		return firstPath
+	}
+	return ""
+}
+
+// MoveToNewPath moves a directory to its new home.
+func MoveToNewPath(current, new string, doNothing, interactive bool) (bool, error) {
+	if new == "" {
+		return false, errors.New("no new path for this folder")
+	}
+	// comparer avec l'ancien
+	if new != current {
+		// if different, move folder
+		if !doNothing {
+			// if interactive and not in simulation mode, must be accepted else we just move on.
+			if interactive {
+				if !Accept("Move:\n  " + current + "\n->\n  " + new + "\n") {
+					return false, nil
+				}
+			}
+			newPathParent := filepath.Dir(new)
+			if _, err := os.Stat(newPathParent); os.IsNotExist(err) {
+				// newPathParent does not exist, creating
+				err = os.MkdirAll(newPathParent, 0777)
+				if err != nil {
+					return false, err
+				}
+			}
+			// move
+			if err := os.Rename(current, new); err != nil {
+				return false, err
+			}
+			return true, nil
+		} else {
+			// would have moved, but must do nothing, so here we pretend.
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// DeleteEmptyFolders deletes empty folders that may appear after sorting albums.
+func DeleteEmptyFolders(root string) error {
+	defer TimeTrack(time.Now(), "Deleting empty folders")
+
+	deletedDirectories := 0
+	deletedDirectoriesThisTime := 0
+	atLeastOnce := false
+
+	// loops until all levels of empty directories are deleted
+	for !atLeastOnce || deletedDirectoriesThisTime != 0 {
+		atLeastOnce = true
+		deletedDirectoriesThisTime = 0
+		walkErr := filepath.Walk(root, func(path string, fileInfo os.FileInfo, walkError error) error {
+			// when an album has just been removed, Walk goes through it a second
+			// time with an "file does not exist" error
+			if os.IsNotExist(walkError) {
+				return nil
+			}
+			if fileInfo.IsDir() {
+				isEmpty, err := DirectoryIsEmpty(path)
+				if err != nil {
+					return nil
+				}
+				if isEmpty {
+					logThis.Info("Removing empty directory ", VERBOSEST)
+					if err := os.Remove(path); err == nil {
+						deletedDirectories++
+						deletedDirectoriesThisTime++
+					}
+				}
+			}
+			return nil
+		})
+		if walkErr != nil {
+			logThis.Error(walkErr, NORMAL)
+		}
+	}
+	fmt.Printf("Removed %d empty folder(s).\n", deletedDirectories)
+	return nil
 }
 
 // TimeTrack helps track the time taken by a function.
@@ -467,7 +571,7 @@ func GetInput() (string, error) {
 
 // Accept asks a question and returns the answer
 func Accept(question string) bool {
-	fmt.Printf(BlueBold("%s Y/N : "), question)
+	fmt.Printf(BlueBold("%s? y/N : "), question)
 	input, err := GetInput()
 	if err == nil {
 		switch input {

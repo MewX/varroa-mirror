@@ -11,9 +11,13 @@ import (
 func TestGeneratePath(t *testing.T) {
 	fmt.Println("+ Testing TrackerMetadata/generatePath...")
 	check := assert.New(t)
+
+	conf, configErr := NewConfig("test/test_complete.yaml")
+	check.Nil(configErr)
+
 	// setup logger
-	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{config: c}
+	conf = &Config{General: &ConfigGeneral{LogLevel: 2}}
+	env := &Environment{config: conf}
 	logThis = NewLogThis(env)
 
 	// test API JSON responses
@@ -88,6 +92,10 @@ func TestGeneratePath(t *testing.T) {
 	metadataJSONgt7, err := json.MarshalIndent(gt, "", "    ")
 	check.Nil(err)
 
+	gt.Response.Group.Name = "\"Thing\""
+	metadataJSONgt8, err := json.MarshalIndent(gt, "", "    ")
+	check.Nil(err)
+
 	// tracker
 	tracker := &GazelleTracker{Name: "BLUE", URL: "http://blue"}
 
@@ -106,43 +114,45 @@ func TestGeneratePath(t *testing.T) {
 	check.Nil(infod7.LoadFromTracker(tracker, metadataJSONgt6))
 	infod8 := &TrackerMetadata{}
 	check.Nil(infod8.LoadFromTracker(tracker, metadataJSONgt7))
+	infod9 := &TrackerMetadata{}
+	check.Nil(infod9.LoadFromTracker(tracker, metadataJSONgt8))
 
 	// checking GeneratePath
-	check.Equal("original_path", infod2.GeneratePath(""))
-	check.Equal("Artist A, Artist B", infod2.GeneratePath("$a"))
-	check.Equal("RELEASE 1", infod2.GeneratePath("$t"))
-	check.Equal("1987", infod2.GeneratePath("$y"))
-	check.Equal("FLAC", infod2.GeneratePath("$f"))
-	check.Equal("V0", infod4.GeneratePath("$f"))
-	check.Equal("FLAC24", infod5.GeneratePath("$f"))
-	check.Equal("WEB", infod2.GeneratePath("$s"))
-	check.Equal("LABEL 1", infod2.GeneratePath("$l"))
-	check.Equal("CATNUM", infod2.GeneratePath("$n"))
-	check.Equal("DLX", infod2.GeneratePath("$e"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB]", infod2.GeneratePath("$a ($y) $t [$f] [$s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB] {DLX, LABEL 1-CATNUM}", infod2.GeneratePath("$a ($y) $t [$f] [$s] {$e, $l-$n}"))
-	check.Equal("DLX/DLX", infod2.GeneratePath("$e/$e")) // sanitized to remove "/"
-	check.Equal("2017, DLX, CATNUM", infod2.GeneratePath("$id"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC CD]", infod3.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC CD+]", infod3.GeneratePath("$a ($y) $t {$id} [$f $g]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, Bonus, CATNUM} [V0 CD]", infod4.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC24 Vinyl]", infod5.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC CD]", infod6.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC CD++]", infod6.GeneratePath("$a ($y) $t {$id} [$f $g]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD]", infod7.GeneratePath("$a ($y) $t {$id} [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD+]", infod7.GeneratePath("$a ($y) $t {$id} [$f $g]"))
-	check.Equal("[Artist A, Artist B]/Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD+]", infod7.GeneratePath("[$a]/$a ($y) $t {$id} [$f $g]"))
-	check.Equal("[Artist A, Artist B]/Artist A, Artist B (1987) RELEASE 1 ∕ RELEASE 2!!&éçà©§Ð‘®¢ {PR, CATNUM} [FLAC CD+]", infod8.GeneratePath("[$a]/$a ($y) $t {$id} [$f $g]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} EP [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} $xar [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} EP [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} $r [$f $s]"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD]", infod7.GeneratePath("$a ($y) $t {$id} [$f $s] $xar"))
-	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD] Album", infod7.GeneratePath("$a ($y) $t {$id} [$f $s] $r"))
+	check.Equal("original_path", infod2.GeneratePath("", ""))
+	check.Equal("Artist A, Artist B", infod2.GeneratePath("$a", ""))
+	check.Equal("RELEASE 1", infod2.GeneratePath("$t", ""))
+	check.Equal("1987", infod2.GeneratePath("$y", ""))
+	check.Equal("FLAC", infod2.GeneratePath("$f", ""))
+	check.Equal("V0", infod4.GeneratePath("$f", ""))
+	check.Equal("FLAC24", infod5.GeneratePath("$f", ""))
+	check.Equal("WEB", infod2.GeneratePath("$s", ""))
+	check.Equal("LABEL 1", infod2.GeneratePath("$l", ""))
+	check.Equal("CATNUM", infod2.GeneratePath("$n", ""))
+	check.Equal("DLX", infod2.GeneratePath("$e", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB]", infod2.GeneratePath("$a ($y) $t [$f] [$s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 [FLAC] [WEB] {DLX, LABEL 1-CATNUM}", infod2.GeneratePath("$a ($y) $t [$f] [$s] {$e, $l-$n}", ""))
+	check.Equal("DLX/DLX", infod2.GeneratePath("$e/$e", "")) // sanitized to remove "/"
+	check.Equal("2017, DLX, CATNUM", infod2.GeneratePath("$id", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} [$f $s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC CD]", infod3.GeneratePath("$a ($y) $t {$id} [$f $s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} [FLAC CD+]", infod3.GeneratePath("$a ($y) $t {$id} [$f $g]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, Bonus, CATNUM} [V0 CD]", infod4.GeneratePath("$a ($y) $t {$id} [$f $s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC24 Vinyl]", infod5.GeneratePath("$a ($y) $t {$id} [$f $s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC CD]", infod6.GeneratePath("$a ($y) $t {$id} [$f $s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, RM, CATNUM} [FLAC CD++]", infod6.GeneratePath("$a ($y) $t {$id} [$f $g]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD]", infod7.GeneratePath("$a ($y) $t {$id} [$f $s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD+]", infod7.GeneratePath("$a ($y) $t {$id} [$f $g]", ""))
+	check.Equal("[Artist A, Artist B]/Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD+]", infod7.GeneratePath("[$a]/$a ($y) $t {$id} [$f $g]", ""))
+	check.Equal("[Artist A, Artist B]/Artist A, Artist B (1987) RELEASE 1 ∕ RELEASE 2!!&éçà©§Ð‘®¢ {PR, CATNUM} [FLAC CD+]", infod8.GeneratePath("[$a]/$a ($y) $t {$id} [$f $g]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} EP [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} $xar [$f $s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {2017, DLX, CATNUM} EP [FLAC WEB]", infod2.GeneratePath("$a ($y) $t {$id} $r [$f $s]", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD]", infod7.GeneratePath("$a ($y) $t {$id} [$f $s] $xar", ""))
+	check.Equal("Artist A, Artist B (1987) RELEASE 1 {PR, CATNUM} [FLAC CD] Album", infod7.GeneratePath("$a ($y) $t {$id} [$f $s] $r", ""))
+	check.Equal("Artist A, Artist B (1987) \"Thing\" {PR, CATNUM} [FLAC CD] Album", infod9.GeneratePath("$a ($y) $t {$id} [$f $s] $r", ""))
 
 	// checking TextDescription
 	fmt.Println(infod2.TextDescription(false))
 	fmt.Println(infod2.TextDescription(true))
-
 }
 
 func TestArtistInSlice(t *testing.T) {

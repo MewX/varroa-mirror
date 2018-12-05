@@ -192,6 +192,11 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		logThis.Info(filter.Name+": Wrong release type", VERBOSE)
 		return false
 	}
+	// checking tags
+	if len(filter.TagsRequired) != 0 && !MatchAllInSlice(filter.TagsRequired, r.Tags) {
+		logThis.Info(filter.Name+": Does not have all required tags", VERBOSE)
+		return false
+	}
 	for _, excluded := range filter.TagsExcluded {
 		if MatchInSlice(excluded, r.Tags) {
 			logThis.Info(filter.Name+": Has excluded tag", VERBOSE)

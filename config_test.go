@@ -92,11 +92,20 @@ func TestConfig(t *testing.T) {
 	check.Equal("server.that.is.mine.com", c.WebServer.Hostname)
 	check.Equal(1234, c.WebServer.PortHTTP)
 	check.Equal(1235, c.WebServer.PortHTTPS)
-	// notifications
-	fmt.Println("Checking notifications")
+	// pushover notifications
+	fmt.Println("Checking pushover notifications")
 	check.Equal("tokenpushovertoken", c.Notifications.Pushover.Token)
 	check.Equal("userpushoveruser", c.Notifications.Pushover.User)
 	check.Equal(true, c.Notifications.Pushover.IncludeBufferGraph)
+	// irc notifications
+	fmt.Println("Checking IRC notifications")
+	check.Equal("blue", c.Notifications.Irc.Tracker)
+	check.Equal("irc_name", c.Notifications.Irc.User)
+	// webhooks
+	fmt.Println("Checking webhooks")
+	check.Equal("http://some.thing", c.Notifications.WebHooks.Address)
+	check.Equal("tokenwebhooktoken", c.Notifications.WebHooks.Token)
+	check.Equal([]string{"blue"}, c.Notifications.WebHooks.Trackers)
 	// library
 	fmt.Println("Checking library")
 	check.Equal("test", c.Library.Directory)
@@ -111,11 +120,7 @@ func TestConfig(t *testing.T) {
 	check.Equal([]string{"Skip James", "VA| All the Blues: All of it"}, c.Library.Categories["Blues"])
 	check.Equal([]string{"The Black Keys", "The Jon Spencer Blues Explosion"}, c.Library.Categories["Blues-Rock"])
 	check.Equal("test", c.Library.PlaylistDirectory)
-	// webhooks
-	fmt.Println("Checking webhooks")
-	check.Equal("http://some.thing", c.Notifications.WebHooks.Address)
-	check.Equal("tokenwebhooktoken", c.Notifications.WebHooks.Token)
-	check.Equal([]string{"blue"}, c.Notifications.WebHooks.Trackers)
+
 	// gitlab
 	fmt.Println("Checking gitlab pages")
 	check.Equal("https://gitlab.com/something/repo.git", c.GitlabPages.GitHTTPS)
@@ -147,6 +152,7 @@ func TestConfig(t *testing.T) {
 	check.Equal("", f.WatchDir)
 	check.Equal(0, f.MinSizeMB)
 	check.Equal(0, f.MaxSizeMB)
+	check.Nil(f.TagsRequired)
 	check.Nil(f.TagsIncluded)
 	check.Nil(f.TagsExcluded)
 	check.Nil(f.Artist)
@@ -176,6 +182,7 @@ func TestConfig(t *testing.T) {
 	check.Equal("test", f.WatchDir)
 	check.Equal(10, f.MinSizeMB)
 	check.Equal(500, f.MaxSizeMB)
+	check.Equal([]string{"indie"}, f.TagsRequired)
 	check.Equal([]string{"hip.hop", "pop"}, f.TagsIncluded)
 	check.Equal([]string{"metal"}, f.TagsExcluded)
 	check.Equal([]string{"The Beatles"}, f.Artist)

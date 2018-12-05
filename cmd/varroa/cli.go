@@ -30,7 +30,8 @@ Description:
 	- host said graphs on its embedded webserver or on Gitlab Pages
 	- save and update all snatched torrents metadata
 	- be remotely controlled from your browser with a GreaseMonkey script.
-	- send notifications to your Android device about stats and snatches.
+	- send notifications to your Android device or to a given IRC user 
+	  about stats and snatches.
 	- check local logs agains logchecker.php
 	- sort downloads, export them to your library, automatically rename
 	  folders using tracker metadata
@@ -129,7 +130,7 @@ Configuration Commands:
 		decrypts your encrypted configuration file.
 
 Usage:
-	varroa (start|stop|uptime|status)
+	varroa (start [--no-daemon]|stop|uptime|status)
 	varroa stats
 	varroa refresh-metadata <PATH>...
 	varroa refresh-metadata-by-id <TRACKER> <ID>...
@@ -139,14 +140,17 @@ Usage:
 	varroa backup
 	varroa show-config
 	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>...]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
-	varroa library (fuse <MOUNT_POINT>|reorganize)
+	varroa library (fuse <MOUNT_POINT>|reorganize [--simulate|--interactive])
 	varroa reseed <TRACKER> <PATH>
 	varroa (encrypt|decrypt)
 	varroa --version
 
 Options:
  	-h, --help             Show this screen.
+	--no-daemon            Starts varroa but without turning it into a daemon. No log will be kept. Ctrl+C to quit.
  	--fl                   Use personal Freeleech torrent if available.
+	--simulate             Simulate library reorganization to show what would be renamed.
+	--interactive          Library reorganization requires user confirmation for each release if necessary.
   	--version              Show version.
 `
 )
@@ -158,42 +162,45 @@ type refreshTarget struct {
 }
 
 type varroaArguments struct {
-	builtin             bool
-	start               bool
-	stop                bool
-	uptime              bool
-	status              bool
-	stats               bool
-	refreshMetadata     bool
-	refreshMetadataByID bool
-	checkLog            bool
-	snatch              bool
-	info                bool
-	backup              bool
-	showConfig          bool
-	encrypt             bool
-	decrypt             bool
-	downloadSearch      bool
-	downloadInfo        bool
-	downloadSort        bool
-	downloadSortID      bool
-	downloadList        bool
-	downloadState       string
-	downloadClean       bool
-	downloadFuse        bool
-	libraryFuse         bool
-	libraryReorg        bool
-	reseed              bool
-	useFLToken          bool
-	torrentIDs          []int
-	logFile             string
-	trackerLabel        string
-	paths               []string
-	artistName          string
-	mountPoint          string
-	requiresDaemon      bool
-	canUseDaemon        bool
-	toRefresh           []refreshTarget
+	builtin                 bool
+	start                   bool
+	noDaemon                bool
+	stop                    bool
+	uptime                  bool
+	status                  bool
+	stats                   bool
+	refreshMetadata         bool
+	refreshMetadataByID     bool
+	checkLog                bool
+	snatch                  bool
+	info                    bool
+	backup                  bool
+	showConfig              bool
+	encrypt                 bool
+	decrypt                 bool
+	downloadSearch          bool
+	downloadInfo            bool
+	downloadSort            bool
+	downloadSortID          bool
+	downloadList            bool
+	downloadState           string
+	downloadClean           bool
+	downloadFuse            bool
+	libraryFuse             bool
+	libraryReorg            bool
+	libraryReorgInteractive bool
+	libraryReorgSimulate    bool
+	reseed                  bool
+	useFLToken              bool
+	torrentIDs              []int
+	logFile                 string
+	trackerLabel            string
+	paths                   []string
+	artistName              string
+	mountPoint              string
+	requiresDaemon          bool
+	canUseDaemon            bool
+	toRefresh               []refreshTarget
 }
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
@@ -209,6 +216,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	// commands
 	b.start = args["start"].(bool)
+	b.noDaemon = args["--no-daemon"].(bool)
 	b.stop = args["stop"].(bool)
 	b.uptime = args["uptime"].(bool)
 	b.status = args["status"].(bool)
@@ -238,6 +246,8 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	if args["library"].(bool) {
 		b.libraryFuse = args["fuse"].(bool)
 		b.libraryReorg = args["reorganize"].(bool)
+		b.libraryReorgSimulate = args["--simulate"].(bool)
+		b.libraryReorgInteractive = args["--interactive"].(bool)
 	}
 	if b.reseed || b.downloadSort {
 		b.paths = args["<PATH>"].([]string)

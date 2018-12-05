@@ -3,6 +3,7 @@ package varroa
 import (
 	"encoding/json"
 	"io/ioutil"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -22,7 +23,7 @@ type OriginJSON struct {
 	IsAlive             bool   `json:"is_alive"`
 }
 
-func (toc *TrackerOriginJSON) load() error {
+func (toc *TrackerOriginJSON) Load() error {
 	if toc.Path == "" {
 		return errors.New("No path defined")
 	}
@@ -42,7 +43,7 @@ func (toc *TrackerOriginJSON) loadFromBytes(data []byte) error {
 		// if it fails, try loading as the old format
 		old := &OriginJSON{}
 		if err = json.Unmarshal(data, &old); err != nil || old.Tracker == "" {
-			return errors.New("Cannot parse " + originJSONFile + " in " + toc.Path)
+			return errors.New("Cannot parse " + OriginJSONFile + " in " + toc.Path)
 		}
 		// copy into new format
 		if toc.Origins == nil {
@@ -63,4 +64,25 @@ func (toc *TrackerOriginJSON) write() error {
 		return err
 	}
 	return ioutil.WriteFile(toc.Path, b, 0644)
+}
+
+func (toc TrackerOriginJSON) lastUpdated() map[string]int64 {
+	out := make(map[string]int64)
+	for label, origin := range toc.Origins {
+		out[label] = origin.LastUpdatedMetadata
+	}
+	return out
+}
+
+func (toc TrackerOriginJSON) lastUpdatedString() string {
+	updates := toc.lastUpdated()
+	if len(updates) > 0 {
+		txt := "Metadata was last updated: "
+		for label, timestamp := range updates {
+			tm := time.Unix(timestamp, 0)
+			txt += tm.Format("2006.01.02 15:04:05") + " (" + label + ") "
+		}
+		return txt
+	}
+	return couldNotFindMetadataAge
 }

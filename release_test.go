@@ -174,6 +174,9 @@ func TestRelease(t *testing.T) {
 	f32 := &ConfigFilter{Name: "f32", PerfectFlac: true, Edition: []string{"r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}}
 	f33 := &ConfigFilter{Name: "f33", BlacklistedUploader: []string{"that_guy"}}
 	f34 := &ConfigFilter{Name: "f34", PerfectFlac: true, Edition: []string{"xr/[cC][lL][eE][aA][nN]"}}
+	f35 := &ConfigFilter{Name: "f35", AllowScene: true, TagsRequired: []string{"nope"}}
+	f36 := &ConfigFilter{Name: "f36", AllowScene: true, TagsRequired: []string{"tag1"}}
+	f37 := &ConfigFilter{Name: "f37", AllowScene: true, TagsRequired: []string{"tag1", "nope"}}
 
 	// checking filters
 	check.NotNil(f0.check())
@@ -211,6 +214,9 @@ func TestRelease(t *testing.T) {
 	check.Nil(f32.check())
 	check.Nil(f33.check())
 	check.Nil(f34.check())
+	check.Nil(f35.check())
+	check.Nil(f36.check())
+	check.Nil(f37.check())
 
 	// tests
 	check.True(r1.Satisfies(f1))
@@ -346,6 +352,25 @@ func TestRelease(t *testing.T) {
 	check.True(r5.Satisfies(f27))
 
 	check.True(r1.Satisfies(f30))
+
+	// required tags
+	check.False(r1.Satisfies(f35))
+	check.False(r2.Satisfies(f35))
+	check.False(r3.Satisfies(f35))
+	check.False(r4.Satisfies(f35))
+	check.False(r5.Satisfies(f35))
+
+	check.True(r1.Satisfies(f36))
+	check.True(r2.Satisfies(f36))
+	check.False(r3.Satisfies(f36))
+	check.False(r4.Satisfies(f36))
+	check.True(r5.Satisfies(f36))
+
+	check.False(r1.Satisfies(f37))
+	check.False(r2.Satisfies(f37))
+	check.False(r3.Satisfies(f37))
+	check.False(r4.Satisfies(f37))
+	check.False(r5.Satisfies(f37))
 
 	// checking with TorrentInfo
 

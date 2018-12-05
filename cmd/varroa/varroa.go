@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
 
 	"github.com/pkg/errors"
 	"gitlab.com/passelecasque/varroa"
@@ -207,9 +209,13 @@ func main() {
 				return
 			}
 			logThis.Info("Reorganizing releases in the library directory. ", varroa.NORMAL)
-			fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
+			if cli.libraryReorgSimulate {
+				fmt.Println(varroa.Green("This will simulate the library reorganization, applying the library folder template to all releases, using known tracker metadata. Nothing will actually be renamed or moved."))
+			} else {
+				fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
+			}
 			if varroa.Accept("Confirm") {
-				if err = varroa.ReorganizeLibrary(); err != nil {
+				if err = varroa.ReorganizeLibrary(cli.libraryReorgSimulate, cli.libraryReorgInteractive); err != nil {
 					logThis.Error(err, varroa.NORMAL)
 				}
 			}
@@ -247,28 +253,41 @@ func main() {
 	}
 
 	d := varroa.NewDaemon()
-	// launching daemon
 	if cli.start {
-		// daemonizing process
-		if err := d.Start(os.Args); err != nil {
-			logThis.Error(errors.Wrap(err, varroa.ErrorGettingDaemonContext), varroa.NORMAL)
-			return
+		// launching daemon
+		if !cli.noDaemon {
+			// daemonizing process
+			if err := d.Start(os.Args); err != nil {
+				logThis.Error(errors.Wrap(err, varroa.ErrorGettingDaemonContext), varroa.NORMAL)
+				return
+			}
+			// if not in daemon, job is over; exiting.
+			// the spawned daemon will continue.
+			if !d.IsRunning() {
+				return
+			}
 		}
-		// if not in daemon, job is over; exiting.
-		// the spawned daemon will continue.
-		if !d.IsRunning() {
-			return
-		}
-		// setting up for the daemon
+		// setting up for the daemon or main process
 		if err := env.SetUp(true); err != nil {
 			logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
 			return
 		}
 		// launch goroutines
-		varroa.GoGoRoutines(env)
+		varroa.GoGoRoutines(env, cli.noDaemon)
 
-		// wait until daemon is stopped.
-		d.WaitForStop()
+		if !cli.noDaemon {
+			// wait until daemon is stopped.
+			d.WaitForStop()
+		} else {
+			// wait for ^C to quit.
+			fmt.Println(varroa.Red("Running in no-daemon mode. Ctrl+C to quit."))
+			c := make(chan os.Signal)
+			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+			// waiting...
+			<-c
+			fmt.Println(varroa.Red("Terminating."))
+		}
+		varroa.Notify("Stopping varroa!", varroa.FullName, "info", env)
 		return
 	}
 
@@ -347,7 +366,6 @@ func main() {
 		}
 		// at last, sending signals for shutdown
 		if cli.stop {
-			varroa.Notify("Stopping daemon!", varroa.FullName, "info")
 			d.Stop(daemonProcess)
 			return
 		}

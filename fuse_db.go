@@ -44,10 +44,10 @@ func (fe *FuseEntry) Load(root string) error {
 	}
 
 	// find origin.json
-	originFile := filepath.Join(root, fe.FolderName, metadataDir, originJSONFile)
+	originFile := filepath.Join(root, fe.FolderName, MetadataDir, OriginJSONFile)
 	if FileExists(originFile) {
 		origin := TrackerOriginJSON{Path: originFile}
-		if err := origin.load(); err != nil {
+		if err := origin.Load(); err != nil {
 			return errors.Wrap(err, "Error reading origin.json")
 		}
 		// reset fields
@@ -60,10 +60,10 @@ func (fe *FuseEntry) Load(root string) error {
 			fe.Tracker = append(fe.Tracker, tracker)
 
 			// getting release info from json
-			infoJSON := filepath.Join(root, fe.FolderName, metadataDir, tracker+"_"+trackerMetadataFile)
+			infoJSON := filepath.Join(root, fe.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
 			if !FileExists(infoJSON) {
 				// if not present, try the old format
-				infoJSON = filepath.Join(root, fe.FolderName, metadataDir, "Release.json")
+				infoJSON = filepath.Join(root, fe.FolderName, MetadataDir, "Release.json")
 			}
 			if FileExists(infoJSON) {
 				// load JSON, get info

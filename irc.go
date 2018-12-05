@@ -90,7 +90,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 						logThis.Error(errors.Wrap(err, errorAddingToHistory), NORMAL)
 					}
 					// send notification
-					if err := Notify(filter.Name+": Snatched "+release.ShortString(), tracker.Name, "info"); err != nil {
+					if err := Notify(filter.Name+": Snatched "+release.ShortString(), tracker.Name, "info", e); err != nil {
 						logThis.Error(err, NORMAL)
 					}
 					// save metadata once the download folder is created
@@ -127,9 +127,12 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 	}
 	IRCClient.UseTLS = autosnatchConfig.IRCSSL
 	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: autosnatchConfig.IRCSSLSkipVerify}
-	IRCClient.AddCallback("001", func(e *irc.Event) {
+	IRCClient.AddCallback("001", func(ev *irc.Event) {
 		IRCClient.Privmsg("NickServ", "IDENTIFY "+autosnatchConfig.NickservPassword)
 		IRCClient.Privmsg(autosnatchConfig.Announcer, fmt.Sprintf("enter %s %s %s", autosnatchConfig.AnnounceChannel, tracker.User, autosnatchConfig.IRCKey))
+		if e.config.ircNotifsConfigured {
+			IRCClient.Privmsg(e.config.Notifications.Irc.User, "varroa bot, connected.")
+		}
 	})
 	IRCClient.AddCallback("PRIVMSG", func(ev *irc.Event) {
 		if ev.Nick != autosnatchConfig.Announcer {
@@ -166,5 +169,6 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 		logThis.Error(errors.Wrap(err, errorConnectingToIRC), NORMAL)
 		return
 	}
+	e.ircClient = IRCClient
 	IRCClient.Loop()
 }

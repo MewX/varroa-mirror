@@ -33,7 +33,7 @@ func CurrentPlaylists(root string) (*Playlist, *Playlist, error) {
 		}
 	}
 	if FileExists(monthly.Filename) {
-		if err := monthly.Load(daily.Filename); err != nil {
+		if err := monthly.Load(monthly.Filename); err != nil {
 			return nil, nil, err
 		}
 	}

@@ -26,10 +26,10 @@ func TestPlaylist(t *testing.T) {
 	fakeFiles := []string{"01. Track1.flac", "02. Track2.mp3", "this.log"}
 
 	// create test dir
-	check.Nil(os.MkdirAll(filepath.Join(fakeLibraryPath, fakeRelease, metadataDir), 0777))
+	check.Nil(os.MkdirAll(filepath.Join(fakeLibraryPath, fakeRelease, MetadataDir), 0777))
 	check.Nil(os.MkdirAll(fakePlaylistPath, 0777))
 	// create dummy files
-	check.Nil(ioutil.WriteFile(filepath.Join(fakeLibraryPath, fakeRelease, metadataDir, originJSONFile), []byte("Nothing interesting."), 0777))
+	check.Nil(ioutil.WriteFile(filepath.Join(fakeLibraryPath, fakeRelease, MetadataDir, OriginJSONFile), []byte("Nothing interesting."), 0777))
 	for _, f := range fakeFiles {
 		check.Nil(ioutil.WriteFile(filepath.Join(fakeLibraryPath, fakeRelease, f), []byte("Nothing interesting."), 0777))
 	}

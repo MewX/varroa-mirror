@@ -124,7 +124,7 @@ openssl ca -batch -config %s -policy signing_policy -extensions signing_req -out
 
 var (
 	provideCertificate    = fmt.Sprintf("You must provide your own self-signed certificate (%s & %s).", filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey))
-	subjTemplate          = "/C=US/ST=MD/L=Baltimore/O=VarroaMusica/OU=varroa/CN=%s"
+	subjTemplate          = "/C=US/ST=MD/L=Baltimore/O=" + FullNameAlt + "/OU=varroa/CN=%s"
 	generateCACommand     = []string{"req", "-x509", "-config", openSSLCAConfFile, "-newkey", "rsa:4096", "-sha256", "-nodes", "-out", "cacert.pem", "-outform", "PEM", "-subj"}
 	generateServerCommand = []string{"req", "-config", openSSLServerConfFile, "-newkey", "rsa:2048", "-sha256", "-nodes", "-out", "servercert.csr", "-outform", "PEM", "-subj"}
 	generateSignCommand   = []string{"ca", "-batch", "-config", openSSLCAConfFile, "-policy", "signing_policy", "-extensions", "signing_req", "-out", certificate, "-infiles", "servercert.csr"}
