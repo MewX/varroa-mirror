@@ -386,6 +386,19 @@ func GetFirstFLACFound(directoryPath string) string {
 	return ""
 }
 
+// GetAllFLACs returns all FLAC files found in a directory
+func GetAllFLACs(directoryPath string) []string {
+	var paths []string
+	filepath.Walk(directoryPath, func(path string, f os.FileInfo, err error) error {
+		if strings.ToLower(filepath.Ext(path)) == flacExt {
+			// stop walking the directory as soon as a track is found
+			paths = append(paths, path)
+		}
+		return nil
+	})
+	return paths
+}
+
 // MoveToNewPath moves a directory to its new home.
 func MoveToNewPath(current, new string, doNothing, interactive bool) (bool, error) {
 	if new == "" {

@@ -111,7 +111,9 @@ Commands:
 	reseed:
 		reseed a downloaded release using tracker metadata. Does not check
 		the torrent files actually match the contents in the given PATH.
-
+	enhance:
+		gather more metadata and generally enhance a downloaded release.	
+	
 Configuration Commands:
 
 	show-config:
@@ -142,6 +144,7 @@ Usage:
 	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>...]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
 	varroa library (fuse <MOUNT_POINT>|reorganize [--simulate|--interactive])
 	varroa reseed <TRACKER> <PATH>
+	varroa enhance <PATH>
 	varroa (encrypt|decrypt)
 	varroa --version
 
@@ -191,6 +194,7 @@ type varroaArguments struct {
 	libraryReorgInteractive bool
 	libraryReorgSimulate    bool
 	reseed                  bool
+	enhance                 bool
 	useFLToken              bool
 	torrentIDs              []int
 	logFile                 string
@@ -222,6 +226,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.status = args["status"].(bool)
 	b.stats = args["stats"].(bool)
 	b.reseed = args["reseed"].(bool)
+	b.enhance = args["enhance"].(bool)
 	b.refreshMetadataByID = args["refresh-metadata-by-id"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
@@ -249,7 +254,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.libraryReorgSimulate = args["--simulate"].(bool)
 		b.libraryReorgInteractive = args["--interactive"].(bool)
 	}
-	if b.reseed || b.downloadSort {
+	if b.reseed || b.downloadSort || b.enhance {
 		b.paths = args["<PATH>"].([]string)
 		for i, p := range b.paths {
 			if !varroa.DirectoryExists(p) {
@@ -349,11 +354,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadataByID || b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.reseed {
+	if b.refreshMetadataByID || b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.reseed || b.enhance {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.refreshMetadata || b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg {
+	if b.refreshMetadata || b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.enhance {
 		b.canUseDaemon = false
 	}
 	return nil

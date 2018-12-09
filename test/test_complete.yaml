@@ -66,6 +66,9 @@ library:
   categories_file: test/categories.yaml
   playlist_directory: test
 
+metadata:
+  discogs_token: THISISASECRETTOKENGENERATEDFROMDISCOGSACCOUNT
+
 mpd:
   server: localhost:1234
   password: optional

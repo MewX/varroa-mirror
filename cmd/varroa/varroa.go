@@ -76,6 +76,17 @@ func main() {
 			fmt.Println(config)
 			return
 		}
+		if cli.enhance {
+			enh, err := varroa.NewReleaseDir(cli.paths[0])
+			if err != nil {
+				logThis.Error(err, varroa.NORMAL)
+				return
+			}
+			if err := enh.Enhance(); err != nil {
+				logThis.Error(err, varroa.NORMAL)
+			}
+			return
+		}
 		if cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadSortID || cli.downloadList || cli.downloadClean {
 			if !config.DownloadFolderConfigured {
 				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)

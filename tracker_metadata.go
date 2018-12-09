@@ -439,7 +439,7 @@ func artistInSlice(artist, title string, list []string) bool {
 func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *GazelleTracker) error {
 	destination := filepath.Join(parentFolder, MetadataDir)
 	// create metadata dir if necessary
-	if err := os.MkdirAll(filepath.Join(destination), 0775); err != nil {
+	if err := os.MkdirAll(destination, 0775); err != nil {
 		return errors.Wrap(err, errorCreatingMetadataDir)
 	}
 

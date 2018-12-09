@@ -688,3 +688,20 @@ func (cf *ConfigFilter) String() string {
 	}
 	return description
 }
+
+type ConfigMetadata struct {
+	DiscogsToken string `yaml:"discogs_token"`
+}
+
+func (cm *ConfigMetadata) String() string {
+	txt := "Metadata configuration:\n"
+	txt += "\tDiscogs Token: " + cm.DiscogsToken + "\n"
+	return txt
+}
+
+func (cm *ConfigMetadata) check() error {
+	if cm.DiscogsToken == "" {
+		return errors.New("A valid Discogs Token must be provided (can be generated from Discogs user account)")
+	}
+	return nil
+}

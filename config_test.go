@@ -132,6 +132,9 @@ func TestConfig(t *testing.T) {
 	check.Equal("localhost:1234", c.MPD.Server)
 	check.Equal("optional", c.MPD.Password)
 	check.Equal("../varroa/test", c.MPD.Library)
+	// metadata
+	fmt.Println("Checking metadata")
+	check.Equal("THISISASECRETTOKENGENERATEDFROMDISCOGSACCOUNT", c.Metadata.DiscogsToken)
 	// filters
 	fmt.Println("Checking filters")
 	check.Equal(2, len(c.Filters))
@@ -206,6 +209,8 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverHTTPS)
 	check.True(c.LibraryConfigured)
 	check.True(c.playlistDirectoryConfigured)
+	check.True(c.metadataConfigured)
+	check.True(c.discogsTokenConfigured)
 
 	// disabling autosnatch
 	check.False(c.Autosnatch[0].disabledAutosnatching)

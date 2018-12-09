@@ -24,6 +24,7 @@ type Config struct {
 	Filters                     []*ConfigFilter
 	Library                     *ConfigLibrary
 	MPD                         *ConfigMPD
+	Metadata                    *ConfigMetadata
 	autosnatchConfigured        bool
 	statsConfigured             bool
 	webserverConfigured         bool
@@ -38,6 +39,8 @@ type Config struct {
 	LibraryConfigured           bool
 	playlistDirectoryConfigured bool
 	mpdConfigured               bool
+	metadataConfigured          bool
+	discogsTokenConfigured      bool
 }
 
 func NewConfig(path string) (*Config, error) {
@@ -108,6 +111,9 @@ func (c *Config) String() string {
 	}
 	if c.LibraryConfigured {
 		txt += c.Library.String() + "\n"
+	}
+	if c.metadataConfigured {
+		txt += c.Metadata.String() + "\n"
 	}
 	return txt
 }
@@ -206,6 +212,12 @@ func (c *Config) check() error {
 			return errors.Wrap(err, "Error reading filter configuration")
 		}
 	}
+	// metadata checks
+	if c.Metadata != nil {
+		if err := c.Metadata.check(); err != nil {
+			return errors.Wrap(err, "Error reading Metadata configuration")
+		}
+	}
 
 	// setting a few shortcut flags
 	c.autosnatchConfigured = len(c.Autosnatch) != 0
@@ -222,6 +234,8 @@ func (c *Config) check() error {
 	c.playlistDirectoryConfigured = c.LibraryConfigured && c.Library.PlaylistDirectory != ""
 	c.mpdConfigured = c.MPD != nil
 	c.webserverMetadata = c.DownloadFolderConfigured && c.webserverConfigured && c.WebServer.ServeMetadata
+	c.metadataConfigured = c.Metadata != nil
+	c.discogsTokenConfigured = c.metadataConfigured && c.Metadata.DiscogsToken != ""
 
 	// config-wide checks
 	configuredTrackers := c.TrackerLabels()
