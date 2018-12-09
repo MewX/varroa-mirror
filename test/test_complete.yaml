@@ -59,6 +59,7 @@ library:
   directory: test
   use_hard_links: true
   folder_template: $a/$a ($y) $t [$f $q] [$s] [$l $n $e]
+  music_file_template: $dn.$tn. $ta - $tt
   additional_source_directories:
   - ../varroa/test
   - ../varroa/cmd

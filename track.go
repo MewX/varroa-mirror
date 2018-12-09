@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -14,6 +15,8 @@ type Track struct {
 	MD5           string            `json:"md5"`
 	BitDepth      string            `json:"bit_depth"`
 	SampleRate    string            `json:"sample_rate"`
+	TotalSamples  string            `json:"total_samples"`
+	Duration      string            `json:"duration"`
 	Fingerprint   string            `json:"fingerprint,omitempty"`
 	Tags          map[string]string `json:"tags"`
 	HasCover      bool              `json:"has_cover"`
@@ -44,7 +47,7 @@ func (rt *Track) String() string {
 	if rt.HasCover {
 		cover = fmt.Sprintf("\tCover: %s (%sx%s, size: %s)", rt.PictureName, rt.PictureWidth, rt.PictureHeight, rt.PictureSize)
 	}
-	return fmt.Sprintf("%s: FLAC%s %sHz (MD5: %s):\n%s%s", rt.Filename, rt.BitDepth, rt.SampleRate, rt.MD5, tags, cover)
+	return fmt.Sprintf("%s: FLAC%s %sHz [%ss] (MD5: %s):\n%s%s", rt.Filename, rt.BitDepth, rt.SampleRate, rt.Duration, rt.MD5, tags, cover)
 }
 
 func (rt *Track) parse(filename string) error {
@@ -59,7 +62,7 @@ func (rt *Track) parse(filename string) error {
 	rt.Tags = make(map[string]string)
 
 	// getting info & tags
-	cmdOut, err := exec.Command("metaflac", "--no-utf8-convert", "--show-bps", "--show-sample-rate", "--show-md5sum", "--export-tags-to=-", filename).Output()
+	cmdOut, err := exec.Command("metaflac", "--no-utf8-convert", "--show-bps", "--show-sample-rate", "--show-total-samples", "--show-md5sum", "--export-tags-to=-", filename).Output()
 	if err != nil {
 		return err
 	}
@@ -73,12 +76,25 @@ func (rt *Track) parse(filename string) error {
 		} else if i == 1 {
 			rt.SampleRate = line
 		} else if i == 2 {
+			rt.TotalSamples = line
+		} else if i == 3 {
 			rt.MD5 = line
 		} else {
 			parts := strings.Split(line, "=")
 			rt.Tags[parts[0]] = parts[1]
 		}
 	}
+
+	// duration = total samples / sample rate
+	total, err := strconv.Atoi(rt.TotalSamples)
+	if err != nil {
+		return err
+	}
+	rate, err := strconv.Atoi(rt.SampleRate)
+	if err != nil {
+		return err
+	}
+	rt.Duration = fmt.Sprintf("%.3f", float32(total)/float32(rate))
 
 	// get embedded picture info
 	// TODO what if more than one picture?
