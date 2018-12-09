@@ -45,9 +45,10 @@ const (
 	statsNotificationPrefix   = "stats: "
 
 	// Notable ratios & constants
-	defaultTargetRatio = 1.0
-	warningRatio       = 0.6
-	minimumSeeders     = 5
+	defaultTargetRatio     = 1.0
+	warningRatio           = 0.6
+	minimumSeeders         = 5
+	maxEmbeddedPictureSize = 1024 * 1024
 
 	// file extensions
 	yamlExt      = ".yaml"

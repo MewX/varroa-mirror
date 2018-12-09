@@ -2,6 +2,7 @@ package varroa
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -11,8 +12,14 @@ import (
 func TestTrackFLAC(t *testing.T) {
 	fmt.Println("+ Testing Track...")
 	check := assert.New(t)
+	// setup logger
+	c := &Config{General: &ConfigGeneral{LogLevel: 3}}
+	env := &Environment{config: c}
+	logThis = NewLogThis(env)
 
 	flac := "test/test.flac"
+	flacNoPic := "test/test_no_picture.flac"
+	flacOut := "test/test_out.flac"
 	_, err := exec.LookPath("metaflac")
 	if err != nil {
 		fmt.Println("Tests cannot be run without metaflac.")
@@ -39,5 +46,16 @@ func TestTrackFLAC(t *testing.T) {
 	check.Equal("copyright þæ", track.Tags["COPYRIGHT"])
 	check.Equal("http://bestartist.com", track.Tags["CONTACT"])
 	check.Equal("A title ê€$éèç\"&!!", track.Tags["TITLE"])
+	check.True(track.HasCover)
 
+	fmt.Println(track.String())
+
+	check.False(FileExists(flacOut))
+	check.Nil(track.recompress(flacOut))
+	defer os.Remove(flacOut)
+	check.True(FileExists(flacOut))
+
+	var track2 Track
+	check.Nil(track.parse(flacNoPic))
+	check.False(track2.HasCover)
 }
