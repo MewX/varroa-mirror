@@ -58,4 +58,17 @@ func TestTrackFLAC(t *testing.T) {
 	var track2 Track
 	check.Nil(track.parse(flacNoPic))
 	check.False(track2.HasCover)
+
+	name, err := track.generateName("$dn | $dt | $tn | $ta | $aa | $tt | $td | $t | $y")
+	check.Nil(err)
+	check.Equal("02 | 09 | 05 | Best artist àß€«đ | Album Artist €«ðøßđŋ | A title ê€$éèç\"&!! | 1.032 | Album þþ«ł€ | 2018.flac", name)
+
+	name, err = track.generateName("$dn.$tn. $ta - $tt ($td)")
+	check.Nil(err)
+	check.Equal("02.05. Best artist àß€«đ - A title ê€$éèç\"&!! (1.032).flac", name)
+
+	name, err = track.generateName("$dn.$tn. $tt ($td)")
+	check.Nil(err)
+	check.Equal("02.05. A title ê€$éèç\"&!! (1.032).flac", name)
+	fmt.Println(name)
 }
