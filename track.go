@@ -12,33 +12,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	discNumberLabel   = "DISCNUMBER"
-	discTotalLabel    = "TRACKTOTAL"
-	releaseTitleLabel = "ALBUM"
-	yearLabel         = "DATE" // TODO check if only contains year
-	trackArtistLabel  = "ARTIST"
-	albumArtistLabel  = "ALBUMARTIST"
-	genreLabel        = "GENRE"
-	trackTitleLabel   = "TITLE"
-	trackNumberLabel  = "TRACKNUMBER"
-	trackCommentLabel = "DESCRIPTION"
-)
-
 type Track struct {
-	Filename      string            `json:"filename"`
-	MD5           string            `json:"md5"`
-	BitDepth      string            `json:"bit_depth"`
-	SampleRate    string            `json:"sample_rate"`
-	TotalSamples  string            `json:"total_samples"`
-	Duration      string            `json:"duration"`
-	Fingerprint   string            `json:"fingerprint,omitempty"`
-	Tags          map[string]string `json:"tags"`
-	HasCover      bool              `json:"has_cover"`
-	PictureSize   string            `json:"picture_size,omitempty"`
-	PictureHeight string            `json:"picture_height,omitempty"`
-	PictureWidth  string            `json:"picture_width,omitempty"`
-	PictureName   string            `json:"picture_name,omitempty"`
+	Filename      string         `json:"filename"`
+	MD5           string         `json:"md5"`
+	BitDepth      string         `json:"bit_depth"`
+	SampleRate    string         `json:"sample_rate"`
+	TotalSamples  string         `json:"total_samples"`
+	Duration      string         `json:"duration"`
+	Fingerprint   string         `json:"fingerprint,omitempty"`
+	Tags          *TrackMetadata `json:"tags"`
+	HasCover      bool           `json:"has_cover"`
+	PictureSize   string         `json:"picture_size,omitempty"`
+	PictureHeight string         `json:"picture_height,omitempty"`
+	PictureWidth  string         `json:"picture_width,omitempty"`
+	PictureName   string         `json:"picture_name,omitempty"`
 }
 
 func (rt *Track) checkExternalBinaries() error {
@@ -54,15 +41,11 @@ func (rt *Track) checkExternalBinaries() error {
 }
 
 func (rt *Track) String() string {
-	var tags string
-	for k, v := range rt.Tags {
-		tags += fmt.Sprintf("\t%s: %s\n", k, v)
-	}
 	var cover string
 	if rt.HasCover {
-		cover = fmt.Sprintf("\tCover: %s (%sx%s, size: %s)", rt.PictureName, rt.PictureWidth, rt.PictureHeight, rt.PictureSize)
+		cover = fmt.Sprintf("Cover: %s (%sx%s, size: %s)", rt.PictureName, rt.PictureWidth, rt.PictureHeight, rt.PictureSize)
 	}
-	return fmt.Sprintf("%s: FLAC%s %sHz [%ss] (MD5: %s):\n%s%s", rt.Filename, rt.BitDepth, rt.SampleRate, rt.Duration, rt.MD5, tags, cover)
+	return fmt.Sprintf("%s: FLAC%s %sHz [%ss] (MD5: %s):\n\t%s\n\t%s", rt.Filename, rt.BitDepth, rt.SampleRate, rt.Duration, rt.MD5, rt.Tags.String(), cover)
 }
 
 func (rt *Track) parse(filename string) error {
@@ -74,7 +57,7 @@ func (rt *Track) parse(filename string) error {
 	}
 
 	rt.Filename = filename
-	rt.Tags = make(map[string]string)
+	tags := make(map[string]string)
 
 	// getting info & tags
 	cmdOut, err := exec.Command("metaflac", "--no-utf8-convert", "--show-bps", "--show-sample-rate", "--show-total-samples", "--show-md5sum", "--export-tags-to=-", filename).Output()
@@ -96,9 +79,15 @@ func (rt *Track) parse(filename string) error {
 			rt.MD5 = line
 		} else {
 			parts := strings.Split(line, "=")
-			rt.Tags[parts[0]] = parts[1]
+			tags[parts[0]] = parts[1]
 		}
 	}
+	// parsing tags
+	t, err := NewTrackMetadata(tags)
+	if err != nil {
+		return err
+	}
+	rt.Tags = t
 
 	// duration = total samples / sample rate
 	total, err := strconv.Atoi(rt.TotalSamples)
@@ -193,50 +182,80 @@ func (rt *Track) recompress(dest string) error {
 	return nil
 }
 
-func (rt *Track) generateName(filenameTemplate string) (string, error) {
-	if rt.Filename == "" {
+type trackType int
+
+const (
+	normalTrack trackType = iota
+	multiDiscTrack
+	multiArtistsTrack
+	multiArtistsAndDiscTrack
+)
+
+func (t *Track) trackType(tm TrackerMetadata) trackType {
+	// find if multidisc release
+	var multiDisc bool
+	discNumberInt, err := strconv.Atoi(t.Tags.DiscNumber)
+	if err == nil && (discNumberInt > 1) {
+		multiDisc = true
+	}
+	// TODO else use discogs info?
+
+	// find if multi artists based on release type?
+	if StringInSlice(tm.ReleaseType, []string{releaseCompilation, releaseDJMix, releaseMixtape, releaseRemix}) {
+		if multiDisc {
+			return multiArtistsAndDiscTrack
+		}
+		return multiArtistsTrack
+	} else if multiDisc {
+		return multiDiscTrack
+	}
+	return normalTrack
+}
+
+func (t *Track) generateName(filenameTemplate string) (string, error) {
+	if t.Filename == "" {
 		return "", errors.New("a FLAC file must be parsed first")
 	}
 
 	// TODO input: TrackerMetadata, if tags not sufficient?
 
-	discNumber, ok := rt.Tags[discNumberLabel]
-	if !ok {
+	discNumber := t.Tags.DiscNumber
+	if discNumber == "" {
 		// TODO do better...
 		discNumber = "01"
 	}
-	totalTracks, ok := rt.Tags[discTotalLabel]
-	if !ok {
+	totalTracks := t.Tags.TotalTracks
+	if totalTracks == "" {
 		// TODO do better...
 		totalTracks = "01"
 	}
-	trackNumber, ok := rt.Tags[trackNumberLabel]
-	if !ok {
+	trackNumber := t.Tags.Number
+	if trackNumber == "" {
 		// TODO mention it's tag trumpable
-		return "", errors.New("could not find track number tag for " + rt.Filename)
+		return "", errors.New("could not find track number tag for " + t.Filename)
 	}
-	trackArtist, ok := rt.Tags[trackArtistLabel]
-	if !ok {
+	trackArtist := t.Tags.Artist
+	if trackArtist == "" {
 		// TODO mention it's tag trumpable
-		return "", errors.New("could not find track artist tag for " + rt.Filename)
+		return "", errors.New("could not find track artist tag for " + t.Filename)
 	}
-	trackTitle, ok := rt.Tags[trackTitleLabel]
-	if !ok {
+	trackTitle := t.Tags.Title
+	if trackTitle == "" {
 		// TODO mention it's tag trumpable
-		return "", errors.New("could not find track title tag for " + rt.Filename)
+		return "", errors.New("could not find track title tag for " + t.Filename)
 	}
-	albumTitle, ok := rt.Tags[releaseTitleLabel]
-	if !ok {
+	albumTitle := t.Tags.Album
+	if albumTitle == "" {
 		// TODO mention it's tag trumpable
-		return "", errors.New("could not find album title tag for " + rt.Filename)
+		return "", errors.New("could not find album title tag for " + t.Filename)
 	}
-	albumArtist, ok := rt.Tags[albumArtistLabel]
-	if !ok {
+	albumArtist := t.Tags.AlbumArtist
+	if albumArtist == "" {
 		// TODO do better...
 		albumArtist = trackArtist
 	}
-	trackYear, ok := rt.Tags[yearLabel]
-	if !ok {
+	trackYear := t.Tags.Year
+	if trackYear == "" {
 		// TODO do better...
 		trackYear = "0000"
 	}
@@ -263,7 +282,7 @@ func (rt *Track) generateName(filenameTemplate string) (string, error) {
 		SanitizeFolder(trackArtist),
 		SanitizeFolder(trackTitle),
 		SanitizeFolder(albumArtist),
-		SanitizeFolder(rt.Duration), // TODO min:sec or hh:mm:ss
+		SanitizeFolder(t.Duration), // TODO min:sec or hh:mm:ss
 		SanitizeFolder(albumTitle),
 		SanitizeFolder(trackYear),
 		r.Replace(filenameTemplate))
@@ -271,7 +290,7 @@ func (rt *Track) generateName(filenameTemplate string) (string, error) {
 	var doc bytes.Buffer
 	te := template.Must(template.New("hop").Parse(tmpl))
 	if err := te.Execute(&doc, nil); err != nil {
-		return rt.Filename, err
+		return t.Filename, err
 	}
 	newName := strings.TrimSpace(doc.String())
 	// trim spaces around all internal folder names
@@ -285,4 +304,24 @@ func (rt *Track) generateName(filenameTemplate string) (string, error) {
 		"¢¢", "}",
 	)
 	return r2.Replace(strings.Join(trimmedParts, "/")) + flacExt, nil
+}
+
+func (t *Track) applyMetadata(tm TrackMetadata) error {
+	// TODO dump all tags and/or keep original version in separate json
+
+	// TODO use metaflac to rewrite all tags (more than one --set-tag="" in one call?)
+
+	return nil
+}
+
+func (t *Track) generateSpectrals() error {
+	// TODO if sox not present ret error
+
+	// TODO create Metadata dir if necessary
+
+	// TODO spectralname = root + metadata + "t.Filename" + .spectral.png
+
+	// TODO cmd sox .....
+
+	return nil
 }
