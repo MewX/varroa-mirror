@@ -15,9 +15,10 @@ const (
 	trackCommentLabel = "DESCRIPTION"
 	composerLabel     = "COMPOSER"
 	performerLabel    = "PERFORMER"
+	recordLabelLabel  = "ORGANIZATION"
 )
 
-type TrackMetadata struct {
+type TrackTags struct {
 	Number      string
 	TotalTracks string
 	DiscNumber  string
@@ -30,12 +31,13 @@ type TrackMetadata struct {
 	Performer   string
 	Composer    string
 	Album       string
+	Label       string
 	OtherTags   map[string]string
 }
 
-func NewTrackMetadata(tags map[string]string) (*TrackMetadata, error) {
-	// TODO parse all tags, return err if something is missing?
-	tm := &TrackMetadata{}
+func NewTrackMetadata(tags map[string]string) (*TrackTags, error) {
+	// parse all tags
+	tm := &TrackTags{}
 	tm.OtherTags = make(map[string]string)
 	for k, v := range tags {
 		if k == trackNumberLabel {
@@ -62,7 +64,10 @@ func NewTrackMetadata(tags map[string]string) (*TrackMetadata, error) {
 			tm.Composer = v
 		} else if k == performerLabel {
 			tm.Performer = v
+		} else if k == recordLabelLabel {
+			tm.Label = v
 		} else {
+			// other less common tags
 			tm.OtherTags[k] = v
 		}
 	}
@@ -71,8 +76,8 @@ func NewTrackMetadata(tags map[string]string) (*TrackMetadata, error) {
 	return tm, nil
 }
 
-func (tm *TrackMetadata) String() string {
-	normalTags := fmt.Sprintf("Disc#: %s| Track#: %s| Artist: %s| Title: %s| AlbumArtist: %s| Album: %s | TotalTracks: %s| Year: %s| Genre: %s| Performer: %s| Composer: %s| Description: %s", tm.DiscNumber, tm.Number, tm.Artist, tm.Title, tm.AlbumArtist, tm.Album, tm.TotalTracks, tm.Year, tm.Genre, tm.Performer, tm.Composer, tm.Description)
+func (tm *TrackTags) String() string {
+	normalTags := fmt.Sprintf("Disc#: %s| Track#: %s| Artist: %s| Title: %s| AlbumArtist: %s| Album: %s | TotalTracks: %s| Year: %s| Genre: %s| Performer: %s| Composer: %s| Description: %s| Label: %s", tm.DiscNumber, tm.Number, tm.Artist, tm.Title, tm.AlbumArtist, tm.Album, tm.TotalTracks, tm.Year, tm.Genre, tm.Performer, tm.Composer, tm.Description, tm.Label)
 	var extraTags string
 	for k, v := range tm.OtherTags {
 		extraTags += fmt.Sprintf("%s: %s| ", k, v)
@@ -89,7 +94,7 @@ func diffString(title, a, b string) bool {
 	return false
 }
 
-func (tm *TrackMetadata) diff(o TrackMetadata) bool {
+func (tm *TrackTags) diff(o TrackTags) bool {
 	isSame := true
 	logThis.Info("Comparing A & B:", NORMAL)
 	isSame = isSame && diffString("Track Number: ", tm.Number, o.Number)
@@ -99,7 +104,7 @@ func (tm *TrackMetadata) diff(o TrackMetadata) bool {
 	return isSame
 }
 
-func (tm *TrackMetadata) merge(o TrackMetadata) error {
+func (tm *TrackTags) merge(o TrackTags) error {
 	logThis.Info("Merging A & B:", NORMAL)
 	if diffString("Track Number: ", tm.Number, o.Number) == false {
 		// TODO multiple choice 1. 2. etc + confirm

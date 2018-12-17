@@ -13,19 +13,19 @@ import (
 )
 
 type Track struct {
-	Filename      string         `json:"filename"`
-	MD5           string         `json:"md5"`
-	BitDepth      string         `json:"bit_depth"`
-	SampleRate    string         `json:"sample_rate"`
-	TotalSamples  string         `json:"total_samples"`
-	Duration      string         `json:"duration"`
-	Fingerprint   string         `json:"fingerprint,omitempty"`
-	Tags          *TrackMetadata `json:"tags"`
-	HasCover      bool           `json:"has_cover"`
-	PictureSize   string         `json:"picture_size,omitempty"`
-	PictureHeight string         `json:"picture_height,omitempty"`
-	PictureWidth  string         `json:"picture_width,omitempty"`
-	PictureName   string         `json:"picture_name,omitempty"`
+	Filename      string     `json:"filename"`
+	MD5           string     `json:"md5"`
+	BitDepth      string     `json:"bit_depth"`
+	SampleRate    string     `json:"sample_rate"`
+	TotalSamples  string     `json:"total_samples"`
+	Duration      string     `json:"duration"`
+	Fingerprint   string     `json:"fingerprint,omitempty"`
+	Tags          *TrackTags `json:"tags"`
+	HasCover      bool       `json:"has_cover"`
+	PictureSize   string     `json:"picture_size,omitempty"`
+	PictureHeight string     `json:"picture_height,omitempty"`
+	PictureWidth  string     `json:"picture_width,omitempty"`
+	PictureName   string     `json:"picture_name,omitempty"`
 }
 
 func (rt *Track) checkExternalBinaries() error {
@@ -306,7 +306,7 @@ func (t *Track) generateName(filenameTemplate string) (string, error) {
 	return r2.Replace(strings.Join(trimmedParts, "/")) + flacExt, nil
 }
 
-func (t *Track) applyMetadata(tm TrackMetadata) error {
+func (t *Track) applyMetadata(tm TrackTags) error {
 	// TODO dump all tags and/or keep original version in separate json
 
 	// TODO use metaflac to rewrite all tags (more than one --set-tag="" in one call?)
@@ -314,14 +314,23 @@ func (t *Track) applyMetadata(tm TrackMetadata) error {
 	return nil
 }
 
-func (t *Track) generateSpectrals() error {
-	// TODO if sox not present ret error
+func (t *Track) generateSpectrals(root string) error {
+	// assumes sox is present, checked before
 
-	// TODO create Metadata dir if necessary
-
-	// TODO spectralname = root + metadata + "t.Filename" + .spectral.png
-
-	// TODO cmd sox .....
-
+	// filename
+	spectralName := filepath.Join(root, strings.Replace(filepath.Base(t.Filename), filepath.Ext(t.Filename), "", -1)+".spectral")
+	// running sox commands
+	if !FileExists(spectralName + "full.png") {
+		_, err := exec.Command("sox", t.Filename, "-n", "remix", "1", "spectrogram", "-x", "3000", "-y", "513", "-z", "120", "-w", "Kaiser", "-o", spectralName+"full.png").CombinedOutput()
+		if err != nil {
+			return errors.Wrap(err, "error generating full spectrals for "+t.Filename)
+		}
+	}
+	if !FileExists(spectralName + "zoom.png") {
+		_, err := exec.Command("sox", t.Filename, "-n", "remix", "1", "spectrogram", "-x", "500", "-y", "1025", "-z", "120", "-w", "Kaiser", "-S", "1:00", "-d", "0:02", "-o", spectralName+"zoom.png").CombinedOutput()
+		if err != nil {
+			return errors.Wrap(err, "error generating zoom spectrals for "+t.Filename)
+		}
+	}
 	return nil
 }

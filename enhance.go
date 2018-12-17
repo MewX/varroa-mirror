@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -43,6 +44,11 @@ func (rd *ReleaseDir) Enhance() error {
 	}
 
 	// TODO compare tags between Discogs & Tags
+
+	// generate spectrals if they do not exist
+	if err := rd.generateSpectrals(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -140,6 +146,7 @@ func (rd *ReleaseDir) getDiscogsMetadata() error {
 
 	if results.Pagination.Items > 1 {
 		// TODO choose one...
+		logThis.Info("Found more than one result!", NORMAL)
 	}
 	// TODO else...
 	// getting release metadata from discogs
@@ -162,6 +169,25 @@ func (rd *ReleaseDir) getDiscogsMetadata() error {
 	}
 	if err := ioutil.WriteFile(discogsReleaseJSON, metadataJSON, 0644); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (rd *ReleaseDir) generateSpectrals() error {
+	// check sox is installed
+	_, err := exec.LookPath("sox")
+	if err != nil {
+		return errors.New("'sox' is not available on this system, not able to generate spectrals")
+	}
+	// create metadata dir if necessary
+	if mkErr := os.MkdirAll(filepath.Join(rd.Path, AdditionalMetadataDir, spectralsMetadataSubdir), 0775); mkErr != nil {
+		return errors.Wrap(mkErr, errorCreatingMetadataDir)
+	}
+	// generate spectrals for each track
+	for _, t := range rd.Tracks {
+		if err = t.generateSpectrals(filepath.Join(rd.Path, AdditionalMetadataDir, spectralsMetadataSubdir)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
