@@ -348,15 +348,15 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 				if release.Satisfies(filter) && release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
 					// checking if duplicate
 					if !filter.AllowDuplicates && stats.AlreadySnatchedDuplicate(release) {
-						logThis.Info(infoNotSnatchingDuplicate, NORMAL)
+						logThis.Info(filter.Name+": "+infoNotSnatchingDuplicate, NORMAL)
 						continue
 					}
 					// checking if a torrent from the same group has already been downloaded
 					if filter.UniqueInGroup && stats.AlreadySnatchedFromGroup(release) {
-						logThis.Info(infoNotSnatchingUniqueInGroup, NORMAL)
+						logThis.Info(filter.Name+": "+infoNotSnatchingUniqueInGroup, NORMAL)
 						continue
 					}
-					logThis.Info(filter.Name+": OK!", NORMAL)
+					logThis.Info(fmt.Sprintf(infoFilterTriggered, filter.Name), NORMAL)
 				}
 			}
 		}
