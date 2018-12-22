@@ -22,6 +22,7 @@ const (
 	discogsMetadataFile       = "discogs.json"
 	tracksMetadataFile        = "tracks.json"
 	trackerCoverFile          = "cover"
+	releasePlaylistFile       = "playlist.m3u"
 	perDay                    = "per_day_"
 	uploadStatsFile           = "up"
 	downloadStatsFile         = "down"

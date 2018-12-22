@@ -27,15 +27,29 @@ func NewReleaseDir(path string) (*ReleaseDir, error) {
 }
 
 func (rd *ReleaseDir) Enhance() error {
+	conf, err := NewConfig(DefaultConfigurationFile)
+	if err != nil {
+		logThis.Error(errors.Wrap(err, ErrorLoadingConfig), NORMAL)
+		return err
+	}
+
 	// load tracker metadata
 	if err := rd.getMetadata(); err != nil {
 		return err
 	}
 
-	// TODO ask before...
-	// retrieve and save discogs metadata
-	if err := rd.getDiscogsMetadata(); err != nil {
-		return err
+	// get Discogs metadata
+	if conf.discogsTokenConfigured {
+		if rd.hasDiscogsMetadata() {
+			// TODO  get date / disogsID
+			// TODO ask if we want to refresh!
+		}
+		if Accept("Retrieve Discogs metadata") {
+			// retrieve and save discogs metadata
+			if err := rd.getDiscogsMetadata(); err != nil {
+				return err
+			}
+		}
 	}
 
 	// analyze all tracks and save info to json
@@ -43,10 +57,19 @@ func (rd *ReleaseDir) Enhance() error {
 		return err
 	}
 
-	// TODO compare tags between Discogs & Tags
+	// compare tags between Discogs & Tags
+	if rd.DiscogsInfo.ID != 0 {
+		// TODO compare!
+
+	}
 
 	// generate spectrals if they do not exist
 	if err := rd.generateSpectrals(); err != nil {
+		return err
+	}
+
+	// generate up-to-date playlist
+	if err := rd.generatePlaylist(); err != nil {
 		return err
 	}
 
@@ -121,6 +144,11 @@ func (rd *ReleaseDir) getMetadata() error {
 	return nil
 }
 
+func (rd *ReleaseDir) hasDiscogsMetadata() bool {
+	// TODO parse the file and display when it's been last updated
+	return FileExists(filepath.Join(rd.Path, AdditionalMetadataDir, discogsMetadataFile))
+}
+
 func (rd *ReleaseDir) getDiscogsMetadata() error {
 	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
@@ -190,4 +218,15 @@ func (rd *ReleaseDir) generateSpectrals() error {
 		}
 	}
 	return nil
+}
+
+func (rd *ReleaseDir) generatePlaylist() error {
+	// TODO if playlist exists, remove
+
+	// generate new playlist
+	p := Playlist{Filename: filepath.Join(rd.Path, releasePlaylistFile)}
+	if err := p.AddRelease(filepath.Dir(rd.Path), rd.Path); err != nil {
+		return err
+	}
+	return p.Save()
 }
