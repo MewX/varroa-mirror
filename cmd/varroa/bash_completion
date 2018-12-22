@@ -1,0 +1,61 @@
+_varroa()
+{
+    local cur prev
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+
+    case ${COMP_CWORD} in
+        1)
+            COMPREPLY=($(compgen -W "start stop uptime status stats refresh-metadata check-log snatch info backup show-config refresh-metadata-by-id dl downloads library reseed enhance encrypt decrypt" -- ${cur}))
+            ;;
+        2)
+            case ${prev} in
+                start)
+                    if [[ $cur == -* ]]; then
+                        COMPREPLY=($(compgen -W "--no-daemon" -- ${cur}))
+                    fi
+                    ;;
+                snatch)
+                    if [[ $cur == -* ]]; then
+                        COMPREPLY=($(compgen -W "--fl" -- ${cur}))
+                    fi
+                    ;;
+                downloads|dl)
+                    COMPREPLY=($(compgen -W "search metadata sort sort-id list clean fuse" -- ${cur}))
+                    ;;
+                library)
+                    COMPREPLY=($(compgen -W "fuse reorganize" -- ${cur}))
+                    ;;
+                refresh-metadata|enhance)
+                    compopt -o nospace
+                    COMPREPLY=( $( compgen -d -S "/" -- $cur ) )
+                    return 0
+                    ;;
+            esac
+            ;;
+        3)
+            case ${prev} in
+                sort|fuse)
+                    compopt -o nospace
+                    COMPREPLY=( $( compgen -d -S "/" -- $cur ) )
+                    return 0
+                    ;;
+                reorganize)
+                    if [[ $cur == -* ]]; then
+                        COMPREPLY=($(compgen -W "--simulate --interactive" -- ${cur}))
+                    fi
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            ;;
+        *)
+			compopt -o nospace
+			COMPREPLY=( $( compgen -d -S "/" -- $cur ) )
+			return 0
+            ;;
+    esac
+}
+
+complete -F _varroa varroa
