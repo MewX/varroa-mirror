@@ -26,10 +26,13 @@ compiled_varroa_dev:
     - cd ../varroa-fuse
     - go build -v -o ../../varroa-fuse
     - cd ../..
+    - cp cmd/varroa/bash_completion varroa_bash_completion
   artifacts:
     paths:
     - varroa
+    - varroa_bash_completion
     - varroa-fuse
+    - script/send-to-varroa.js
     name: "varroa-dev-${CI_COMMIT_REF_NAME}"
     expire_in: 4 weeks
   except:
@@ -43,10 +46,13 @@ compiled_varroa_released_version:
     - cd ../varroa-fuse
     - go build -o ../../varroa-fuse
     - cd ../..
+    - cp cmd/varroa/bash_completion varroa_bash_completion
   artifacts:
     paths:
     - varroa
+    - varroa_bash_completion
     - varroa-fuse
+    - script/send-to-varroa.js
     name: "varroa-${CI_COMMIT_REF_NAME}"
   only:
     - tags
