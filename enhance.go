@@ -221,7 +221,13 @@ func (rd *ReleaseDir) generateSpectrals() error {
 }
 
 func (rd *ReleaseDir) generatePlaylist() error {
-	// TODO if playlist exists, remove
+	// if playlists exist, remove them
+	playlists := GetAllPlaylists(rd.Path)
+	for _, pl := range playlists {
+		if err := os.RemoveAll(pl); err != nil {
+			return err
+		}
+	}
 
 	// generate new playlist
 	p := Playlist{Filename: filepath.Join(rd.Path, releasePlaylistFile)}
