@@ -231,7 +231,7 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 	errs := 0
 	for !validChoice {
 		UserChoice("[A]ccept, [R]eject, or [D]efer decision : ")
-		choice, scanErr := GetInput()
+		choice, scanErr := GetInput(nil)
 		if scanErr != nil {
 			return scanErr
 		}

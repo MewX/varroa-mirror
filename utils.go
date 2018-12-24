@@ -589,8 +589,11 @@ func UserChoice(msg string, args ...interface{}) {
 }
 
 // GetInput from user
-func GetInput() (string, error) {
-	scanner := bufio.NewReader(os.Stdin)
+func GetInput(in *os.File) (string, error) {
+	if in == nil {
+		in = os.Stdin
+	}
+	scanner := bufio.NewReader(in)
 	choice, scanErr := scanner.ReadString('\n')
 	return strings.TrimSpace(choice), scanErr
 }
@@ -598,7 +601,7 @@ func GetInput() (string, error) {
 // Accept asks a question and returns the answer
 func Accept(question string) bool {
 	fmt.Printf(BlueBold("%s? y/N : "), question)
-	input, err := GetInput()
+	input, err := GetInput(nil)
 	if err == nil {
 		switch input {
 		case "y", "Y", "yes":
@@ -646,7 +649,7 @@ func SelectOption(title, usage string, options []string) (string, error) {
 		} else {
 			UserChoice("[E]dit manually, or [A]ccept: ")
 		}
-		choice, scanErr := GetInput()
+		choice, scanErr := GetInput(nil)
 		if scanErr != nil {
 			return "", scanErr
 		}
@@ -655,7 +658,7 @@ func SelectOption(title, usage string, options []string) (string, error) {
 			var edited string
 			var scanErr error
 			UserChoice("Enter the new value: ")
-			edited, scanErr = GetInput()
+			edited, scanErr = GetInput(nil)
 
 			if scanErr != nil {
 				return "", scanErr

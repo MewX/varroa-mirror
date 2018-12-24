@@ -2,6 +2,8 @@ package varroa
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,4 +70,27 @@ func TestSanitizeFolder(t *testing.T) {
 
 	check.Equal("hop", SanitizeFolder("////hop"))
 	check.Equal("hop∕hop", SanitizeFolder("////hop∕hop"))
+}
+
+func TestInput(t *testing.T) {
+	fmt.Println("+ Testing Input...")
+	check := assert.New(t)
+
+	in, err := ioutil.TempFile("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer in.Close()
+
+	_, err = io.WriteString(in, "4\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = in.Seek(0, io.SeekStart)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := GetInput(in)
+	check.Nil(err)
+	check.Equal("4", s)
 }
