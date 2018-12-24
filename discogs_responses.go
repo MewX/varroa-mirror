@@ -1,5 +1,9 @@
 package varroa
 
+import (
+	"strconv"
+)
+
 type DiscogsResults struct {
 	Pagination struct {
 		Items   int      `json:"items"`
@@ -153,4 +157,35 @@ type DiscogsRelease struct {
 		URI         string `json:"uri"`
 	} `json:"-"`
 	Year int `json:"year"`
+}
+
+func (dr DiscogsRelease) TrackTags() []TrackTags {
+	var trackTags []TrackTags
+	if len(dr.Tracklist) == 0 {
+		logThis.Info("discogs data not available", VERBOSE)
+	} else {
+		for _, t := range dr.Tracklist {
+			var tags TrackTags
+			tags.Number = t.Position
+			tags.TotalTracks = strconv.Itoa(len(dr.Tracklist))
+			// TODO tags.DiscNumber = ????
+			if len(t.Artists) != 0 {
+				tags.Artist = t.Artists[0].Name // TODO what if more than one?
+			} else {
+				tags.Artist = dr.Artists[0].Name // TODO what if more than one?
+			}
+			tags.AlbumArtist = dr.Artists[0].Name // TODO what if more than one?
+			tags.Title = t.Title
+			tags.Description = ""
+			tags.Year = strconv.Itoa(dr.Year)
+			tags.Genre = dr.Genres[0] // TODO what if more than one?
+			tags.Performer = ""       // TODO see how to fill this
+			tags.Composer = ""        // TODO same
+			tags.Album = dr.Title
+			tags.Label = dr.Labels[0].Name
+
+			trackTags = append(trackTags, tags)
+		}
+	}
+	return trackTags
 }

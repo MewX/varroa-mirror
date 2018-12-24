@@ -57,10 +57,11 @@ func (rd *ReleaseDir) Enhance() error {
 		return err
 	}
 
-	// compare tags between Discogs & Tags
+	// compare & merge tags between Discogs & Tags
 	if rd.DiscogsInfo.ID != 0 {
-		// TODO compare!
-
+		if err := rd.mergeMetadata(); err != nil {
+			return err
+		}
 	}
 
 	// generate spectrals if they do not exist
@@ -235,4 +236,25 @@ func (rd *ReleaseDir) generatePlaylist() error {
 		return err
 	}
 	return p.Save()
+}
+
+func (rd *ReleaseDir) mergeMetadata() error {
+	// compare then merge
+	discogsTrackTags := rd.DiscogsInfo.TrackTags()
+	for _, dt := range discogsTrackTags {
+		for _, t := range rd.Tracks {
+			if t.Tags.Number == dt.Number {
+				if t.Tags.diff(dt) {
+					logThis.Info("Tracks have the same metadata.", VERBOSEST)
+				} else {
+					if Accept("Try to merge tracker & discogs metadata") {
+						if err := t.Tags.merge(dt); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
 }

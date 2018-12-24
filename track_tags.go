@@ -1,6 +1,11 @@
 package varroa
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/pkg/errors"
+)
 
 const (
 	discNumberLabel   = "DISCNUMBER"
@@ -16,6 +21,37 @@ const (
 	composerLabel     = "COMPOSER"
 	performerLabel    = "PERFORMER"
 	recordLabelLabel  = "ORGANIZATION"
+)
+
+var (
+	tagFields = []string{"Number",
+		"TotalTracks",
+		"DiscNumber",
+		"Artist",
+		"AlbumArtist",
+		"Title",
+		"Description",
+		"Year",
+		"Genre",
+		"Performer",
+		"Composer",
+		"Album",
+		"Label"}
+	tagDescriptions = map[string]string{
+		"Number":      "Track Number: ",
+		"TotalTracks": "Total Tracks: ",
+		"DiscNumber":  "Disc Number: ",
+		"Artist":      "Track Artist: ",
+		"AlbumArtist": "Album Artist: ",
+		"Title":       "Title: ",
+		"Description": "Description: ",
+		"Year":        "Year: ",
+		"Genre":       "Genre: ",
+		"Performer":   "Performer: ",
+		"Composer":    "Composer: ",
+		"Album":       "Album: ",
+		"Label":       "Label: ",
+	}
 )
 
 type TrackTags struct {
@@ -94,20 +130,47 @@ func diffString(title, a, b string) bool {
 	return false
 }
 
+func diffField(field string, a, b *TrackTags) bool {
+	aField := reflect.ValueOf(a).Elem().FieldByName(field).String()
+	bField := reflect.ValueOf(b).Elem().FieldByName(field).String()
+	return diffString(tagDescriptions[field], aField, bField)
+}
+
 func (tm *TrackTags) diff(o TrackTags) bool {
 	isSame := true
 	logThis.Info("Comparing A & B:", NORMAL)
-	isSame = isSame && diffString("Track Number: ", tm.Number, o.Number)
+	for _, f := range tagFields {
+		isSame = isSame && diffField(f, tm, &o)
+	}
 
-	// TODO tous les champs
+	// TODO otherTags
 
 	return isSame
 }
 
 func (tm *TrackTags) merge(o TrackTags) error {
-	logThis.Info("Merging A & B:", NORMAL)
-	if diffString("Track Number: ", tm.Number, o.Number) == false {
-		// TODO multiple choice 1. 2. etc + confirm
+	logThis.Info("Merging Track metadata:", NORMAL)
+	for _, f := range tagFields {
+		err := tm.mergeFieldByName(f, tagDescriptions[f], o)
+		if err != nil {
+			return errors.Wrap(err, "error merging "+f)
+		}
+	}
+	// TODO otherTags
+	return nil
+}
+
+func (tm *TrackTags) mergeFieldByName(field, title string, o TrackTags) error {
+	localValue := reflect.ValueOf(tm).Elem().FieldByName(field).String()
+	otherValue := reflect.ValueOf(&o).Elem().FieldByName(field).String()
+	options := []string{localValue, otherValue}
+	if diffString(title, localValue, otherValue) == false {
+		newValue, err := SelectOption("Select correct value or enter one\n", "First option comes from the audio file, second option from Discogs.", options)
+		if err != nil {
+			return err
+		}
+		reflect.ValueOf(tm).Elem().FieldByName(field).SetString(newValue)
+		return nil
 	}
 	return nil
 }
