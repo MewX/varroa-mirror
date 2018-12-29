@@ -12,7 +12,7 @@ compiled_varroa_dev:
   script:
     - make all
     - make build-bin
-   after_script:
+  after_script:
     - bash <(curl -s https://codecov.io/bash) -t "${CODECOV_TOKEN}"
   artifacts:
     paths:
