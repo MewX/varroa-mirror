@@ -28,6 +28,11 @@ clean:
 
 build:
 	${GO} build -v ./...
+build-bin:
+	cd cmd/varroa;${GO} build -o ../../varroa;cd ../..
+	cd cmd/varroa-fuse;${GO} build -o ../../varroa-fuse;cd ../..
+	cp cmd/varroa/bash_completion varroa_bash_completion
+	cp script/send-to-varroa.js send-to-varroa.js
 
 install:
 	${GO} install -v ./...

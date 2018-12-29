@@ -5,29 +5,21 @@ before_script:
   - make deps
 
 stages:
-  - test
   - build
-
-format:
-  stage: test
-  script:
-    - make test
 
 compiled_varroa_dev:
   stage: build
   script:
-    - cd cmd/varroa
-    - go build -v -o ../../varroa
-    - cd ../varroa-fuse
-    - go build -v -o ../../varroa-fuse
-    - cd ../..
-    - cp cmd/varroa/bash_completion varroa_bash_completion
+    - make all
+    - make build-bin
+   after_script:
+    - bash <(curl -s https://codecov.io/bash) -t "${CODECOV_TOKEN}"
   artifacts:
     paths:
     - varroa
     - varroa_bash_completion
     - varroa-fuse
-    - script/send-to-varroa.js
+    - send-to-varroa.js
     name: "varroa-dev-${CI_COMMIT_REF_NAME}"
     expire_in: 4 weeks
   except:
@@ -36,30 +28,17 @@ compiled_varroa_dev:
 compiled_varroa_released_version:
   stage: build
   script:
-    - cd cmd/varroa
-    - go build -o ../../varroa
-    - cd ../varroa-fuse
-    - go build -o ../../varroa-fuse
-    - cd ../..
-    - cp cmd/varroa/bash_completion varroa_bash_completion
+    - make all
+    - make build-bin
+  after_script:
+    - bash <(curl -s https://codecov.io/bash) -t "${CODECOV_TOKEN}"
   artifacts:
     paths:
-    - varroa
-    - varroa_bash_completion
-    - varroa-fuse
-    - script/send-to-varroa.js
+      - varroa
+      - varroa_bash_completion
+      - varroa-fuse
+      - send-to-varroa.js
     name: "varroa-${CI_COMMIT_REF_NAME}"
   only:
     - tags
-
-
-
-
-
-test_assistance:
-  stage: test
-  script:
-    - make all
-  after_script:
-    - bash <(curl -s https://codecov.io/bash) -t "${CODECOV_TOKEN}"
 
