@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/ui"
 	"gitlab.com/passelecasque/varroa"
 )
 
@@ -29,11 +30,11 @@ func main() {
 		return
 	}
 
-	fmt.Println(varroa.Green("Mounting FUSE filesystem in " + cli.mountPoint))
-	fmt.Println(varroa.Green("To quit cleanly, run 'fusermount -u " + cli.mountPoint + "'"))
+	fmt.Println(ui.Green("Mounting FUSE filesystem in " + cli.mountPoint))
+	fmt.Println(ui.Green("To quit cleanly, run 'fusermount -u " + cli.mountPoint + "'"))
 	if err := varroa.FuseMount(cli.targetDirectory, cli.mountPoint, fmt.Sprintf(defaultVarroaFuseDBPath, filepath.Base(cli.targetDirectory))); err != nil {
 		logThis.Error(err, varroa.NORMAL)
 		return
 	}
-	fmt.Println(varroa.Green("Unmounting FUSE filesystem, fusermount -u has presumably been called."))
+	fmt.Println(ui.Green("Unmounting FUSE filesystem, fusermount -u has presumably been called."))
 }

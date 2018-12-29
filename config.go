@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/strslice"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -49,7 +51,7 @@ func NewConfig(path string) (*Config, error) {
 		// TODO check path has yamlExt!
 		newConf := &Config{}
 		encryptedConfigurationFile := strings.TrimSuffix(path, yamlExt) + encryptedExt
-		if FileExists(encryptedConfigurationFile) && !FileExists(path) {
+		if fs.FileExists(encryptedConfigurationFile) && !fs.FileExists(path) {
 			// if using encrypted config file, ask for the passphrase and retrieve it from the daemon side
 			passphraseBytes, err := SavePassphraseForDaemon()
 			if err != nil {
@@ -248,16 +250,16 @@ func (c *Config) check() error {
 		}
 		// check all autosnatch configs point to defined Trackers
 		for _, a := range c.Autosnatch {
-			if !StringInSlice(a.Tracker, configuredTrackers) {
-				return fmt.Errorf("Autosnatch enabled, but tracker %s undefined", a.Tracker)
+			if !strslice.Contains(configuredTrackers, a.Tracker) {
+				return fmt.Errorf("autosnatch enabled, but tracker %s undefined", a.Tracker)
 			}
 		}
 		// check all filter trackers are defined
 		if len(c.Filters) != 0 {
 			for _, f := range c.Filters {
 				for _, t := range f.Tracker {
-					if !StringInSlice(t, configuredTrackers) {
-						return fmt.Errorf("Filter %s refers to undefined tracker %s", f.Name, t)
+					if !strslice.Contains(configuredTrackers, t) {
+						return fmt.Errorf("filter %s refers to undefined tracker %s", f.Name, t)
 					}
 				}
 			}
@@ -266,16 +268,16 @@ func (c *Config) check() error {
 	if c.statsConfigured {
 		// check all stats point to defined Trackers
 		for _, a := range c.Stats {
-			if !StringInSlice(a.Tracker, configuredTrackers) {
-				return fmt.Errorf("Stats enabled, but tracker %s undefined", a.Tracker)
+			if !strslice.Contains(configuredTrackers, a.Tracker) {
+				return fmt.Errorf("stats enabled, but tracker %s undefined", a.Tracker)
 			}
 		}
 	}
 	if c.webhooksConfigured {
 		// check all webhook trackers point to defined Trackers
 		for _, a := range c.Notifications.WebHooks.Trackers {
-			if !StringInSlice(a, configuredTrackers) {
-				return fmt.Errorf("Stats enabled, but tracker %s undefined", a)
+			if !strslice.Contains(configuredTrackers, a) {
+				return fmt.Errorf("stats enabled, but tracker %s undefined", a)
 			}
 		}
 	}
@@ -309,7 +311,7 @@ func (c *Config) check() error {
 		for _, a := range c.Autosnatch {
 			configuredIRCServers = append(configuredIRCServers, a.Tracker)
 		}
-		if !StringInSlice(c.Notifications.Irc.Tracker, configuredIRCServers) {
+		if !strslice.Contains(configuredIRCServers, c.Notifications.Irc.Tracker) {
 			return errors.New("IRC server for tracker " + c.Notifications.Irc.Tracker + " is not defined in the autosnatch section.")
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
 	"github.com/wcharczuk/go-chart/drawing"
+	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/passelecasque/go-ircevent"
 )
 
@@ -110,7 +111,7 @@ func (e *Environment) SetUp(autologin bool) error {
 		e.startTime = time.Now()
 	}
 	// prepare directory for stats if necessary
-	if !DirectoryExists(StatsDir) {
+	if !fs.DirExists(StatsDir) {
 		if err := os.MkdirAll(StatsDir, 0777); err != nil {
 			return errors.Wrap(err, errorCreatingStatsDir)
 		}

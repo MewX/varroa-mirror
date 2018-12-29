@@ -7,6 +7,7 @@ import (
 
 	"github.com/fhs/gompd/mpd"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 const varroaMPDSubdir = "VARROA"
@@ -60,11 +61,11 @@ func (m *MPD) Enable(path string) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting absolute path for download directory")
 	}
-	if !DirectoryExists(path) {
+	if !fs.DirExists(path) {
 		return errors.New("download directory cannot be found and symlinked into MPD library")
 	}
 	symlinkName := filepath.Join(m.root, varroaMPDSubdir)
-	if !DirectoryExists(symlinkName) {
+	if !fs.DirExists(symlinkName) {
 		return os.Symlink(path, symlinkName)
 	}
 
@@ -85,7 +86,7 @@ func (m *MPD) Enable(path string) error {
 func (m *MPD) Disable(path string) error {
 	// remove symbolic link for path inside mpd.library
 	symlinkName := filepath.Join(m.root, varroaMPDSubdir)
-	if DirectoryExists(symlinkName) {
+	if fs.DirExists(symlinkName) {
 		// check it points to what we want
 		target, err := filepath.EvalSymlinks(symlinkName)
 		if err != nil {

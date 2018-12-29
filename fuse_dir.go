@@ -14,6 +14,8 @@ import (
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
 	"github.com/pkg/errors"
+	fs_ "gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/strslice"
 	"golang.org/x/net/context"
 )
 
@@ -37,7 +39,7 @@ var _ = fs.Node(&FuseDir{})
 func (d *FuseDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	defer TimeTrack(time.Now(), fmt.Sprintf("DIR ATTR %s", d.String()))
 	fullPath := filepath.Join(d.fs.mountPoint, d.trueRelativePath, d.releaseSubdir)
-	if !DirectoryExists(fullPath) {
+	if !fs_.DirExists(fullPath) {
 		return errors.New("Cannot find directory " + fullPath)
 	}
 	// get stat
@@ -63,7 +65,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 
 	// not music files, but files Dolphin tries to open nonetheless
 	// returning directly saves a few DB searches doomed to fail
-	if StringInSlice(name, []string{".hidden", ".directory"}) {
+	if strslice.Contains([]string{".hidden", ".directory"}, name) {
 		return nil, fuse.EIO
 	}
 
@@ -277,7 +279,7 @@ func (c *sliceMatcher) MatchField(v interface{}) (bool, error) {
 	if !ok {
 		return false, nil
 	}
-	return StringInSlice(c.value, key), nil
+	return strslice.Contains(key, c.value), nil
 }
 
 // InSlice matches if one element of a []string is equal to the argument

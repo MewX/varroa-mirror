@@ -10,6 +10,8 @@ import (
 	"github.com/asdine/storm/q"
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/strslice"
 )
 
 // FuseEntry is the struct describing a release folder with tracker metadata.
@@ -39,13 +41,13 @@ func (fe *FuseEntry) reset() {
 }
 
 func (fe *FuseEntry) Load(root string) error {
-	if fe.FolderName == "" || !DirectoryExists(filepath.Join(root, fe.FolderName)) {
+	if fe.FolderName == "" || !fs.DirExists(filepath.Join(root, fe.FolderName)) {
 		return errors.New("Wrong or missing path")
 	}
 
 	// find origin.json
 	originFile := filepath.Join(root, fe.FolderName, MetadataDir, OriginJSONFile)
-	if FileExists(originFile) {
+	if fs.FileExists(originFile) {
 		origin := TrackerOriginJSON{Path: originFile}
 		if err := origin.Load(); err != nil {
 			return errors.Wrap(err, "Error reading origin.json")
@@ -61,11 +63,11 @@ func (fe *FuseEntry) Load(root string) error {
 
 			// getting release info from json
 			infoJSON := filepath.Join(root, fe.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
-			if !FileExists(infoJSON) {
+			if !fs.FileExists(infoJSON) {
 				// if not present, try the old format
 				infoJSON = filepath.Join(root, fe.FolderName, MetadataDir, "Release.json")
 			}
-			if FileExists(infoJSON) {
+			if fs.FileExists(infoJSON) {
 				// load JSON, get info
 				md := TrackerMetadata{}
 				if err := md.LoadFromJSON(tracker, originFile, infoJSON); err != nil {
@@ -77,7 +79,7 @@ func (fe *FuseEntry) Load(root string) error {
 				for _, a := range md.Artists {
 					fe.Artists = append(fe.Artists, a.Name)
 				}
-				fe.RecordLabel = SanitizeFolder(md.RecordLabel)
+				fe.RecordLabel = fs.SanitizePath(md.RecordLabel)
 				fe.Year = md.OriginalYear // only show original year
 				fe.Title = md.Title
 				fe.Tags = md.Tags
@@ -106,7 +108,7 @@ func (fdb *FuseDB) Scan(rootPath string) error {
 		return errors.New("Could not prepare database for indexing fuse entries")
 	}
 
-	if !DirectoryExists(rootPath) {
+	if !fs.DirExists(rootPath) {
 		return errors.New("Error finding " + rootPath)
 	}
 	fdb.Root = rootPath
@@ -186,7 +188,7 @@ func (fdb *FuseDB) Scan(rootPath string) error {
 
 	// remove entries no longer associated with actual files
 	for _, p := range previous {
-		if !StringInSlice(p.FolderName, currentFolderNames) {
+		if !strslice.Contains(currentFolderNames, p.FolderName) {
 			if err := tx.DeleteStruct(&p); err != nil {
 				logThis.Error(err, VERBOSEST)
 			}
@@ -250,5 +252,6 @@ func (fdb *FuseDB) uniqueEntries(matcher q.Matcher, field string) ([]string, err
 			allValues = append(allValues, e.FolderName)
 		}
 	}
-	return RemoveStringSliceDuplicates(allValues), nil
+	strslice.RemoveDuplicates(&allValues)
+	return allValues, nil
 }

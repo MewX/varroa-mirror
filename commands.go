@@ -18,6 +18,9 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/strslice"
+	"gitlab.com/catastrophic/assistance/ui"
 )
 
 const (
@@ -214,7 +217,7 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 						break
 					}
 					fullFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
-					if DirectoryExists(fullFolder) {
+					if fs.DirExists(fullFolder) {
 						if daemon.WasReborn() {
 							go info.SaveFromTracker(fullFolder, tracker)
 						} else {
@@ -250,11 +253,11 @@ func RefreshMetadata(e *Environment, tracker *GazelleTracker, IDStrings []string
 		}
 		// check the number of active seeders
 		if !info.IsWellSeeded() {
-			logThis.Info(Red("This torrent has less than "+strconv.Itoa(minimumSeeders)+" seeders; if that is not already the case, consider reseeding it."), NORMAL)
+			logThis.Info(ui.Red("This torrent has less than "+strconv.Itoa(minimumSeeders)+" seeders; if that is not already the case, consider reseeding it."), NORMAL)
 		}
 		// if release is reported, warn and offer link.
 		if info.Reported {
-			logThis.Info(Red("This torrent has been reported. For more information, see: "+info.ReleaseURL), NORMAL)
+			logThis.Info(ui.Red("This torrent has been reported. For more information, see: "+info.ReleaseURL), NORMAL)
 		}
 
 	}
@@ -324,7 +327,7 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 		// checking the files are still there (if snatched with or without varroa)
 		if e.config.DownloadFolderConfigured {
 			releaseFolder := filepath.Join(e.config.General.DownloadDir, info.FolderName)
-			if DirectoryExists(releaseFolder) {
+			if fs.DirExists(releaseFolder) {
 				logThis.Info(fmt.Sprintf("Files seem to still be in the download directory: %s", releaseFolder), NORMAL)
 				// TODO maybe display when the metadata was last updated?
 			} else {
@@ -340,7 +343,7 @@ func ShowTorrentInfo(e *Environment, tracker *GazelleTracker, IDStrings []string
 			logThis.Info("+ Showing autosnatch filters results for this release:\n", NORMAL)
 			for _, filter := range e.config.Filters {
 				// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
-				if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
+				if len(filter.Tracker) != 0 && !strslice.Contains(filter.Tracker, tracker.Name) {
 					logThis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), NORMAL)
 					continue
 				}
@@ -398,7 +401,7 @@ func Reseed(tracker *GazelleTracker, path []string) error {
 	}
 	// copy files if not in downloads directory
 	if rel != filepath.Base(path[0]) {
-		if err := CopyDir(path[0], filepath.Join(conf.General.DownloadDir, filepath.Base(path[0])), false); err != nil {
+		if err := fs.CopyDir(path[0], filepath.Join(conf.General.DownloadDir, filepath.Base(path[0])), false); err != nil {
 			return errors.Wrap(err, "error copying files to downloads directory")
 		}
 		logThis.Info("Release files have been copied inside the downloads directory", NORMAL)
@@ -430,7 +433,7 @@ func ArchiveUserFiles() error {
 	// generate Timestamp
 	timestamp := time.Now().Format("2006-01-02_15h04m05s")
 	archiveName := fmt.Sprintf(archiveNameTemplate, timestamp)
-	if !DirectoryExists(archivesDir) {
+	if !fs.DirExists(archivesDir) {
 		if err := os.MkdirAll(archivesDir, 0755); err != nil {
 			logThis.Error(errors.Wrap(err, errorArchiving), NORMAL)
 			return errors.Wrap(err, errorArchiving)
@@ -453,11 +456,11 @@ func ArchiveUserFiles() error {
 		}
 	}
 	// backup the configuration file
-	if FileExists(DefaultConfigurationFile) {
+	if fs.FileExists(DefaultConfigurationFile) {
 		backupFiles = append(backupFiles, DefaultConfigurationFile)
 	}
 	encryptedConfigurationFile := strings.TrimSuffix(DefaultConfigurationFile, yamlExt) + encryptedExt
-	if FileExists(encryptedConfigurationFile) {
+	if fs.FileExists(encryptedConfigurationFile) {
 		backupFiles = append(backupFiles, encryptedConfigurationFile)
 	}
 	// generate archive
@@ -511,7 +514,7 @@ func checkQuota(e *Environment) error {
 	if err != nil {
 		return err
 	}
-	logThis.Info(fmt.Sprintf(currentUsage, pc, readableInt64(remaining)), NORMAL)
+	logThis.Info(fmt.Sprintf(currentUsage, pc, fs.FileSizeDelta(remaining)), NORMAL)
 	// send warning if this is worrying
 	if pc >= 98 {
 		logThis.Info(veryLowDiskSpace, NORMAL)

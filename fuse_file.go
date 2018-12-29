@@ -12,6 +12,7 @@ import (
 	"bazil.org/fuse/fs"
 	"github.com/djherbis/times"
 	"github.com/pkg/errors"
+	fs_ "gitlab.com/catastrophic/assistance/fs"
 	"golang.org/x/net/context"
 )
 
@@ -30,7 +31,7 @@ func (f *FuseFile) Attr(ctx context.Context, a *fuse.Attr) error {
 	defer TimeTrack(time.Now(), fmt.Sprintf("FILE Attr %s.", f.String()))
 	// get stat from the actual file
 	fullPath := filepath.Join(f.fs.mountPoint, f.trueRelativePath, f.releaseSubdir, f.name)
-	if !FileExists(fullPath) {
+	if !fs_.FileExists(fullPath) {
 		return errors.New("Cannot find file " + fullPath)
 	}
 	// get stat
@@ -62,7 +63,7 @@ func (f *FuseFile) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.O
 	// logThis.Info(fmt.Sprintf("FILE Open %s.", f.String()), VERBOSESTEST)
 
 	fullPath := filepath.Join(f.fs.mountPoint, f.trueRelativePath, f.releaseSubdir, f.name)
-	if !FileExists(fullPath) {
+	if !fs_.FileExists(fullPath) {
 		return nil, errors.New("File does not exist " + fullPath)
 	}
 

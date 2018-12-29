@@ -10,6 +10,9 @@ import (
 
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/passelecasque/varroa"
 )
 
@@ -257,7 +260,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	if b.reseed || b.downloadSort || b.enhance {
 		b.paths = args["<PATH>"].([]string)
 		for i, p := range b.paths {
-			if !varroa.DirectoryExists(p) {
+			if !fs.DirExists(p) {
 				return errors.New("target path does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
@@ -274,7 +277,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if !ok {
 			return errors.New("invalid torrent IDs")
 		}
-		b.torrentIDs, err = varroa.StringSliceToIntSlice(IDs)
+		b.torrentIDs, err = strslice.ToIntSlice(IDs)
 		if err != nil {
 			return errors.New("invalid torrent IDs, must be integers")
 		}
@@ -287,12 +290,12 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 
 		b.mountPoint = args["<MOUNT_POINT>"].(string)
-		if !varroa.DirectoryExists(b.mountPoint) {
+		if !fs.DirExists(b.mountPoint) {
 			return errors.New("fuse mount point does not exist")
 		}
 
 		// check it's empty
-		if isEmpty, err := varroa.DirectoryIsEmpty(b.mountPoint); err != nil {
+		if isEmpty, err := fs.DirIsEmpty(b.mountPoint); err != nil {
 			return errors.New("could not open Fuse mount point")
 		} else if !isEmpty {
 			return errors.New("fuse mount point is not empty")
@@ -312,7 +315,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	if b.checkLog {
 		logPath := args["<LOG_FILE>"].(string)
-		if !varroa.FileExists(logPath) {
+		if !fs.FileExists(logPath) {
 			return errors.New("invalid log file, does not exist")
 		}
 		b.logFile = logPath
@@ -328,7 +331,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 			return err
 		}
 		for _, p := range paths {
-			if !varroa.DirectoryExists(p) {
+			if !fs.DirExists(p) {
 				return errors.New("target path " + p + " does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
@@ -381,16 +384,16 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	if b.refreshMetadataByID {
 		out.Command = "refresh-metadata-by-id"
-		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
+		out.Args = intslice.ToStringSlice(b.torrentIDs)
 	}
 	if b.snatch {
 		out.Command = "snatch"
-		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
+		out.Args = intslice.ToStringSlice(b.torrentIDs)
 		out.FLToken = b.useFLToken
 	}
 	if b.info {
 		out.Command = "info"
-		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
+		out.Args = intslice.ToStringSlice(b.torrentIDs)
 	}
 	if b.checkLog {
 		out.Command = "check-log"

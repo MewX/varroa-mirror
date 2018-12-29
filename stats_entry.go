@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 const (
@@ -31,7 +33,7 @@ type StatsEntry struct {
 
 func (se *StatsEntry) String() string {
 	buffer, warningBuffer := se.getBufferValues()
-	return fmt.Sprintf(firstProgress, readableInt64(buffer), se.Ratio, readableUInt64(se.Up), readableUInt64(se.Down), readableInt64(warningBuffer))
+	return fmt.Sprintf(firstProgress, fs.FileSizeDelta(buffer), se.Ratio, fs.FileSize(se.Up), fs.FileSize(se.Down), fs.FileSizeDelta(warningBuffer))
 }
 
 func (se *StatsEntry) getBufferValues() (int64, int64) {
@@ -62,25 +64,25 @@ func (se *StatsEntry) Progress(previous *StatsEntry) string {
 	}
 	buffer, warningBuffer := se.getBufferValues()
 	dup, ddown, dbuff, dwbuff, dratio := se.Diff(previous)
-	return fmt.Sprintf(progress, readableInt64(buffer), readableInt64(dbuff), se.Ratio, dratio, readableUInt64(se.Up),
-		readableInt64(dup), readableUInt64(se.Down), readableInt64(ddown), readableInt64(warningBuffer),
-		readableInt64(dwbuff))
+	return fmt.Sprintf(progress, fs.FileSizeDelta(buffer), fs.FileSizeDelta(dbuff), se.Ratio, dratio, fs.FileSize(se.Up),
+		fs.FileSizeDelta(dup), fs.FileSize(se.Down), fs.FileSizeDelta(ddown), fs.FileSizeDelta(warningBuffer),
+		fs.FileSizeDelta(dwbuff))
 }
 
 // TODO do something about this awful thing
 func (se *StatsEntry) ProgressParts(previous *StatsEntry) []string {
 	buffer, warningBuffer := se.getBufferValues()
 	if previous.Ratio == 0 {
-		return []string{"+", se.Timestamp.Format("2006-01-02 15:04"), readableUInt64(se.Up), readableUInt64(se.Down), readableInt64(buffer), readableInt64(warningBuffer), fmt.Sprintf("%.3f", se.Ratio)}
+		return []string{"+", se.Timestamp.Format("2006-01-02 15:04"), fs.FileSize(se.Up), fs.FileSize(se.Down), fs.FileSizeDelta(buffer), fs.FileSizeDelta(warningBuffer), fmt.Sprintf("%.3f", se.Ratio)}
 	}
 	dup, ddown, dbuff, dwbuff, dratio := se.Diff(previous)
 	return []string{
-		readableInt64Sign(dbuff),
+		fs.Sign(dbuff),
 		se.Timestamp.Format("2006-01-02 15:04"),
-		fmt.Sprintf("%s (%s)", readableUInt64(se.Up), readableInt64(dup)),
-		fmt.Sprintf("%s (%s)", readableUInt64(se.Down), readableInt64(ddown)),
-		fmt.Sprintf("%s (%s)", readableInt64(buffer), readableInt64(dbuff)),
-		fmt.Sprintf("%s (%s)", readableInt64(warningBuffer), readableInt64(dwbuff)),
+		fmt.Sprintf("%s (%s)", fs.FileSize(se.Up), fs.FileSizeDelta(dup)),
+		fmt.Sprintf("%s (%s)", fs.FileSize(se.Down), fs.FileSizeDelta(ddown)),
+		fmt.Sprintf("%s (%s)", fs.FileSizeDelta(buffer), fs.FileSizeDelta(dbuff)),
+		fmt.Sprintf("%s (%s)", fs.FileSizeDelta(warningBuffer), fs.FileSizeDelta(dwbuff)),
 		fmt.Sprintf("%.3f (%+.3f)", se.Ratio, dratio),
 	}
 }

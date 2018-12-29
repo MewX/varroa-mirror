@@ -9,6 +9,8 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/ui"
 	"gitlab.com/passelecasque/varroa"
 )
 
@@ -125,7 +127,7 @@ func main() {
 				// if no argument, sort everything
 				if (cli.downloadSortID && len(cli.torrentIDs) == 0) || (cli.downloadSort && len(cli.paths) == 0) {
 					// scanning
-					fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
+					fmt.Println(ui.Green("Scanning downloads for new releases and updated metadata."))
 					if err = downloads.Scan(); err != nil {
 						logThis.Error(err, varroa.NORMAL)
 						return
@@ -140,7 +142,7 @@ func main() {
 				}
 				if cli.downloadSort {
 					// scanning
-					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
+					fmt.Println(ui.Green("Scanning downloads for updated metadata."))
 					for _, p := range cli.paths {
 						if err = downloads.RescanPath(p); err != nil {
 							logThis.Error(err, varroa.NORMAL)
@@ -155,7 +157,7 @@ func main() {
 					}
 				} else {
 					// scanning
-					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
+					fmt.Println(ui.Green("Scanning downloads for updated metadata."))
 					if err = downloads.RescanIDs(cli.torrentIDs); err != nil {
 						logThis.Error(err, varroa.NORMAL)
 						return
@@ -171,7 +173,7 @@ func main() {
 			}
 
 			// all subsequent commands require scanning
-			fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
+			fmt.Println(ui.Green("Scanning downloads for new releases and updated metadata."))
 			if err = downloads.Scan(); err != nil {
 				logThis.Error(err, varroa.NORMAL)
 				return
@@ -221,11 +223,11 @@ func main() {
 			}
 			logThis.Info("Reorganizing releases in the library directory. ", varroa.NORMAL)
 			if cli.libraryReorgSimulate {
-				fmt.Println(varroa.Green("This will simulate the library reorganization, applying the library folder template to all releases, using known tracker metadata. Nothing will actually be renamed or moved."))
+				fmt.Println(ui.Green("This will simulate the library reorganization, applying the library folder template to all releases, using known tracker metadata. Nothing will actually be renamed or moved."))
 			} else {
-				fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
+				fmt.Println(ui.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
 			}
-			if varroa.Accept("Confirm") {
+			if ui.Accept("Confirm") {
 				if err = varroa.ReorganizeLibrary(cli.libraryReorgSimulate, cli.libraryReorgInteractive); err != nil {
 					logThis.Error(err, varroa.NORMAL)
 				}
@@ -291,12 +293,12 @@ func main() {
 			d.WaitForStop()
 		} else {
 			// wait for ^C to quit.
-			fmt.Println(varroa.Red("Running in no-daemon mode. Ctrl+C to quit."))
+			fmt.Println(ui.Red("Running in no-daemon mode. Ctrl+C to quit."))
 			c := make(chan os.Signal)
 			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 			// waiting...
 			<-c
-			fmt.Println(varroa.Red("Terminating."))
+			fmt.Println(ui.Red("Terminating."))
 		}
 
 		if err := varroa.Notify("Stopping varroa!", varroa.FullName, "info", env); err != nil {
@@ -348,17 +350,17 @@ func main() {
 			return
 		}
 		if cli.refreshMetadataByID {
-			if err := varroa.RefreshMetadata(env, tracker, varroa.IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+			if err := varroa.RefreshMetadata(env, tracker, intslice.ToStringSlice(cli.torrentIDs)); err != nil {
 				logThis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), varroa.NORMAL)
 			}
 		}
 		if cli.snatch {
-			if err := varroa.SnatchTorrents(env, tracker, varroa.IntSliceToStringSlice(cli.torrentIDs), cli.useFLToken); err != nil {
+			if err := varroa.SnatchTorrents(env, tracker, intslice.ToStringSlice(cli.torrentIDs), cli.useFLToken); err != nil {
 				logThis.Error(errors.Wrap(err, varroa.ErrorSnatchingTorrent), varroa.NORMAL)
 			}
 		}
 		if cli.info {
-			if err := varroa.ShowTorrentInfo(env, tracker, varroa.IntSliceToStringSlice(cli.torrentIDs)); err != nil {
+			if err := varroa.ShowTorrentInfo(env, tracker, intslice.ToStringSlice(cli.torrentIDs)); err != nil {
 				logThis.Error(errors.Wrap(err, varroa.ErrorShowingTorrentInfo), varroa.NORMAL)
 			}
 		}

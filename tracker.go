@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/ui"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -197,7 +199,7 @@ func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile, destinationFol
 		return err
 	}
 	// move to relevant directory
-	if err := CopyFile(torrentFile, filepath.Join(destinationFolder, torrentFile), false); err != nil {
+	if err := fs.CopyFile(torrentFile, filepath.Join(destinationFolder, torrentFile), false); err != nil {
 		return errors.Wrap(err, errorCouldNotMoveTorrent)
 	}
 	// cleaning up
@@ -209,7 +211,7 @@ func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile, destinationFol
 
 // DownloadTorrentFromID using its ID instead.
 func (t *GazelleTracker) DownloadTorrentFromID(torrentID string, destinationFolder string, useFLToken bool) error {
-	torrentFile := SanitizeFolder(t.Name) + "_id" + torrentID + torrentExt
+	torrentFile := fs.SanitizePath(t.Name) + "_id" + torrentID + torrentExt
 	torrentURL := t.URL + "/torrents.php?action=download&id=" + torrentID
 	if useFLToken {
 		torrentURL += "&usetoken=1"
@@ -265,7 +267,7 @@ func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error)
 		if errCheck != nil {
 			logThis.Error(errors.Wrap(errCheck, "could not get information from site log"), VERBOSE)
 		} else if isDeleted {
-			logThis.Info(Red(deletedText), NORMAL)
+			logThis.Info(ui.Red(deletedText), NORMAL)
 		}
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -365,7 +367,7 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (*ht
 }
 
 func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
-	if !FileExists(logPath) {
+	if !fs.FileExists(logPath) {
 		return "", errors.New("Log does not exist: " + logPath)
 	}
 	// prepare upload

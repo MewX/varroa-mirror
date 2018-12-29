@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 func TestPlaylist(t *testing.T) {
@@ -39,8 +40,8 @@ func TestPlaylist(t *testing.T) {
 
 	// add release to playlists
 	check.Nil(AddReleaseToCurrentPlaylists(fakePlaylistPath, fakeLibraryPath, fakeRelease))
-	check.True(FileExists(filepath.Join(fakePlaylistPath, thisDay+m3uExt)))
-	check.True(FileExists(filepath.Join(fakePlaylistPath, thisMonth+m3uExt)))
+	check.True(fs.FileExists(filepath.Join(fakePlaylistPath, thisDay+m3uExt)))
+	check.True(fs.FileExists(filepath.Join(fakePlaylistPath, thisMonth+m3uExt)))
 
 	// check contents
 	p := Playlist{}

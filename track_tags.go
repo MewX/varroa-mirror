@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/ui"
 )
 
 const (
@@ -127,7 +128,7 @@ func diffString(title, a, b string) bool {
 		logThis.Info(title+a, NORMAL)
 		return true
 	}
-	logThis.Info(title+Green(a)+" / "+Red(b), NORMAL)
+	logThis.Info(title+ui.Green(a)+" / "+ui.Red(b), NORMAL)
 	return false
 }
 
@@ -166,7 +167,7 @@ func (tm *TrackTags) mergeFieldByName(field, title string, o TrackTags) error {
 	otherValue := reflect.ValueOf(&o).Elem().FieldByName(field).String()
 	options := []string{localValue, otherValue}
 	if !diffString(title, localValue, otherValue) {
-		newValue, err := SelectOption("Select correct value or enter one\n", "First option comes from the audio file, second option from Discogs.", options)
+		newValue, err := ui.SelectOption("Select correct value or enter one\n", "First option comes from the audio file, second option from Discogs.", options)
 		if err != nil {
 			return err
 		}

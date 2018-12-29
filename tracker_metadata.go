@@ -22,6 +22,7 @@ import (
 	"github.com/mgutz/ansi"
 	"github.com/pkg/errors"
 	"github.com/russross/blackfriday"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 const (
@@ -186,7 +187,7 @@ type TrackerMetadata struct {
 }
 
 func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON string) error {
-	if !FileExists(originJSON) || !FileExists(releaseJSON) {
+	if !fs.FileExists(originJSON) || !fs.FileExists(releaseJSON) {
 		return errors.New("error loading file " + releaseJSON + " or " + releaseJSON + ", which could not be found")
 	}
 
@@ -215,7 +216,7 @@ func (tm *TrackerMetadata) saveOriginJSON(destination string) error {
 	origin := &TrackerOriginJSON{Path: filepath.Join(destination, OriginJSONFile)}
 
 	foundOrigin := false
-	if FileExists(origin.Path) {
+	if fs.FileExists(origin.Path) {
 		if err := origin.Load(); err != nil {
 			return err
 		}
@@ -506,7 +507,7 @@ func (tm *TrackerMetadata) SaveCover(releaseFolder string) error {
 	}
 	filename := filepath.Join(releaseFolder, MetadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
 
-	if FileExists(filename) {
+	if fs.FileExists(filename) {
 		// already downloaded, or exists in folder already: do nothing
 		return nil
 	}
@@ -709,18 +710,18 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 
 	// replace with all valid epub parameters
 	tmpl := fmt.Sprintf(`{{$c := %q}}{{$ma := %q}}{{$a := %q}}{{$y := "%d"}}{{$t := %q}}{{$f := %q}}{{$s := %q}}{{$g := %q}}{{$l := %q}}{{$n := %q}}{{$e := %q}}{{$id := %q}}{{$r := %q}}{{$xar := %q}}%s`,
-		SanitizeFolder(tm.Category),
-		SanitizeFolder(tm.MainArtistAlias),
-		SanitizeFolder(tm.MainArtist),
+		fs.SanitizePath(tm.Category),
+		fs.SanitizePath(tm.MainArtistAlias),
+		fs.SanitizePath(tm.MainArtist),
 		tm.OriginalYear,
-		SanitizeFolder(tm.Title),
+		fs.SanitizePath(tm.Title),
 		quality,
 		tm.Source,
 		tm.SourceFull, // source with indicator if 100%/log/cue or Silver/gold
-		SanitizeFolder(tm.RecordLabel),
+		fs.SanitizePath(tm.RecordLabel),
 		tm.CatalogNumber,
-		SanitizeFolder(editionName), // edition
-		SanitizeFolder(id),          // identifying info
+		fs.SanitizePath(editionName), // edition
+		fs.SanitizePath(id),          // identifying info
 		tm.ReleaseType,
 		releaseTypeExceptAlbum,
 		r.Replace(folderTemplate))
@@ -746,7 +747,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 
 func (tm *TrackerMetadata) WriteUserJSON(destination string) error {
 	userJSON := filepath.Join(destination, userMetadataJSONFile)
-	if FileExists(userJSON) {
+	if fs.FileExists(userJSON) {
 		logThis.Info("user metadata JSON already exists", VERBOSE)
 		return nil
 	}
@@ -770,7 +771,7 @@ func (tm *TrackerMetadata) WriteUserJSON(destination string) error {
 
 func (tm *TrackerMetadata) UpdateUserJSON(destination, mainArtist, mainArtistAlias, category string) error {
 	userJSON := filepath.Join(destination, userMetadataJSONFile)
-	if !FileExists(userJSON) {
+	if !fs.FileExists(userJSON) {
 		// try to create the file
 		if err := tm.WriteUserJSON(destination); err != nil {
 			return errors.New("user metadata JSON does not already exist and could not be written")
@@ -803,7 +804,7 @@ func (tm *TrackerMetadata) UpdateUserJSON(destination, mainArtist, mainArtistAli
 
 func (tm *TrackerMetadata) LoadUserJSON(parentFolder string) error {
 	userJSON := filepath.Join(parentFolder, userMetadataJSONFile)
-	if !FileExists(userJSON) {
+	if !fs.FileExists(userJSON) {
 		logThis.Info("user metadata JSON does not exist", VERBOSEST)
 		return nil
 	}

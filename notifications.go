@@ -11,6 +11,7 @@ import (
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/strslice"
 )
 
 // Notify in a goroutine, or directly.
@@ -41,7 +42,7 @@ func Notify(msg, tracker, msgType string, e *Environment) error {
 			}
 		}
 		// webhooks
-		if conf.webhooksConfigured && StringInSlice(tracker, conf.Notifications.WebHooks.Trackers) {
+		if conf.webhooksConfigured && strslice.Contains(conf.Notifications.WebHooks.Trackers, tracker) {
 			// create json, POST it
 			whJSON := &WebHookJSON{Site: tracker, Message: msg, Link: link, Type: msgType}
 			if err := whJSON.Send(conf.Notifications.WebHooks.Address, conf.Notifications.WebHooks.Token); err != nil {

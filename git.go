@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 const (
@@ -32,7 +34,7 @@ func NewGit(root, user, email string) *Git {
 		return nil
 	}
 	// check root is dir and exists
-	if !DirectoryExists(root) {
+	if !fs.DirExists(root) {
 		logThis.Info("Git repository path does not exist", NORMAL)
 		return nil
 	}

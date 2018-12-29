@@ -9,6 +9,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 // ReorganizeLibrary using tracker metadata and the user-defined template
@@ -141,5 +142,5 @@ func DeleteEmptyLibraryFolders() error {
 	if !c.LibraryConfigured {
 		return errors.New("library section of the configuration file not found")
 	}
-	return DeleteEmptyFolders(c.Library.Directory)
+	return fs.DeleteEmptyDirs(c.Library.Directory)
 }

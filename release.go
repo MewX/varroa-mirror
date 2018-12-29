@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/strslice"
 )
 
 const (
@@ -110,19 +113,19 @@ func NewRelease(tracker string, parts []string, alternative bool) (*Release, err
 
 	// checks
 	releaseType := parts[4]
-	if !StringInSlice(releaseType, knownReleaseTypes) {
+	if !strslice.Contains(knownReleaseTypes, releaseType) {
 		return nil, errors.New("Unknown release type: " + releaseType)
 	}
 	format := parts[5]
-	if !StringInSlice(format, knownFormats) {
+	if !strslice.Contains(knownFormats, format) {
 		return nil, errors.New("Unknown format: " + format)
 	}
 	source := parts[13]
-	if !StringInSlice(source, knownSources) {
+	if !strslice.Contains(knownSources, source) {
 		return nil, errors.New("Unknown source: " + source)
 	}
 	quality := parts[6]
-	if !StringInSlice(quality, knownQualities) {
+	if !strslice.Contains(knownQualities, quality) {
 		return nil, errors.New("Unknown quality: " + quality)
 	}
 
@@ -144,26 +147,26 @@ func (r *Release) ShortString() string {
 
 func (r *Release) TorrentFile() string {
 	torrentFile := fmt.Sprintf(TorrentPath, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, r.TorrentID)
-	return SanitizeFolder(torrentFile)
+	return fs.SanitizePath(torrentFile)
 }
 
 func (r *Release) Satisfies(filter *ConfigFilter) bool {
 	// no longer filtering on artists. If a filter has artists defined,
 	// varroa will now wait until it gets the TorrentInfo and all of the artists
 	// to make a call.
-	if len(filter.Year) != 0 && !IntInSlice(r.Year, filter.Year) {
+	if len(filter.Year) != 0 && !intslice.Contains(filter.Year, r.Year) {
 		logThis.Info(filter.Name+": Wrong year", VERBOSE)
 		return false
 	}
-	if len(filter.Format) != 0 && !StringInSlice(r.Format, filter.Format) {
+	if len(filter.Format) != 0 && !strslice.Contains(filter.Format, r.Format) {
 		logThis.Info(filter.Name+": Wrong format", VERBOSE)
 		return false
 	}
-	if len(filter.Source) != 0 && !StringInSlice(r.Source, filter.Source) {
+	if len(filter.Source) != 0 && !strslice.Contains(filter.Source, r.Source) {
 		logThis.Info(filter.Name+": Wrong source", VERBOSE)
 		return false
 	}
-	if len(filter.Quality) != 0 && !StringInSlice(r.Quality, filter.Quality) {
+	if len(filter.Quality) != 0 && !strslice.Contains(filter.Quality, r.Quality) {
 		logThis.Info(filter.Name+": Wrong quality", VERBOSE)
 		return false
 	}
@@ -184,11 +187,11 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 		logThis.Info(filter.Name+": Scene release not allowed", VERBOSE)
 		return false
 	}
-	if len(filter.ExcludedReleaseType) != 0 && StringInSlice(r.ReleaseType, filter.ExcludedReleaseType) {
+	if len(filter.ExcludedReleaseType) != 0 && strslice.Contains(filter.ExcludedReleaseType, r.ReleaseType) {
 		logThis.Info(filter.Name+": Excluded release type", VERBOSE)
 		return false
 	}
-	if len(filter.ReleaseType) != 0 && !StringInSlice(r.ReleaseType, filter.ReleaseType) {
+	if len(filter.ReleaseType) != 0 && !strslice.Contains(filter.ReleaseType, r.ReleaseType) {
 		logThis.Info(filter.Name+": Wrong release type", VERBOSE)
 		return false
 	}
@@ -224,7 +227,7 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 
 func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUploaders []string, info *TrackerMetadata) bool {
 	// checks
-	if len(filter.EditionYear) != 0 && !IntInSlice(info.EditionYear, filter.EditionYear) {
+	if len(filter.EditionYear) != 0 && !intslice.Contains(filter.EditionYear, info.EditionYear) {
 		logThis.Info(filter.Name+": Wrong edition year", VERBOSE)
 		return false
 	}
@@ -260,11 +263,11 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			return false
 		}
 	}
-	if StringInSlice(info.Uploader, blacklistedUploaders) || StringInSlice(info.Uploader, filter.BlacklistedUploader) {
+	if strslice.Contains(blacklistedUploaders, info.Uploader) || strslice.Contains(filter.BlacklistedUploader, info.Uploader) {
 		logThis.Info(filter.Name+": Uploader "+info.Uploader+" is blacklisted.", VERBOSE)
 		return false
 	}
-	if len(filter.Uploader) != 0 && !StringInSlice(info.Uploader, filter.Uploader) {
+	if len(filter.Uploader) != 0 && !strslice.Contains(filter.Uploader, info.Uploader) {
 		logThis.Info(filter.Name+": No match for uploader", VERBOSE)
 		return false
 	}

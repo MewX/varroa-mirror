@@ -12,6 +12,7 @@ import (
 	"github.com/jinzhu/now"
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
+	"gitlab.com/catastrophic/assistance/strslice"
 )
 
 var statsDB *StatsDB
@@ -261,7 +262,7 @@ func (sdb *StatsDB) Update() error {
 func (sdb *StatsDB) FilterByTracker(tracker string, statsType string) ([]StatsEntry, error) {
 	// TODO to avoid making huge lists, use Limit(n).Skip(i*n)?
 
-	if !StringInSlice(statsType, []string{"Collected", "StartOfDay", "StartOfWeek", "StartOfMonth"}) {
+	if !strslice.Contains([]string{"Collected", "StartOfDay", "StartOfWeek", "StartOfMonth"}, statsType) {
 		return []StatsEntry{}, errors.New("Unknown stats type: " + statsType)
 	}
 

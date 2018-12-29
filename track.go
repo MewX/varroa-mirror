@@ -10,6 +10,8 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/strslice"
 )
 
 type Track struct {
@@ -151,7 +153,7 @@ func (t *Track) recompress(dest string) error {
 		return err
 	}
 	// copy file
-	if err := CopyFile(t.Filename, dest, false); err != nil {
+	if err := fs.CopyFile(t.Filename, dest, false); err != nil {
 		return err
 	}
 	// recompress
@@ -201,7 +203,7 @@ func (t *Track) trackType(tm TrackerMetadata) trackType {
 	// TODO else use discogs info?
 
 	// find if multi artists based on release type?
-	if StringInSlice(tm.ReleaseType, []string{releaseCompilation, releaseDJMix, releaseMixtape, releaseRemix}) {
+	if strslice.Contains([]string{releaseCompilation, releaseDJMix, releaseMixtape, releaseRemix}, tm.ReleaseType) {
 		if multiDisc {
 			return multiArtistsAndDiscTrack
 		}
@@ -276,15 +278,15 @@ func (t *Track) generateName(filenameTemplate string) (string, error) {
 
 	// replace with all valid epub parameters
 	tmpl := fmt.Sprintf(`{{$dn := %q}}{{$dt := %q}}{{$tn := %q}}{{$ta := %q}}{{$tt := %q}}{{$aa := %q}}{{$td := %q}}{{$t := %q}}{{$y := %q}}%s`,
-		SanitizeFolder(discNumber),
-		SanitizeFolder(totalTracks),
-		SanitizeFolder(trackNumber),
-		SanitizeFolder(trackArtist),
-		SanitizeFolder(trackTitle),
-		SanitizeFolder(albumArtist),
-		SanitizeFolder(t.Duration), // TODO min:sec or hh:mm:ss
-		SanitizeFolder(albumTitle),
-		SanitizeFolder(trackYear),
+		fs.SanitizePath(discNumber),
+		fs.SanitizePath(totalTracks),
+		fs.SanitizePath(trackNumber),
+		fs.SanitizePath(trackArtist),
+		fs.SanitizePath(trackTitle),
+		fs.SanitizePath(albumArtist),
+		fs.SanitizePath(t.Duration), // TODO min:sec or hh:mm:ss
+		fs.SanitizePath(albumTitle),
+		fs.SanitizePath(trackYear),
 		r.Replace(filenameTemplate))
 
 	var doc bytes.Buffer
@@ -320,13 +322,13 @@ func (t *Track) generateSpectrals(root string) error {
 	// filename
 	spectralName := filepath.Join(root, strings.Replace(filepath.Base(t.Filename), filepath.Ext(t.Filename), "", -1)+".spectral")
 	// running sox commands
-	if !FileExists(spectralName + "full.png") {
+	if !fs.FileExists(spectralName + "full.png") {
 		_, err := exec.Command("sox", t.Filename, "-n", "remix", "1", "spectrogram", "-x", "3000", "-y", "513", "-z", "120", "-w", "Kaiser", "-o", spectralName+"full.png").CombinedOutput()
 		if err != nil {
 			return errors.Wrap(err, "error generating full spectrals for "+t.Filename)
 		}
 	}
-	if !FileExists(spectralName + "zoom.png") {
+	if !fs.FileExists(spectralName + "zoom.png") {
 		_, err := exec.Command("sox", t.Filename, "-n", "remix", "1", "spectrogram", "-x", "500", "-y", "1025", "-z", "120", "-w", "Kaiser", "-S", "1:00", "-d", "0:02", "-o", spectralName+"zoom.png").CombinedOutput()
 		if err != nil {
 			return errors.Wrap(err, "error generating zoom spectrals for "+t.Filename)

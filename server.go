@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 const (
@@ -405,7 +406,7 @@ func webServer(e *Environment) {
 	}
 	if e.config.webserverHTTPS {
 		// if not there yet, generate the self-signed certificate
-		if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
+		if !fs.FileExists(filepath.Join(certificatesDir, certificateKey)) || !fs.FileExists(filepath.Join(certificatesDir, certificate)) {
 			if err := generateCertificates(e); err != nil {
 				logThis.Error(errors.Wrap(err, errorGeneratingCertificate+provideCertificate), NORMAL)
 				logThis.Info(infoBackupScript, NORMAL)

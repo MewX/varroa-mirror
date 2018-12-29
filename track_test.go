@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 func TestTrackFLAC(t *testing.T) {
@@ -51,10 +52,10 @@ func TestTrackFLAC(t *testing.T) {
 
 	fmt.Println(track.String())
 
-	check.False(FileExists(flacOut))
+	check.False(fs.FileExists(flacOut))
 	check.Nil(track.recompress(flacOut))
 	defer os.Remove(flacOut)
-	check.True(FileExists(flacOut))
+	check.True(fs.FileExists(flacOut))
 
 	var track2 Track
 	check.Nil(track.parse(flacNoPic))

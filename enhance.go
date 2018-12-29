@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/ui"
 )
 
 type ReleaseDir struct {
@@ -19,7 +21,7 @@ type ReleaseDir struct {
 }
 
 func NewReleaseDir(path string) (*ReleaseDir, error) {
-	if !DirectoryExists(path) {
+	if !fs.DirExists(path) {
 		return nil, errors.New("path " + path + " does not exist")
 	}
 
@@ -44,7 +46,7 @@ func (rd *ReleaseDir) Enhance() error {
 			// TODO  get date / disogsID
 			// TODO ask if we want to refresh!
 		}
-		if Accept("Retrieve Discogs metadata") {
+		if ui.Accept("Retrieve Discogs metadata") {
 			// retrieve and save discogs metadata
 			if err := rd.getDiscogsMetadata(); err != nil {
 				return err
@@ -146,7 +148,7 @@ func (rd *ReleaseDir) getMetadata() error {
 
 func (rd *ReleaseDir) hasDiscogsMetadata() bool {
 	// TODO parse the file and display when it's been last updated
-	return FileExists(filepath.Join(rd.Path, AdditionalMetadataDir, discogsMetadataFile))
+	return fs.FileExists(filepath.Join(rd.Path, AdditionalMetadataDir, discogsMetadataFile))
 }
 
 func (rd *ReleaseDir) getDiscogsMetadata() error {
@@ -246,7 +248,7 @@ func (rd *ReleaseDir) mergeMetadata() error {
 				if t.Tags.diff(dt) {
 					logThis.Info("Tracks have the same metadata.", VERBOSEST)
 				} else {
-					if Accept("Try to merge tracker & discogs metadata") {
+					if ui.Accept("Try to merge tracker & discogs metadata") {
 						if err := t.Tags.merge(dt); err != nil {
 							return err
 						}

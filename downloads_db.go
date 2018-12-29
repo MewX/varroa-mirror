@@ -16,6 +16,9 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/strslice"
+	"gitlab.com/catastrophic/assistance/ui"
 )
 
 var downloadsDB *DownloadsDB
@@ -41,7 +44,7 @@ func NewDownloadsDB(path, root string, additionalSources []string) (*DownloadsDB
 			logThis.Error(errors.Wrap(returnErr, "Could not prepare database for indexing download entries"), NORMAL)
 			return
 		}
-		if !DirectoryExists(downloadsDB.root) {
+		if !fs.DirExists(downloadsDB.root) {
 			logThis.Info("Error finding "+root, NORMAL)
 			return
 		}
@@ -74,7 +77,7 @@ func (d *DownloadsDB) String() string {
 			stateCounts = append(stateCounts, fmt.Sprintf("%s: %d (%.02f%%)", s, len(states), 100*float32(len(states))/float32(len(allEntries))))
 		}
 	}
-	txt += "\n" + YellowUnderlined(fmt.Sprintf("Total: %d entries ~~ ", len(allEntries))+strings.Join(stateCounts, ", "))
+	txt += "\n" + ui.YellowUnderlined(fmt.Sprintf("Total: %d entries ~~ ", len(allEntries))+strings.Join(stateCounts, ", "))
 	return txt
 }
 
@@ -166,7 +169,7 @@ func (d *DownloadsDB) Scan() error {
 
 	// remove entries no longer associated with actual files
 	for _, p := range previous {
-		if !StringInSlice(p.FolderName, currentFolderNames) {
+		if !strslice.Contains(currentFolderNames, p.FolderName) {
 			if err := tx.DeleteStruct(&p); err != nil {
 				logThis.Error(err, VERBOSEST)
 			}
@@ -212,7 +215,7 @@ func (d *DownloadsDB) RescanIDs(IDs []int) error {
 
 	// update the entries
 	for _, entry := range entries {
-		if DirectoryExists(entry.FolderName) {
+		if fs.DirExists(entry.FolderName) {
 			// read information from metadata
 			if err := entry.Load(d.root); err != nil {
 				logThis.Info("Error: could not load metadata for "+entry.FolderName, VERBOSEST)
@@ -279,7 +282,7 @@ func (d *DownloadsDB) locateFolderName(folderName string) (string, string, error
 }
 
 func (d *DownloadsDB) RescanPath(folderName string) error {
-	if DirectoryExists(folderName) {
+	if fs.DirExists(folderName) {
 		// checking it's inside a known directory (download directory or additional source)
 		absFolderName, basePath, err := d.locateFolderName(folderName)
 		if err != nil {
@@ -354,14 +357,14 @@ func (d *DownloadsDB) Sort(e *Environment) error {
 	}
 	for _, dl := range downloadEntries {
 		if dl.State == stateUnsorted {
-			if !Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.ID, dl.FolderName)) {
+			if !ui.Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.ID, dl.FolderName)) {
 				return nil
 			}
 			if err := dl.Sort(e, d.root); err != nil {
 				return errors.Wrap(err, "Error sorting download "+strconv.Itoa(dl.ID))
 			}
 		} else if dl.State == stateAccepted {
-			if Accept(fmt.Sprintf("Do you want to export already accepted release #%d (%s) ", dl.ID, dl.FolderName)) {
+			if ui.Accept(fmt.Sprintf("Do you want to export already accepted release #%d (%s) ", dl.ID, dl.FolderName)) {
 				if err := dl.export(d.root, e.config); err != nil {
 					return errors.Wrap(err, "Error exporting download "+strconv.Itoa(dl.ID))
 				}
@@ -381,7 +384,7 @@ func (d *DownloadsDB) SortThisID(e *Environment, id int) error {
 	if err != nil {
 		return errors.Wrap(err, "Error finding such an ID in the downloads database")
 	}
-	if dl.State != stateUnsorted && !Accept(fmt.Sprintf("Download #%d (%s) has already been accepted or rejected. Do you want to sort it again ", dl.ID, dl.FolderName)) {
+	if dl.State != stateUnsorted && !ui.Accept(fmt.Sprintf("Download #%d (%s) has already been accepted or rejected. Do you want to sort it again ", dl.ID, dl.FolderName)) {
 		return nil
 	}
 	if err := dl.Sort(e, d.root); err != nil {
@@ -394,7 +397,7 @@ func (d *DownloadsDB) SortThisID(e *Environment, id int) error {
 }
 
 func (d *DownloadsDB) FindByState(state string) []DownloadEntry {
-	if !StringInSlice(state, DownloadFolderStates) {
+	if !strslice.Contains(DownloadFolderStates, state) {
 		logThis.Info("Invalid state", NORMAL)
 	}
 	var hits []DownloadEntry
@@ -425,7 +428,7 @@ func (d *DownloadsDB) FindByArtist(artist string) []DownloadEntry {
 func (d *DownloadsDB) Clean() error {
 	// prepare directory for cleaned folders if necessary
 	cleanDir := filepath.Join(d.root, downloadsCleanDir)
-	if !DirectoryExists(cleanDir) {
+	if !fs.DirExists(cleanDir) {
 		if err := os.MkdirAll(cleanDir, 0777); err != nil {
 			return errors.Wrap(err, errorCreatingDownloadsCleanDir)
 		}
