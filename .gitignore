@@ -15,3 +15,4 @@ TODO
 node_modules
 mpd_test.go
 vendor/
+docs/

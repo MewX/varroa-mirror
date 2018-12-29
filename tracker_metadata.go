@@ -21,7 +21,7 @@ import (
 	"github.com/mewkiz/flac"
 	"github.com/mgutz/ansi"
 	"github.com/pkg/errors"
-	blackfriday "gopkg.in/russross/blackfriday.v2"
+	"github.com/russross/blackfriday"
 )
 
 const (

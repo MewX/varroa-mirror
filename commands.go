@@ -461,7 +461,7 @@ func ArchiveUserFiles() error {
 		backupFiles = append(backupFiles, encryptedConfigurationFile)
 	}
 	// generate archive
-	err = archiver.Zip.Make(filepath.Join(archivesDir, archiveName), backupFiles)
+	err = archiver.Archive(backupFiles, filepath.Join(archivesDir, archiveName))
 	if err != nil {
 		logThis.Error(errors.Wrap(err, errorArchiving), NORMAL)
 	}

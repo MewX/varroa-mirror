@@ -8,7 +8,7 @@ import (
 
 	"github.com/asdine/storm"
 	"github.com/pkg/errors"
-	"gopkg.in/russross/blackfriday.v2"
+	"github.com/russross/blackfriday"
 )
 
 // adapted from https://purecss.io/layouts/side-menu/
