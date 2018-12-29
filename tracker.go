@@ -122,7 +122,7 @@ func (t *GazelleTracker) rateLimitedGetRequest(url string, expectingJSON bool) (
 	return data, nil
 }
 
-func (t *GazelleTracker) ApiCall(endpoint string) ([]byte, error) {
+func (t *GazelleTracker) apiCall(endpoint string) ([]byte, error) {
 	data, err := t.rateLimitedGetRequest(t.URL+"/ajax.php?"+endpoint, true)
 	if err != nil {
 		logThis.Error(errors.Wrap(err, errorJSONAPI), VERBOSEST)
@@ -219,7 +219,7 @@ func (t *GazelleTracker) DownloadTorrentFromID(torrentID string, destinationFold
 
 func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	if t.userID == 0 {
-		data, err := t.ApiCall("action=index")
+		data, err := t.apiCall("action=index")
 		if err != nil {
 			return nil, errors.Wrap(err, errorJSONAPI)
 		}
@@ -230,7 +230,7 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
-	data, err := t.ApiCall("action=user&id=" + strconv.Itoa(t.userID))
+	data, err := t.apiCall("action=user&id=" + strconv.Itoa(t.userID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -259,7 +259,7 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 }
 
 func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error) {
-	data, err := t.ApiCall("action=torrent&id=" + id)
+	data, err := t.apiCall("action=torrent&id=" + id)
 	if err != nil {
 		isDeleted, deletedText, errCheck := t.CheckIfDeleted(id)
 		if errCheck != nil {
@@ -278,7 +278,7 @@ func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error)
 }
 
 func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerMetadataArtist, error) {
-	data, err := t.ApiCall("action=artist&id=" + strconv.Itoa(artistID))
+	data, err := t.apiCall("action=artist&id=" + strconv.Itoa(artistID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -296,7 +296,7 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerMetadataArtist, er
 }
 
 func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerMetadataTorrentGroup, error) {
-	data, err := t.ApiCall("action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
+	data, err := t.apiCall("action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -318,7 +318,7 @@ func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerMetada
 	return info, nil
 }
 
-func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req *http.Request, err error) {
+func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (*http.Request, error) {
 	// setting up the form
 	buffer := new(bytes.Buffer)
 	w := multipart.NewWriter(buffer)
@@ -355,13 +355,13 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req
 	w.WriteField("action", "takeupload")
 	w.Close()
 
-	req, err = http.NewRequest("POST", uploadURL, buffer)
+	req, err := http.NewRequest("POST", uploadURL, buffer)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
 	req.Header.Add("User-Agent", userAgent())
-	return
+	return req, err
 }
 
 func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {

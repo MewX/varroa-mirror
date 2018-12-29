@@ -230,7 +230,7 @@ func (d *DownloadsDB) RescanIDs(IDs []int) error {
 			logThis.Info("Removed Download entry: "+entry.FolderName, VERBOSESTEST)
 		}
 	}
-	// commiting transaction
+	// committing transaction
 	return tx.Commit()
 }
 
@@ -248,7 +248,7 @@ func (d *DownloadsDB) locateFolderName(folderName string) (string, string, error
 		return "", "", err
 	}
 	if !c.LibraryConfigured || !c.DownloadFolderConfigured {
-		return "", "", errors.New("insufficient information from the configuration file: download directory, library section.")
+		return "", "", errors.New("insufficient information from the configuration file: download directory, library section")
 	}
 
 	rel, err := filepath.Rel(c.General.DownloadDir, absFolderName)
@@ -320,7 +320,7 @@ func (d *DownloadsDB) RescanPath(folderName string) error {
 			logThis.Info("Updated Downloads entry: "+absFolderName, VERBOSESTEST)
 		}
 
-		// commiting transaction
+		// committing transaction
 		return tx.Commit()
 	}
 	return errors.New(folderName + " could not be found")

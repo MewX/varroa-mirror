@@ -76,33 +76,34 @@ func NewTrackMetadata(tags map[string]string) (*TrackTags, error) {
 	tm := &TrackTags{}
 	tm.OtherTags = make(map[string]string)
 	for k, v := range tags {
-		if k == trackNumberLabel {
+		switch k {
+		case trackNumberLabel:
 			tm.Number = v
-		} else if k == discNumberLabel {
+		case discNumberLabel:
 			tm.DiscNumber = v
-		} else if k == discTotalLabel {
+		case discTotalLabel:
 			tm.TotalTracks = v
-		} else if k == releaseTitleLabel {
+		case releaseTitleLabel:
 			tm.Album = v
-		} else if k == yearLabel {
+		case yearLabel:
 			tm.Year = v
-		} else if k == trackArtistLabel {
+		case trackArtistLabel:
 			tm.Artist = v
-		} else if k == albumArtistLabel {
+		case albumArtistLabel:
 			tm.AlbumArtist = v
-		} else if k == genreLabel {
+		case genreLabel:
 			tm.Genre = v
-		} else if k == trackTitleLabel {
+		case trackTitleLabel:
 			tm.Title = v
-		} else if k == trackCommentLabel {
+		case trackCommentLabel:
 			tm.Description = v
-		} else if k == composerLabel {
+		case composerLabel:
 			tm.Composer = v
-		} else if k == performerLabel {
+		case performerLabel:
 			tm.Performer = v
-		} else if k == recordLabelLabel {
+		case recordLabelLabel:
 			tm.Label = v
-		} else {
+		default:
 			// other less common tags
 			tm.OtherTags[k] = v
 		}
@@ -164,7 +165,7 @@ func (tm *TrackTags) mergeFieldByName(field, title string, o TrackTags) error {
 	localValue := reflect.ValueOf(tm).Elem().FieldByName(field).String()
 	otherValue := reflect.ValueOf(&o).Elem().FieldByName(field).String()
 	options := []string{localValue, otherValue}
-	if diffString(title, localValue, otherValue) == false {
+	if !diffString(title, localValue, otherValue) {
 		newValue, err := SelectOption("Select correct value or enter one\n", "First option comes from the audio file, second option from Discogs.", options)
 		if err != nil {
 			return err

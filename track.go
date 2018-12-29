@@ -28,7 +28,7 @@ type Track struct {
 	PictureName   string     `json:"picture_name,omitempty"`
 }
 
-func (rt *Track) checkExternalBinaries() error {
+func (t *Track) checkExternalBinaries() error {
 	_, err := exec.LookPath("flac")
 	if err != nil {
 		return errors.New("'flac' is not available on this system, not able to deal with flac files")
@@ -40,23 +40,23 @@ func (rt *Track) checkExternalBinaries() error {
 	return nil
 }
 
-func (rt *Track) String() string {
+func (t *Track) String() string {
 	var cover string
-	if rt.HasCover {
-		cover = fmt.Sprintf("Cover: %s (%sx%s, size: %s)", rt.PictureName, rt.PictureWidth, rt.PictureHeight, rt.PictureSize)
+	if t.HasCover {
+		cover = fmt.Sprintf("Cover: %s (%sx%s, size: %s)", t.PictureName, t.PictureWidth, t.PictureHeight, t.PictureSize)
 	}
-	return fmt.Sprintf("%s: FLAC%s %sHz [%ss] (MD5: %s):\n\t%s\n\t%s", rt.Filename, rt.BitDepth, rt.SampleRate, rt.Duration, rt.MD5, rt.Tags.String(), cover)
+	return fmt.Sprintf("%s: FLAC%s %sHz [%ss] (MD5: %s):\n\t%s\n\t%s", t.Filename, t.BitDepth, t.SampleRate, t.Duration, t.MD5, t.Tags.String(), cover)
 }
 
-func (rt *Track) parse(filename string) error {
-	if err := rt.checkExternalBinaries(); err != nil {
+func (t *Track) parse(filename string) error {
+	if err := t.checkExternalBinaries(); err != nil {
 		return err
 	}
 	if strings.ToLower(filepath.Ext(filename)) != flacExt {
 		return errors.New("file is not a FLAC file")
 	}
 
-	rt.Filename = filename
+	t.Filename = filename
 	tags := make(map[string]string)
 
 	// getting info & tags
@@ -70,35 +70,35 @@ func (rt *Track) parse(filename string) error {
 			continue
 		}
 		if i == 0 {
-			rt.BitDepth = line
+			t.BitDepth = line
 		} else if i == 1 {
-			rt.SampleRate = line
+			t.SampleRate = line
 		} else if i == 2 {
-			rt.TotalSamples = line
+			t.TotalSamples = line
 		} else if i == 3 {
-			rt.MD5 = line
+			t.MD5 = line
 		} else {
 			parts := strings.Split(line, "=")
 			tags[parts[0]] = parts[1]
 		}
 	}
 	// parsing tags
-	t, err := NewTrackMetadata(tags)
+	tgs, err := NewTrackMetadata(tags)
 	if err != nil {
 		return err
 	}
-	rt.Tags = t
+	t.Tags = tgs
 
 	// duration = total samples / sample rate
-	total, err := strconv.Atoi(rt.TotalSamples)
+	total, err := strconv.Atoi(t.TotalSamples)
 	if err != nil {
 		return err
 	}
-	rate, err := strconv.Atoi(rt.SampleRate)
+	rate, err := strconv.Atoi(t.SampleRate)
 	if err != nil {
 		return err
 	}
-	rt.Duration = fmt.Sprintf("%.3f", float32(total)/float32(rate))
+	t.Duration = fmt.Sprintf("%.3f", float32(total)/float32(rate))
 
 	// get embedded picture info
 	// TODO what if more than one picture?
@@ -108,22 +108,22 @@ func (rt *Track) parse(filename string) error {
 	}
 	output := string(cmdOut)
 	if output == "" {
-		rt.HasCover = false
+		t.HasCover = false
 	} else {
-		rt.HasCover = true
+		t.HasCover = true
 		lines := strings.Split(output, "\n")
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
 			if strings.HasPrefix(line, "length: ") {
-				rt.PictureSize = strings.TrimLeft(line, "length: ")
+				t.PictureSize = strings.TrimLeft(line, "length: ")
 			} else if strings.HasPrefix(line, "width: ") {
-				rt.PictureWidth = strings.TrimLeft(line, "width: ")
+				t.PictureWidth = strings.TrimLeft(line, "width: ")
 			} else if strings.HasPrefix(line, "height: ") {
-				rt.PictureHeight = strings.TrimLeft(line, "height: ")
+				t.PictureHeight = strings.TrimLeft(line, "height: ")
 			} else if strings.HasPrefix(line, "description: ") {
-				rt.PictureName = strings.TrimLeft(line, "description: ")
+				t.PictureName = strings.TrimLeft(line, "description: ")
 			}
-			if rt.PictureHeight != "" && rt.PictureWidth != "" && rt.PictureSize != "" {
+			if t.PictureHeight != "" && t.PictureWidth != "" && t.PictureSize != "" {
 				break
 			}
 		}
@@ -142,16 +142,16 @@ func (rt *Track) parse(filename string) error {
 	return nil
 }
 
-func (rt *Track) compareEncoding(o Track) bool {
-	return rt.SampleRate == o.SampleRate && rt.BitDepth == o.BitDepth
+func (t *Track) compareEncoding(o Track) bool {
+	return t.SampleRate == o.SampleRate && t.BitDepth == o.BitDepth
 }
 
-func (rt *Track) recompress(dest string) error {
-	if err := rt.checkExternalBinaries(); err != nil {
+func (t *Track) recompress(dest string) error {
+	if err := t.checkExternalBinaries(); err != nil {
 		return err
 	}
 	// copy file
-	if err := CopyFile(rt.Filename, dest, false); err != nil {
+	if err := CopyFile(t.Filename, dest, false); err != nil {
 		return err
 	}
 	// recompress
@@ -161,7 +161,7 @@ func (rt *Track) recompress(dest string) error {
 	}
 	lines := strings.Split(string(cmdOut), "\n")
 	status := lines[len(lines)-2]
-	logThis.Info("Recompressing "+rt.Filename+": "+status, VERBOSESTEST)
+	logThis.Info("Recompressing "+t.Filename+": "+status, VERBOSESTEST)
 
 	// TODO save picture somewhere if it exists
 	// TODO remove picture + padding

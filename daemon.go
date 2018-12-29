@@ -83,7 +83,7 @@ func (d *Daemon) Stop(daemonProcess *os.Process) {
 	}
 }
 
-func quitDaemon(sig os.Signal) error {
+func quitDaemon(_ os.Signal) error {
 	logThis.Info("+ terminating", VERBOSE)
 	return daemon.ErrStop
 }

@@ -123,7 +123,7 @@ type ServerPage struct {
 	theme HistoryTheme
 }
 
-func (sc *ServerPage) update(e *Environment, downloads *DownloadsDB) {
+func (sc *ServerPage) update(downloads *DownloadsDB) {
 	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		logThis.Error(err, NORMAL)
@@ -190,9 +190,9 @@ func (sc *ServerPage) update(e *Environment, downloads *DownloadsDB) {
 	}
 }
 
-func (sc *ServerPage) Index(e *Environment, downloads *DownloadsDB) ([]byte, error) {
+func (sc *ServerPage) Index(downloads *DownloadsDB) ([]byte, error) {
 	// updating
-	sc.update(e, downloads)
+	sc.update(downloads)
 	if err := sc.index.SetMainContentStats(); err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating stats page")
 	}
@@ -206,7 +206,7 @@ func (sc *ServerPage) SaveIndex(e *Environment, file string) error {
 	if e.config.gitlabPagesConfigured {
 		e.serverData.index.URLFolder = e.config.GitlabPages.Folder + "/"
 	}
-	data, err := sc.Index(e, nil)
+	data, err := sc.Index(nil)
 	if err != nil {
 		return err
 	}
@@ -217,9 +217,9 @@ func (sc *ServerPage) SaveIndex(e *Environment, file string) error {
 	return ioutil.WriteFile(file, data, 0666)
 }
 
-func (sc *ServerPage) DownloadsList(e *Environment, downloads *DownloadsDB) ([]byte, error) {
+func (sc *ServerPage) DownloadsList(downloads *DownloadsDB) ([]byte, error) {
 	// updating
-	sc.update(e, downloads)
+	sc.update(downloads)
 	// getting downloads
 	if err := sc.index.SetMainContentDownloadsList(); err != nil {
 		return []byte{}, errors.Wrap(err, "Error generating downloads list page")
@@ -230,7 +230,7 @@ func (sc *ServerPage) DownloadsList(e *Environment, downloads *DownloadsDB) ([]b
 
 func (sc *ServerPage) DownloadsInfo(e *Environment, downloads *DownloadsDB, id string) ([]byte, error) {
 	// updating
-	sc.update(e, nil)
+	sc.update(nil)
 
 	// display individual download metadata
 	downloadID, err := strconv.Atoi(id)

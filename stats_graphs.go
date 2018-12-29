@@ -36,8 +36,8 @@ func (ss *StatsSeries) AddStats(entries ...StatsEntry) error {
 		ss.Up = append(ss.Up, float64(e.Up)/(1024*1024*1024))
 		ss.Down = append(ss.Down, float64(e.Down)/(1024*1024*1024))
 		ss.Ratio = append(ss.Ratio, e.Ratio)
-		ss.Buffer = append(ss.Buffer, (float64(float64(e.Up)/statsConfig.TargetRatio)-float64(e.Down))/(1024*1024*1024))
-		ss.WarningBuffer = append(ss.WarningBuffer, (float64(float64(e.Up)/warningRatio)-float64(e.Down))/(1024*1024*1024))
+		ss.Buffer = append(ss.Buffer, (float64(e.Up)/statsConfig.TargetRatio-float64(e.Down))/(1024*1024*1024))
+		ss.WarningBuffer = append(ss.WarningBuffer, (float64(e.Up)/warningRatio-float64(e.Down))/(1024*1024*1024))
 	}
 	return nil
 }

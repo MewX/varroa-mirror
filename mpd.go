@@ -58,10 +58,10 @@ func (m *MPD) Enable(path string) error {
 	// make sure path is absolute
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return errors.Wrap(err, "Error getting absolute path for download directory.")
+		return errors.Wrap(err, "error getting absolute path for download directory")
 	}
 	if !DirectoryExists(path) {
-		return errors.New("Download directory cannot be found and symlinked into MPD library.")
+		return errors.New("download directory cannot be found and symlinked into MPD library")
 	}
 	symlinkName := filepath.Join(m.root, varroaMPDSubdir)
 	if !DirectoryExists(symlinkName) {
@@ -71,10 +71,10 @@ func (m *MPD) Enable(path string) error {
 	// if it exists, check it points to what we want
 	target, err := filepath.EvalSymlinks(symlinkName)
 	if err != nil {
-		return errors.New("Error resolving symbolic link target.")
+		return errors.New("error resolving symbolic link target")
 	}
 	if path != target {
-		return errors.New(fmt.Sprintf("The MPD library symlink %s already exists, and points to an unexpected directory.", varroaMPDSubdir))
+		return errors.New(fmt.Sprintf("the MPD library symlink %s already exists, and points to an unexpected directory", varroaMPDSubdir))
 	}
 	// symlink exists and points to the right directory
 	return nil
@@ -89,17 +89,17 @@ func (m *MPD) Disable(path string) error {
 		// check it points to what we want
 		target, err := filepath.EvalSymlinks(symlinkName)
 		if err != nil {
-			return errors.New("Error resolving symbolic link target.")
+			return errors.New("error resolving symbolic link target")
 		}
 		source, err := filepath.Abs(path)
 		if err != nil {
-			return errors.Wrap(err, "Error getting absolute path for download directory.")
+			return errors.Wrap(err, "error getting absolute path for download directory")
 		}
 
 		if source == target {
 			return os.Remove(symlinkName)
 		} else {
-			return errors.New("The MPD library symlink points to an unexpected directory.")
+			return errors.New("the MPD library symlink points to an unexpected directory")
 		}
 	}
 	return nil
@@ -158,11 +158,11 @@ func (m *MPD) SendAndPlay(dlFolder, release string) error {
 	}
 	// update
 	if err := m.Update(); err != nil {
-		return errors.Wrap(err, "Error updating MPD database")
+		return errors.Wrap(err, "error updating MPD database")
 	}
 	// add
 	if err := m.Add(varroaMPDSubdir); err != nil {
-		return errors.Wrap(err, "Error adding release to MPD playlist")
+		return errors.Wrap(err, "error adding release to MPD playlist")
 	}
 	// play
 	return m.Play()

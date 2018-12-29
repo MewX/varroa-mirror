@@ -12,11 +12,11 @@ func TestGeneratePath(t *testing.T) {
 	fmt.Println("+ Testing TrackerMetadata/generatePath...")
 	check := assert.New(t)
 
-	conf, configErr := NewConfig("test/test_complete.yaml")
+	_, configErr := NewConfig("test/test_complete.yaml")
 	check.Nil(configErr)
 
 	// setup logger
-	conf = &Config{General: &ConfigGeneral{LogLevel: 2}}
+	conf := &Config{General: &ConfigGeneral{LogLevel: 2}}
 	env := &Environment{config: conf}
 	logThis = NewLogThis(env)
 

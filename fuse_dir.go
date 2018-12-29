@@ -179,12 +179,11 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 var _ = fs.HandleReadDirAller(&FuseDir{})
 
 func (d *FuseDir) fuseDirs(matcher q.Matcher, field string) ([]fuse.Dirent, error) {
-	var allDirents []fuse.Dirent
 	allItems, err := d.fs.contents.uniqueEntries(matcher, field)
 	if err != nil {
-		return allDirents, err
+		return []fuse.Dirent{}, err
 	}
-	allDirents = make([]fuse.Dirent, len(allItems))
+	allDirents := make([]fuse.Dirent, len(allItems))
 	for _, a := range allItems {
 		allDirents = append(allDirents, fuse.Dirent{Name: filepath.Base(a), Type: fuse.DT_Dir})
 	}

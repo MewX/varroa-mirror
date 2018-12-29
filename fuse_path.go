@@ -43,6 +43,7 @@ func fuseCategoryByLabel(label string) (fuseCategory, error) {
 	return fuseCategory{}, errors.New("cannot find category for label " + label)
 }
 
+// FusePath holds all of the informations to generate a FUSE path.
 type FusePath struct {
 	category string
 	label    string

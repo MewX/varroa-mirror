@@ -298,7 +298,10 @@ func main() {
 			<-c
 			fmt.Println(varroa.Red("Terminating."))
 		}
-		varroa.Notify("Stopping varroa!", varroa.FullName, "info", env)
+
+		if err := varroa.Notify("Stopping varroa!", varroa.FullName, "info", env); err != nil {
+			logThis.Error(err, varroa.NORMAL)
+		}
 		return
 	}
 

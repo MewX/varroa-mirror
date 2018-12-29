@@ -258,7 +258,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.paths = args["<PATH>"].([]string)
 		for i, p := range b.paths {
 			if !varroa.DirectoryExists(p) {
-				return errors.New("Target path does not exist")
+				return errors.New("target path does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
 				return fmt.Errorf(varroa.ErrorFindingMusicAndMetadata, p)
@@ -272,11 +272,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	if b.refreshMetadataByID || b.snatch || b.downloadInfo || b.downloadSortID || b.info {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
-			return errors.New("Invalid torrent IDs.")
+			return errors.New("invalid torrent IDs")
 		}
 		b.torrentIDs, err = varroa.StringSliceToIntSlice(IDs)
 		if err != nil {
-			return errors.New("Invalid torrent IDs, must be integers.")
+			return errors.New("invalid torrent IDs, must be integers")
 		}
 	}
 	if b.downloadFuse || b.libraryFuse {
@@ -288,14 +288,14 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 
 		b.mountPoint = args["<MOUNT_POINT>"].(string)
 		if !varroa.DirectoryExists(b.mountPoint) {
-			return errors.New("Fuse mount point does not exist")
+			return errors.New("fuse mount point does not exist")
 		}
 
 		// check it's empty
 		if isEmpty, err := varroa.DirectoryIsEmpty(b.mountPoint); err != nil {
-			return errors.New("Could not open Fuse mount point")
+			return errors.New("could not open Fuse mount point")
 		} else if !isEmpty {
-			return errors.New("Fuse mount point is not empty")
+			return errors.New("fuse mount point is not empty")
 		}
 	}
 	if b.downloadList {
@@ -303,7 +303,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if ok {
 			b.downloadState = state
 			if !varroa.IsValidDownloadState(b.downloadState) {
-				return errors.New("Invalid download state, must be among: " + strings.Join(varroa.DownloadFolderStates, ", "))
+				return errors.New("invalid download state, must be among: " + strings.Join(varroa.DownloadFolderStates, ", "))
 			}
 		}
 	}
@@ -313,7 +313,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	if b.checkLog {
 		logPath := args["<LOG_FILE>"].(string)
 		if !varroa.FileExists(logPath) {
-			return errors.New("Invalid log file, does not exist.")
+			return errors.New("invalid log file, does not exist")
 		}
 		b.logFile = logPath
 	}
@@ -329,7 +329,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 		for _, p := range paths {
 			if !varroa.DirectoryExists(p) {
-				return errors.New("Target path " + p + " does not exist")
+				return errors.New("target path " + p + " does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
 				return fmt.Errorf(varroa.ErrorFindingMusicAndMetadata, p)
@@ -402,7 +402,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "Cannot parse command"), varroa.NORMAL)
+		logThis.Error(errors.Wrap(err, "cannot parse command"), varroa.NORMAL)
 		return []byte{}
 	}
 	return commandBytes

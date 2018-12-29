@@ -54,53 +54,48 @@ func MatchInSlice(a string, b []string) bool {
 		}
 	}
 
-	// match if we only have exludes and no source string
+	// match if we only have excludes and no source string
 	if a == "" {
-		if !hasIncludes {
-			return true
-		}
-		return false
-	} else {
-		var matchFound bool
-		for _, pattern := range b {
-			if strings.HasPrefix(pattern, filterRegExpPrefix) {
-				pattern = strings.Replace(pattern, filterRegExpPrefix, "", 1)
-				// try to match
-				match, err := regexp.MatchString(pattern, a)
-				if err != nil {
-					logThis.Error(err, VERBOSE)
-				}
-				if match {
-					if !hasExcludes {
-						return true // if only includes, one match is enough
-					} else {
-						matchFound = true // found match, but wait to see if it should be excluded
-					}
-				}
-			} else if strings.HasPrefix(pattern, filterExcludeRegExpPrefix) {
-				pattern = strings.Replace(pattern, filterExcludeRegExpPrefix, "", 1)
-				// try to match
-				match, err := regexp.MatchString(pattern, a)
-				if err != nil {
-					logThis.Error(err, VERBOSE)
-				}
-				if match {
-					return false // a is excluded
-				}
-			} else if pattern == a {
+		return !hasIncludes
+	}
+	var matchFound bool
+	for _, pattern := range b {
+		if strings.HasPrefix(pattern, filterRegExpPrefix) {
+			pattern = strings.Replace(pattern, filterRegExpPrefix, "", 1)
+			// try to match
+			match, err := regexp.MatchString(pattern, a)
+			if err != nil {
+				logThis.Error(err, VERBOSE)
+			}
+			if match {
 				if !hasExcludes {
 					return true // if only includes, one match is enough
-				} else {
-					matchFound = true // found match, but wait to see if it should be excluded
 				}
+				matchFound = true // found match, but wait to see if it should be excluded
+			}
+		} else if strings.HasPrefix(pattern, filterExcludeRegExpPrefix) {
+			pattern = strings.Replace(pattern, filterExcludeRegExpPrefix, "", 1)
+			// try to match
+			match, err := regexp.MatchString(pattern, a)
+			if err != nil {
+				logThis.Error(err, VERBOSE)
+			}
+			if match {
+				return false // a is excluded
+			}
+		} else if pattern == a {
+			if !hasExcludes {
+				return true // if only includes, one match is enough
+			} else {
+				matchFound = true // found match, but wait to see if it should be excluded
 			}
 		}
-		if hasExcludes && !hasIncludes {
-			// if we're here, no exludes were triggered and that's the only thing that counts
-			return true
-		}
-		return matchFound
 	}
+	if hasExcludes && !hasIncludes {
+		// if we're here, no excludes were triggered and that's the only thing that counts
+		return true
+	}
+	return matchFound
 }
 
 // IntInSlice checks if an int is in a []int, returns bool.

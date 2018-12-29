@@ -233,7 +233,7 @@ func webServer(e *Environment) {
 			var response []byte
 			id, ok := mux.Vars(r)["id"]
 			if !ok {
-				list, err := e.serverData.DownloadsList(e, downloads)
+				list, err := e.serverData.DownloadsList(downloads)
 				if err != nil {
 					logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
 					w.WriteHeader(http.StatusUnauthorized)
@@ -369,7 +369,7 @@ func webServer(e *Environment) {
 			http.ServeFile(w, r, filepath.Join(StatsDir, filename))
 		}
 		getIndex := func(w http.ResponseWriter, r *http.Request) {
-			response, err := e.serverData.Index(e, downloads)
+			response, err := e.serverData.Index(downloads)
 			if err != nil {
 				logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -430,16 +430,15 @@ func (cg *ConfigGitlabPages) check() error {
 	}
 	if cg.GitHTTPS == "" {
 		return errors.New("Gitlab repository must be provided")
-	} else {
-		// check form
-		r := regexp.MustCompile(gitRepositoryPattern)
-		hits := r.FindAllStringSubmatch(cg.GitHTTPS, -1)
-		if len(hits) != 1 {
-			return errors.New("Gitlab Pages git repository must be in the form: https://gitlab.com/USER/REPO.git")
-		}
-		cg.Folder = hits[0][2]
-		cg.URL = fmt.Sprintf("https://%s.gitlab.io/%s", hits[0][1], hits[0][2])
 	}
+	// check form
+	r := regexp.MustCompile(gitRepositoryPattern)
+	hits := r.FindAllStringSubmatch(cg.GitHTTPS, -1)
+	if len(hits) != 1 {
+		return errors.New("Gitlab Pages git repository must be in the form: https://gitlab.com/USER/REPO.git")
+	}
+	cg.Folder = hits[0][2]
+	cg.URL = fmt.Sprintf("https://%s.gitlab.io/%s", hits[0][1], hits[0][2])
 	return nil
 }
 
@@ -469,13 +468,12 @@ func (cm *ConfigMPD) String() string {
 func (cm *ConfigMPD) check() error {
 	if cm.Server == "" {
 		return errors.New("Server name must be provided")
-	} else {
-		// check it's server:port
-		r := regexp.MustCompile(ircServerPattern)
-		hits := r.FindAllStringSubmatch(cm.Server, -1)
-		if len(hits) != 1 {
-			return errors.New("MPD server must be in the form: server.hostname:port")
-		}
+	}
+	// check it's server:port
+	r := regexp.MustCompile(ircServerPattern)
+	hits := r.FindAllStringSubmatch(cm.Server, -1)
+	if len(hits) != 1 {
+		return errors.New("MPD server must be in the form: server.hostname:port")
 	}
 	if cm.Library == "" || !DirectoryExists(cm.Library) {
 		return errors.New("A valid MPD Library path must be provided")

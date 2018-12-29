@@ -98,9 +98,8 @@ func (rd *ReleaseDir) analyzeTracks() error {
 	}
 	if !sameEncoding {
 		return errors.New("the files do not have the same bit depth and/or sample rate")
-	} else {
-		logThis.Info("Audio encoding seems consistent.", NORMAL)
 	}
+	logThis.Info("Audio encoding seems consistent.", NORMAL)
 
 	// TODO check all are from same album : might be tricky for multi-disc?
 

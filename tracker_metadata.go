@@ -606,7 +606,7 @@ func (tm *TrackerMetadata) TextDescription(fancy bool) string {
 		style(fmt.Sprintf("%d", tm.GroupID)),
 		style(tm.ReleaseURL),
 		style(tm.CoverURL),
-		style(humanize.IBytes(uint64(tm.Size))),
+		style(humanize.IBytes(tm.Size)),
 	)
 }
 
@@ -747,7 +747,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 func (tm *TrackerMetadata) WriteUserJSON(destination string) error {
 	userJSON := filepath.Join(destination, userMetadataJSONFile)
 	if FileExists(userJSON) {
-		logThis.Info("User metadata JSON already exists.", VERBOSE)
+		logThis.Info("user metadata JSON already exists", VERBOSE)
 		return nil
 	}
 	// save as blank JSON, with no values, for the user to force metadata values if needed.
@@ -773,18 +773,18 @@ func (tm *TrackerMetadata) UpdateUserJSON(destination, mainArtist, mainArtistAli
 	if !FileExists(userJSON) {
 		// try to create the file
 		if err := tm.WriteUserJSON(destination); err != nil {
-			return errors.New("User metadata JSON does not already exist and could not be written.")
+			return errors.New("user metadata JSON does not already exist and could not be written")
 		}
 	}
 
 	// loading user metadata file
 	userJSONBytes, err := ioutil.ReadFile(userJSON)
 	if err != nil {
-		return errors.New("Could not read user JSON.")
+		return errors.New("could not read user JSON")
 	}
 	var userInfo *TrackerMetadata
 	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
-		logThis.Info("Error parsing torrent info JSON", NORMAL)
+		logThis.Info("error parsing torrent info JSON", NORMAL)
 		return nil
 	}
 	// overwriting select values
@@ -804,17 +804,17 @@ func (tm *TrackerMetadata) UpdateUserJSON(destination, mainArtist, mainArtistAli
 func (tm *TrackerMetadata) LoadUserJSON(parentFolder string) error {
 	userJSON := filepath.Join(parentFolder, userMetadataJSONFile)
 	if !FileExists(userJSON) {
-		logThis.Info("User metadata JSON does not exist.", VERBOSEST)
+		logThis.Info("user metadata JSON does not exist", VERBOSEST)
 		return nil
 	}
 	// loading user metadata file
 	userJSONBytes, err := ioutil.ReadFile(userJSON)
 	if err != nil {
-		return errors.New("Could not read user JSON.")
+		return errors.New("could not read user JSON")
 	}
 	var userInfo *TrackerMetadata
 	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
-		logThis.Info("Error parsing torrent info JSON", NORMAL)
+		logThis.Info("error parsing torrent info JSON", NORMAL)
 		return nil
 	}
 	//  overwrite tracker values if non-zero value found
@@ -824,10 +824,10 @@ func (tm *TrackerMetadata) LoadUserJSON(parentFolder string) error {
 		f := s.Field(i)
 		f2 := s2.Field(i)
 		if f.Type().String() == "string" && f2.String() != "" {
-			f.Set(reflect.Value(f2))
+			f.Set(f2)
 		}
 		if (f.Type().String() == "int" || f.Type().String() == "int64") && f2.Int() != 0 {
-			f.Set(reflect.Value(f2))
+			f.Set(f2)
 		}
 		// NOTE: nothing is done with boolean values. Hard to say if the value read is the default one or user-defined.
 	}

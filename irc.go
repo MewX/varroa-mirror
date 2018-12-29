@@ -127,7 +127,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 	}
 	IRCClient.UseTLS = autosnatchConfig.IRCSSL
 	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: autosnatchConfig.IRCSSLSkipVerify}
-	IRCClient.AddCallback("001", func(ev *irc.Event) {
+	IRCClient.AddCallback("001", func(_ *irc.Event) {
 		IRCClient.Privmsg("NickServ", "IDENTIFY "+autosnatchConfig.NickservPassword)
 		IRCClient.Privmsg(autosnatchConfig.Announcer, fmt.Sprintf("enter %s %s %s", autosnatchConfig.AnnounceChannel, tracker.User, autosnatchConfig.IRCKey))
 		if e.config.ircNotifsConfigured {

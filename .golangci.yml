@@ -4,3 +4,18 @@ linters:
   enable-all: true
   disable:
     - gochecknoglobals
+    - lll
+    - maligned
+    # TODO: enable and fix more things
+    - deadcode
+    - goconst
+    - scopelint
+    - gocyclo
+    - structcheck
+    - gosec
+    - megacheck
+    - errcheck
+    - varcheck
+    - gocritic
+    - golint
+    - goimports

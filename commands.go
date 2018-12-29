@@ -17,7 +17,7 @@ import (
 	"github.com/jasonlvhit/gocron"
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
-	"github.com/sevlyar/go-daemon"
+	daemon "github.com/sevlyar/go-daemon"
 )
 
 const (

@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type HttpBinResponse struct {
+type HTTPBinResponse struct {
 	Args    struct{} `json:"args"`
 	Headers struct {
-		Accept_Encoding string `json:"Accept-Encoding"`
-		Connection      string `json:"Connection"`
-		Host            string `json:"Host"`
-		User_Agent      string `json:"User-Agent"`
+		AcceptEncoding string `json:"Accept-Encoding"`
+		Connection     string `json:"Connection"`
+		Host           string `json:"Host"`
+		UserAgent      string `json:"User-Agent"`
 	} `json:"headers"`
 	Origin string `json:"origin"`
 	URL    string `json:"url"`
@@ -43,9 +43,9 @@ func TestTrackerAPI(t *testing.T) {
 		data, err := tracker.rateLimitedGetRequest(tracker.URL+"/get", false)
 		fmt.Printf("%s: Sent GET #%d\n", time.Since(start).String(), i+1)
 		verify.Nil(err)
-		var r HttpBinResponse
+		var r HTTPBinResponse
 		verify.Nil(json.Unmarshal(data, &r))
-		verify.Equal(userAgent(), r.Headers.User_Agent)
+		verify.Equal(userAgent(), r.Headers.UserAgent)
 	}
 
 	elapsed := time.Since(start)

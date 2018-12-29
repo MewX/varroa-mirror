@@ -98,14 +98,14 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 				return err
 			}
 			if hasMoved {
-				movedAlbums += 1
+				movedAlbums++
 				logThis.Info("Moved "+path+" -> "+newName, VERBOSE)
 				if !doNothing && c.playlistDirectoryConfigured {
 					relativePath, err := filepath.Rel(c.Library.Directory, path)
 					if err != nil {
 						return err
 					}
-					// find all playlists mentionning the release that was moved, update the path
+					// find all playlists mentioning the release that was moved, update the path
 					for _, p := range playlists {
 						if p.Contains(relativePath) {
 							// update the playlist

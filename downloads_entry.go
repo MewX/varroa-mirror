@@ -236,23 +236,24 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 			return scanErr
 		}
 
-		if strings.ToUpper(choice) == "R" {
+		switch {
+		case strings.ToUpper(choice) == "R":
 			fmt.Println(RedBold("This release will be considered REJECTED. It will not be removed, but will be ignored in later sorting."))
 			fmt.Println(RedBold("This can be reverted by sorting its specific download ID (" + strconv.Itoa(d.ID) + ")."))
 			d.State = stateRejected
 			validChoice = true
-		} else if strings.ToUpper(choice) == "D" {
+		case strings.ToUpper(choice) == "D":
 			fmt.Println(Green("Decision about this download is POSTPONED."))
-
 			d.State = stateUnsorted
 			validChoice = true
-		} else if strings.ToUpper(choice) == "A" {
+		case strings.ToUpper(choice) == "A":
 			if err := d.export(root, e.config); err != nil {
 				return err
 			}
 			d.State = stateAccepted
 			validChoice = true
 		}
+
 		if !validChoice {
 			fmt.Println(Red("Invalid choice."))
 			errs++

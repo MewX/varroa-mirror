@@ -24,7 +24,7 @@ func TestTrackerOriginJSON(t *testing.T) {
 	c.General.DownloadDir = testDir
 	tr := &ConfigTracker{Name: "tracker1", URL: "http://azerty.com"}
 	tr2 := &ConfigTracker{Name: "tracker2", URL: "http://qwerty.com"}
-	c.Trackers = append(config.Trackers, tr, tr2)
+	c.Trackers = append(c.Trackers, tr, tr2)
 	env.config = c
 	tracker1 := &GazelleTracker{Name: "tracker1", URL: "http://azerty.com"}
 	tracker2 := &GazelleTracker{Name: "tracker2", URL: "http://qwerty.com"}

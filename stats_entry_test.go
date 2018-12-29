@@ -41,7 +41,7 @@ func TestStats(t *testing.T) {
 	verify.Equal(int64(s2.Down), ddown)
 	verify.Equal(buf2, dbuf)
 	verify.Equal(wbuf2, dwbuf)
-	verify.Equal(float64(s2.Ratio), dratio)
+	verify.Equal(s2.Ratio, dratio)
 	// check diff
 	dup, ddown, dbuf, dwbuf, dratio = s3.Diff(s2)
 	verify.Equal(int64(50*1024*1024), dup)

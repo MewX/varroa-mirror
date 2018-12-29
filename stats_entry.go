@@ -116,13 +116,13 @@ func InterpolateStats(previous, next StatsEntry, targetTime time.Time) (*StatsEn
 	}
 	// create a virtual StatsEntry using simple linear interpolation
 	virtualStats := &StatsEntry{}
-	upSlope := float64((float64(next.Up) - float64(previous.Up)) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix()))
+	upSlope := (float64(next.Up) - float64(previous.Up)) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix())
 	upOffset := float64(previous.Up) - upSlope*float64(previous.Timestamp.Unix())
 	virtualStats.Up = uint64(upSlope*float64(targetTime.Unix()) + upOffset)
-	downSlope := float64((float64(next.Down) - float64(previous.Down)) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix()))
+	downSlope := (float64(next.Down) - float64(previous.Down)) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix())
 	downOffset := float64(previous.Down) - downSlope*float64(previous.Timestamp.Unix())
 	virtualStats.Down = uint64(downSlope*float64(targetTime.Unix()) + downOffset)
-	ratioSlope := float64((next.Ratio - previous.Ratio) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix()))
+	ratioSlope := (next.Ratio - previous.Ratio) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix())
 	ratioOffset := previous.Ratio - ratioSlope*float64(previous.Timestamp.Unix())
 	virtualStats.Ratio = ratioSlope*float64(targetTime.Unix()) + ratioOffset
 	virtualStats.Timestamp = targetTime
