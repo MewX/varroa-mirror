@@ -568,7 +568,7 @@ func (tm *TrackerMetadata) HTMLDescription() string {
 }
 
 func (tm *TrackerMetadata) TextDescription(fancy bool) string {
-	var artists []string
+	artists := make([]string, len(tm.Artists))
 	for _, a := range tm.Artists {
 		artists = append(artists, a.Name)
 	}

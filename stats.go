@@ -114,8 +114,8 @@ func monitorAllStats(e *Environment) {
 	}
 
 	// preparing
-	var tickerChans []<-chan time.Time
-	var tickerPeriods []int
+	tickerChans := make([]<-chan time.Time, len(tickers))
+	tickerPeriods := make([]int, len(tickers))
 	for p := range tickers {
 		tickerChans = append(tickerChans, time.NewTicker(time.Hour*time.Duration(p)).C)
 		tickerPeriods = append(tickerPeriods, p)

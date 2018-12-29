@@ -331,7 +331,7 @@ func (c *Config) DecryptTo(file string, passphrase []byte) error {
 }
 
 func (c *Config) TrackerLabels() []string {
-	var labels []string
+	labels := make([]string, len(c.Trackers))
 	for _, t := range c.Trackers {
 		labels = append(labels, t.Name)
 	}

@@ -184,6 +184,7 @@ func (d *FuseDir) fuseDirs(matcher q.Matcher, field string) ([]fuse.Dirent, erro
 	if err != nil {
 		return allDirents, err
 	}
+	allDirents = make([]fuse.Dirent, len(allItems))
 	for _, a := range allItems {
 		allDirents = append(allDirents, fuse.Dirent{Name: filepath.Base(a), Type: fuse.DT_Dir})
 	}

@@ -187,7 +187,7 @@ func (d *DownloadsDB) Scan() error {
 
 func (d *DownloadsDB) RescanIDs(IDs []int) error {
 	// retrieve the associated DownloadEntries
-	var entries []DownloadEntry
+	entries := make([]DownloadEntry, len(IDs))
 	for _, id := range IDs {
 		dl, err := d.FindByID(id)
 		if err != nil {

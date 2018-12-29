@@ -157,7 +157,7 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 }
 
 func combineAllPNGs(combined string, graphs ...string) error {
-	var images []image.Image
+	images := make([]image.Image, len(graphs))
 	// open and decode images
 	for _, graph := range graphs {
 		imgFile, err := os.Open(graph + pngExt)
