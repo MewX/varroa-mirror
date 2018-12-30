@@ -134,28 +134,20 @@ func GetFirstFLACFound(directoryPath string) string {
 
 // GetAllFLACs returns all FLAC files found in a directory
 func GetAllFLACs(directoryPath string) []string {
-	return getAllFilesWithExtenstion(directoryPath, flacExt)
+	files, err := fs.GetFilesByExt(directoryPath, flacExt)
+	if err != nil {
+		logThis.Error(err, NORMAL)
+	}
+	return files
 }
 
 // GetAllPlaylists returns all m3u files found in a directory
 func GetAllPlaylists(directoryPath string) []string {
-	return getAllFilesWithExtenstion(directoryPath, m3uExt)
-}
-
-// getAllFilesWithExtenstion returns all files found in a directory with a specific extension
-func getAllFilesWithExtenstion(directoryPath, extension string) []string {
-	var paths []string
-	err := filepath.Walk(directoryPath, func(path string, f os.FileInfo, err error) error {
-		if strings.ToLower(filepath.Ext(path)) == extension {
-			// stop walking the directory as soon as a track is found
-			paths = append(paths, path)
-		}
-		return nil
-	})
+	files, err := fs.GetFilesByExt(directoryPath, m3uExt)
 	if err != nil {
-		logThis.Error(err, VERBOSE)
+		logThis.Error(err, NORMAL)
 	}
-	return paths
+	return files
 }
 
 // MoveToNewPath moves a directory to its new home.
