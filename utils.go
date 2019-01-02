@@ -11,7 +11,6 @@ import (
 
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/strslice"
-	"gitlab.com/catastrophic/assistance/ui"
 )
 
 // MatchAllInSlice checks if all strings in slice a are in slice b
@@ -148,42 +147,6 @@ func GetAllPlaylists(directoryPath string) []string {
 		logThis.Error(err, NORMAL)
 	}
 	return files
-}
-
-// MoveToNewPath moves a directory to its new home.
-func MoveToNewPath(current, new string, doNothing, interactive bool) (bool, error) {
-	if new == "" {
-		return false, errors.New("no new path for this folder")
-	}
-	// comparer avec l'ancien
-	if new != current {
-		// if different, move folder
-		if !doNothing {
-			// if interactive and not in simulation mode, must be accepted else we just move on.
-			if interactive {
-				if !ui.Accept("Move:\n  " + current + "\n->\n  " + new + "\n") {
-					return false, nil
-				}
-			}
-			newPathParent := filepath.Dir(new)
-			if _, err := os.Stat(newPathParent); os.IsNotExist(err) {
-				// newPathParent does not exist, creating
-				err = os.MkdirAll(newPathParent, 0777)
-				if err != nil {
-					return false, err
-				}
-			}
-			// move
-			if err := os.Rename(current, new); err != nil {
-				return false, err
-			}
-			return true, nil
-		} else {
-			// would have moved, but must do nothing, so here we pretend.
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // TimeTrack helps track the time taken by a function.

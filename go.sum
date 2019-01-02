@@ -176,6 +176,8 @@ gitlab.com/catastrophic/assistance v0.2.0 h1:N/gLvAWEM1gJx6oGYvthfJjzLMDcHoTCZJ2
 gitlab.com/catastrophic/assistance v0.2.0/go.mod h1:zk2az5arCVEis8SQocA8rtm4JGaPpJnaFzktVYC9/yw=
 gitlab.com/catastrophic/assistance v0.3.0 h1:nBHDsffZjai3eOQKJwcwcat0LWGGQpT+QMIU9GUNQrQ=
 gitlab.com/catastrophic/assistance v0.3.0/go.mod h1:zk2az5arCVEis8SQocA8rtm4JGaPpJnaFzktVYC9/yw=
+gitlab.com/catastrophic/assistance v0.5.0 h1:UECSUG29rdQzQ+FjiruNhBGvsD+375VpiFk1c+5d7V4=
+gitlab.com/catastrophic/assistance v0.5.0/go.mod h1:zk2az5arCVEis8SQocA8rtm4JGaPpJnaFzktVYC9/yw=
 gitlab.com/passelecasque/go-ircevent v0.0.0-20180204145445-d9588561fc12 h1:/HGWJ4qKQ1OhIlrI5feIeFiLmdQgntVjyoyd46HUEjc=
 gitlab.com/passelecasque/go-ircevent v0.0.0-20180204145445-d9588561fc12/go.mod h1:Ov0pyRiSVVA2OqHs9TxBrKam9lJX6ZmMd+vN1kq/rlc=
 go.etcd.io/bbolt v1.3.0 h1:oY10fI923Q5pVCVt1GBTZMn8LHo5M+RCInFpeMnV4QI=

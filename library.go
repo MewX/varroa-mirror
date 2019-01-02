@@ -94,7 +94,7 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 				return errors.New("could not generate path for " + fileInfo.Name())
 			}
 
-			hasMoved, err := MoveToNewPath(path, filepath.Join(c.Library.Directory, newName), doNothing, interactive)
+			hasMoved, err := fs.MoveDir(path, filepath.Join(c.Library.Directory, newName), doNothing, interactive)
 			if err != nil {
 				return err
 			}
