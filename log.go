@@ -44,8 +44,8 @@ func (l *LogThis) Info(msg string, level int) {
 			// only is daemon is up...
 			if daemon.WasReborn() {
 				log.Println(msg)
-				if l.env.daemonCom.IsActive {
-					l.env.daemonCom.Outgoing <- []byte(msg)
+				if l.env.daemonUnixSocket.IsActive {
+					l.env.daemonUnixSocket.Outgoing <- []byte(msg)
 				}
 			} else {
 				fmt.Println(msg)

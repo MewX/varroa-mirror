@@ -10,6 +10,7 @@ const (
 
 	// directories & files
 	DefaultConfigurationFile  = "config.yaml"
+	daemonSocket              = "varroa.sock"
 	StatsDir                  = "stats"
 	MetadataDir               = "TrackerMetadata"
 	AdditionalMetadataDir     = "Metadata"
@@ -101,10 +102,6 @@ const (
 	ErrorGettingDaemonContext   = "Error launching daemon (it probably is running already)"
 	ErrorSendingCommandToDaemon = "Error sending command to daemon"
 	errorRemovingPID            = "Error removing pid file"
-	// unix socket errors
-	errorDialingSocket     = "Error dialing to unix socket"
-	errorWritingToSocket   = "Error writing to unix socket"
-	errorReadingFromSocket = "Error reading from unix socket"
 	// command check-log errors
 	ErrorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"
@@ -212,5 +209,4 @@ const (
 
 	// generic constants
 	scanningFiles = "Scanning"
-	stopCommand   = "stop"
 )

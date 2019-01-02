@@ -19,26 +19,29 @@ import (
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/ipc"
 	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/catastrophic/assistance/ui"
 )
 
 const (
-	daemonSocket               = "varroa.sock"
-	archivesDir                = "archives"
-	archiveNameTemplate        = "varroa_%s.zip"
-	unixSocketMessageSeparator = "↑" // because it looks nice
+	archivesDir         = "archives"
+	archiveNameTemplate = "varroa_%s.zip"
 )
 
 // SendOrders from the CLI to the running daemon
 func SendOrders(command []byte) error {
-	dcClient := NewDaemonComClient()
-	go dcClient.RunClient()
+	dcClient := ipc.NewUnixSocketClient(daemonSocket)
+	go func() {
+		if err := dcClient.RunClient(); err != nil {
+			logThis.Error(err, NORMAL)
+		}
+	}()
 	// goroutine to display anything that is sent back from the daemon
 	go func() {
 		for {
 			a := <-dcClient.Incoming
-			if string(a) != stopCommand {
+			if string(a) != ipc.StopCommand {
 				fmt.Println(string(a))
 			}
 		}
@@ -54,18 +57,22 @@ func SendOrders(command []byte) error {
 
 // awaitOrders in the daemon from the CLI
 func awaitOrders(e *Environment) {
-	go e.daemonCom.RunServer()
-	<-e.daemonCom.ServerUp
+	go func() {
+		if err := e.daemonUnixSocket.RunServer(); err != nil {
+			logThis.Error(err, NORMAL)
+		}
+	}()
+	<-e.daemonUnixSocket.ServerUp
 
 Loop:
 	for {
-		<-e.daemonCom.ClientConnected
+		<-e.daemonUnixSocket.ClientConnected
 		// output back things to CLI
 		e.expectedOutput = true
 	Loop2:
 		for {
 			select {
-			case a := <-e.daemonCom.Incoming:
+			case a := <-e.daemonUnixSocket.Incoming:
 				orders := IncomingJSON{}
 				if jsonErr := json.Unmarshal(a, &orders); jsonErr != nil {
 					logThis.Error(errors.Wrap(jsonErr, "Error parsing incoming command from unix socket"), NORMAL)
@@ -86,9 +93,6 @@ Loop:
 					if err := GenerateStats(e); err != nil {
 						logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
 					}
-				case stopCommand:
-					logThis.Info("Stopping daemon...", NORMAL)
-					break Loop
 				case "refresh-metadata-by-id":
 					if err := RefreshMetadata(e, tracker, orders.Args); err != nil {
 						logThis.Error(errors.Wrap(err, ErrorRefreshingMetadata), NORMAL)
@@ -121,16 +125,19 @@ Loop:
 					if err := Reseed(tracker, orders.Args); err != nil {
 						logThis.Error(errors.Wrap(err, ErrorReseed), NORMAL)
 					}
+				case ipc.StopCommand:
+					logThis.Info("Stopping daemon...", NORMAL)
+					break Loop
 				}
-				e.daemonCom.Outgoing <- []byte(stopCommand)
-			case <-e.daemonCom.ClientDisconnected:
+				e.daemonUnixSocket.Outgoing <- []byte(ipc.StopCommand)
+			case <-e.daemonUnixSocket.ClientDisconnected:
 				// output back things to CLI
 				e.expectedOutput = false
 				break Loop2
 			}
 		}
 	}
-	e.daemonCom.StopCurrent()
+	e.daemonUnixSocket.StopCurrent()
 }
 
 func statusString(e *Environment) string {

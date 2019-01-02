@@ -13,6 +13,7 @@ import (
 	daemon "github.com/sevlyar/go-daemon"
 	"github.com/wcharczuk/go-chart/drawing"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/ipc"
 	"gitlab.com/passelecasque/go-ircevent"
 )
 
@@ -38,14 +39,14 @@ type Environment struct {
 	serverData *ServerPage
 	Trackers   map[string]*GazelleTracker
 
-	expectedOutput  bool
-	websocketOutput bool
-	sendToWebsocket chan string
-	mutex           sync.RWMutex
-	git             *Git
-	daemonCom       *DaemonCom
-	startTime       time.Time
-	ircClient       *irc.Connection
+	expectedOutput   bool
+	websocketOutput  bool
+	sendToWebsocket  chan string
+	mutex            sync.RWMutex
+	git              *Git
+	daemonUnixSocket *ipc.UnixSocket
+	startTime        time.Time
+	ircClient        *irc.Connection
 }
 
 // NewEnvironment prepares a new Environment.
@@ -63,7 +64,7 @@ func NewEnvironment() *Environment {
 	}
 	// websocket is open and waiting for input
 	e.websocketOutput = false
-	e.daemonCom = NewDaemonComServer()
+	e.daemonUnixSocket = ipc.NewUnixSocketServer(daemonSocket)
 	e.sendToWebsocket = make(chan string, 10)
 	// irc
 	e.ircClient = nil
