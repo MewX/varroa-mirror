@@ -13,6 +13,7 @@ import (
 	daemon "github.com/sevlyar/go-daemon"
 	"github.com/wcharczuk/go-chart/drawing"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/git"
 	"gitlab.com/catastrophic/assistance/ipc"
 	"gitlab.com/passelecasque/go-ircevent"
 )
@@ -43,7 +44,7 @@ type Environment struct {
 	websocketOutput  bool
 	sendToWebsocket  chan string
 	mutex            sync.RWMutex
-	git              *Git
+	git              *git.Git
 	daemonUnixSocket *ipc.UnixSocket
 	startTime        time.Time
 	ircClient        *irc.Connection
@@ -100,7 +101,10 @@ func (e *Environment) LoadConfiguration() error {
 	}
 	// git
 	if e.config.gitlabPagesConfigured {
-		e.git = NewGit(StatsDir, e.config.GitlabPages.User, e.config.GitlabPages.User+"+varroa@musica")
+		e.git, err = git.New(StatsDir, e.config.GitlabPages.User, e.config.GitlabPages.User+"+varroa@musica")
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -175,8 +179,6 @@ func (e *Environment) DeployToGitlabPages() error {
 	if e.git == nil {
 		return errors.New("Error setting up git")
 	}
-	// make sure we're going back to cwd
-	defer e.git.getBack()
 
 	// init repository if necessary
 	if !e.git.Exists() {
