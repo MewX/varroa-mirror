@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -28,7 +29,7 @@ type ConfigGeneral struct {
 }
 
 func (cg *ConfigGeneral) check() error {
-	if cg.LogLevel < NORMAL || cg.LogLevel > VERBOSESTEST {
+	if cg.LogLevel < logthis.NORMAL || cg.LogLevel > logthis.VERBOSESTEST {
 		return errors.New("Invalid log level")
 	}
 	if cg.DownloadDir != "" && !fs.DirExists(cg.DownloadDir) {

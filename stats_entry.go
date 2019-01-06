@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 const (
@@ -39,12 +40,12 @@ func (se *StatsEntry) String() string {
 func (se *StatsEntry) getBufferValues() (int64, int64) {
 	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return 0, 0
 	}
 	statsConfig, err := conf.GetStats(se.Tracker)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return 0, 0
 	}
 	return int64(float64(se.Up)/statsConfig.TargetRatio) - int64(se.Down), int64(float64(se.Up)/warningRatio) - int64(se.Down)
@@ -89,7 +90,7 @@ func (se *StatsEntry) ProgressParts(previous *StatsEntry) []string {
 
 func (se *StatsEntry) IsProgressAcceptable(previous *StatsEntry, maxDecrease int, minimumRatio float64) bool {
 	if se.Ratio <= minimumRatio {
-		logThis.Info("Ratio has dropped below minimum authorized, unacceptable.", NORMAL)
+		logthis.Info("Ratio has dropped below minimum authorized, unacceptable.", logthis.NORMAL)
 		return false
 	}
 	if previous.Ratio == 0 {
@@ -101,7 +102,7 @@ func (se *StatsEntry) IsProgressAcceptable(previous *StatsEntry, maxDecrease int
 	if maxDecrease == 0 || bufferChange >= 0 || -bufferChange <= int64(maxDecrease*1024*1024) {
 		return true
 	}
-	logThis.Info(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.", bufferChange, maxDecrease*1024*1024), VERBOSE)
+	logthis.Info(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.", bufferChange, maxDecrease*1024*1024), logthis.VERBOSE)
 	return false
 }
 
@@ -174,7 +175,7 @@ func CalculateDeltas(entries []StatsEntry) []StatsDelta {
 		} else {
 			delta, err := CalculateDelta(entries[i-1], e)
 			if err != nil {
-				logThis.Error(err, VERBOSEST)
+				logthis.Error(err, logthis.VERBOSEST)
 				deltas = append(deltas, StatsDelta{Timestamp: e.Timestamp})
 			} else {
 				deltas = append(deltas, *delta)

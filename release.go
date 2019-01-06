@@ -11,6 +11,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 )
 
@@ -155,54 +156,54 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 	// varroa will now wait until it gets the TorrentInfo and all of the artists
 	// to make a call.
 	if len(filter.Year) != 0 && !intslice.Contains(filter.Year, r.Year) {
-		logThis.Info(filter.Name+": Wrong year", VERBOSE)
+		logthis.Info(filter.Name+": Wrong year", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.Format) != 0 && !strslice.Contains(filter.Format, r.Format) {
-		logThis.Info(filter.Name+": Wrong format", VERBOSE)
+		logthis.Info(filter.Name+": Wrong format", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.Source) != 0 && !strslice.Contains(filter.Source, r.Source) {
-		logThis.Info(filter.Name+": Wrong source", VERBOSE)
+		logthis.Info(filter.Name+": Wrong source", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.Quality) != 0 && !strslice.Contains(filter.Quality, r.Quality) {
-		logThis.Info(filter.Name+": Wrong quality", VERBOSE)
+		logthis.Info(filter.Name+": Wrong quality", logthis.VERBOSE)
 		return false
 	}
 	if r.Source == sourceCD && r.Format == formatFLAC && filter.HasLog && !r.HasLog {
-		logThis.Info(filter.Name+": Release has no log", VERBOSE)
+		logthis.Info(filter.Name+": Release has no log", logthis.VERBOSE)
 		return false
 	}
 	// only compare logscores if the announce contained that information
 	if r.Source == sourceCD && r.Format == formatFLAC && filter.LogScore != 0 && (!r.HasLog || (r.LogScore != logScoreNotInAnnounce && filter.LogScore > r.LogScore)) {
-		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
+		logthis.Info(filter.Name+": Incorrect log score", logthis.VERBOSE)
 		return false
 	}
 	if r.Source == sourceCD && r.Format == formatFLAC && filter.HasCue && !r.HasCue {
-		logThis.Info(filter.Name+": Release has no cue", VERBOSE)
+		logthis.Info(filter.Name+": Release has no cue", logthis.VERBOSE)
 		return false
 	}
 	if !filter.AllowScene && r.IsScene {
-		logThis.Info(filter.Name+": Scene release not allowed", VERBOSE)
+		logthis.Info(filter.Name+": Scene release not allowed", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.ExcludedReleaseType) != 0 && strslice.Contains(filter.ExcludedReleaseType, r.ReleaseType) {
-		logThis.Info(filter.Name+": Excluded release type", VERBOSE)
+		logthis.Info(filter.Name+": Excluded release type", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.ReleaseType) != 0 && !strslice.Contains(filter.ReleaseType, r.ReleaseType) {
-		logThis.Info(filter.Name+": Wrong release type", VERBOSE)
+		logthis.Info(filter.Name+": Wrong release type", logthis.VERBOSE)
 		return false
 	}
 	// checking tags
 	if len(filter.TagsRequired) != 0 && !MatchAllInSlice(filter.TagsRequired, r.Tags) {
-		logThis.Info(filter.Name+": Does not have all required tags", VERBOSE)
+		logthis.Info(filter.Name+": Does not have all required tags", logthis.VERBOSE)
 		return false
 	}
 	for _, excluded := range filter.TagsExcluded {
 		if MatchInSlice(excluded, r.Tags) {
-			logThis.Info(filter.Name+": Has excluded tag", VERBOSE)
+			logthis.Info(filter.Name+": Has excluded tag", logthis.VERBOSE)
 			return false
 		}
 	}
@@ -216,7 +217,7 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 			}
 		}
 		if !atLeastOneIncludedTag {
-			logThis.Info(filter.Name+": Does not have any wanted tag", VERBOSE)
+			logthis.Info(filter.Name+": Does not have any wanted tag", logthis.VERBOSE)
 			return false
 		}
 	}
@@ -228,23 +229,23 @@ func (r *Release) Satisfies(filter *ConfigFilter) bool {
 func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUploaders []string, info *TrackerMetadata) bool {
 	// checks
 	if len(filter.EditionYear) != 0 && !intslice.Contains(filter.EditionYear, info.EditionYear) {
-		logThis.Info(filter.Name+": Wrong edition year", VERBOSE)
+		logthis.Info(filter.Name+": Wrong edition year", logthis.VERBOSE)
 		return false
 	}
 	if filter.MaxSizeMB != 0 && uint64(filter.MaxSizeMB) < (info.Size/(1024*1024)) {
-		logThis.Info(filter.Name+": Release too big.", VERBOSE)
+		logthis.Info(filter.Name+": Release too big.", logthis.VERBOSE)
 		return false
 	}
 	if filter.MinSizeMB > 0 && uint64(filter.MinSizeMB) > (info.Size/(1024*1024)) {
-		logThis.Info(filter.Name+": Release too small.", VERBOSE)
+		logthis.Info(filter.Name+": Release too small.", logthis.VERBOSE)
 		return false
 	}
 	if r.Source == sourceCD && r.Format == formatFLAC && r.HasLog && filter.LogScore != 0 && filter.LogScore > info.LogScore {
-		logThis.Info(filter.Name+": Incorrect log score", VERBOSE)
+		logthis.Info(filter.Name+": Incorrect log score", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.RecordLabel) != 0 && !MatchInSlice(info.RecordLabel, filter.RecordLabel) {
-		logThis.Info(filter.Name+": No match for record label", VERBOSE)
+		logthis.Info(filter.Name+": No match for record label", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.Artist) != 0 || len(filter.ExcludedArtist) != 0 {
@@ -254,21 +255,21 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 				foundAtLeastOneArtist = true
 			}
 			if MatchInSlice(iArtist.Name, filter.ExcludedArtist) {
-				logThis.Info(filter.Name+": Found excluded artist "+iArtist.Name, VERBOSE)
+				logthis.Info(filter.Name+": Found excluded artist "+iArtist.Name, logthis.VERBOSE)
 				return false
 			}
 		}
 		if !foundAtLeastOneArtist && len(filter.Artist) != 0 {
-			logThis.Info(filter.Name+": No match for artists", VERBOSE)
+			logthis.Info(filter.Name+": No match for artists", logthis.VERBOSE)
 			return false
 		}
 	}
 	if strslice.Contains(blacklistedUploaders, info.Uploader) || strslice.Contains(filter.BlacklistedUploader, info.Uploader) {
-		logThis.Info(filter.Name+": Uploader "+info.Uploader+" is blacklisted.", VERBOSE)
+		logthis.Info(filter.Name+": Uploader "+info.Uploader+" is blacklisted.", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.Uploader) != 0 && !strslice.Contains(filter.Uploader, info.Uploader) {
-		logThis.Info(filter.Name+": No match for uploader", VERBOSE)
+		logthis.Info(filter.Name+": No match for uploader", logthis.VERBOSE)
 		return false
 	}
 	if len(filter.Edition) != 0 {
@@ -277,12 +278,12 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			found = true
 		}
 		if !found {
-			logThis.Info(filter.Name+": Edition name does not match any criteria.", VERBOSE)
+			logthis.Info(filter.Name+": Edition name does not match any criteria.", logthis.VERBOSE)
 			return false
 		}
 	}
 	if filter.RejectUnknown && info.CatalogNumber == "" && info.RecordLabel == "" {
-		logThis.Info(filter.Name+": Release has neither a record label or catalog number, rejected.", VERBOSE)
+		logthis.Info(filter.Name+": Release has neither a record label or catalog number, rejected.", logthis.VERBOSE)
 		return false
 	}
 	// taking the opportunity to retrieve and save some info

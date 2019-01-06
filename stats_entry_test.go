@@ -12,8 +12,6 @@ func TestStats(t *testing.T) {
 
 	// setting up
 	verify := assert.New(t)
-	env := NewEnvironment()
-	logThis = NewLogThis(env)
 
 	// force config with dummy file
 	_, err := NewConfig("test/test_statsnoautosnatch.yaml")

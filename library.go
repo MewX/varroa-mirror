@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 // ReorganizeLibrary using tracker metadata and the user-defined template
@@ -17,7 +18,7 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 	defer TimeTrack(time.Now(), "Reorganize Library")
 
 	if doNothing {
-		logThis.Info("Simulating library reorganization...", NORMAL)
+		logthis.Info("Simulating library reorganization...", logthis.NORMAL)
 	}
 
 	c, e := NewConfig(DefaultConfigurationFile)
@@ -52,7 +53,7 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 			if filepath.Ext(path) == m3uExt {
 				p := Playlist{}
 				if err := p.Load(path); err != nil {
-					logThis.Error(err, VERBOSE)
+					logthis.Error(err, logthis.VERBOSE)
 				} else {
 					playlists = append(playlists, p)
 				}
@@ -60,7 +61,7 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 			return nil
 		})
 		if e != nil {
-			logThis.Error(e, NORMAL)
+			logthis.Error(e, logthis.NORMAL)
 		}
 	}
 
@@ -76,14 +77,14 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 			libraryEntry.FolderName = fileInfo.Name()
 			// read information from metadata
 			if err := libraryEntry.Load(filepath.Dir(path)); err != nil {
-				logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+fileInfo.Name()), VERBOSEST)
+				logthis.Error(errors.Wrap(err, "Error: could not load metadata for "+fileInfo.Name()), logthis.VERBOSEST)
 				return err
 			}
 			var newName string
 			for _, t := range libraryEntry.Tracker {
 				info, err := libraryEntry.getMetadata(filepath.Dir(path), t)
 				if err != nil {
-					logThis.Info("Could not find metadata for tracker "+t, NORMAL)
+					logthis.Info("Could not find metadata for tracker "+t, logthis.NORMAL)
 					continue
 				}
 				newName = info.GeneratePath(template, filepath.Dir(path))
@@ -100,7 +101,7 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 			}
 			if hasMoved {
 				movedAlbums++
-				logThis.Info("Moved "+path+" -> "+newName, VERBOSE)
+				logthis.Info("Moved "+path+" -> "+newName, logthis.VERBOSE)
 				if !doNothing && c.playlistDirectoryConfigured {
 					relativePath, err := filepath.Rel(c.Library.Directory, path)
 					if err != nil {
@@ -113,7 +114,7 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 							p.Update(relativePath, newName)
 							// save the new playlist
 							if err := p.Save(); err != nil {
-								logThis.Error(err, VERBOSE)
+								logthis.Error(err, logthis.VERBOSE)
 							}
 						}
 					}
@@ -123,13 +124,13 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 		return nil
 	})
 	if walkErr != nil {
-		logThis.Error(walkErr, NORMAL)
+		logthis.Error(walkErr, logthis.NORMAL)
 	}
 
 	if !interactive && !daemon.WasReborn() {
 		s.Stop()
 	}
-	logThis.Info(fmt.Sprintf("Moved %d release(s).", movedAlbums), NORMAL)
+	logthis.Info(fmt.Sprintf("Moved %d release(s).", movedAlbums), logthis.NORMAL)
 	return DeleteEmptyLibraryFolders()
 }
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 )
 
@@ -51,7 +52,7 @@ func MatchInSlice(a string, b []string) bool {
 			// try to match
 			match, err := regexp.MatchString(pattern, a)
 			if err != nil {
-				logThis.Error(err, VERBOSE)
+				logthis.Error(err, logthis.VERBOSE)
 			}
 			if match {
 				if !hasExcludes {
@@ -64,7 +65,7 @@ func MatchInSlice(a string, b []string) bool {
 			// try to match
 			match, err := regexp.MatchString(pattern, a)
 			if err != nil {
-				logThis.Error(err, VERBOSE)
+				logthis.Error(err, logthis.VERBOSE)
 			}
 			if match {
 				return false // a is excluded
@@ -135,7 +136,7 @@ func GetFirstFLACFound(directoryPath string) string {
 func GetAllFLACs(directoryPath string) []string {
 	files, err := fs.GetFilesByExt(directoryPath, flacExt)
 	if err != nil {
-		logThis.Error(err, NORMAL)
+		logthis.Error(err, logthis.NORMAL)
 	}
 	return files
 }
@@ -144,7 +145,7 @@ func GetAllFLACs(directoryPath string) []string {
 func GetAllPlaylists(directoryPath string) []string {
 	files, err := fs.GetFilesByExt(directoryPath, m3uExt)
 	if err != nil {
-		logThis.Error(err, NORMAL)
+		logthis.Error(err, logthis.NORMAL)
 	}
 	return files
 }
@@ -153,6 +154,6 @@ func GetAllPlaylists(directoryPath string) []string {
 func TimeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
 	if elapsed > time.Millisecond {
-		logThis.Info(fmt.Sprintf("-- %s in %s", name, elapsed), VERBOSESTEST)
+		logthis.Info(fmt.Sprintf("-- %s in %s", name, elapsed), logthis.VERBOSESTEST)
 	}
 }

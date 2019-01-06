@@ -9,6 +9,7 @@ import (
 	"github.com/asdine/storm"
 	"github.com/pkg/errors"
 	"github.com/russross/blackfriday"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 // adapted from https://purecss.io/layouts/side-menu/
@@ -126,7 +127,7 @@ type ServerPage struct {
 func (sc *ServerPage) update(downloads *DownloadsDB) {
 	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
-		logThis.Error(err, NORMAL)
+		logthis.Error(err, logthis.NORMAL)
 		return
 	}
 
@@ -135,7 +136,7 @@ func (sc *ServerPage) update(downloads *DownloadsDB) {
 	if conf.webserverMetadata && downloads != nil {
 		// fetch all dl entries
 		if err := downloads.db.DB.All(&sc.index.Downloads); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 		} else {
 			sc.index.ShowDownloads = true
 		}
@@ -169,12 +170,12 @@ func (sc *ServerPage) update(downloads *DownloadsDB) {
 		var lastStatsStrings [][]string
 		stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
 		if err != nil {
-			logThis.Error(errors.Wrap(err, "Error, could not access the stats database"), NORMAL)
+			logthis.Error(errors.Wrap(err, "Error, could not access the stats database"), logthis.NORMAL)
 		} else {
 			// get previous stats
 			knownPreviousStats, err := stats.GetLastCollected(label, 25)
 			if err != nil && err != storm.ErrNotFound {
-				logThis.Error(errors.Wrap(err, "Error retreiving previous stats for tracker "+label), NORMAL)
+				logthis.Error(errors.Wrap(err, "Error retreiving previous stats for tracker "+label), logthis.NORMAL)
 			}
 			for i, s := range knownPreviousStats {
 				if i == 0 {

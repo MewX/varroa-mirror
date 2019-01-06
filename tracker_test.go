@@ -27,8 +27,6 @@ func TestTrackerAPI(t *testing.T) {
 
 	// setting up
 	verify := assert.New(t)
-	env := NewEnvironment()
-	logThis = NewLogThis(env)
 
 	tracker := &GazelleTracker{Name: "test TRKR", URL: "http://httpbin.org", User: "user", Password: "password", limiter: make(chan bool, allowedAPICallsByPeriod)}
 	tracker.client = &http.Client{}

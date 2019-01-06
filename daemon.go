@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 type boolFlag bool
@@ -41,9 +42,9 @@ func (d *Daemon) Start(args []string) error {
 		return err
 	}
 	if child != nil {
-		logThis.Info("Starting daemon...", NORMAL)
+		logthis.Info("Starting daemon...", logthis.NORMAL)
 	} else {
-		logThis.Info("+ varroa musica daemon started ("+Version+")", NORMAL)
+		logthis.Info("+ varroa musica daemon started ("+Version+")", logthis.NORMAL)
 		// now in the daemon
 		daemon.AddCommand(boolFlag(false), syscall.SIGTERM, quitDaemon)
 	}
@@ -64,27 +65,27 @@ func (d *Daemon) Find() (*os.Process, error) {
 // WaitForStop and clean exit
 func (d *Daemon) WaitForStop() {
 	if err := daemon.ServeSignals(); err != nil {
-		logThis.Error(errors.Wrap(err, errorServingSignals), NORMAL)
+		logthis.Error(errors.Wrap(err, errorServingSignals), logthis.NORMAL)
 	}
-	logThis.Info("+ varroa musica stopped", NORMAL)
+	logthis.Info("+ varroa musica stopped", logthis.NORMAL)
 }
 
 // Stop Daemon if running
 func (d *Daemon) Stop(daemonProcess *os.Process) {
 	daemon.AddCommand(boolFlag(true), syscall.SIGTERM, quitDaemon)
 	if err := daemon.SendCommands(daemonProcess); err != nil {
-		logThis.Error(errors.Wrap(err, errorSendingSignal), NORMAL)
+		logthis.Error(errors.Wrap(err, errorSendingSignal), logthis.NORMAL)
 	}
 	if err := d.context.Release(); err != nil {
-		logThis.Error(errors.Wrap(err, errorReleasingDaemon), NORMAL)
+		logthis.Error(errors.Wrap(err, errorReleasingDaemon), logthis.NORMAL)
 	}
 	if err := os.Remove(d.context.PidFileName); err != nil {
-		logThis.Error(errors.Wrap(err, errorRemovingPID), NORMAL)
+		logthis.Error(errors.Wrap(err, errorRemovingPID), logthis.NORMAL)
 	}
 }
 
 func quitDaemon(_ os.Signal) error {
-	logThis.Info("+ terminating", VERBOSE)
+	logthis.Info("+ terminating", logthis.VERBOSE)
 	return daemon.ErrStop
 }
 

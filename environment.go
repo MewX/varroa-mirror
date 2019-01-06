@@ -15,6 +15,7 @@ import (
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/git"
 	"gitlab.com/catastrophic/assistance/ipc"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/passelecasque/go-ircevent"
 )
 
@@ -40,9 +41,6 @@ type Environment struct {
 	serverData *ServerPage
 	Trackers   map[string]*GazelleTracker
 
-	expectedOutput   bool
-	websocketOutput  bool
-	sendToWebsocket  chan string
 	mutex            sync.RWMutex
 	git              *git.Git
 	daemonUnixSocket *ipc.UnixSocket
@@ -57,16 +55,7 @@ func NewEnvironment() *Environment {
 	e.serverData = &ServerPage{}
 	// make maps
 	e.Trackers = make(map[string]*GazelleTracker)
-	// current command expects output
-	e.expectedOutput = false
-	if !daemon.WasReborn() {
-		// here we're expecting output
-		e.expectedOutput = true
-	}
-	// websocket is open and waiting for input
-	e.websocketOutput = false
 	e.daemonUnixSocket = ipc.NewUnixSocketServer(daemonSocket)
-	e.sendToWebsocket = make(chan string, 10)
 	// irc
 	e.ircClient = nil
 	return e
@@ -114,6 +103,8 @@ func (e *Environment) SetUp(autologin bool) error {
 	// for uptime
 	if daemon.WasReborn() {
 		e.startTime = time.Now()
+		// if in daemon, only use log file
+		logthis.SetStdOutput(false)
 	}
 	// prepare directory for stats if necessary
 	if !fs.DirExists(StatsDir) {
@@ -133,7 +124,7 @@ func (e *Environment) SetUp(autologin bool) error {
 			if err = tracker.Login(); err != nil {
 				return errors.Wrap(err, "Error logging in tracker "+label)
 			}
-			logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
+			logthis.Info(fmt.Sprintf("Logged in tracker %s.", label), logthis.NORMAL)
 		}
 		// launching rate limiter
 		go tracker.apiCallRateLimiter()
@@ -159,7 +150,7 @@ func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
 		if err := tracker.Login(); err != nil {
 			return tracker, errors.Wrap(err, "Error logging in tracker "+label)
 		}
-		logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
+		logthis.Info(fmt.Sprintf("Logged in tracker %s.", label), logthis.NORMAL)
 	}
 	return tracker, nil
 }
@@ -196,7 +187,7 @@ func (e *Environment) DeployToGitlabPages() error {
 	}
 	// add the graphs, if it fails,
 	if err := e.git.Add("*" + svgExt); err != nil {
-		logThis.Error(errors.Wrap(err, errorGitAdd+", not all graphs are generated yet."), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGitAdd+", not all graphs are generated yet."), logthis.NORMAL)
 	}
 	// commit
 	if err := e.git.Commit("varroa musica stats update."); err != nil {
@@ -211,7 +202,7 @@ func (e *Environment) DeployToGitlabPages() error {
 	if err := e.git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
 		return errors.Wrap(err, errorGitPush)
 	}
-	logThis.Info("Pushed new stats to "+e.config.GitlabPages.URL, NORMAL)
+	logthis.Info("Pushed new stats to "+e.config.GitlabPages.URL, logthis.NORMAL)
 	return nil
 }
 

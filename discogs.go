@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -33,7 +34,7 @@ func NewDiscogsRelease(token string) (*Discogs, error) {
 	}
 	jar, err := cookiejar.New(&options)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
+		logthis.Error(errors.Wrap(err, errorLogIn), logthis.NORMAL)
 		return nil, err
 	}
 	return &Discogs{Token: token, Client: &http.Client{Jar: jar}}, nil

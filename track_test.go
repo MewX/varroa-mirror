@@ -8,15 +8,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 func TestTrackFLAC(t *testing.T) {
 	fmt.Println("+ Testing Track...")
 	check := assert.New(t)
 	// setup logger
-	c := &Config{General: &ConfigGeneral{LogLevel: 3}}
-	env := &Environment{config: c}
-	logThis = NewLogThis(env)
+	logthis.SetLevel(3)
 
 	flac := "test/test.flac"
 	flacNoPic := "test/test_no_picture.flac"

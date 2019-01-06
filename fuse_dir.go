@@ -15,6 +15,7 @@ import (
 	"github.com/asdine/storm/q"
 	"github.com/pkg/errors"
 	fs_ "gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 	"golang.org/x/net/context"
 )
@@ -73,7 +74,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	if d.path.category == "" {
 		_, err := fuseCategoryByLabel(name)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, "Lookup unknown category: "+name), VERBOSEST)
+			logthis.Error(errors.Wrap(err, "Lookup unknown category: "+name), logthis.VERBOSEST)
 			return nil, fuse.EIO
 		}
 		return &FuseDir{path: FusePath{category: name}, fs: d.fs}, nil
@@ -85,16 +86,16 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		var entry FuseEntry
 		if err := d.fs.contents.DB.One("FolderName", d.trueRelativePath, &entry); err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Info("Unknown release, could not find by path: "+d.trueRelativePath, VERBOSEST)
+				logthis.Info("Unknown release, could not find by path: "+d.trueRelativePath, logthis.VERBOSEST)
 			} else {
-				logThis.Error(err, VERBOSEST)
+				logthis.Error(err, logthis.VERBOSEST)
 			}
 			return nil, fuse.ENOENT
 		}
 		folderPath := filepath.Join(d.fs.contents.Root, entry.FolderName, d.releaseSubdir)
 		fileInfos, err := ioutil.ReadDir(folderPath)
 		if err != nil {
-			logThis.Info("Could not open path: "+d.release, VERBOSEST)
+			logthis.Info("Could not open path: "+d.release, logthis.VERBOSEST)
 			return nil, fuse.ENOENT
 		}
 		for _, f := range fileInfos {
@@ -105,7 +106,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 				return &FuseFile{trueRelativePath: d.trueRelativePath, releaseSubdir: d.releaseSubdir, name: name, fs: d.fs}, nil
 			}
 		}
-		logThis.Info("Unknown name among files "+d.releaseSubdir+"/"+name, VERBOSEST)
+		logthis.Info("Unknown name among files "+d.releaseSubdir+"/"+name, logthis.VERBOSEST)
 		return nil, fuse.EIO
 	}
 
@@ -115,7 +116,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 
 	category, err := fuseCategoryByLabel(d.path.category)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return nil, fuse.EIO
 	}
 	if d.path.Category() == "" {
@@ -125,7 +126,7 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		// we know there's at least 1 entry with this tag.
 		p := FusePath{category: d.path.category}
 		if err := p.SetCategory(name); err != nil {
-			logThis.Error(err, VERBOSEST)
+			logthis.Error(err, logthis.VERBOSEST)
 			return nil, fuse.EIO
 		}
 		return &FuseDir{path: p, fs: d.fs}, nil
@@ -144,10 +145,10 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		var entry FuseEntry
 		if err := query.First(&entry); err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Info("Unknown artist "+name, VERBOSEST)
+				logthis.Info("Unknown artist "+name, logthis.VERBOSEST)
 				return nil, fuse.EIO
 			}
-			logThis.Error(err, VERBOSEST)
+			logthis.Error(err, logthis.VERBOSEST)
 			return nil, fuse.EIO
 		}
 		// we know there's at least 1 entry with this artist.
@@ -165,16 +166,16 @@ func (d *FuseDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		var entry FuseEntry
 		if err := query.First(&entry); err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Info("Unknown release "+name, VERBOSEST)
+				logthis.Info("Unknown release "+name, logthis.VERBOSEST)
 				return nil, fuse.EIO
 			}
-			logThis.Error(err, VERBOSEST)
+			logthis.Error(err, logthis.VERBOSEST)
 			return nil, fuse.EIO
 		}
 		// release was found
 		return &FuseDir{path: FusePath{category: d.path.category, tag: d.path.tag, label: d.path.label, year: d.path.year, artist: d.path.artist, source: d.path.source, format: d.path.format}, trueRelativePath: entry.FolderName, release: name, fs: d.fs}, nil
 	}
-	logThis.Info("Error during lookup, nothing matched "+name, VERBOSESTEST)
+	logthis.Info("Error during lookup, nothing matched "+name, logthis.VERBOSESTEST)
 	return nil, nil
 }
 
@@ -212,9 +213,9 @@ func (d *FuseDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		var entry FuseEntry
 		if err := d.fs.contents.DB.One("FolderName", d.trueRelativePath, &entry); err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Info("Unknown release, could not find by path: "+d.trueRelativePath, VERBOSEST)
+				logthis.Info("Unknown release, could not find by path: "+d.trueRelativePath, logthis.VERBOSEST)
 			} else {
-				logThis.Error(err, VERBOSEST)
+				logthis.Error(err, logthis.VERBOSEST)
 			}
 			return []fuse.Dirent{}, fuse.ENOENT
 		}
@@ -242,7 +243,7 @@ func (d *FuseDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	// or it is known and its value is used to make the matcher more precise
 	category, err := fuseCategoryByLabel(d.path.category)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return []fuse.Dirent{}, fuse.ENOENT
 	}
 	if d.path.Category() == "" {

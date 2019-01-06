@@ -13,6 +13,7 @@ import (
 	"github.com/tdewolff/minify/svg"
 	"github.com/wcharczuk/go-chart"
 	"github.com/wcharczuk/go-chart/drawing"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 var (
@@ -162,12 +163,12 @@ func combineAllPNGs(combined string, graphs ...string) error {
 	for _, graph := range graphs {
 		imgFile, err := os.Open(graph + pngExt)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, errorImageNotFound), NORMAL)
+			logthis.Error(errors.Wrap(err, errorImageNotFound), logthis.NORMAL)
 			continue
 		}
 		img, _, err := image.Decode(imgFile)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, errorImageNotFound), NORMAL)
+			logthis.Error(errors.Wrap(err, errorImageNotFound), logthis.NORMAL)
 			continue
 		}
 		images = append(images, img)

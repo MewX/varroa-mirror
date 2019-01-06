@@ -12,6 +12,7 @@ import (
 	"github.com/jinzhu/now"
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 )
 
@@ -38,7 +39,7 @@ func NewStatsDB(path string) (*StatsDB, error) {
 
 		conf, err := NewConfig(DefaultConfigurationFile)
 		if err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 			returnErr = err
 			return
 		} else {
@@ -47,13 +48,13 @@ func NewStatsDB(path string) (*StatsDB, error) {
 			for _, label := range conf.TrackerLabels() {
 				migrated, err := statsDB.migrate(label)
 				if err != nil && err != storm.ErrNotFound {
-					logThis.Error(errors.Wrap(err, "Error migrating database to a new schema, for tracker "+label), VERBOSEST)
+					logthis.Error(errors.Wrap(err, "Error migrating database to a new schema, for tracker "+label), logthis.VERBOSEST)
 				} else if migrated {
 					migratedSomething = migrated
 				}
 			}
 			if migratedSomething {
-				logThis.Info("Updating stats after migration", NORMAL)
+				logthis.Info("Updating stats after migration", logthis.NORMAL)
 				returnErr = statsDB.Update()
 				return
 			}
@@ -131,17 +132,17 @@ func (sdb *StatsDB) Update() error {
 	// get start of today
 	startOfToday := now.BeginningOfDay()
 	for _, t := range allTrackers {
-		logThis.Info("Updating stats for tracker "+t, VERBOSEST)
+		logthis.Info("Updating stats for tracker "+t, logthis.VERBOSEST)
 
 		// find first collected timestamp for this tracker
 		firstTrackerStats, err := sdb.getFirstStatsForTracker(t)
 		if err != nil {
-			logThis.Info("Could not find stats for tracker "+t, VERBOSEST)
+			logthis.Info("Could not find stats for tracker "+t, logthis.VERBOSEST)
 			continue
 		}
 		startOfFirstDay := now.New(firstTrackerStats.Timestamp).BeginningOfDay()
 		if startOfFirstDay.After(startOfToday) {
-			logThis.Info("Incoherent daily stats: some stats in the future for tracker "+t, VERBOSEST)
+			logthis.Info("Incoherent daily stats: some stats in the future for tracker "+t, logthis.VERBOSEST)
 			continue
 		}
 
@@ -162,7 +163,7 @@ func (sdb *StatsDB) Update() error {
 							// first day, use the first known stats as the reference
 							previous = firstTrackerStats
 						} else {
-							logThis.Error(selectErr, VERBOSEST)
+							logthis.Error(selectErr, logthis.VERBOSEST)
 							continue
 						}
 					}
@@ -173,7 +174,7 @@ func (sdb *StatsDB) Update() error {
 							// last day, missing information to create the daily stats
 							continue
 						} else {
-							logThis.Error(selectErr, VERBOSEST)
+							logthis.Error(selectErr, logthis.VERBOSEST)
 							continue
 						}
 					}
@@ -189,7 +190,7 @@ func (sdb *StatsDB) Update() error {
 						// interpolate stats at the start of the day being considered
 						newDailyStats, statsErr = InterpolateStats(previous, next, currentStartOfDay)
 						if statsErr != nil {
-							logThis.Error(statsErr, VERBOSE)
+							logthis.Error(statsErr, logthis.VERBOSE)
 							continue
 						} else {
 							newDailyStats.StartOfDay = true
@@ -207,9 +208,9 @@ func (sdb *StatsDB) Update() error {
 					if saveErr := tx.Save(newDailyStats); saveErr != nil {
 						return errors.Wrap(saveErr, "error saving daily stats")
 					}
-					logThis.Info("Added daily stats for "+t+"/"+currentStartOfDay.String(), VERBOSEST)
+					logthis.Info("Added daily stats for "+t+"/"+currentStartOfDay.String(), logthis.VERBOSEST)
 				} else {
-					logThis.Error(err, VERBOSEST)
+					logthis.Error(err, logthis.VERBOSEST)
 				}
 			}
 
@@ -225,7 +226,7 @@ func (sdb *StatsDB) Update() error {
 					if selectErr := sdb.db.DB.Select(q.And(q.Eq("Tracker", t), q.Gte("Timestamp", currentStartOfDay), q.Lte("Timestamp", now.New(currentStartOfDay).AddDate(0, 0, 1)))).Find(&newSnatches); selectErr != nil {
 						// if nothing found, no snatches for this day, empty entry will be added
 						if selectErr != storm.ErrNotFound {
-							logThis.Error(selectErr, VERBOSEST)
+							logthis.Error(selectErr, logthis.VERBOSEST)
 							continue
 						}
 					} else {
@@ -248,9 +249,9 @@ func (sdb *StatsDB) Update() error {
 						return errors.Wrap(saveErr, "error saving daily snatch stats")
 					}
 
-					logThis.Info("Added daily snatch stats for "+t+"/"+currentStartOfDay.String(), VERBOSEST)
+					logthis.Info("Added daily snatch stats for "+t+"/"+currentStartOfDay.String(), logthis.VERBOSEST)
 				} else {
-					logThis.Error(err, VERBOSEST)
+					logthis.Error(err, logthis.VERBOSEST)
 				}
 			}
 		}
@@ -315,7 +316,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	}
 	if len(lastWeekStatsEntries) != 0 {
 		if err := generateGraphs(tracker, lastWeekPrefix, lastWeekStatsEntries, lastWeekStatsEntries[0].Timestamp); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 			atLeastOneFailed = true
 		}
 	}
@@ -332,7 +333,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	}
 	if len(lastMonthStatsEntries) != 0 {
 		if err := generateGraphs(tracker, lastMonthPrefix, lastMonthStatsEntries, lastMonthStatsEntries[0].Timestamp); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 			atLeastOneFailed = true
 		}
 	}
@@ -350,7 +351,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// generate graphs
 	if len(allDailyDeltas) != 0 {
 		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_day", allDailyDeltas, allDailyDeltas[0].Timestamp); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 			atLeastOneFailed = true
 		}
 	}
@@ -368,7 +369,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// generate graphs
 	if len(allWeeklyDeltas) != 0 {
 		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_week", allWeeklyDeltas, allWeeklyDeltas[0].Timestamp); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 			atLeastOneFailed = true
 		}
 	}
@@ -386,7 +387,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	// generate graphs
 	if len(allMonthlyDeltas) != 0 {
 		if err := generateDeltaGraphs(tracker, overallPrefix+"_per_month", allMonthlyDeltas, allMonthlyDeltas[0].Timestamp); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 			atLeastOneFailed = true
 		}
 	}
@@ -395,7 +396,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	var allSnatches []Release
 	if err := sdb.db.DB.Find("Tracker", tracker, &allSnatches); err != nil {
 		if err == storm.ErrNotFound {
-			logThis.Info("could not find snatched releases in database", VERBOSE)
+			logthis.Info("could not find snatched releases in database", logthis.VERBOSE)
 		} else {
 			return errors.Wrap(err, "Error reading back snatch entries from db for tracker "+tracker)
 		}
@@ -416,7 +417,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 			top10tags = top10tags[:10]
 		}
 		if err := writePieChart(top10tags, "Top tags", filepath.Join(StatsDir, tracker+"_"+toptagsFile)); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 			atLeastOneFailed = true
 		}
 
@@ -431,7 +432,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 			pieSlices = append(pieSlices, chart.Value{Value: v, Label: fmt.Sprintf("%s (%d)", k, int(v))})
 		}
 		if err := writePieChart(pieSlices, "Total snatches by filter", filepath.Join(StatsDir, tracker+"_"+totalSnatchesByFilterFile)); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 			atLeastOneFailed = true
 		}
 	}
@@ -446,7 +447,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 	snatchStatsSeries.AddStats(allSnatchStats...)
 	// generate graphs
 	if err := snatchStatsSeries.GenerateGraphs(StatsDir, tracker+"_", firstStats.Timestamp, true); err != nil {
-		logThis.Error(err, NORMAL)
+		logthis.Error(err, logthis.NORMAL)
 		atLeastOneFailed = true
 	}
 
@@ -474,7 +475,7 @@ func (sdb *StatsDB) GenerateAllGraphsForTracker(tracker string) error {
 // generateGraphs for data points
 // graphType == lastweek, lastmonth, overall, etc
 func generateGraphs(tracker, graphType string, entries []StatsEntry, firstTimestamp time.Time) error {
-	logThis.Info("Generating "+graphType+" graphs for tracker "+tracker, VERBOSEST)
+	logthis.Info("Generating "+graphType+" graphs for tracker "+tracker, logthis.VERBOSEST)
 	overallStats := StatsSeries{Tracker: tracker}
 	if err := overallStats.AddStats(entries...); err != nil {
 		return err
@@ -485,7 +486,7 @@ func generateGraphs(tracker, graphType string, entries []StatsEntry, firstTimest
 // generateDeltaGraphs for data deltas
 // graphType == daily, weekly, monthly, etc
 func generateDeltaGraphs(tracker, graphType string, entries []StatsDelta, firstTimestamp time.Time) error {
-	logThis.Info("Generating "+graphType+" delta graphs for tracker "+tracker, VERBOSEST)
+	logthis.Info("Generating "+graphType+" delta graphs for tracker "+tracker, logthis.VERBOSEST)
 	overallStats := StatsSeries{Tracker: tracker}
 	if err := overallStats.AddDeltas(entries...); err != nil {
 		return err
@@ -515,7 +516,7 @@ func (sdb *StatsDB) AlreadySnatchedDuplicate(release *Release) bool {
 	err := sdb.db.DB.Select(duplicateQuery).First(&firstHit)
 	if err != nil {
 		if err != storm.ErrNotFound {
-			logThis.Error(errors.Wrap(err, "error looking for duplicate releases"), NORMAL)
+			logthis.Error(errors.Wrap(err, "error looking for duplicate releases"), logthis.NORMAL)
 		}
 		return false
 	}
@@ -528,7 +529,7 @@ func (sdb *StatsDB) AlreadySnatchedFromGroup(release *Release) bool {
 	err := sdb.db.DB.Select(q.And(q.Eq("GroupID", release.GroupID), q.Eq("Tracker", release.Tracker))).First(&releaseFromGroup)
 	if err != nil {
 		if err != storm.ErrNotFound {
-			logThis.Error(errors.Wrap(err, "error looking for releases from same torrent group"), NORMAL)
+			logthis.Error(errors.Wrap(err, "error looking for releases from same torrent group"), logthis.NORMAL)
 		}
 		return false
 	}

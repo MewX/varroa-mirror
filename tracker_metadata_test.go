@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 func TestGeneratePath(t *testing.T) {
@@ -16,9 +17,7 @@ func TestGeneratePath(t *testing.T) {
 	check.Nil(configErr)
 
 	// setup logger
-	conf := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{config: conf}
-	logThis = NewLogThis(env)
+	logthis.SetLevel(2)
 
 	// test API JSON responses
 	gt := &GazelleTorrent{}

@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/passelecasque/varroa"
 )
@@ -405,7 +406,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "cannot parse command"), varroa.NORMAL)
+		logthis.Error(errors.Wrap(err, "cannot parse command"), logthis.NORMAL)
 		return []byte{}
 	}
 	return commandBytes

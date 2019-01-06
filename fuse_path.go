@@ -3,17 +3,19 @@ package varroa
 import (
 	"errors"
 	"fmt"
+
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 // list of valid FUSE path types
 const (
-	release = iota
-	artist
-	source
-	format
-	recordLabel
-	tag
-	year
+	releasePath = iota
+	artistPath
+	sourcePath
+	formatPath
+	recordLabelPath
+	tagPath
+	yearPath
 )
 
 type fuseCategory struct {
@@ -25,12 +27,12 @@ type fuseCategory struct {
 }
 
 var fuseCategories = []fuseCategory{
-	{id: artist, label: "artists", field: "Artists", sliceField: true, validPath: []int{artist, release}},
-	{id: tag, label: "tags", field: "Tags", sliceField: true, validPath: []int{tag, artist, release}},
-	{id: recordLabel, label: "record labels", field: "RecordLabel", validPath: []int{recordLabel, artist, release}},
-	{id: year, label: "years", field: "Year", validPath: []int{year, artist, release}},
-	{id: source, label: "source", field: "Source", validPath: []int{source, format, artist, release}},
-	{id: format, label: "format", field: "Format", validPath: []int{format, source, artist, release}},
+	{id: artistPath, label: "artists", field: "Artists", sliceField: true, validPath: []int{artistPath, releasePath}},
+	{id: tagPath, label: "tags", field: "Tags", sliceField: true, validPath: []int{tagPath, artistPath, releasePath}},
+	{id: recordLabelPath, label: "record labels", field: "RecordLabel", validPath: []int{recordLabelPath, artistPath, releasePath}},
+	{id: yearPath, label: "years", field: "Year", validPath: []int{yearPath, artistPath, releasePath}},
+	{id: sourcePath, label: "source", field: "Source", validPath: []int{sourcePath, formatPath, artistPath, releasePath}},
+	{id: formatPath, label: "format", field: "Format", validPath: []int{formatPath, sourcePath, artistPath, releasePath}},
 	// {id: release, field: "FolderName", validPath: []int{}},
 }
 
@@ -61,21 +63,21 @@ func (d *FusePath) String() string {
 func (d *FusePath) Category() string {
 	category, err := fuseCategoryByLabel(d.category)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return ""
 	}
 	switch category.id {
-	case artist:
+	case artistPath:
 		return d.artist
-	case tag:
+	case tagPath:
 		return d.tag
-	case recordLabel:
+	case recordLabelPath:
 		return d.label
-	case year:
+	case yearPath:
 		return d.year
-	case source:
+	case sourcePath:
 		return d.source
-	case format:
+	case formatPath:
 		return d.format
 	default:
 		return ""
@@ -85,21 +87,21 @@ func (d *FusePath) Category() string {
 func (d *FusePath) SetCategory(value string) error {
 	category, err := fuseCategoryByLabel(d.category)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return err
 	}
 	switch category.id {
-	case artist:
+	case artistPath:
 		d.artist = value
-	case tag:
+	case tagPath:
 		d.tag = value
-	case recordLabel:
+	case recordLabelPath:
 		d.label = value
-	case year:
+	case yearPath:
 		d.year = value
-	case source:
+	case sourcePath:
 		d.source = value
-	case format:
+	case formatPath:
 		d.format = value
 	default:
 		return errors.New("category not found: " + value)

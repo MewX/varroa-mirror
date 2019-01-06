@@ -2,6 +2,8 @@ package varroa
 
 import (
 	"strconv"
+
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 type DiscogsResults struct {
@@ -162,7 +164,7 @@ type DiscogsRelease struct {
 func (dr DiscogsRelease) TrackTags() []TrackTags {
 	var trackTags []TrackTags
 	if len(dr.Tracklist) == 0 {
-		logThis.Info("discogs data not available", VERBOSE)
+		logthis.Info("discogs data not available", logthis.VERBOSE)
 	} else {
 		for _, t := range dr.Tracklist {
 			var tags TrackTags

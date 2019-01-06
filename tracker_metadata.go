@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/russross/blackfriday"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 const (
@@ -261,7 +262,7 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 		unmarshalErr = json.Unmarshal(tm.ReleaseJSON, &gt)
 	}
 	if unmarshalErr != nil {
-		logThis.Error(errors.Wrap(unmarshalErr, "Error parsing torrent info JSON"), NORMAL)
+		logthis.Error(errors.Wrap(unmarshalErr, "Error parsing torrent info JSON"), logthis.NORMAL)
 		return nil
 	}
 
@@ -361,7 +362,7 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 			// TODO Duration  + Disc + number
 		}
 		if len(tm.Tracks) == 0 {
-			logThis.Info("Could not parse filelist, no music tracks found.", VERBOSEST)
+			logthis.Info("Could not parse filelist, no music tracks found.", logthis.VERBOSEST)
 		}
 	}
 	// TODO tm.TotalTime
@@ -419,7 +420,7 @@ func (tm *TrackerMetadata) checkAliasAndCategory(parentFolder string) error {
 			}
 		}
 		if changed {
-			logThis.Info("Updating user metadata with information from the configuration.", VERBOSEST)
+			logthis.Info("Updating user metadata with information from the configuration.", logthis.VERBOSEST)
 			return tm.UpdateUserJSON(parentFolder, tm.MainArtist, tm.MainArtistAlias, tm.Category)
 		}
 	}
@@ -453,21 +454,21 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *Gazelle
 
 	// write tracker metadata to target folder
 	if err := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+"_"+trackerMetadataFile), tm.ReleaseJSON, 0666); err != nil {
-		logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
+		logthis.Error(errors.Wrap(err, errorWritingJSONMetadata), logthis.NORMAL)
 	} else {
-		logThis.Info(infoMetadataSaved+filepath.Base(parentFolder), VERBOSE)
+		logthis.Info(infoMetadataSaved+filepath.Base(parentFolder), logthis.VERBOSE)
 	}
 
 	// get torrent group info
 	torrentGroupInfo, err := tracker.GetTorrentGroupInfo(tm.GroupID)
 	if err != nil {
-		logThis.Info(fmt.Sprintf(errorRetrievingTorrentGroupInfo, tm.GroupID), NORMAL)
+		logthis.Info(fmt.Sprintf(errorRetrievingTorrentGroupInfo, tm.GroupID), logthis.NORMAL)
 	} else {
 		// write tracker artist metadata to target folder
 		if err := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+"_"+trackerTGroupMetadataFile), torrentGroupInfo.fullJSON, 0666); err != nil {
-			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
+			logthis.Error(errors.Wrap(err, errorWritingJSONMetadata), logthis.NORMAL)
 		} else {
-			logThis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, tm.Title, filepath.Base(parentFolder)), VERBOSE)
+			logthis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, tm.Title, filepath.Base(parentFolder)), logthis.VERBOSE)
 		}
 	}
 
@@ -475,29 +476,29 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, tracker *Gazelle
 	for _, a := range tm.Artists {
 		artistInfo, err := tracker.GetArtistInfo(a.ID)
 		if err != nil {
-			logThis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), NORMAL)
+			logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
 			continue
 		}
 		// write tracker artist metadata to target folder
 		// making sure the artistInfo.name+jsonExt is a valid filename
 		if err := ioutil.WriteFile(filepath.Join(destination, tracker.Name+"_"+a.Name+jsonExt), artistInfo.JSON, 0666); err != nil {
-			logThis.Error(errors.Wrap(err, errorWritingJSONMetadata), NORMAL)
+			logthis.Error(errors.Wrap(err, errorWritingJSONMetadata), logthis.NORMAL)
 		} else {
-			logThis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Name, filepath.Base(parentFolder)), VERBOSE)
+			logthis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Name, filepath.Base(parentFolder)), logthis.VERBOSE)
 		}
 	}
 	// generate blank user metadata json
 	if err := tm.WriteUserJSON(destination); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingUserMetadataJSON), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGeneratingUserMetadataJSON), logthis.NORMAL)
 	}
 
 	// download tracker cover to target folder
 	if err := tm.SaveCover(parentFolder); err != nil {
-		logThis.Error(errors.Wrap(err, errorDownloadingTrackerCover), NORMAL)
+		logthis.Error(errors.Wrap(err, errorDownloadingTrackerCover), logthis.NORMAL)
 	} else {
-		logThis.Info(infoCoverSaved+filepath.Base(parentFolder), VERBOSE)
+		logthis.Info(infoCoverSaved+filepath.Base(parentFolder), logthis.VERBOSE)
 	}
-	logThis.Info(fmt.Sprintf(infoAllMetadataSaved, tracker.Name), VERBOSE)
+	logthis.Info(fmt.Sprintf(infoAllMetadataSaved, tracker.Name), logthis.VERBOSE)
 	return nil
 }
 
@@ -683,7 +684,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 		firstTrackFilename := GetFirstFLACFound(releaseFolder)
 		fullFormat, err := getFullAudioFormat(firstTrackFilename)
 		if err != nil {
-			logThis.Error(err, VERBOSEST)
+			logthis.Error(err, logthis.VERBOSEST)
 		} else {
 			quality = fullFormat
 		}
@@ -748,7 +749,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 func (tm *TrackerMetadata) WriteUserJSON(destination string) error {
 	userJSON := filepath.Join(destination, userMetadataJSONFile)
 	if fs.FileExists(userJSON) {
-		logThis.Info("user metadata JSON already exists", VERBOSE)
+		logthis.Info("user metadata JSON already exists", logthis.VERBOSE)
 		return nil
 	}
 	// save as blank JSON, with no values, for the user to force metadata values if needed.
@@ -785,7 +786,7 @@ func (tm *TrackerMetadata) UpdateUserJSON(destination, mainArtist, mainArtistAli
 	}
 	var userInfo *TrackerMetadata
 	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
-		logThis.Info("error parsing torrent info JSON", NORMAL)
+		logthis.Info("error parsing torrent info JSON", logthis.NORMAL)
 		return nil
 	}
 	// overwriting select values
@@ -805,7 +806,7 @@ func (tm *TrackerMetadata) UpdateUserJSON(destination, mainArtist, mainArtistAli
 func (tm *TrackerMetadata) LoadUserJSON(parentFolder string) error {
 	userJSON := filepath.Join(parentFolder, userMetadataJSONFile)
 	if !fs.FileExists(userJSON) {
-		logThis.Info("user metadata JSON does not exist", VERBOSEST)
+		logthis.Info("user metadata JSON does not exist", logthis.VERBOSEST)
 		return nil
 	}
 	// loading user metadata file
@@ -815,7 +816,7 @@ func (tm *TrackerMetadata) LoadUserJSON(parentFolder string) error {
 	}
 	var userInfo *TrackerMetadata
 	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
-		logThis.Info("error parsing torrent info JSON", NORMAL)
+		logthis.Info("error parsing torrent info JSON", logthis.NORMAL)
 		return nil
 	}
 	//  overwrite tracker values if non-zero value found

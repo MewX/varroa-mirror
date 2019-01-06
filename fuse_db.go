@@ -11,6 +11,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 )
 
@@ -152,16 +153,16 @@ func (fdb *FuseDB) Scan(rootPath string) error {
 					fuseEntry.FolderName = relativeFolderName
 					// read information from metadata
 					if err := fuseEntry.Load(fdb.Root); err != nil {
-						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+relativeFolderName), VERBOSEST)
+						logthis.Error(errors.Wrap(err, "Error: could not load metadata for "+relativeFolderName), logthis.VERBOSEST)
 						return err
 					}
 					if err := tx.Save(&fuseEntry); err != nil {
-						logThis.Info("Error: could not save to db "+relativeFolderName, VERBOSEST)
+						logthis.Info("Error: could not save to db "+relativeFolderName, logthis.VERBOSEST)
 						return err
 					}
-					logThis.Info("New FuseDB entry: "+relativeFolderName, VERBOSESTEST)
+					logthis.Info("New FuseDB entry: "+relativeFolderName, logthis.VERBOSESTEST)
 				} else {
-					logThis.Error(dbErr, VERBOSEST)
+					logthis.Error(dbErr, logthis.VERBOSEST)
 					return dbErr
 				}
 			} else {
@@ -169,30 +170,30 @@ func (fdb *FuseDB) Scan(rootPath string) error {
 				// TODO for existing entries, maybe only reload if the metadata has been modified?
 				// read information from metadata
 				if err := fuseEntry.Load(fdb.Root); err != nil {
-					logThis.Info("Error: could not load metadata for "+relativeFolderName, VERBOSEST)
+					logthis.Info("Error: could not load metadata for "+relativeFolderName, logthis.VERBOSEST)
 					return err
 				}
 				if err := tx.Update(&fuseEntry); err != nil {
-					logThis.Info("Error: could not save to db "+relativeFolderName, VERBOSEST)
+					logthis.Info("Error: could not save to db "+relativeFolderName, logthis.VERBOSEST)
 					return err
 				}
-				logThis.Info("Updated FuseDB entry: "+relativeFolderName, VERBOSESTEST)
+				logthis.Info("Updated FuseDB entry: "+relativeFolderName, logthis.VERBOSESTEST)
 			}
 			currentFolderNames = append(currentFolderNames, relativeFolderName)
 		}
 		return nil
 	})
 	if walkErr != nil {
-		logThis.Error(walkErr, NORMAL)
+		logthis.Error(walkErr, logthis.NORMAL)
 	}
 
 	// remove entries no longer associated with actual files
 	for _, p := range previous {
 		if !strslice.Contains(currentFolderNames, p.FolderName) {
 			if err := tx.DeleteStruct(&p); err != nil {
-				logThis.Error(err, VERBOSEST)
+				logthis.Error(err, logthis.VERBOSEST)
 			}
-			logThis.Info("Removed FuseDB entry: "+p.FolderName, VERBOSESTEST)
+			logthis.Info("Removed FuseDB entry: "+p.FolderName, logthis.VERBOSESTEST)
 		}
 	}
 
@@ -215,10 +216,10 @@ func (fdb *FuseDB) contains(category, value string, inSlice bool) bool {
 	var entry FuseEntry
 	if err := query.First(&entry); err != nil {
 		if err == storm.ErrNotFound {
-			logThis.Info("Unknown value for "+category+": "+value, VERBOSEST)
+			logthis.Info("Unknown value for "+category+": "+value, logthis.VERBOSEST)
 			return false
 		}
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return false
 	}
 	return true
@@ -229,7 +230,7 @@ func (fdb *FuseDB) uniqueEntries(matcher q.Matcher, field string) ([]string, err
 	var allEntries []FuseEntry
 	query := fdb.DB.Select(matcher)
 	if err := query.Find(&allEntries); err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return []string{}, err
 	}
 	// get all different values

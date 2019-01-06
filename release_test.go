@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 var (
@@ -134,9 +135,7 @@ func TestRelease(t *testing.T) {
 	fmt.Println("+ Testing Release...")
 	check := assert.New(t)
 	// setup logger
-	c := &Config{General: &ConfigGeneral{LogLevel: 2}}
-	env := &Environment{config: c}
-	logThis = NewLogThis(env)
+	logthis.SetLevel(2)
 
 	// filters
 	f0 := &ConfigFilter{Name: "f0"}

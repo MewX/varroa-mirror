@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/ui"
 	"golang.org/x/net/publicsuffix"
 )
@@ -102,7 +103,7 @@ func (t *GazelleTracker) rateLimitedGetRequest(url string, expectingJSON bool) (
 		// check success
 		var r GazelleGenericResponse
 		if err := json.Unmarshal(data, &r); err != nil {
-			logThis.Info("BAD JSON, Received: \n"+string(data), VERBOSEST)
+			logthis.Info("BAD JSON, Received: \n"+string(data), logthis.VERBOSEST)
 			return []byte{}, errors.Wrap(err, errorUnmarshallingJSON)
 		}
 		if r.Status != statusSuccess {
@@ -110,7 +111,7 @@ func (t *GazelleTracker) rateLimitedGetRequest(url string, expectingJSON bool) (
 				return data, errors.New(errorInvalidResponse)
 			}
 			if r.Error == errorGazelleRateLimitExceeded {
-				logThis.Info(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
+				logthis.Info(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", logthis.NORMAL)
 				// calling again, waiting for the rate limiter again should do the trick.
 				// that way 2 limiter slots will have passed before the next call is made,
 				// the server should allow it.
@@ -127,7 +128,7 @@ func (t *GazelleTracker) rateLimitedGetRequest(url string, expectingJSON bool) (
 func (t *GazelleTracker) apiCall(endpoint string) ([]byte, error) {
 	data, err := t.rateLimitedGetRequest(t.URL+"/ajax.php?"+endpoint, true)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorJSONAPI), VERBOSEST)
+		logthis.Error(errors.Wrap(err, errorJSONAPI), logthis.VERBOSEST)
 		// if error, try once again after logging in again
 		if loginErr := t.Login(); loginErr == nil {
 			return t.rateLimitedGetRequest(endpoint, true)
@@ -158,13 +159,13 @@ func (t *GazelleTracker) Login() error {
 	}
 	jar, err := cookiejar.New(&options)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
+		logthis.Error(errors.Wrap(err, errorLogIn), logthis.NORMAL)
 		return err
 	}
 	t.client = &http.Client{Jar: jar}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
+		logthis.Error(errors.Wrap(err, errorLogIn), logthis.NORMAL)
 		return err
 	}
 	defer resp.Body.Close()
@@ -204,7 +205,7 @@ func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile, destinationFol
 	}
 	// cleaning up
 	if err := os.Remove(torrentFile); err != nil {
-		logThis.Info(fmt.Sprintf(errorRemovingTempFile, torrentFile), VERBOSE)
+		logthis.Info(fmt.Sprintf(errorRemovingTempFile, torrentFile), logthis.VERBOSE)
 	}
 	return nil
 }
@@ -243,7 +244,7 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
-		logThis.Info("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
+		logthis.Info("Incorrect ratio: "+s.Response.Stats.Ratio, logthis.NORMAL)
 		ratio = 0.0
 	}
 	// return StatsEntry
@@ -265,9 +266,9 @@ func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error)
 	if err != nil {
 		isDeleted, deletedText, errCheck := t.CheckIfDeleted(id)
 		if errCheck != nil {
-			logThis.Error(errors.Wrap(errCheck, "could not get information from site log"), VERBOSE)
+			logthis.Error(errors.Wrap(errCheck, "could not get information from site log"), logthis.VERBOSE)
 		} else if isDeleted {
-			logThis.Info(ui.Red(deletedText), NORMAL)
+			logthis.Info(ui.Red(deletedText), logthis.NORMAL)
 		}
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/ui"
 )
 
@@ -31,7 +32,7 @@ func NewReleaseDir(path string) (*ReleaseDir, error) {
 func (rd *ReleaseDir) Enhance() error {
 	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, ErrorLoadingConfig), NORMAL)
+		logthis.Error(errors.Wrap(err, ErrorLoadingConfig), logthis.NORMAL)
 		return err
 	}
 
@@ -86,7 +87,7 @@ func (rd *ReleaseDir) analyzeTracks() error {
 	for _, t := range flacs {
 		var track Track
 		if err := track.parse(t); err != nil {
-			logThis.Error(err, NORMAL)
+			logthis.Error(err, logthis.NORMAL)
 		}
 		rd.Tracks = append(rd.Tracks, track)
 	}
@@ -101,7 +102,7 @@ func (rd *ReleaseDir) analyzeTracks() error {
 	if !sameEncoding {
 		return errors.New("the files do not have the same bit depth and/or sample rate")
 	}
-	logThis.Info("Audio encoding seems consistent.", NORMAL)
+	logthis.Info("Audio encoding seems consistent.", logthis.NORMAL)
 
 	// TODO check all are from same album : might be tricky for multi-disc?
 
@@ -137,7 +138,7 @@ func (rd *ReleaseDir) getMetadata() error {
 	for _, t := range d.Tracker {
 		info, err := d.getMetadata(filepath.Dir(rd.Path), t)
 		if err != nil {
-			logThis.Info("Could not find metadata for tracker "+t, NORMAL)
+			logthis.Info("Could not find metadata for tracker "+t, logthis.NORMAL)
 			continue
 		}
 		rd.TrackerInfo = info
@@ -154,7 +155,7 @@ func (rd *ReleaseDir) hasDiscogsMetadata() bool {
 func (rd *ReleaseDir) getDiscogsMetadata() error {
 	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, ErrorLoadingConfig), NORMAL)
+		logthis.Error(errors.Wrap(err, ErrorLoadingConfig), logthis.NORMAL)
 		return err
 	}
 	if !conf.discogsTokenConfigured {
@@ -176,7 +177,7 @@ func (rd *ReleaseDir) getDiscogsMetadata() error {
 
 	if results.Pagination.Items > 1 {
 		// TODO choose one...
-		logThis.Info("Found more than one result!", NORMAL)
+		logthis.Info("Found more than one result!", logthis.NORMAL)
 	}
 	// TODO else...
 	// getting release metadata from discogs
@@ -246,7 +247,7 @@ func (rd *ReleaseDir) mergeMetadata() error {
 		for _, t := range rd.Tracks {
 			if t.Tags.Number == dt.Number {
 				if t.Tags.diff(dt) {
-					logThis.Info("Tracks have the same metadata.", VERBOSEST)
+					logthis.Info("Tracks have the same metadata.", logthis.VERBOSEST)
 				} else {
 					if ui.Accept("Try to merge tracker & discogs metadata") {
 						if err := t.Tags.merge(dt); err != nil {

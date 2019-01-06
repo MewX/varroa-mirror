@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/catastrophic/assistance/ui"
 )
@@ -180,7 +181,7 @@ func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerMetadata, erro
 	info := TrackerMetadata{}
 	err := info.LoadFromJSON(tracker, originJSON, infoJSON)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "Error, could not load release json"), NORMAL)
+		logthis.Error(errors.Wrap(err, "Error, could not load release json"), logthis.NORMAL)
 	}
 	return info, err
 }
@@ -216,11 +217,11 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 			for i, t := range d.Tracker {
 				tracker, err := e.Tracker(t)
 				if err != nil {
-					logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
+					logthis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), logthis.NORMAL)
 					continue
 				}
 				if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.TrackerID[i])}); err != nil {
-					logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
+					logthis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), logthis.NORMAL)
 					continue
 				}
 			}
@@ -275,7 +276,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 		for _, t := range d.Tracker {
 			info, err := d.getMetadata(root, t)
 			if err != nil {
-				logThis.Info("Could not find metadata for tracker "+t, NORMAL)
+				logthis.Info("Could not find metadata for tracker "+t, logthis.NORMAL)
 				continue
 			}
 
@@ -333,7 +334,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 			info.Category = category
 			// write to original user_metadata.json
 			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, MetadataDir), mainArtist, mainArtistAlias, category); err != nil {
-				logThis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), NORMAL)
+				logthis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), logthis.NORMAL)
 				return err
 			}
 			// generating new possible paths

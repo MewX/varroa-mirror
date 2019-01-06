@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/ui"
 )
 
@@ -125,10 +126,10 @@ func (tm *TrackTags) String() string {
 
 func diffString(title, a, b string) bool {
 	if a == b {
-		logThis.Info(title+a, NORMAL)
+		logthis.Info(title+a, logthis.NORMAL)
 		return true
 	}
-	logThis.Info(title+ui.Green(a)+" / "+ui.Red(b), NORMAL)
+	logthis.Info(title+ui.Green(a)+" / "+ui.Red(b), logthis.NORMAL)
 	return false
 }
 
@@ -140,7 +141,7 @@ func diffField(field string, a, b *TrackTags) bool {
 
 func (tm *TrackTags) diff(o TrackTags) bool {
 	isSame := true
-	logThis.Info("Comparing A & B:", NORMAL)
+	logthis.Info("Comparing A & B:", logthis.NORMAL)
 	for _, f := range tagFields {
 		isSame = isSame && diffField(f, tm, &o)
 	}
@@ -151,7 +152,7 @@ func (tm *TrackTags) diff(o TrackTags) bool {
 }
 
 func (tm *TrackTags) merge(o TrackTags) error {
-	logThis.Info("Merging Track metadata:", NORMAL)
+	logthis.Info("Merging Track metadata:", logthis.NORMAL)
 	for _, f := range tagFields {
 		err := tm.mergeFieldByName(f, tagDescriptions[f], o)
 		if err != nil {

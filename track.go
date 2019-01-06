@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 )
 
@@ -136,7 +137,7 @@ func (t *Track) parse(filename string) error {
 	// TODO if not, warn this could be trumped
 	/*sizeInt, err := strconv.Atoi(rt.PictureSize)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 	} else {
 		if
 	}*/
@@ -163,7 +164,7 @@ func (t *Track) recompress(dest string) error {
 	}
 	lines := strings.Split(string(cmdOut), "\n")
 	status := lines[len(lines)-2]
-	logThis.Info("Recompressing "+t.Filename+": "+status, VERBOSESTEST)
+	logthis.Info("Recompressing "+t.Filename+": "+status, logthis.VERBOSESTEST)
 
 	// TODO save picture somewhere if it exists
 	// TODO remove picture + padding

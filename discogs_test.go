@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 var (
@@ -42,9 +43,7 @@ func TestDiscogs(t *testing.T) {
 	fmt.Println("+ Testing Discogs...")
 	check := assert.New(t)
 	// setup logger
-	c := &Config{General: &ConfigGeneral{LogLevel: 3}}
-	env := &Environment{config: c}
-	logThis = NewLogThis(env)
+	logthis.SetLevel(3)
 
 	// get token from env
 	// token can be generated in Discogs user settings

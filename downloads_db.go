@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/catastrophic/assistance/ui"
 )
@@ -41,11 +42,11 @@ func NewDownloadsDB(path, root string, additionalSources []string) (*DownloadsDB
 		}
 		downloadsDB = &DownloadsDB{db: db, root: root, additionalSources: additionalSources}
 		if returnErr = downloadsDB.init(); returnErr != nil {
-			logThis.Error(errors.Wrap(returnErr, "Could not prepare database for indexing download entries"), NORMAL)
+			logthis.Error(errors.Wrap(returnErr, "Could not prepare database for indexing download entries"), logthis.NORMAL)
 			return
 		}
 		if !fs.DirExists(downloadsDB.root) {
-			logThis.Info("Error finding "+root, NORMAL)
+			logthis.Info("Error finding "+root, logthis.NORMAL)
 			return
 		}
 	})
@@ -126,7 +127,7 @@ func (d *DownloadsDB) Scan() error {
 		if entry.IsDir() {
 			// detect if sound files are present, leave otherwise
 			if !DirectoryContainsMusic(filepath.Join(d.root, entry.Name())) {
-				logThis.Info("Error: no music found in "+entry.Name(), VERBOSEST)
+				logthis.Info("Error: no music found in "+entry.Name(), logthis.VERBOSEST)
 				continue
 			}
 			// try to find entry
@@ -137,16 +138,16 @@ func (d *DownloadsDB) Scan() error {
 					downloadEntry.FolderName = entry.Name()
 					// read information from metadata
 					if err := downloadEntry.Load(d.root); err != nil {
-						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+entry.Name()), VERBOSEST)
+						logthis.Error(errors.Wrap(err, "Error: could not load metadata for "+entry.Name()), logthis.VERBOSEST)
 						continue
 					}
 					if err := tx.Save(&downloadEntry); err != nil {
-						logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
+						logthis.Info("Error: could not save to db "+entry.Name(), logthis.VERBOSEST)
 						continue
 					}
-					logThis.Info("New Downloads entry: "+entry.Name(), VERBOSESTEST)
+					logthis.Info("New Downloads entry: "+entry.Name(), logthis.VERBOSESTEST)
 				} else {
-					logThis.Error(dbErr, VERBOSEST)
+					logthis.Error(dbErr, logthis.VERBOSEST)
 					continue
 				}
 			} else {
@@ -154,14 +155,14 @@ func (d *DownloadsDB) Scan() error {
 				// TODO for existing entries, maybe only reload if the metadata has been modified?
 				// read information from metadata
 				if err := downloadEntry.Load(d.root); err != nil {
-					logThis.Info("Error: could not load metadata for "+entry.Name(), VERBOSEST)
+					logthis.Info("Error: could not load metadata for "+entry.Name(), logthis.VERBOSEST)
 					continue
 				}
 				if err := tx.Update(&downloadEntry); err != nil {
-					logThis.Info("Error: could not save to db "+entry.Name(), VERBOSEST)
+					logthis.Info("Error: could not save to db "+entry.Name(), logthis.VERBOSEST)
 					continue
 				}
-				logThis.Info("Updated Downloads entry: "+entry.Name(), VERBOSESTEST)
+				logthis.Info("Updated Downloads entry: "+entry.Name(), logthis.VERBOSESTEST)
 			}
 			currentFolderNames = append(currentFolderNames, entry.Name())
 		}
@@ -171,9 +172,9 @@ func (d *DownloadsDB) Scan() error {
 	for _, p := range previous {
 		if !strslice.Contains(currentFolderNames, p.FolderName) {
 			if err := tx.DeleteStruct(&p); err != nil {
-				logThis.Error(err, VERBOSEST)
+				logthis.Error(err, logthis.VERBOSEST)
 			}
-			logThis.Info("Removed Download entry: "+p.FolderName, VERBOSESTEST)
+			logthis.Info("Removed Download entry: "+p.FolderName, logthis.VERBOSESTEST)
 		}
 	}
 
@@ -195,7 +196,7 @@ func (d *DownloadsDB) RescanIDs(IDs []int) error {
 		dl, err := d.FindByID(id)
 		if err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Error(errors.Wrap(err, fmt.Sprintf("cannot retrieve entry for ID %d", id)), NORMAL)
+				logthis.Error(errors.Wrap(err, fmt.Sprintf("cannot retrieve entry for ID %d", id)), logthis.NORMAL)
 			} else {
 				return errors.Wrap(err, fmt.Sprintf("error looking for ID %d", id))
 			}
@@ -218,19 +219,19 @@ func (d *DownloadsDB) RescanIDs(IDs []int) error {
 		if fs.DirExists(entry.FolderName) {
 			// read information from metadata
 			if err := entry.Load(d.root); err != nil {
-				logThis.Info("Error: could not load metadata for "+entry.FolderName, VERBOSEST)
+				logthis.Info("Error: could not load metadata for "+entry.FolderName, logthis.VERBOSEST)
 				continue
 			}
 			if err := tx.Update(&entry); err != nil {
-				logThis.Info("Error: could not save to db "+entry.FolderName, VERBOSEST)
+				logthis.Info("Error: could not save to db "+entry.FolderName, logthis.VERBOSEST)
 				continue
 			}
-			logThis.Info("Updated Downloads entry: "+entry.FolderName, VERBOSESTEST)
+			logthis.Info("Updated Downloads entry: "+entry.FolderName, logthis.VERBOSESTEST)
 		} else {
 			if err := tx.DeleteStruct(&entry); err != nil {
-				logThis.Error(err, VERBOSEST)
+				logthis.Error(err, logthis.VERBOSEST)
 			}
-			logThis.Info("Removed Download entry: "+entry.FolderName, VERBOSESTEST)
+			logthis.Info("Removed Download entry: "+entry.FolderName, logthis.VERBOSESTEST)
 		}
 	}
 	// committing transaction
@@ -266,7 +267,7 @@ func (d *DownloadsDB) locateFolderName(folderName string) (string, string, error
 		for _, s := range c.Library.AdditionalSources {
 			rel, err = filepath.Rel(s, absFolderName)
 			if err != nil {
-				logThis.Error(err, VERBOSESTEST)
+				logthis.Error(err, logthis.VERBOSESTEST)
 				continue
 			}
 			if filepath.Clean(folderName) == rel {
@@ -300,7 +301,7 @@ func (d *DownloadsDB) RescanPath(folderName string) error {
 		dl, err := d.FindByFolderName(folderName)
 		if err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Info("Adding new entry!", NORMAL)
+				logthis.Info("Adding new entry!", logthis.NORMAL)
 				newEntry = true
 				dl.FolderName = folderName
 			} else {
@@ -320,7 +321,7 @@ func (d *DownloadsDB) RescanPath(folderName string) error {
 			if err := tx.Update(&dl); err != nil {
 				return errors.Wrap(err, "error: could not save to db "+absFolderName)
 			}
-			logThis.Info("Updated Downloads entry: "+absFolderName, VERBOSESTEST)
+			logthis.Info("Updated Downloads entry: "+absFolderName, logthis.VERBOSESTEST)
 		}
 
 		// committing transaction
@@ -350,7 +351,7 @@ func (d *DownloadsDB) Sort(e *Environment) error {
 	query := d.db.DB.Select(q.Or(q.Eq("State", stateUnsorted), q.Eq("State", stateAccepted))).OrderBy("FolderName")
 	if err := query.Find(&downloadEntries); err != nil {
 		if err == storm.ErrNotFound {
-			logThis.Info("Everything is sorted. Congratulations!", NORMAL)
+			logthis.Info("Everything is sorted. Congratulations!", logthis.NORMAL)
 			return nil
 		}
 		return err
@@ -398,18 +399,18 @@ func (d *DownloadsDB) SortThisID(e *Environment, id int) error {
 
 func (d *DownloadsDB) FindByState(state string) []DownloadEntry {
 	if !strslice.Contains(DownloadFolderStates, state) {
-		logThis.Info("Invalid state", NORMAL)
+		logthis.Info("Invalid state", logthis.NORMAL)
 	}
 	var hits []DownloadEntry
 	dlState := DownloadState(state)
 	if dlState == -1 {
-		logThis.Info("Unknown state", VERBOSEST)
+		logthis.Info("Unknown state", logthis.VERBOSEST)
 	} else {
 		if err := d.db.DB.Select(q.Eq("State", dlState)).Find(&hits); err != nil {
 			if err == storm.ErrNotFound {
-				logThis.Error(errors.Wrap(err, "Could not find downloads by state"), VERBOSEST)
+				logthis.Error(errors.Wrap(err, "Could not find downloads by state"), logthis.VERBOSEST)
 			} else {
-				logThis.Error(errors.Wrap(err, "Could not search downloads database"), VERBOSEST)
+				logthis.Error(errors.Wrap(err, "Could not search downloads database"), logthis.VERBOSEST)
 			}
 		}
 	}
@@ -420,7 +421,7 @@ func (d *DownloadsDB) FindByArtist(artist string) []DownloadEntry {
 	var hits []DownloadEntry
 	query := d.db.DB.Select(InSlice("Artists", artist))
 	if err := query.Find(&hits); err != nil && err != storm.ErrNotFound {
-		logThis.Error(errors.Wrap(err, "Could not find downloads by artist "+artist), VERBOSEST)
+		logthis.Error(errors.Wrap(err, "Could not find downloads by artist "+artist), logthis.VERBOSEST)
 	}
 	return hits
 }
@@ -453,7 +454,7 @@ func (d *DownloadsDB) Clean() error {
 			// read at most 2 entries insinde entry
 			f, err := os.Open(filepath.Join(d.root, entry.Name()))
 			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error opening "+entry.Name()), VERBOSE)
+				logthis.Error(errors.Wrap(err, "Error opening "+entry.Name()), logthis.VERBOSE)
 				continue
 			}
 			contents, err := f.Readdir(2)
@@ -463,7 +464,7 @@ func (d *DownloadsDB) Clean() error {
 				if err == io.EOF {
 					toBeMoved = append(toBeMoved, entry)
 				} else {
-					logThis.Error(errors.Wrap(err, "Error listing contents of "+entry.Name()), VERBOSE)
+					logthis.Error(errors.Wrap(err, "Error listing contents of "+entry.Name()), logthis.VERBOSE)
 				}
 			} else if len(contents) == 1 && contents[0].IsDir() && contents[0].Name() == MetadataDir {
 				toBeMoved = append(toBeMoved, entry)

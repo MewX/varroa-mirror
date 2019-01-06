@@ -7,6 +7,7 @@ import (
 
 	"github.com/asdine/storm"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 func updateStats(e *Environment, tracker string, stats *StatsDB) error {
@@ -43,33 +44,33 @@ func updateStats(e *Environment, tracker string, stats *StatsDB) error {
 	}
 
 	// compare with new stats
-	logThis.Info(newStats.Progress(&previousStats), NORMAL)
+	logthis.Info(newStats.Progress(&previousStats), logthis.NORMAL)
 	// send notification
 	if notifyErr := Notify("stats: "+newStats.Progress(&previousStats), tracker, "info", e); notifyErr != nil {
-		logThis.Error(notifyErr, NORMAL)
+		logthis.Error(notifyErr, logthis.NORMAL)
 	}
 
 	// if something is wrong, send notification and stop
 	if !newStats.IsProgressAcceptable(&previousStats, statsConfig.MaxBufferDecreaseMB, statsConfig.MinimumRatio) {
 		if newStats.Ratio <= statsConfig.MinimumRatio {
 			// unacceptable because of low ratio
-			logThis.Info(tracker+": "+errorBelowWarningRatio, NORMAL)
+			logthis.Info(tracker+": "+errorBelowWarningRatio, logthis.NORMAL)
 			// sending notification
 			if err := Notify(tracker+": "+errorBelowWarningRatio, tracker, "error", e); err != nil {
-				logThis.Error(err, NORMAL)
+				logthis.Error(err, logthis.NORMAL)
 			}
 		} else {
 			// unacceptable because of ratio drop
-			logThis.Info(tracker+": "+errorBufferDrop, NORMAL)
+			logthis.Info(tracker+": "+errorBufferDrop, logthis.NORMAL)
 			// sending notification
 			if err := Notify(tracker+": "+errorBufferDrop, tracker, "error", e); err != nil {
-				logThis.Error(err, NORMAL)
+				logthis.Error(err, logthis.NORMAL)
 			}
 		}
 		// stopping things
 		autosnatchConfig, err := e.config.GetAutosnatch(tracker)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, "Cannot find autosnatch configuration for tracker "+tracker), NORMAL)
+			logthis.Error(errors.Wrap(err, "Cannot find autosnatch configuration for tracker "+tracker), logthis.NORMAL)
 		} else {
 			e.mutex.Lock()
 			autosnatchConfig.disabledAutosnatching = true
@@ -88,7 +89,7 @@ func monitorAllStats(e *Environment) {
 	// access to statsDB
 	stats, err := NewStatsDB(filepath.Join(StatsDir, DefaultHistoryDB))
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "Error, could not access the stats database"), NORMAL)
+		logthis.Error(errors.Wrap(err, "Error, could not access the stats database"), logthis.NORMAL)
 		return
 	}
 
@@ -98,7 +99,7 @@ func monitorAllStats(e *Environment) {
 		if statsConfig, err := e.config.GetStats(t.Name); err == nil {
 			// initial stats
 			if err := updateStats(e, label, stats); err != nil {
-				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
+				logthis.Error(errors.Wrap(err, ErrorGeneratingGraphs), logthis.NORMAL)
 			}
 			// get update period
 			tickers[statsConfig.UpdatePeriodH] = append(tickers[statsConfig.UpdatePeriodH], label)
@@ -106,11 +107,11 @@ func monitorAllStats(e *Environment) {
 	}
 	// generate index.html
 	if err := e.GenerateIndex(); err != nil {
-		logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
+		logthis.Error(errors.Wrap(err, "Error generating index.html"), logthis.NORMAL)
 	}
 	// deploy
 	if err := e.DeployToGitlabPages(); err != nil {
-		logThis.Error(errors.Wrap(err, errorDeploying), NORMAL)
+		logthis.Error(errors.Wrap(err, errorDeploying), logthis.NORMAL)
 	}
 
 	// preparing
@@ -135,16 +136,16 @@ func monitorAllStats(e *Environment) {
 		// TODO checks
 		for _, trackerLabel := range tickers[tickerPeriods[triggered]] {
 			if err := updateStats(e, trackerLabel, stats); err != nil {
-				logThis.Error(errors.Wrap(err, ErrorGeneratingGraphs), NORMAL)
+				logthis.Error(errors.Wrap(err, ErrorGeneratingGraphs), logthis.NORMAL)
 			}
 		}
 		// generate index.html
 		if err := e.GenerateIndex(); err != nil {
-			logThis.Error(errors.Wrap(err, "Error generating index.html"), NORMAL)
+			logthis.Error(errors.Wrap(err, "Error generating index.html"), logthis.NORMAL)
 		}
 		// deploy
 		if err := e.DeployToGitlabPages(); err != nil {
-			logThis.Error(errors.Wrap(err, errorDeploying), NORMAL)
+			logthis.Error(errors.Wrap(err, errorDeploying), logthis.NORMAL)
 		}
 	}
 }

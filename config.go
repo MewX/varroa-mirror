@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -145,6 +146,10 @@ func (c *Config) check() error {
 	if err := c.General.check(); err != nil {
 		return errors.Wrap(err, "Error reading general configuration")
 	}
+	// setting log level
+	logthis.SetLevel(c.General.LogLevel)
+	logthis.SetStdOutput(true)
+
 	// tracker checks
 	if len(c.Trackers) == 0 {
 		return errors.New("Missing tracker information")

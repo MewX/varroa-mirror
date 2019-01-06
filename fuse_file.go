@@ -60,7 +60,7 @@ func (f *FuseFile) Attr(ctx context.Context, a *fuse.Attr) error {
 var _ = fs.NodeOpener(&FuseFile{})
 
 func (f *FuseFile) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
-	// logThis.Info(fmt.Sprintf("FILE Open %s.", f.String()), VERBOSESTEST)
+	// logthis.Info(fmt.Sprintf("FILE Open %s.", f.String()), logthis.VERBOSESTEST)
 
 	fullPath := filepath.Join(f.fs.mountPoint, f.trueRelativePath, f.releaseSubdir, f.name)
 	if !fs_.FileExists(fullPath) {
@@ -84,7 +84,7 @@ var _ fs.Handle = (*FuseFileHandle)(nil)
 var _ fs.HandleReleaser = (*FuseFileHandle)(nil)
 
 func (fh *FuseFileHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
-	// logThis.Info(fmt.Sprintf("FILE Release %s", fh.f.String()), VERBOSESTEST)
+	// logthis.Info(fmt.Sprintf("FILE Release %s", fh.f.String()), logthis.VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO
 	}
@@ -94,7 +94,7 @@ func (fh *FuseFileHandle) Release(ctx context.Context, req *fuse.ReleaseRequest)
 var _ = fs.HandleReader(&FuseFileHandle{})
 
 func (fh *FuseFileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
-	// logThis.Info(fmt.Sprintf("FILE Read %s", fh.f.String()), VERBOSESTEST)
+	// logthis.Info(fmt.Sprintf("FILE Read %s", fh.f.String()), logthis.VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO
 	}
@@ -114,7 +114,7 @@ func (fh *FuseFileHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp 
 var _ = fs.HandleFlusher(&FuseFileHandle{})
 
 func (fh *FuseFileHandle) Flush(ctx context.Context, req *fuse.FlushRequest) error {
-	// logThis.Info(fmt.Sprintf("Entered Flush with path: %s", fh.r.Name()), VERBOSESTEST)
+	// logthis.Info(fmt.Sprintf("Entered Flush with path: %s", fh.r.Name()), logthis.VERBOSESTEST)
 	if fh.r == nil {
 		return fuse.EIO
 	}
