@@ -157,7 +157,6 @@ const (
 	errorGitAdd       = "Error running git add"
 	errorGitCommit    = "Error running git commit"
 	errorGitAddRemote = "Error running git remote add"
-	errorGitPush      = "Error running git push"
 	errorDeploying    = "Error deploying to Gitlab Pages"
 	// irc errors
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"

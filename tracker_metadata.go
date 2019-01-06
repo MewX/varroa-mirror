@@ -571,8 +571,8 @@ func (tm *TrackerMetadata) HTMLDescription() string {
 
 func (tm *TrackerMetadata) TextDescription(fancy bool) string {
 	artists := make([]string, len(tm.Artists))
-	for _, a := range tm.Artists {
-		artists = append(artists, a.Name)
+	for i, a := range tm.Artists {
+		artists[i] = a.Name
 	}
 	artistNames := strings.Join(artists, ", ")
 

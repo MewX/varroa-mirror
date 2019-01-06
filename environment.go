@@ -200,7 +200,7 @@ func (e *Environment) DeployToGitlabPages() error {
 		}
 	}
 	if err := e.git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
-		return errors.Wrap(err, errorGitPush)
+		return err
 	}
 	logthis.Info("Pushed new stats to "+e.config.GitlabPages.URL, logthis.NORMAL)
 	return nil

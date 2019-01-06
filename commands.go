@@ -75,7 +75,7 @@ Loop:
 		for {
 			select {
 			case l := <-logOutput:
-				e.daemonUnixSocket.Outgoing <- l.([]byte)
+				e.daemonUnixSocket.Outgoing <- []byte(l.(string))
 			case a := <-e.daemonUnixSocket.Incoming:
 				orders := IncomingJSON{}
 				if jsonErr := json.Unmarshal(a, &orders); jsonErr != nil {

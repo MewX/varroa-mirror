@@ -180,6 +180,10 @@ gitlab.com/catastrophic/assistance v0.5.0 h1:UECSUG29rdQzQ+FjiruNhBGvsD+375VpiFk
 gitlab.com/catastrophic/assistance v0.5.0/go.mod h1:zk2az5arCVEis8SQocA8rtm4JGaPpJnaFzktVYC9/yw=
 gitlab.com/catastrophic/assistance v0.7.0 h1:NkXUHhX1zGZXoMtFg+/XB2CS3XtHD5v2gHwlSLAwl54=
 gitlab.com/catastrophic/assistance v0.7.0/go.mod h1:zk2az5arCVEis8SQocA8rtm4JGaPpJnaFzktVYC9/yw=
+gitlab.com/catastrophic/assistance v0.7.1 h1:PqZA6Et27E6jFEAvXC8SX7bFp8++o/AxN54/qFCN7wk=
+gitlab.com/catastrophic/assistance v0.7.1/go.mod h1:zk2az5arCVEis8SQocA8rtm4JGaPpJnaFzktVYC9/yw=
+gitlab.com/catastrophic/assistance v0.7.2 h1:L7/v3K5tcmV4tbZs/mGhoqDy9nqmvJ9t9+kkyIQoO9w=
+gitlab.com/catastrophic/assistance v0.7.2/go.mod h1:zk2az5arCVEis8SQocA8rtm4JGaPpJnaFzktVYC9/yw=
 gitlab.com/passelecasque/go-ircevent v0.0.0-20180204145445-d9588561fc12 h1:/HGWJ4qKQ1OhIlrI5feIeFiLmdQgntVjyoyd46HUEjc=
 gitlab.com/passelecasque/go-ircevent v0.0.0-20180204145445-d9588561fc12/go.mod h1:Ov0pyRiSVVA2OqHs9TxBrKam9lJX6ZmMd+vN1kq/rlc=
 go.etcd.io/bbolt v1.3.0 h1:oY10fI923Q5pVCVt1GBTZMn8LHo5M+RCInFpeMnV4QI=

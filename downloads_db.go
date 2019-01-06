@@ -192,7 +192,7 @@ func (d *DownloadsDB) Scan() error {
 func (d *DownloadsDB) RescanIDs(IDs []int) error {
 	// retrieve the associated DownloadEntries
 	entries := make([]DownloadEntry, len(IDs))
-	for _, id := range IDs {
+	for i, id := range IDs {
 		dl, err := d.FindByID(id)
 		if err != nil {
 			if err == storm.ErrNotFound {
@@ -201,7 +201,7 @@ func (d *DownloadsDB) RescanIDs(IDs []int) error {
 				return errors.Wrap(err, fmt.Sprintf("error looking for ID %d", id))
 			}
 		}
-		entries = append(entries, dl)
+		entries[i] = dl
 	}
 	if len(entries) == 0 {
 		return errors.New("none of the IDs could be found in the database")
