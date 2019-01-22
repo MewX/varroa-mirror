@@ -27,8 +27,8 @@ import (
 const (
 	// Gazelle usually only allows 5 API calls every 10s
 	// Using 2 every 4 to force calls to be more spread in time
-	allowedAPICallsByPeriod = 2
-	apiCallsPeriodS         = 4
+	allowedAPICallsByPeriod = 5
+	apiCallsPeriodmS        = 10500
 
 	statusSuccess = "success"
 
@@ -56,8 +56,8 @@ func (t *GazelleTracker) apiCallRateLimiter() {
 	for i := 0; i < allowedAPICallsByPeriod; i++ {
 		t.limiter <- true
 	}
-	// every apiCallsPeriodS, refill the limiter channel
-	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
+	// every apiCallsPeriodmS, refill the limiter channel
+	for range time.Tick(time.Millisecond * time.Duration(apiCallsPeriodmS)) {
 	Loop:
 		for i := 0; i < allowedAPICallsByPeriod; i++ {
 			select {
