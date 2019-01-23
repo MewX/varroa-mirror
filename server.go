@@ -285,7 +285,9 @@ func webServer(e *Environment) {
 						}
 						mutex.Unlock()
 					case <-endThisConnection:
+						mutex.Lock()
 						logthis.Unsubscribe(logOutput)
+						mutex.Unlock()
 						return
 					}
 				}

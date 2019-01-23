@@ -26,7 +26,7 @@ import (
 
 const (
 	// Gazelle usually only allows 5 API calls every 10s
-	// Using 2 every 4 to force calls to be more spread in time
+	// doing 5 every 10.5s to be sure
 	allowedAPICallsByPeriod = 5
 	apiCallsPeriodmS        = 10500
 
