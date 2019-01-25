@@ -5,7 +5,7 @@ require (
 	github.com/DataDog/zstd v1.3.5 // indirect
 	github.com/Sereal/Sereal v0.0.0-20181211220259-509a78ddbda3 // indirect
 	github.com/asdine/storm v2.1.2+incompatible
-	github.com/blend/go-sdk v1.0.1 // indirect
+	github.com/blend/go-sdk v1.1.0 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/briandowns/spinner v0.0.0-20181029155426-195c31b675a7
 	github.com/djherbis/times v1.1.0
