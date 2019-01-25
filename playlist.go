@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/strslice"
 )
 
 type Playlist struct {
@@ -27,12 +29,12 @@ func CurrentPlaylists(root string) (*Playlist, *Playlist, error) {
 	daily.Filename = filepath.Join(root, thisDay+m3uExt)
 	monthly.Filename = filepath.Join(root, thisMonth+m3uExt)
 	// if it exists, parse and return
-	if FileExists(daily.Filename) {
+	if fs.FileExists(daily.Filename) {
 		if err := daily.Load(daily.Filename); err != nil {
 			return nil, nil, err
 		}
 	}
-	if FileExists(monthly.Filename) {
+	if fs.FileExists(monthly.Filename) {
 		if err := monthly.Load(monthly.Filename); err != nil {
 			return nil, nil, err
 		}
@@ -63,7 +65,7 @@ func AddReleaseToCurrentPlaylists(playlistDirectory, libraryDirectory, release s
 }
 
 func (p *Playlist) Load(filename string) error {
-	if !FileExists(filename) {
+	if !fs.FileExists(filename) {
 		return errors.New("playlist " + filename + " does not exist")
 	}
 	p.Filename = filename
@@ -87,7 +89,7 @@ func (p *Playlist) AddRelease(root, path string) error {
 			return nil
 		}
 		// load all music files
-		if StringInSlice(filepath.Ext(subPath), []string{flacExt, mp3Ext}) {
+		if strslice.Contains([]string{flacExt, mp3Ext}, filepath.Ext(subPath)) {
 			// MPD wants relative paths
 			relativePath, err := filepath.Rel(root, subPath)
 			if err != nil {

@@ -36,7 +36,7 @@ func NewDatabase(path string) (*Database, error) {
 	var err error
 	db := &Database{}
 	if err = db.Open(path); err != nil {
-		err = errors.Wrap(err, "Error opening history database")
+		err = errors.Wrap(err, "Error opening database")
 		return nil, err
 	}
 	return db, err

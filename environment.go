@@ -12,6 +12,10 @@ import (
 	"github.com/pkg/errors"
 	daemon "github.com/sevlyar/go-daemon"
 	"github.com/wcharczuk/go-chart/drawing"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/git"
+	"gitlab.com/catastrophic/assistance/ipc"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/passelecasque/go-ircevent"
 )
 
@@ -37,14 +41,11 @@ type Environment struct {
 	serverData *ServerPage
 	Trackers   map[string]*GazelleTracker
 
-	expectedOutput  bool
-	websocketOutput bool
-	sendToWebsocket chan string
-	mutex           sync.RWMutex
-	git             *Git
-	daemonCom       *DaemonCom
-	startTime       time.Time
-	ircClient       *irc.Connection
+	mutex            sync.RWMutex
+	git              *git.Git
+	daemonUnixSocket *ipc.UnixSocket
+	startTime        time.Time
+	ircClient        *irc.Connection
 }
 
 // NewEnvironment prepares a new Environment.
@@ -54,16 +55,7 @@ func NewEnvironment() *Environment {
 	e.serverData = &ServerPage{}
 	// make maps
 	e.Trackers = make(map[string]*GazelleTracker)
-	// current command expects output
-	e.expectedOutput = false
-	if !daemon.WasReborn() {
-		// here we're expecting output
-		e.expectedOutput = true
-	}
-	// websocket is open and waiting for input
-	e.websocketOutput = false
-	e.daemonCom = NewDaemonComServer()
-	e.sendToWebsocket = make(chan string, 10)
+	e.daemonUnixSocket = ipc.NewUnixSocketServer(daemonSocket)
 	// irc
 	e.ircClient = nil
 	return e
@@ -98,7 +90,10 @@ func (e *Environment) LoadConfiguration() error {
 	}
 	// git
 	if e.config.gitlabPagesConfigured {
-		e.git = NewGit(StatsDir, e.config.GitlabPages.User, e.config.GitlabPages.User+"+varroa@musica")
+		e.git, err = git.New(StatsDir, e.config.GitlabPages.User, e.config.GitlabPages.User+"+varroa@musica")
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -108,9 +103,11 @@ func (e *Environment) SetUp(autologin bool) error {
 	// for uptime
 	if daemon.WasReborn() {
 		e.startTime = time.Now()
+		// if in daemon, only use log file
+		logthis.SetStdOutput(false)
 	}
 	// prepare directory for stats if necessary
-	if !DirectoryExists(StatsDir) {
+	if !fs.DirExists(StatsDir) {
 		if err := os.MkdirAll(StatsDir, 0777); err != nil {
 			return errors.Wrap(err, errorCreatingStatsDir)
 		}
@@ -127,7 +124,7 @@ func (e *Environment) SetUp(autologin bool) error {
 			if err = tracker.Login(); err != nil {
 				return errors.Wrap(err, "Error logging in tracker "+label)
 			}
-			logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
+			logthis.Info(fmt.Sprintf("Logged in tracker %s.", label), logthis.NORMAL)
 		}
 		// launching rate limiter
 		go tracker.apiCallRateLimiter()
@@ -153,7 +150,7 @@ func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
 		if err := tracker.Login(); err != nil {
 			return tracker, errors.Wrap(err, "Error logging in tracker "+label)
 		}
-		logThis.Info(fmt.Sprintf("Logged in tracker %s.", label), NORMAL)
+		logthis.Info(fmt.Sprintf("Logged in tracker %s.", label), logthis.NORMAL)
 	}
 	return tracker, nil
 }
@@ -173,8 +170,6 @@ func (e *Environment) DeployToGitlabPages() error {
 	if e.git == nil {
 		return errors.New("Error setting up git")
 	}
-	// make sure we're going back to cwd
-	defer e.git.getBack()
 
 	// init repository if necessary
 	if !e.git.Exists() {
@@ -192,7 +187,7 @@ func (e *Environment) DeployToGitlabPages() error {
 	}
 	// add the graphs, if it fails,
 	if err := e.git.Add("*" + svgExt); err != nil {
-		logThis.Error(errors.Wrap(err, errorGitAdd+", not all graphs are generated yet."), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGitAdd+", not all graphs are generated yet."), logthis.NORMAL)
 	}
 	// commit
 	if err := e.git.Commit("varroa musica stats update."); err != nil {
@@ -205,9 +200,9 @@ func (e *Environment) DeployToGitlabPages() error {
 		}
 	}
 	if err := e.git.Push("origin", e.config.GitlabPages.GitHTTPS, e.config.GitlabPages.User, e.config.GitlabPages.Password); err != nil {
-		return errors.Wrap(err, errorGitPush)
+		return err
 	}
-	logThis.Info("Pushed new stats to "+e.config.GitlabPages.URL, NORMAL)
+	logthis.Info("Pushed new stats to "+e.config.GitlabPages.URL, logthis.NORMAL)
 	return nil
 }
 

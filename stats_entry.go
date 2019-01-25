@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 const (
@@ -31,18 +34,18 @@ type StatsEntry struct {
 
 func (se *StatsEntry) String() string {
 	buffer, warningBuffer := se.getBufferValues()
-	return fmt.Sprintf(firstProgress, readableInt64(buffer), se.Ratio, readableUInt64(se.Up), readableUInt64(se.Down), readableInt64(warningBuffer))
+	return fmt.Sprintf(firstProgress, fs.FileSizeDelta(buffer), se.Ratio, fs.FileSize(se.Up), fs.FileSize(se.Down), fs.FileSizeDelta(warningBuffer))
 }
 
 func (se *StatsEntry) getBufferValues() (int64, int64) {
 	conf, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return 0, 0
 	}
 	statsConfig, err := conf.GetStats(se.Tracker)
 	if err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return 0, 0
 	}
 	return int64(float64(se.Up)/statsConfig.TargetRatio) - int64(se.Down), int64(float64(se.Up)/warningRatio) - int64(se.Down)
@@ -62,32 +65,32 @@ func (se *StatsEntry) Progress(previous *StatsEntry) string {
 	}
 	buffer, warningBuffer := se.getBufferValues()
 	dup, ddown, dbuff, dwbuff, dratio := se.Diff(previous)
-	return fmt.Sprintf(progress, readableInt64(buffer), readableInt64(dbuff), se.Ratio, dratio, readableUInt64(se.Up),
-		readableInt64(dup), readableUInt64(se.Down), readableInt64(ddown), readableInt64(warningBuffer),
-		readableInt64(dwbuff))
+	return fmt.Sprintf(progress, fs.FileSizeDelta(buffer), fs.FileSizeDelta(dbuff), se.Ratio, dratio, fs.FileSize(se.Up),
+		fs.FileSizeDelta(dup), fs.FileSize(se.Down), fs.FileSizeDelta(ddown), fs.FileSizeDelta(warningBuffer),
+		fs.FileSizeDelta(dwbuff))
 }
 
 // TODO do something about this awful thing
 func (se *StatsEntry) ProgressParts(previous *StatsEntry) []string {
 	buffer, warningBuffer := se.getBufferValues()
 	if previous.Ratio == 0 {
-		return []string{"+", se.Timestamp.Format("2006-01-02 15:04"), readableUInt64(se.Up), readableUInt64(se.Down), readableInt64(buffer), readableInt64(warningBuffer), fmt.Sprintf("%.3f", se.Ratio)}
+		return []string{"+", se.Timestamp.Format("2006-01-02 15:04"), fs.FileSize(se.Up), fs.FileSize(se.Down), fs.FileSizeDelta(buffer), fs.FileSizeDelta(warningBuffer), fmt.Sprintf("%.3f", se.Ratio)}
 	}
 	dup, ddown, dbuff, dwbuff, dratio := se.Diff(previous)
 	return []string{
-		readableInt64Sign(dbuff),
+		fs.Sign(dbuff),
 		se.Timestamp.Format("2006-01-02 15:04"),
-		fmt.Sprintf("%s (%s)", readableUInt64(se.Up), readableInt64(dup)),
-		fmt.Sprintf("%s (%s)", readableUInt64(se.Down), readableInt64(ddown)),
-		fmt.Sprintf("%s (%s)", readableInt64(buffer), readableInt64(dbuff)),
-		fmt.Sprintf("%s (%s)", readableInt64(warningBuffer), readableInt64(dwbuff)),
+		fmt.Sprintf("%s (%s)", fs.FileSize(se.Up), fs.FileSizeDelta(dup)),
+		fmt.Sprintf("%s (%s)", fs.FileSize(se.Down), fs.FileSizeDelta(ddown)),
+		fmt.Sprintf("%s (%s)", fs.FileSizeDelta(buffer), fs.FileSizeDelta(dbuff)),
+		fmt.Sprintf("%s (%s)", fs.FileSizeDelta(warningBuffer), fs.FileSizeDelta(dwbuff)),
 		fmt.Sprintf("%.3f (%+.3f)", se.Ratio, dratio),
 	}
 }
 
 func (se *StatsEntry) IsProgressAcceptable(previous *StatsEntry, maxDecrease int, minimumRatio float64) bool {
 	if se.Ratio <= minimumRatio {
-		logThis.Info("Ratio has dropped below minimum authorized, unacceptable.", NORMAL)
+		logthis.Info("Ratio has dropped below minimum authorized, unacceptable.", logthis.NORMAL)
 		return false
 	}
 	if previous.Ratio == 0 {
@@ -99,7 +102,7 @@ func (se *StatsEntry) IsProgressAcceptable(previous *StatsEntry, maxDecrease int
 	if maxDecrease == 0 || bufferChange >= 0 || -bufferChange <= int64(maxDecrease*1024*1024) {
 		return true
 	}
-	logThis.Info(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.", bufferChange, maxDecrease*1024*1024), VERBOSE)
+	logthis.Info(fmt.Sprintf("Decrease: %d bytes, only %d allowed. Unacceptable.", bufferChange, maxDecrease*1024*1024), logthis.VERBOSE)
 	return false
 }
 
@@ -116,13 +119,13 @@ func InterpolateStats(previous, next StatsEntry, targetTime time.Time) (*StatsEn
 	}
 	// create a virtual StatsEntry using simple linear interpolation
 	virtualStats := &StatsEntry{}
-	upSlope := float64((float64(next.Up) - float64(previous.Up)) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix()))
+	upSlope := (float64(next.Up) - float64(previous.Up)) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix())
 	upOffset := float64(previous.Up) - upSlope*float64(previous.Timestamp.Unix())
 	virtualStats.Up = uint64(upSlope*float64(targetTime.Unix()) + upOffset)
-	downSlope := float64((float64(next.Down) - float64(previous.Down)) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix()))
+	downSlope := (float64(next.Down) - float64(previous.Down)) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix())
 	downOffset := float64(previous.Down) - downSlope*float64(previous.Timestamp.Unix())
 	virtualStats.Down = uint64(downSlope*float64(targetTime.Unix()) + downOffset)
-	ratioSlope := float64((next.Ratio - previous.Ratio) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix()))
+	ratioSlope := (next.Ratio - previous.Ratio) / float64(next.Timestamp.Unix()-previous.Timestamp.Unix())
 	ratioOffset := previous.Ratio - ratioSlope*float64(previous.Timestamp.Unix())
 	virtualStats.Ratio = ratioSlope*float64(targetTime.Unix()) + ratioOffset
 	virtualStats.Timestamp = targetTime
@@ -172,7 +175,7 @@ func CalculateDeltas(entries []StatsEntry) []StatsDelta {
 		} else {
 			delta, err := CalculateDelta(entries[i-1], e)
 			if err != nil {
-				logThis.Error(err, VERBOSEST)
+				logthis.Error(err, logthis.VERBOSEST)
 				deltas = append(deltas, StatsDelta{Timestamp: e.Timestamp})
 			} else {
 				deltas = append(deltas, *delta)

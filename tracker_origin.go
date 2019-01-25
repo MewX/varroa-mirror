@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 // TrackerOriginJSON contains the list of trackers of origin for a release.
@@ -27,7 +28,7 @@ func (toc *TrackerOriginJSON) Load() error {
 	if toc.Path == "" {
 		return errors.New("No path defined")
 	}
-	if !FileExists(toc.Path) {
+	if !fs.FileExists(toc.Path) {
 		return errors.New("Path does not exist: " + toc.Path)
 	}
 	b, err := ioutil.ReadFile(toc.Path)

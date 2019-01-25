@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/wcharczuk/go-chart"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 // StatsSeries is a struct that holds the Stats data needed to generate time series graphs.
@@ -36,8 +37,8 @@ func (ss *StatsSeries) AddStats(entries ...StatsEntry) error {
 		ss.Up = append(ss.Up, float64(e.Up)/(1024*1024*1024))
 		ss.Down = append(ss.Down, float64(e.Down)/(1024*1024*1024))
 		ss.Ratio = append(ss.Ratio, e.Ratio)
-		ss.Buffer = append(ss.Buffer, (float64(float64(e.Up)/statsConfig.TargetRatio)-float64(e.Down))/(1024*1024*1024))
-		ss.WarningBuffer = append(ss.WarningBuffer, (float64(float64(e.Up)/warningRatio)-float64(e.Down))/(1024*1024*1024))
+		ss.Buffer = append(ss.Buffer, (float64(e.Up)/statsConfig.TargetRatio-float64(e.Down))/(1024*1024*1024))
+		ss.WarningBuffer = append(ss.WarningBuffer, (float64(e.Up)/warningRatio-float64(e.Down))/(1024*1024*1024))
 	}
 	return nil
 }
@@ -106,23 +107,23 @@ func (ss *StatsSeries) GenerateGraphs(directory, prefix string, firstTimestamp t
 	// write individual graphs
 	atLeastOneFailed := false
 	if err := writeTimeSeriesChart(upSeries, "Upload (Gb)", filepath.Join(directory, prefix+uploadStatsFile), addSMA); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for upload"), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGeneratingGraph+" for upload"), logthis.NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(downSeries, "Download (Gb)", filepath.Join(directory, prefix+downloadStatsFile), addSMA); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for download"), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGeneratingGraph+" for download"), logthis.NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(bufferSeries, "Buffer (Gb)", filepath.Join(directory, prefix+bufferStatsFile), addSMA); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for buffer"), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGeneratingGraph+" for buffer"), logthis.NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(warningBufferSeries, "Warning Buffer (Gb)", filepath.Join(directory, prefix+warningBufferStatsFile), addSMA); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for warning buffer"), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGeneratingGraph+" for warning buffer"), logthis.NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(ratioSeries, "Ratio", filepath.Join(directory, prefix+ratioStatsFile), addSMA); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for ratio"), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGeneratingGraph+" for ratio"), logthis.NORMAL)
 		atLeastOneFailed = true
 	}
 	if atLeastOneFailed {
@@ -182,11 +183,11 @@ func (sss *SnatchStatsSeries) GenerateGraphs(directory, prefix string, firstTime
 	// write individual graphs
 	atLeastOneFailed := false
 	if err := writeTimeSeriesChart(numberSeries, "Number of snatches/day", filepath.Join(directory, prefix+numberSnatchedPerDayFile), addSMA); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for number "), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGeneratingGraph+" for number "), logthis.NORMAL)
 		atLeastOneFailed = true
 	}
 	if err := writeTimeSeriesChart(sizeSeries, "Size snatched/day with varroa musica (Gb)", filepath.Join(directory, prefix+sizeSnatchedPerDayFile), addSMA); err != nil {
-		logThis.Error(errors.Wrap(err, errorGeneratingGraph+" for size snatched/day"), NORMAL)
+		logthis.Error(errors.Wrap(err, errorGeneratingGraph+" for size snatched/day"), logthis.NORMAL)
 		atLeastOneFailed = true
 	}
 	if atLeastOneFailed {

@@ -7,6 +7,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/strslice"
+	"gitlab.com/catastrophic/assistance/ui"
 )
 
 const (
@@ -23,11 +27,11 @@ var DownloadFolderStates = []string{"unsorted", "UNUSED", "accepted", "rejected"
 func ColorizeDownloadState(value int, txt string) string {
 	switch value {
 	case stateAccepted:
-		txt = GreenBold(txt)
+		txt = ui.GreenBold(txt)
 	case stateUnsorted:
-		txt = Blue(txt)
+		txt = ui.Blue(txt)
 	case stateRejected:
-		txt = RedBold(txt)
+		txt = ui.RedBold(txt)
 	}
 	return txt
 }
@@ -91,13 +95,13 @@ func (d *DownloadEntry) Description(root string) string {
 }
 
 func (d *DownloadEntry) Load(root string) error {
-	if d.FolderName == "" || !DirectoryExists(filepath.Join(root, d.FolderName)) {
+	if d.FolderName == "" || !fs.DirExists(filepath.Join(root, d.FolderName)) {
 		return errors.New("Wrong or missing path")
 	}
 
 	// find origin.json
 	originFile := filepath.Join(root, d.FolderName, MetadataDir, OriginJSONFile)
-	if FileExists(originFile) {
+	if fs.FileExists(originFile) {
 		origin := TrackerOriginJSON{Path: originFile}
 		if err := origin.Load(); err != nil {
 			return errors.Wrap(err, "Error reading origin.json")
@@ -128,10 +132,10 @@ func (d *DownloadEntry) Load(root string) error {
 			// getting release info from json
 			infoJSON := filepath.Join(root, d.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
 			infoJSONOldFormat := filepath.Join(root, d.FolderName, MetadataDir, "Release.json")
-			if !FileExists(infoJSON) {
+			if !fs.FileExists(infoJSON) {
 				infoJSON = infoJSONOldFormat
 			}
-			if FileExists(infoJSON) {
+			if fs.FileExists(infoJSON) {
 				d.HasTrackerMetadata = true
 
 				md := TrackerMetadata{}
@@ -168,7 +172,7 @@ func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerMetadata, erro
 	}
 
 	infoJSON := filepath.Join(root, d.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
-	if !FileExists(infoJSON) {
+	if !fs.FileExists(infoJSON) {
 		// if not present, try the old format
 		infoJSON = filepath.Join(root, d.FolderName, MetadataDir, "Release.json")
 	}
@@ -177,7 +181,7 @@ func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerMetadata, erro
 	info := TrackerMetadata{}
 	err := info.LoadFromJSON(tracker, originJSON, infoJSON)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "Error, could not load release json"), NORMAL)
+		logthis.Error(errors.Wrap(err, "Error, could not load release json"), logthis.NORMAL)
 	}
 	return info, err
 }
@@ -187,15 +191,15 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 	if err := d.Load(root); err != nil {
 		return err
 	}
-	fmt.Println(YellowUnderlined("Sorting " + d.FolderName))
+	fmt.Println(ui.YellowUnderlined("Sorting " + d.FolderName))
 	// if mpd configured, allow playing the release...
-	if e.config.MPD != nil && Accept("Load release into MPD") {
+	if e.config.MPD != nil && ui.Accept("Load release into MPD") {
 		fmt.Println("Sending to MPD.")
 		mpdClient := MPD{}
 		if err := mpdClient.Connect(e.config.MPD); err == nil {
 			defer mpdClient.DisableAndDisconnect(root, d.FolderName)
 			if err := mpdClient.SendAndPlay(root, d.FolderName); err != nil {
-				fmt.Println(RedBold("Error sending to MPD: " + err.Error()))
+				fmt.Println(ui.RedBold("Error sending to MPD: " + err.Error()))
 			}
 		}
 	}
@@ -206,18 +210,18 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 		origin := TrackerOriginJSON{Path: originJSON}
 		if err := origin.Load(); err == nil {
 			// Note: if there is a problem with the file, it'll be found later.
-			fmt.Println(Green(origin.lastUpdatedString()))
+			fmt.Println(ui.Green(origin.lastUpdatedString()))
 		}
 
-		if Accept("Try to refresh metadata from tracker") {
+		if ui.Accept("Try to refresh metadata from tracker") {
 			for i, t := range d.Tracker {
 				tracker, err := e.Tracker(t)
 				if err != nil {
-					logThis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), NORMAL)
+					logthis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), logthis.NORMAL)
 					continue
 				}
 				if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.TrackerID[i])}); err != nil {
-					logThis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), NORMAL)
+					logthis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), logthis.NORMAL)
 					continue
 				}
 			}
@@ -226,35 +230,36 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 
 	// display metadata
 	fmt.Println(d.Description(root))
-	fmt.Println(Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
+	fmt.Println(ui.Green("This is where you decide what to do with this release. In any case, it will keep seeding until you remove it yourself or with your bittorrent client."))
 	validChoice := false
 	errs := 0
 	for !validChoice {
-		UserChoice("[A]ccept, [R]eject, or [D]efer decision : ")
-		choice, scanErr := GetInput()
+		ui.UserChoice("[A]ccept, [R]eject, or [D]efer decision : ")
+		choice, scanErr := ui.GetInput(nil)
 		if scanErr != nil {
 			return scanErr
 		}
 
-		if strings.ToUpper(choice) == "R" {
-			fmt.Println(RedBold("This release will be considered REJECTED. It will not be removed, but will be ignored in later sorting."))
-			fmt.Println(RedBold("This can be reverted by sorting its specific download ID (" + strconv.Itoa(d.ID) + ")."))
+		switch {
+		case strings.ToUpper(choice) == "R":
+			fmt.Println(ui.RedBold("This release will be considered REJECTED. It will not be removed, but will be ignored in later sorting."))
+			fmt.Println(ui.RedBold("This can be reverted by sorting its specific download ID (" + strconv.Itoa(d.ID) + ")."))
 			d.State = stateRejected
 			validChoice = true
-		} else if strings.ToUpper(choice) == "D" {
-			fmt.Println(Green("Decision about this download is POSTPONED."))
-
+		case strings.ToUpper(choice) == "D":
+			fmt.Println(ui.Green("Decision about this download is POSTPONED."))
 			d.State = stateUnsorted
 			validChoice = true
-		} else if strings.ToUpper(choice) == "A" {
+		case strings.ToUpper(choice) == "A":
 			if err := d.export(root, e.config); err != nil {
 				return err
 			}
 			d.State = stateAccepted
 			validChoice = true
 		}
+
 		if !validChoice {
-			fmt.Println(Red("Invalid choice."))
+			fmt.Println(ui.Red("Invalid choice."))
 			errs++
 			if errs > 10 {
 				return errors.New("Error sorting download, too many incorrect choices")
@@ -271,7 +276,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 		for _, t := range d.Tracker {
 			info, err := d.getMetadata(root, t)
 			if err != nil {
-				logThis.Info("Could not find metadata for tracker "+t, NORMAL)
+				logthis.Info("Could not find metadata for tracker "+t, logthis.NORMAL)
 				continue
 			}
 
@@ -292,7 +297,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 					mainArtistCandidates = append(mainArtistCandidates, variousArtists)
 				}
 
-				mainArtist, err = SelectOption("Main artist:\n", "You can change this value if several artists are listed, for organization purposes.", mainArtistCandidates)
+				mainArtist, err = ui.SelectOption("Main artist:\n", "You can change this value if several artists are listed, for organization purposes.", mainArtistCandidates)
 				if err != nil {
 					return err
 				}
@@ -307,7 +312,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 			if info.MainArtistAlias != info.MainArtist {
 				aliasCandidates = append(aliasCandidates, info.MainArtist)
 			}
-			mainArtistAlias, err := SelectOption("Main artist alias:\n", "You can change this value if the main artist uses several aliases and you want to regroup their releases in the library.", aliasCandidates)
+			mainArtistAlias, err := ui.SelectOption("Main artist alias:\n", "You can change this value if the main artist uses several aliases and you want to regroup their releases in the library.", aliasCandidates)
 			if err != nil {
 				return err
 			}
@@ -318,10 +323,10 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 			}
 			// category
 			categoryCandidates := info.Tags
-			if !StringInSlice(info.Category, info.Tags) {
+			if !strslice.Contains(info.Tags, info.Category) {
 				categoryCandidates = append([]string{info.Category}, info.Tags...)
 			}
-			category, err := SelectOption("User category:\n", "Allows custom library organization.", categoryCandidates)
+			category, err := ui.SelectOption("User category:\n", "Allows custom library organization.", categoryCandidates)
 			if err != nil {
 				return err
 			}
@@ -329,7 +334,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 			info.Category = category
 			// write to original user_metadata.json
 			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, MetadataDir), mainArtist, mainArtistAlias, category); err != nil {
-				logThis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), NORMAL)
+				logthis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), logthis.NORMAL)
 				return err
 			}
 			// generating new possible paths
@@ -340,29 +345,29 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 	// adding current folder name last
 	candidates = append(candidates, d.FolderName)
 	// select or input a new name
-	newName, err := SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
+	newName, err := ui.SelectOption("Generating new folder name from metadata:\n", "Folder must not already exist.", candidates)
 	if err != nil {
 		return err
 	}
-	if DirectoryExists(filepath.Join(config.Library.Directory, newName)) {
+	if fs.DirExists(filepath.Join(config.Library.Directory, newName)) {
 		return errors.New("destination already exists")
 	}
 	// export
-	if Accept("Export as " + newName) {
+	if ui.Accept("Export as " + newName) {
 		fmt.Println("Exporting files to the library...")
-		if err = CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
+		if err = fs.CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
 			return errors.Wrap(err, "Error exporting download "+d.FolderName)
 		}
-		fmt.Println(Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sortings."))
+		fmt.Println(ui.Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sortings."))
 		// if exported, write playlists
-		if config.playlistDirectoryConfigured && Accept("Add release to daily/monthly playlists") {
+		if config.playlistDirectoryConfigured && ui.Accept("Add release to daily/monthly playlists") {
 			if err = AddReleaseToCurrentPlaylists(config.Library.PlaylistDirectory, config.Library.Directory, newName); err != nil {
 				return err
 			}
-			fmt.Println(Green("Playlists generated or updated."))
+			fmt.Println(ui.Green("Playlists generated or updated."))
 		}
 	} else {
-		fmt.Println(Red("The release was not exported. It can be exported later by sorting this ID again. Until then, it will be marked as unsorted again."))
+		fmt.Println(ui.Red("The release was not exported. It can be exported later by sorting this ID again. Until then, it will be marked as unsorted again."))
 		d.State = stateUnsorted
 	}
 	return nil

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/passelecasque/go-ircevent"
 )
 
@@ -38,7 +40,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 		if err != nil {
 			return err
 		}
-		logThis.Info(release.String(), VERBOSEST)
+		logthis.Info(release.String(), logthis.VERBOSEST)
 
 		// if satisfies a filter, download
 		var downloadedInfo bool
@@ -46,8 +48,8 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 		var info *TrackerMetadata
 		for _, filter := range e.config.Filters {
 			// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
-			if len(filter.Tracker) != 0 && !StringInSlice(tracker.Name, filter.Tracker) {
-				logThis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), VERBOSE)
+			if len(filter.Tracker) != 0 && !strslice.Contains(filter.Tracker, tracker.Name) {
+				logthis.Info(fmt.Sprintf(infoFilterIgnoredForTracker, filter.Name, tracker.Name), logthis.VERBOSE)
 				continue
 			}
 			// checking if a filter is triggered
@@ -59,7 +61,7 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 						return errors.New(errorCouldNotGetTorrentInfo)
 					}
 					downloadedInfo = true
-					logThis.Info(info.TextDescription(false), VERBOSE)
+					logthis.Info(info.TextDescription(false), logthis.VERBOSE)
 				}
 				// else check other criteria
 				if release.HasCompatibleTrackerInfo(filter, autosnatchConfig.BlacklistedUploaders, info) {
@@ -67,15 +69,15 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 
 					// checking if duplicate
 					if !filter.AllowDuplicates && stats.AlreadySnatchedDuplicate(release) {
-						logThis.Info(filter.Name+": "+infoNotSnatchingDuplicate, VERBOSE)
+						logthis.Info(filter.Name+": "+infoNotSnatchingDuplicate, logthis.VERBOSE)
 						continue
 					}
 					// checking if a torrent from the same group has already been downloaded
 					if filter.UniqueInGroup && stats.AlreadySnatchedFromGroup(release) {
-						logThis.Info(filter.Name+": "+infoNotSnatchingUniqueInGroup, VERBOSE)
+						logthis.Info(filter.Name+": "+infoNotSnatchingUniqueInGroup, logthis.VERBOSE)
 						continue
 					}
-					logThis.Info(" -> "+release.ShortString()+" triggered filter "+filter.Name+", snatching.", NORMAL)
+					logthis.Info(" -> "+release.ShortString()+" triggered filter "+filter.Name+", snatching.", logthis.NORMAL)
 					// move to relevant watch directory
 					destination := e.config.General.WatchDir
 					if filter.WatchDir != "" {
@@ -87,11 +89,11 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 					downloadedTorrent = true
 					// adding to history
 					if err := stats.AddSnatch(*release); err != nil {
-						logThis.Error(errors.Wrap(err, errorAddingToHistory), NORMAL)
+						logthis.Error(errors.Wrap(err, errorAddingToHistory), logthis.NORMAL)
 					}
 					// send notification
 					if err := Notify(filter.Name+": Snatched "+release.ShortString(), tracker.Name, "info", e); err != nil {
-						logThis.Error(err, NORMAL)
+						logthis.Error(err, logthis.NORMAL)
 					}
 					// save metadata once the download folder is created
 					if e.config.General.AutomaticMetadataRetrieval {
@@ -103,11 +105,11 @@ func analyzeAnnounce(announced string, e *Environment, tracker *GazelleTracker, 
 			}
 		}
 		if !downloadedTorrent {
-			logThis.Info(fmt.Sprintf(infoNotInteresting, release.ShortString()), VERBOSE)
+			logthis.Info(fmt.Sprintf(infoNotInteresting, release.ShortString()), logthis.VERBOSE)
 		}
 		return nil
 	}
-	logThis.Info(infoNotMusic, VERBOSE)
+	logthis.Info(infoNotMusic, logthis.VERBOSE)
 	return nil
 }
 
@@ -117,7 +119,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 
 	autosnatchConfig, err := e.config.GetAutosnatch(tracker.Name)
 	if err != nil {
-		logThis.Info("Cannot find autosnatch configuration for tracker "+tracker.Name, NORMAL)
+		logthis.Info("Cannot find autosnatch configuration for tracker "+tracker.Name, logthis.NORMAL)
 		return
 	}
 
@@ -127,7 +129,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 	}
 	IRCClient.UseTLS = autosnatchConfig.IRCSSL
 	IRCClient.TLSConfig = &tls.Config{InsecureSkipVerify: autosnatchConfig.IRCSSLSkipVerify}
-	IRCClient.AddCallback("001", func(ev *irc.Event) {
+	IRCClient.AddCallback("001", func(_ *irc.Event) {
 		IRCClient.Privmsg("NickServ", "IDENTIFY "+autosnatchConfig.NickservPassword)
 		IRCClient.Privmsg(autosnatchConfig.Announcer, fmt.Sprintf("enter %s %s %s", autosnatchConfig.AnnounceChannel, tracker.User, autosnatchConfig.IRCKey))
 		if e.config.ircNotifsConfigured {
@@ -139,7 +141,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 			return // spam
 		}
 		if strings.HasPrefix(ev.Message(), announcerBadCredentials) {
-			logThis.Info("error connecting to IRC: IRC key rejected by "+autosnatchConfig.Announcer+"; disconnecting.", NORMAL)
+			logthis.Info("error connecting to IRC: IRC key rejected by "+autosnatchConfig.Announcer+"; disconnecting.", logthis.NORMAL)
 			return
 		}
 		// e.Arguments's first element is the message's recipient, the second is the actual message
@@ -156,9 +158,9 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 			e.mutex.RUnlock()
 			if canSnatch {
 				announced := r.Replace(ev.Message())
-				logThis.Info("++ Announced on "+tracker.Name+": "+announced, VERBOSE)
+				logthis.Info("++ Announced on "+tracker.Name+": "+announced, logthis.VERBOSE)
 				if err = analyzeAnnounce(announced, e, tracker, autosnatchConfig); err != nil {
-					logThis.Error(errors.Wrap(err, errorDealingWithAnnounce), VERBOSE)
+					logthis.Error(errors.Wrap(err, errorDealingWithAnnounce), logthis.VERBOSE)
 					return
 				}
 			}
@@ -166,7 +168,7 @@ func ircHandler(e *Environment, tracker *GazelleTracker) {
 	})
 	err = IRCClient.Connect(autosnatchConfig.IRCServer)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorConnectingToIRC), NORMAL)
+		logthis.Error(errors.Wrap(err, errorConnectingToIRC), logthis.NORMAL)
 		return
 	}
 	e.ircClient = IRCClient

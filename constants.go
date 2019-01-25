@@ -3,21 +3,27 @@ package varroa
 const (
 	FullName      = "varroa musica"
 	FullNameAlt   = "VarroaMusica"
-	Version       = "v23"
+	Version       = "v24"
 	FullVersion   = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
 
 	// directories & files
 	DefaultConfigurationFile  = "config.yaml"
+	daemonSocket              = "varroa.sock"
 	StatsDir                  = "stats"
 	MetadataDir               = "TrackerMetadata"
+	AdditionalMetadataDir     = "Metadata"
+	spectralsMetadataSubdir   = "Spectrals"
 	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
 	OriginJSONFile            = "origin.json"
 	trackerMetadataFile       = "release.json"
 	trackerTGroupMetadataFile = "release_group.json"
+	discogsMetadataFile       = "discogs.json"
+	tracksMetadataFile        = "tracks.json"
 	trackerCoverFile          = "cover"
+	releasePlaylistFile       = "playlist.m3u"
 	perDay                    = "per_day_"
 	uploadStatsFile           = "up"
 	downloadStatsFile         = "down"
@@ -42,9 +48,10 @@ const (
 	statsNotificationPrefix   = "stats: "
 
 	// Notable ratios & constants
-	defaultTargetRatio = 1.0
-	warningRatio       = 0.6
-	minimumSeeders     = 5
+	defaultTargetRatio     = 1.0
+	warningRatio           = 0.6
+	minimumSeeders         = 5
+	maxEmbeddedPictureSize = 1024 * 1024
 
 	// file extensions
 	yamlExt      = ".yaml"
@@ -71,6 +78,7 @@ const (
 	infoNotMusic                  = "Not a music release, ignoring."
 	infoNotSnatchingDuplicate     = "Similar release already downloaded, and duplicates are not allowed"
 	infoFilterIgnoredForTracker   = "Filter %s ignored for tracker %s."
+	infoFilterTriggered           = "This release would trigger filter %s!"
 	infoNotSnatchingUniqueInGroup = "Release from the same torrentgroup already downloaded, and snatch must be unique in group"
 	infoAllMetadataSaved          = "All %s metadata saved."
 	infoMetadataSaved             = "Metadata saved to: "
@@ -94,10 +102,6 @@ const (
 	ErrorGettingDaemonContext   = "Error launching daemon (it probably is running already)"
 	ErrorSendingCommandToDaemon = "Error sending command to daemon"
 	errorRemovingPID            = "Error removing pid file"
-	// unix socket errors
-	errorDialingSocket     = "Error dialing to unix socket"
-	errorWritingToSocket   = "Error writing to unix socket"
-	errorReadingFromSocket = "Error reading from unix socket"
 	// command check-log errors
 	ErrorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"
@@ -153,7 +157,6 @@ const (
 	errorGitAdd       = "Error running git add"
 	errorGitCommit    = "Error running git commit"
 	errorGitAddRemote = "Error running git remote add"
-	errorGitPush      = "Error running git push"
 	errorDeploying    = "Error deploying to Gitlab Pages"
 	// irc errors
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"
@@ -205,5 +208,4 @@ const (
 
 	// generic constants
 	scanningFiles = "Scanning"
-	stopCommand   = "stop"
 )

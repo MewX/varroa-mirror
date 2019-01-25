@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 func TestTrackerOriginJSON(t *testing.T) {
@@ -24,7 +25,7 @@ func TestTrackerOriginJSON(t *testing.T) {
 	c.General.DownloadDir = testDir
 	tr := &ConfigTracker{Name: "tracker1", URL: "http://azerty.com"}
 	tr2 := &ConfigTracker{Name: "tracker2", URL: "http://qwerty.com"}
-	c.Trackers = append(config.Trackers, tr, tr2)
+	c.Trackers = append(c.Trackers, tr, tr2)
 	env.config = c
 	tracker1 := &GazelleTracker{Name: "tracker1", URL: "http://azerty.com"}
 	tracker2 := &GazelleTracker{Name: "tracker2", URL: "http://qwerty.com"}
@@ -38,9 +39,9 @@ func TestTrackerOriginJSON(t *testing.T) {
 	defer os.Remove(expectedFilePath)
 
 	// saving origin JSON to file
-	check.False(FileExists(expectedFilePath))
+	check.False(fs.FileExists(expectedFilePath))
 	check.Nil(info1.saveOriginJSON(filepath.Join(testDir, MetadataDir)))
-	check.True(FileExists(expectedFilePath))
+	check.True(fs.FileExists(expectedFilePath))
 	check.Nil(info2.saveOriginJSON(filepath.Join(testDir, MetadataDir)))
 
 	// reading file that was created and comparing with expected

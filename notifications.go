@@ -11,6 +11,8 @@ import (
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/strslice"
 )
 
 // Notify in a goroutine, or directly.
@@ -36,16 +38,16 @@ func Notify(msg, tracker, msgType string, e *Environment) error {
 				pngLink = filepath.Join(StatsDir, tracker+"_"+lastWeekPrefix+"_"+bufferStatsFile+pngExt)
 			}
 			if err := pushOver.Send(tracker+": "+msg, conf.gitlabPagesConfigured, link, pngLink); err != nil {
-				logThis.Error(errors.Wrap(err, errorNotification), VERBOSE)
+				logthis.Error(errors.Wrap(err, errorNotification), logthis.VERBOSE)
 				atLeastOneError = true
 			}
 		}
 		// webhooks
-		if conf.webhooksConfigured && StringInSlice(tracker, conf.Notifications.WebHooks.Trackers) {
+		if conf.webhooksConfigured && strslice.Contains(conf.Notifications.WebHooks.Trackers, tracker) {
 			// create json, POST it
 			whJSON := &WebHookJSON{Site: tracker, Message: msg, Link: link, Type: msgType}
 			if err := whJSON.Send(conf.Notifications.WebHooks.Address, conf.Notifications.WebHooks.Token); err != nil {
-				logThis.Error(errors.Wrap(err, errorWebhook), VERBOSE)
+				logthis.Error(errors.Wrap(err, errorWebhook), logthis.VERBOSE)
 				atLeastOneError = true
 			}
 		}
@@ -80,11 +82,11 @@ func (n *Notification) Send(message string, addLink bool, link, pngLink string) 
 	if pngLink != "" {
 		file, err := os.Open(pngLink)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, "error adding png attachment to pushover notification"), VERBOSE)
+			logthis.Error(errors.Wrap(err, "error adding png attachment to pushover notification"), logthis.VERBOSE)
 		} else {
 			defer file.Close()
 			if addErr := pushoverMessage.AddAttachment(file); addErr != nil {
-				logThis.Error(errors.Wrap(err, "error adding png attachment to pushover notification"), VERBOSE)
+				logthis.Error(errors.Wrap(err, "error adding png attachment to pushover notification"), logthis.VERBOSE)
 			}
 		}
 	}

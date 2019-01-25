@@ -13,6 +13,7 @@ import (
 	"github.com/tdewolff/minify/svg"
 	"github.com/wcharczuk/go-chart"
 	"github.com/wcharczuk/go-chart/drawing"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 var (
@@ -157,20 +158,20 @@ func writeTimeSeriesChart(series chart.TimeSeries, axisLabel, filename string, a
 }
 
 func combineAllPNGs(combined string, graphs ...string) error {
-	var images []image.Image
+	images := make([]image.Image, len(graphs))
 	// open and decode images
-	for _, graph := range graphs {
+	for i, graph := range graphs {
 		imgFile, err := os.Open(graph + pngExt)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, errorImageNotFound), NORMAL)
+			logthis.Error(errors.Wrap(err, errorImageNotFound), logthis.NORMAL)
 			continue
 		}
 		img, _, err := image.Decode(imgFile)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, errorImageNotFound), NORMAL)
+			logthis.Error(errors.Wrap(err, errorImageNotFound), logthis.NORMAL)
 			continue
 		}
-		images = append(images, img)
+		images[i] = img
 	}
 	if len(images) == 0 {
 		return errors.New(errorNoImageFound)

@@ -7,6 +7,9 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/strslice"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -24,6 +27,7 @@ type Config struct {
 	Filters                     []*ConfigFilter
 	Library                     *ConfigLibrary
 	MPD                         *ConfigMPD
+	Metadata                    *ConfigMetadata
 	autosnatchConfigured        bool
 	statsConfigured             bool
 	webserverConfigured         bool
@@ -38,6 +42,8 @@ type Config struct {
 	LibraryConfigured           bool
 	playlistDirectoryConfigured bool
 	mpdConfigured               bool
+	metadataConfigured          bool
+	discogsTokenConfigured      bool
 }
 
 func NewConfig(path string) (*Config, error) {
@@ -46,7 +52,7 @@ func NewConfig(path string) (*Config, error) {
 		// TODO check path has yamlExt!
 		newConf := &Config{}
 		encryptedConfigurationFile := strings.TrimSuffix(path, yamlExt) + encryptedExt
-		if FileExists(encryptedConfigurationFile) && !FileExists(path) {
+		if fs.FileExists(encryptedConfigurationFile) && !fs.FileExists(path) {
 			// if using encrypted config file, ask for the passphrase and retrieve it from the daemon side
 			passphraseBytes, err := SavePassphraseForDaemon()
 			if err != nil {
@@ -109,6 +115,9 @@ func (c *Config) String() string {
 	if c.LibraryConfigured {
 		txt += c.Library.String() + "\n"
 	}
+	if c.metadataConfigured {
+		txt += c.Metadata.String() + "\n"
+	}
 	return txt
 }
 
@@ -137,6 +146,10 @@ func (c *Config) check() error {
 	if err := c.General.check(); err != nil {
 		return errors.Wrap(err, "Error reading general configuration")
 	}
+	// setting log level
+	logthis.SetLevel(c.General.LogLevel)
+	logthis.SetStdOutput(true)
+
 	// tracker checks
 	if len(c.Trackers) == 0 {
 		return errors.New("Missing tracker information")
@@ -206,6 +219,12 @@ func (c *Config) check() error {
 			return errors.Wrap(err, "Error reading filter configuration")
 		}
 	}
+	// metadata checks
+	if c.Metadata != nil {
+		if err := c.Metadata.check(); err != nil {
+			return errors.Wrap(err, "Error reading Metadata configuration")
+		}
+	}
 
 	// setting a few shortcut flags
 	c.autosnatchConfigured = len(c.Autosnatch) != 0
@@ -222,6 +241,8 @@ func (c *Config) check() error {
 	c.playlistDirectoryConfigured = c.LibraryConfigured && c.Library.PlaylistDirectory != ""
 	c.mpdConfigured = c.MPD != nil
 	c.webserverMetadata = c.DownloadFolderConfigured && c.webserverConfigured && c.WebServer.ServeMetadata
+	c.metadataConfigured = c.Metadata != nil
+	c.discogsTokenConfigured = c.metadataConfigured && c.Metadata.DiscogsToken != ""
 
 	// config-wide checks
 	configuredTrackers := c.TrackerLabels()
@@ -234,16 +255,16 @@ func (c *Config) check() error {
 		}
 		// check all autosnatch configs point to defined Trackers
 		for _, a := range c.Autosnatch {
-			if !StringInSlice(a.Tracker, configuredTrackers) {
-				return fmt.Errorf("Autosnatch enabled, but tracker %s undefined", a.Tracker)
+			if !strslice.Contains(configuredTrackers, a.Tracker) {
+				return fmt.Errorf("autosnatch enabled, but tracker %s undefined", a.Tracker)
 			}
 		}
 		// check all filter trackers are defined
 		if len(c.Filters) != 0 {
 			for _, f := range c.Filters {
 				for _, t := range f.Tracker {
-					if !StringInSlice(t, configuredTrackers) {
-						return fmt.Errorf("Filter %s refers to undefined tracker %s", f.Name, t)
+					if !strslice.Contains(configuredTrackers, t) {
+						return fmt.Errorf("filter %s refers to undefined tracker %s", f.Name, t)
 					}
 				}
 			}
@@ -252,16 +273,16 @@ func (c *Config) check() error {
 	if c.statsConfigured {
 		// check all stats point to defined Trackers
 		for _, a := range c.Stats {
-			if !StringInSlice(a.Tracker, configuredTrackers) {
-				return fmt.Errorf("Stats enabled, but tracker %s undefined", a.Tracker)
+			if !strslice.Contains(configuredTrackers, a.Tracker) {
+				return fmt.Errorf("stats enabled, but tracker %s undefined", a.Tracker)
 			}
 		}
 	}
 	if c.webhooksConfigured {
 		// check all webhook trackers point to defined Trackers
 		for _, a := range c.Notifications.WebHooks.Trackers {
-			if !StringInSlice(a, configuredTrackers) {
-				return fmt.Errorf("Stats enabled, but tracker %s undefined", a)
+			if !strslice.Contains(configuredTrackers, a) {
+				return fmt.Errorf("stats enabled, but tracker %s undefined", a)
 			}
 		}
 	}
@@ -295,7 +316,7 @@ func (c *Config) check() error {
 		for _, a := range c.Autosnatch {
 			configuredIRCServers = append(configuredIRCServers, a.Tracker)
 		}
-		if !StringInSlice(c.Notifications.Irc.Tracker, configuredIRCServers) {
+		if !strslice.Contains(configuredIRCServers, c.Notifications.Irc.Tracker) {
 			return errors.New("IRC server for tracker " + c.Notifications.Irc.Tracker + " is not defined in the autosnatch section.")
 		}
 	}
@@ -317,9 +338,9 @@ func (c *Config) DecryptTo(file string, passphrase []byte) error {
 }
 
 func (c *Config) TrackerLabels() []string {
-	var labels []string
-	for _, t := range c.Trackers {
-		labels = append(labels, t.Name)
+	labels := make([]string, len(c.Trackers))
+	for i, t := range c.Trackers {
+		labels[i] = t.Name
 	}
 	return labels
 }

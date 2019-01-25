@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/docopt/docopt-go"
+	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/passelecasque/varroa"
 )
 
@@ -62,17 +63,17 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 
 	b.targetDirectory = args["<MUSIC_DIRECTORY>"].(string)
-	if !varroa.DirectoryExists(b.targetDirectory) {
+	if !fs.DirExists(b.targetDirectory) {
 		return errors.New("Target directory does not exist")
 	}
 
 	b.mountPoint = args["<MOUNT_POINT>"].(string)
-	if !varroa.DirectoryExists(b.mountPoint) {
+	if !fs.DirExists(b.mountPoint) {
 		return errors.New("Fuse mount point does not exist")
 	}
 
 	// check it's empty
-	if isEmpty, err := varroa.DirectoryIsEmpty(b.mountPoint); err != nil {
+	if isEmpty, err := fs.DirIsEmpty(b.mountPoint); err != nil {
 		return errors.New("Could not open Fuse mount point")
 	} else if !isEmpty {
 		return errors.New("Fuse mount point is not empty")

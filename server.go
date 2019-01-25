@@ -13,6 +13,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
 )
 
 const (
@@ -58,23 +60,23 @@ func manualSnatchFromID(e *Environment, tracker *GazelleTracker, id string, useF
 	// get torrent info
 	info, err := tracker.GetTorrentMetadata(id)
 	if err != nil {
-		logThis.Info(errorCouldNotGetTorrentInfo, NORMAL)
+		logthis.Info(errorCouldNotGetTorrentInfo, logthis.NORMAL)
 		return nil, err // probably the ID does not exist
 	}
 	release := info.Release()
 	if release == nil {
-		logThis.Info("Error parsing Torrent Info", NORMAL)
+		logthis.Info("Error parsing Torrent Info", logthis.NORMAL)
 		release = &Release{Tracker: tracker.Name, TorrentID: id}
 	}
-	logThis.Info("Downloading torrent "+release.ShortString(), NORMAL)
+	logthis.Info("Downloading torrent "+release.ShortString(), logthis.NORMAL)
 	if err := tracker.DownloadTorrentFromID(id, e.config.General.WatchDir, useFLToken); err != nil {
-		logThis.Error(errors.Wrap(err, errorDownloadingTorrent+id), NORMAL)
+		logthis.Error(errors.Wrap(err, errorDownloadingTorrent+id), logthis.NORMAL)
 		return release, err
 	}
 	// add to history
 	release.Filter = manualSnatchFilterName
 	if err := stats.AddSnatch(*release); err != nil {
-		logThis.Info(errorAddingToHistory, NORMAL)
+		logthis.Info(errorAddingToHistory, logthis.NORMAL)
 	}
 	// save metadata
 	if e.config.General.AutomaticMetadataRetrieval {
@@ -127,14 +129,14 @@ func validateGet(r *http.Request, config *Config) (string, string, bool, error) 
 	useIt, ok := queryParameters["fltoken"]
 	if ok && useIt[0] == "true" {
 		useFLToken = true
-		logThis.Info("Snatching using FL Token if possible.", VERBOSE)
+		logthis.Info("Snatching using FL Token if possible.", logthis.VERBOSE)
 	}
 	return trackerLabel, id, useFLToken, nil
 }
 
 func webServer(e *Environment) {
 	if !e.config.webserverConfigured {
-		logThis.Info(webServerNotConfigured, NORMAL)
+		logthis.Info(webServerNotConfigured, logthis.NORMAL)
 		return
 	}
 	var additionalSources []string
@@ -143,7 +145,7 @@ func webServer(e *Environment) {
 	}
 	downloads, err := NewDownloadsDB(DefaultDownloadsDB, e.config.General.DownloadDir, additionalSources)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "Error loading downloads database"), VERBOSE)
+		logthis.Error(errors.Wrap(err, "Error loading downloads database"), logthis.VERBOSE)
 	}
 	if e.config.WebServer.ServeMetadata {
 		// scan on startup in goroutine
@@ -157,12 +159,12 @@ func webServer(e *Environment) {
 			// checking token
 			token, ok := r.URL.Query()["token"]
 			if !ok {
-				logThis.Info(errorNoToken, NORMAL)
+				logthis.Info(errorNoToken, logthis.NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			if token[0] != e.config.WebServer.Token {
-				logThis.Info(errorWrongToken, NORMAL)
+				logthis.Info(errorWrongToken, logthis.NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
@@ -172,7 +174,7 @@ func webServer(e *Environment) {
 				// if it's not in URL, try to get from query parameters
 				queryTrackerLabel, ok2 := r.URL.Query()["site"]
 				if !ok2 {
-					logThis.Info(errorNoID, NORMAL)
+					logthis.Info(errorNoID, logthis.NORMAL)
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -181,13 +183,13 @@ func webServer(e *Environment) {
 			// get filename
 			filename, ok := mux.Vars(r)["name"]
 			if !ok {
-				logThis.Info(errorNoStatsFilename, NORMAL)
+				logthis.Info(errorNoStatsFilename, logthis.NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			file, err := ioutil.ReadFile(filepath.Join(StatsDir, trackerLabel+"_"+filename))
 			if err != nil {
-				logThis.Error(errors.Wrap(err, errorNoStatsFilename), NORMAL)
+				logthis.Error(errors.Wrap(err, errorNoStatsFilename), logthis.NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
@@ -201,20 +203,20 @@ func webServer(e *Environment) {
 		getTorrent := func(w http.ResponseWriter, r *http.Request) {
 			trackerLabel, id, useFLToken, err := validateGet(r, e.config)
 			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error parsing request"), NORMAL)
+				logthis.Error(errors.Wrap(err, "Error parsing request"), logthis.NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 			// snatching
 			tracker, err := e.Tracker(trackerLabel)
 			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error identifying in configuration tracker "+trackerLabel), NORMAL)
+				logthis.Error(errors.Wrap(err, "Error identifying in configuration tracker "+trackerLabel), logthis.NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 			release, err := manualSnatchFromID(e, tracker, id, useFLToken)
 			if err != nil {
-				logThis.Error(errors.Wrap(err, ErrorSnatchingTorrent), NORMAL)
+				logthis.Error(errors.Wrap(err, ErrorSnatchingTorrent), logthis.NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -225,7 +227,7 @@ func webServer(e *Environment) {
 		getMetadata := func(w http.ResponseWriter, r *http.Request) {
 			// if not configured, return error
 			if !e.config.WebServer.ServeMetadata {
-				logThis.Error(errors.New("Error, not configured to serve metadata"), NORMAL)
+				logthis.Error(errors.New("Error, not configured to serve metadata"), logthis.NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -233,9 +235,9 @@ func webServer(e *Environment) {
 			var response []byte
 			id, ok := mux.Vars(r)["id"]
 			if !ok {
-				list, err := e.serverData.DownloadsList(e, downloads)
+				list, err := e.serverData.DownloadsList(downloads)
 				if err != nil {
-					logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
+					logthis.Error(errors.Wrap(err, "Error loading downloads list"), logthis.NORMAL)
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}
@@ -244,7 +246,7 @@ func webServer(e *Environment) {
 
 				info, err := e.serverData.DownloadsInfo(e, downloads, id)
 				if err != nil {
-					logThis.Error(errors.Wrap(err, "Error loading downloads info"), NORMAL)
+					logthis.Error(errors.Wrap(err, "Error loading downloads info"), logthis.NORMAL)
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}
@@ -261,30 +263,31 @@ func webServer(e *Environment) {
 		socket := func(w http.ResponseWriter, r *http.Request) {
 			c, err := upgrader.Upgrade(w, r, nil)
 			if err != nil {
-				logThis.Error(errors.Wrap(err, errorCreatingWebSocket), NORMAL)
+				logthis.Error(errors.Wrap(err, errorCreatingWebSocket), logthis.NORMAL)
 				return
 			}
 			defer c.Close()
-			e.websocketOutput = true
 			// channel to know when the connection with a specific instance is over
 			endThisConnection := make(chan struct{})
 
 			// this goroutine will send messages to the remote
 			go func() {
+				logOutput := logthis.Subscribe()
 				for {
 					select {
-					case messageToLog := <-e.sendToWebsocket:
-						if e.websocketOutput {
-							mutex.Lock()
-							// TODO differentiate info / error
-							if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog, Target: notificationArea}); err != nil {
-								if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-									logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), VERBOSEST)
-								}
+					case messageToLog := <-logOutput:
+						mutex.Lock()
+						// TODO differentiate info / error
+						if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog.(string), Target: notificationArea}); err != nil {
+							if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+								logthis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), logthis.VERBOSEST)
 							}
-							mutex.Unlock()
 						}
+						mutex.Unlock()
 					case <-endThisConnection:
+						mutex.Lock()
+						logthis.Unsubscribe(logOutput)
+						mutex.Unlock()
 						return
 					}
 				}
@@ -295,16 +298,15 @@ func webServer(e *Environment) {
 				incoming := IncomingJSON{}
 				if err := c.ReadJSON(&incoming); err != nil {
 					if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-						logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), VERBOSEST)
+						logthis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), logthis.VERBOSEST)
 					}
 					endThisConnection <- struct{}{}
-					e.websocketOutput = false
 					break
 				}
 
 				var answer OutgoingJSON
 				if incoming.Token != e.config.WebServer.Token {
-					logThis.Info(errorIncorrectWebServerToken, NORMAL)
+					logthis.Info(errorIncorrectWebServerToken, logthis.NORMAL)
 					answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Bad token!"}
 				} else {
 					// dealing with command
@@ -315,14 +317,14 @@ func webServer(e *Environment) {
 					case downloadCommand:
 						tracker, err := e.Tracker(incoming.Site)
 						if err != nil {
-							logThis.Error(errors.Wrap(err, "Error identifying in configuration tracker "+incoming.Site), NORMAL)
+							logthis.Error(errors.Wrap(err, "Error identifying in configuration tracker "+incoming.Site), logthis.NORMAL)
 							answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Error snatching torrent."}
 						} else {
 							// snatching
 							for _, id := range incoming.Args {
 								release, err := manualSnatchFromID(e, tracker, id, incoming.FLToken)
 								if err != nil {
-									logThis.Info("Error snatching torrent: "+err.Error(), NORMAL)
+									logthis.Info("Error snatching torrent: "+err.Error(), logthis.NORMAL)
 									answer = OutgoingJSON{Status: responseError, Target: notificationArea, Message: "Error snatching torrent."}
 								} else {
 									answer = OutgoingJSON{Status: responseInfo, Target: notificationArea, Message: "Successfully snatched torrent " + release.ShortString()}
@@ -341,7 +343,7 @@ func webServer(e *Environment) {
 				mutex.Lock()
 				if err := c.WriteJSON(answer); err != nil {
 					if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-						logThis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), VERBOSEST)
+						logthis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), logthis.VERBOSEST)
 					}
 				}
 				mutex.Unlock()
@@ -362,16 +364,16 @@ func webServer(e *Environment) {
 			// get filename
 			filename, ok := mux.Vars(r)["name"]
 			if !ok {
-				logThis.Info(errorNoStatsFilename, NORMAL)
+				logthis.Info(errorNoStatsFilename, logthis.NORMAL)
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			http.ServeFile(w, r, filepath.Join(StatsDir, filename))
 		}
 		getIndex := func(w http.ResponseWriter, r *http.Request) {
-			response, err := e.serverData.Index(e, downloads)
+			response, err := e.serverData.Index(downloads)
 			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error loading downloads list"), NORMAL)
+				logthis.Error(errors.Wrap(err, "Error loading downloads list"), logthis.NORMAL)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -392,40 +394,40 @@ func webServer(e *Environment) {
 	// serve
 	if e.config.webserverHTTP {
 		go func() {
-			logThis.Info(webServerUpHTTP, NORMAL)
+			logthis.Info(webServerUpHTTP, logthis.NORMAL)
 			httpServer := &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTP), Handler: rtr}
 			if err := httpServer.ListenAndServe(); err != nil {
 				if err == http.ErrServerClosed {
-					logThis.Info(webServerShutDown, NORMAL)
+					logthis.Info(webServerShutDown, logthis.NORMAL)
 				} else {
-					logThis.Error(errors.Wrap(err, errorServing), NORMAL)
+					logthis.Error(errors.Wrap(err, errorServing), logthis.NORMAL)
 				}
 			}
 		}()
 	}
 	if e.config.webserverHTTPS {
 		// if not there yet, generate the self-signed certificate
-		if !FileExists(filepath.Join(certificatesDir, certificateKey)) || !FileExists(filepath.Join(certificatesDir, certificate)) {
+		if !fs.FileExists(filepath.Join(certificatesDir, certificateKey)) || !fs.FileExists(filepath.Join(certificatesDir, certificate)) {
 			if err := generateCertificates(e); err != nil {
-				logThis.Error(errors.Wrap(err, errorGeneratingCertificate+provideCertificate), NORMAL)
-				logThis.Info(infoBackupScript, NORMAL)
+				logthis.Error(errors.Wrap(err, errorGeneratingCertificate+provideCertificate), logthis.NORMAL)
+				logthis.Info(infoBackupScript, logthis.NORMAL)
 				return
 			}
 			// basic instruction for first connection.
-			logThis.Info(infoAddCertificates, NORMAL)
+			logthis.Info(infoAddCertificates, logthis.NORMAL)
 		}
 
 		go func() {
-			logThis.Info(webServerUpHTTPS, NORMAL)
+			logthis.Info(webServerUpHTTPS, logthis.NORMAL)
 			httpsServer := &http.Server{Addr: fmt.Sprintf(":%d", e.config.WebServer.PortHTTPS), Handler: rtr}
 			if err := httpsServer.ListenAndServeTLS(filepath.Join(certificatesDir, certificate), filepath.Join(certificatesDir, certificateKey)); err != nil {
 				if err == http.ErrServerClosed {
-					logThis.Info(webServerShutDown, NORMAL)
+					logthis.Info(webServerShutDown, logthis.NORMAL)
 				} else {
-					logThis.Error(errors.Wrap(err, errorServing), NORMAL)
+					logthis.Error(errors.Wrap(err, errorServing), logthis.NORMAL)
 				}
 			}
 		}()
 	}
-	logThis.Info(webServersUp, NORMAL)
+	logthis.Info(webServersUp, logthis.NORMAL)
 }

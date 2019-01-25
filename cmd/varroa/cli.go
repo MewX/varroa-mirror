@@ -10,6 +10,10 @@ import (
 
 	docopt "github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/passelecasque/varroa"
 )
 
@@ -111,7 +115,7 @@ Commands:
 	reseed:
 		reseed a downloaded release using tracker metadata. Does not check
 		the torrent files actually match the contents in the given PATH.
-
+	
 Configuration Commands:
 
 	show-config:
@@ -191,6 +195,7 @@ type varroaArguments struct {
 	libraryReorgInteractive bool
 	libraryReorgSimulate    bool
 	reseed                  bool
+	enhance                 bool
 	useFLToken              bool
 	torrentIDs              []int
 	logFile                 string
@@ -222,6 +227,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.status = args["status"].(bool)
 	b.stats = args["stats"].(bool)
 	b.reseed = args["reseed"].(bool)
+	b.enhance = args["enhance"].(bool)
 	b.refreshMetadataByID = args["refresh-metadata-by-id"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)
@@ -249,11 +255,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.libraryReorgSimulate = args["--simulate"].(bool)
 		b.libraryReorgInteractive = args["--interactive"].(bool)
 	}
-	if b.reseed || b.downloadSort {
+	if b.reseed || b.downloadSort || b.enhance {
 		b.paths = args["<PATH>"].([]string)
 		for i, p := range b.paths {
-			if !varroa.DirectoryExists(p) {
-				return errors.New("Target path does not exist")
+			if !fs.DirExists(p) {
+				return errors.New("target path does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
 				return fmt.Errorf(varroa.ErrorFindingMusicAndMetadata, p)
@@ -267,11 +273,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	if b.refreshMetadataByID || b.snatch || b.downloadInfo || b.downloadSortID || b.info {
 		IDs, ok := args["<ID>"].([]string)
 		if !ok {
-			return errors.New("Invalid torrent IDs.")
+			return errors.New("invalid torrent IDs")
 		}
-		b.torrentIDs, err = varroa.StringSliceToIntSlice(IDs)
+		b.torrentIDs, err = strslice.ToIntSlice(IDs)
 		if err != nil {
-			return errors.New("Invalid torrent IDs, must be integers.")
+			return errors.New("invalid torrent IDs, must be integers")
 		}
 	}
 	if b.downloadFuse || b.libraryFuse {
@@ -282,15 +288,15 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		}
 
 		b.mountPoint = args["<MOUNT_POINT>"].(string)
-		if !varroa.DirectoryExists(b.mountPoint) {
-			return errors.New("Fuse mount point does not exist")
+		if !fs.DirExists(b.mountPoint) {
+			return errors.New("fuse mount point does not exist")
 		}
 
 		// check it's empty
-		if isEmpty, err := varroa.DirectoryIsEmpty(b.mountPoint); err != nil {
-			return errors.New("Could not open Fuse mount point")
+		if isEmpty, err := fs.DirIsEmpty(b.mountPoint); err != nil {
+			return errors.New("could not open Fuse mount point")
 		} else if !isEmpty {
-			return errors.New("Fuse mount point is not empty")
+			return errors.New("fuse mount point is not empty")
 		}
 	}
 	if b.downloadList {
@@ -298,7 +304,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		if ok {
 			b.downloadState = state
 			if !varroa.IsValidDownloadState(b.downloadState) {
-				return errors.New("Invalid download state, must be among: " + strings.Join(varroa.DownloadFolderStates, ", "))
+				return errors.New("invalid download state, must be among: " + strings.Join(varroa.DownloadFolderStates, ", "))
 			}
 		}
 	}
@@ -307,8 +313,8 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	}
 	if b.checkLog {
 		logPath := args["<LOG_FILE>"].(string)
-		if !varroa.FileExists(logPath) {
-			return errors.New("Invalid log file, does not exist.")
+		if !fs.FileExists(logPath) {
+			return errors.New("invalid log file, does not exist")
 		}
 		b.logFile = logPath
 	}
@@ -323,8 +329,8 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 			return err
 		}
 		for _, p := range paths {
-			if !varroa.DirectoryExists(p) {
-				return errors.New("Target path " + p + " does not exist")
+			if !fs.DirExists(p) {
+				return errors.New("target path " + p + " does not exist")
 			}
 			if !varroa.DirectoryContainsMusicAndMetadata(p) {
 				return fmt.Errorf(varroa.ErrorFindingMusicAndMetadata, p)
@@ -349,11 +355,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadataByID || b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.reseed {
+	if b.refreshMetadataByID || b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.reseed || b.enhance {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.refreshMetadata || b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg {
+	if b.refreshMetadata || b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.enhance {
 		b.canUseDaemon = false
 	}
 	return nil
@@ -376,16 +382,16 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	if b.refreshMetadataByID {
 		out.Command = "refresh-metadata-by-id"
-		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
+		out.Args = intslice.ToStringSlice(b.torrentIDs)
 	}
 	if b.snatch {
 		out.Command = "snatch"
-		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
+		out.Args = intslice.ToStringSlice(b.torrentIDs)
 		out.FLToken = b.useFLToken
 	}
 	if b.info {
 		out.Command = "info"
-		out.Args = varroa.IntSliceToStringSlice(b.torrentIDs)
+		out.Args = intslice.ToStringSlice(b.torrentIDs)
 	}
 	if b.checkLog {
 		out.Command = "check-log"
@@ -397,7 +403,7 @@ func (b *varroaArguments) commandToDaemon() []byte {
 	}
 	commandBytes, err := json.Marshal(out)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, "Cannot parse command"), varroa.NORMAL)
+		logthis.Error(errors.Wrap(err, "cannot parse command"), logthis.NORMAL)
 		return []byte{}
 	}
 	return commandBytes

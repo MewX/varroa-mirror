@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/catastrophic/assistance/fs"
 )
 
 func TestCrypto(t *testing.T) {
@@ -18,8 +19,7 @@ func TestCrypto(t *testing.T) {
 	testFilename := "test_crypto"
 	testYAML := filepath.Join(testDir, testFilename+yamlExt)
 	testENC := filepath.Join(testDir, testFilename+encryptedExt)
-	var passphrase []byte
-	passphrase = make([]byte, 32)
+	passphrase := make([]byte, 32)
 	copy(passphrase[:], "passphrase")
 
 	// 1. encrypt
@@ -33,7 +33,7 @@ func TestCrypto(t *testing.T) {
 	// normal
 	err = encryptAndSave(testYAML, passphrase)
 	check.Nil(err)
-	check.True(FileExists(testENC))
+	check.True(fs.FileExists(testENC))
 	defer os.Remove(testENC)
 
 	// preparing for decrypt test
@@ -64,7 +64,7 @@ func TestCrypto(t *testing.T) {
 
 	err = decryptAndSave(testENC, passphrase)
 	check.Nil(err)
-	check.True(FileExists(testYAML))
+	check.True(fs.FileExists(testYAML))
 
 	// check contents are the same
 	bOut, err = ioutil.ReadFile(testYAML)

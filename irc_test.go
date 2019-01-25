@@ -172,10 +172,6 @@ func TestRegexp(t *testing.T) {
 	fmt.Println("+ Testing Announce parsing & filtering...")
 	verify := assert.New(t)
 
-	// setting up logger
-	env := NewEnvironment()
-	logThis = NewLogThis(env)
-
 	// testing parser
 	for _, announced := range announces {
 		r := regexp.MustCompile(announcePattern)

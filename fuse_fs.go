@@ -7,6 +7,7 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/logthis"
 	"golang.org/x/net/context"
 )
 
@@ -51,7 +52,7 @@ func FuseMount(path, mountpoint, dbPath string) error {
 	go func() {
 		// updating entries before serving
 		if err := db.Scan(path); err != nil {
-			logThis.Error(errors.Wrap(err, "Error scanning downloads"), NORMAL)
+			logthis.Error(errors.Wrap(err, "Error scanning downloads"), logthis.NORMAL)
 		}
 	}()
 	// TODO log how many entries

@@ -18,14 +18,17 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/ui"
 	"golang.org/x/net/publicsuffix"
 )
 
 const (
 	// Gazelle usually only allows 5 API calls every 10s
-	// Using 2 every 4 to force calls to be more spread in time
-	allowedAPICallsByPeriod = 2
-	apiCallsPeriodS         = 4
+	// doing 5 every 10.5s to be sure
+	allowedAPICallsByPeriod = 5
+	apiCallsPeriodmS        = 10500
 
 	statusSuccess = "success"
 
@@ -53,8 +56,8 @@ func (t *GazelleTracker) apiCallRateLimiter() {
 	for i := 0; i < allowedAPICallsByPeriod; i++ {
 		t.limiter <- true
 	}
-	// every apiCallsPeriodS, refill the limiter channel
-	for range time.Tick(time.Second * time.Duration(apiCallsPeriodS)) {
+	// every apiCallsPeriodmS, refill the limiter channel
+	for range time.Tick(time.Millisecond * time.Duration(apiCallsPeriodmS)) {
 	Loop:
 		for i := 0; i < allowedAPICallsByPeriod; i++ {
 			select {
@@ -100,7 +103,7 @@ func (t *GazelleTracker) rateLimitedGetRequest(url string, expectingJSON bool) (
 		// check success
 		var r GazelleGenericResponse
 		if err := json.Unmarshal(data, &r); err != nil {
-			logThis.Info("BAD JSON, Received: \n"+string(data), VERBOSEST)
+			logthis.Info("BAD JSON, Received: \n"+string(data), logthis.VERBOSEST)
 			return []byte{}, errors.Wrap(err, errorUnmarshallingJSON)
 		}
 		if r.Status != statusSuccess {
@@ -108,7 +111,7 @@ func (t *GazelleTracker) rateLimitedGetRequest(url string, expectingJSON bool) (
 				return data, errors.New(errorInvalidResponse)
 			}
 			if r.Error == errorGazelleRateLimitExceeded {
-				logThis.Info(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", NORMAL)
+				logthis.Info(errorJSONAPI+": "+errorGazelleRateLimitExceeded+", retrying.", logthis.NORMAL)
 				// calling again, waiting for the rate limiter again should do the trick.
 				// that way 2 limiter slots will have passed before the next call is made,
 				// the server should allow it.
@@ -122,10 +125,10 @@ func (t *GazelleTracker) rateLimitedGetRequest(url string, expectingJSON bool) (
 	return data, nil
 }
 
-func (t *GazelleTracker) ApiCall(endpoint string) ([]byte, error) {
+func (t *GazelleTracker) apiCall(endpoint string) ([]byte, error) {
 	data, err := t.rateLimitedGetRequest(t.URL+"/ajax.php?"+endpoint, true)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorJSONAPI), VERBOSEST)
+		logthis.Error(errors.Wrap(err, errorJSONAPI), logthis.VERBOSEST)
 		// if error, try once again after logging in again
 		if loginErr := t.Login(); loginErr == nil {
 			return t.rateLimitedGetRequest(endpoint, true)
@@ -156,13 +159,13 @@ func (t *GazelleTracker) Login() error {
 	}
 	jar, err := cookiejar.New(&options)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
+		logthis.Error(errors.Wrap(err, errorLogIn), logthis.NORMAL)
 		return err
 	}
 	t.client = &http.Client{Jar: jar}
 	resp, err := t.client.Do(req)
 	if err != nil {
-		logThis.Error(errors.Wrap(err, errorLogIn), NORMAL)
+		logthis.Error(errors.Wrap(err, errorLogIn), logthis.NORMAL)
 		return err
 	}
 	defer resp.Body.Close()
@@ -197,19 +200,19 @@ func (t *GazelleTracker) DownloadTorrent(torrentURL, torrentFile, destinationFol
 		return err
 	}
 	// move to relevant directory
-	if err := CopyFile(torrentFile, filepath.Join(destinationFolder, torrentFile), false); err != nil {
+	if err := fs.CopyFile(torrentFile, filepath.Join(destinationFolder, torrentFile), false); err != nil {
 		return errors.Wrap(err, errorCouldNotMoveTorrent)
 	}
 	// cleaning up
 	if err := os.Remove(torrentFile); err != nil {
-		logThis.Info(fmt.Sprintf(errorRemovingTempFile, torrentFile), VERBOSE)
+		logthis.Info(fmt.Sprintf(errorRemovingTempFile, torrentFile), logthis.VERBOSE)
 	}
 	return nil
 }
 
 // DownloadTorrentFromID using its ID instead.
 func (t *GazelleTracker) DownloadTorrentFromID(torrentID string, destinationFolder string, useFLToken bool) error {
-	torrentFile := SanitizeFolder(t.Name) + "_id" + torrentID + torrentExt
+	torrentFile := fs.SanitizePath(t.Name) + "_id" + torrentID + torrentExt
 	torrentURL := t.URL + "/torrents.php?action=download&id=" + torrentID
 	if useFLToken {
 		torrentURL += "&usetoken=1"
@@ -219,7 +222,7 @@ func (t *GazelleTracker) DownloadTorrentFromID(torrentID string, destinationFold
 
 func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	if t.userID == 0 {
-		data, err := t.ApiCall("action=index")
+		data, err := t.apiCall("action=index")
 		if err != nil {
 			return nil, errors.Wrap(err, errorJSONAPI)
 		}
@@ -230,7 +233,7 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 		t.userID = i.Response.ID
 	}
 	// userStats, more precise and updated faster
-	data, err := t.ApiCall("action=user&id=" + strconv.Itoa(t.userID))
+	data, err := t.apiCall("action=user&id=" + strconv.Itoa(t.userID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -241,7 +244,7 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 	}
 	ratio, err := strconv.ParseFloat(s.Response.Stats.Ratio, 64)
 	if err != nil {
-		logThis.Info("Incorrect ratio: "+s.Response.Stats.Ratio, NORMAL)
+		logthis.Info("Incorrect ratio: "+s.Response.Stats.Ratio, logthis.NORMAL)
 		ratio = 0.0
 	}
 	// return StatsEntry
@@ -259,13 +262,13 @@ func (t *GazelleTracker) GetStats() (*StatsEntry, error) {
 }
 
 func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error) {
-	data, err := t.ApiCall("action=torrent&id=" + id)
+	data, err := t.apiCall("action=torrent&id=" + id)
 	if err != nil {
 		isDeleted, deletedText, errCheck := t.CheckIfDeleted(id)
 		if errCheck != nil {
-			logThis.Error(errors.Wrap(errCheck, "could not get information from site log"), VERBOSE)
+			logthis.Error(errors.Wrap(errCheck, "could not get information from site log"), logthis.VERBOSE)
 		} else if isDeleted {
-			logThis.Info(Red(deletedText), NORMAL)
+			logthis.Info(ui.Red(deletedText), logthis.NORMAL)
 		}
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -278,7 +281,7 @@ func (t *GazelleTracker) GetTorrentMetadata(id string) (*TrackerMetadata, error)
 }
 
 func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerMetadataArtist, error) {
-	data, err := t.ApiCall("action=artist&id=" + strconv.Itoa(artistID))
+	data, err := t.apiCall("action=artist&id=" + strconv.Itoa(artistID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -296,7 +299,7 @@ func (t *GazelleTracker) GetArtistInfo(artistID int) (*TrackerMetadataArtist, er
 }
 
 func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerMetadataTorrentGroup, error) {
-	data, err := t.ApiCall("action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
+	data, err := t.apiCall("action=torrentgroup&id=" + strconv.Itoa(torrentGroupID))
 	if err != nil {
 		return nil, errors.Wrap(err, errorJSONAPI)
 	}
@@ -318,7 +321,7 @@ func (t *GazelleTracker) GetTorrentGroupInfo(torrentGroupID int) (*TrackerMetada
 	return info, nil
 }
 
-func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req *http.Request, err error) {
+func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (*http.Request, error) {
 	// setting up the form
 	buffer := new(bytes.Buffer)
 	w := multipart.NewWriter(buffer)
@@ -355,17 +358,17 @@ func (t *GazelleTracker) prepareLogUpload(uploadURL string, logPath string) (req
 	w.WriteField("action", "takeupload")
 	w.Close()
 
-	req, err = http.NewRequest("POST", uploadURL, buffer)
+	req, err := http.NewRequest("POST", uploadURL, buffer)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
 	req.Header.Add("User-Agent", userAgent())
-	return
+	return req, err
 }
 
 func (t *GazelleTracker) GetLogScore(logPath string) (string, error) {
-	if !FileExists(logPath) {
+	if !fs.FileExists(logPath) {
 		return "", errors.New("Log does not exist: " + logPath)
 	}
 	// prepare upload

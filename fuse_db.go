@@ -10,6 +10,9 @@ import (
 	"github.com/asdine/storm/q"
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/strslice"
 )
 
 // FuseEntry is the struct describing a release folder with tracker metadata.
@@ -39,13 +42,13 @@ func (fe *FuseEntry) reset() {
 }
 
 func (fe *FuseEntry) Load(root string) error {
-	if fe.FolderName == "" || !DirectoryExists(filepath.Join(root, fe.FolderName)) {
+	if fe.FolderName == "" || !fs.DirExists(filepath.Join(root, fe.FolderName)) {
 		return errors.New("Wrong or missing path")
 	}
 
 	// find origin.json
 	originFile := filepath.Join(root, fe.FolderName, MetadataDir, OriginJSONFile)
-	if FileExists(originFile) {
+	if fs.FileExists(originFile) {
 		origin := TrackerOriginJSON{Path: originFile}
 		if err := origin.Load(); err != nil {
 			return errors.Wrap(err, "Error reading origin.json")
@@ -61,11 +64,11 @@ func (fe *FuseEntry) Load(root string) error {
 
 			// getting release info from json
 			infoJSON := filepath.Join(root, fe.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
-			if !FileExists(infoJSON) {
+			if !fs.FileExists(infoJSON) {
 				// if not present, try the old format
 				infoJSON = filepath.Join(root, fe.FolderName, MetadataDir, "Release.json")
 			}
-			if FileExists(infoJSON) {
+			if fs.FileExists(infoJSON) {
 				// load JSON, get info
 				md := TrackerMetadata{}
 				if err := md.LoadFromJSON(tracker, originFile, infoJSON); err != nil {
@@ -77,7 +80,7 @@ func (fe *FuseEntry) Load(root string) error {
 				for _, a := range md.Artists {
 					fe.Artists = append(fe.Artists, a.Name)
 				}
-				fe.RecordLabel = SanitizeFolder(md.RecordLabel)
+				fe.RecordLabel = fs.SanitizePath(md.RecordLabel)
 				fe.Year = md.OriginalYear // only show original year
 				fe.Title = md.Title
 				fe.Tags = md.Tags
@@ -106,7 +109,7 @@ func (fdb *FuseDB) Scan(rootPath string) error {
 		return errors.New("Could not prepare database for indexing fuse entries")
 	}
 
-	if !DirectoryExists(rootPath) {
+	if !fs.DirExists(rootPath) {
 		return errors.New("Error finding " + rootPath)
 	}
 	fdb.Root = rootPath
@@ -150,16 +153,16 @@ func (fdb *FuseDB) Scan(rootPath string) error {
 					fuseEntry.FolderName = relativeFolderName
 					// read information from metadata
 					if err := fuseEntry.Load(fdb.Root); err != nil {
-						logThis.Error(errors.Wrap(err, "Error: could not load metadata for "+relativeFolderName), VERBOSEST)
+						logthis.Error(errors.Wrap(err, "Error: could not load metadata for "+relativeFolderName), logthis.VERBOSEST)
 						return err
 					}
 					if err := tx.Save(&fuseEntry); err != nil {
-						logThis.Info("Error: could not save to db "+relativeFolderName, VERBOSEST)
+						logthis.Info("Error: could not save to db "+relativeFolderName, logthis.VERBOSEST)
 						return err
 					}
-					logThis.Info("New FuseDB entry: "+relativeFolderName, VERBOSESTEST)
+					logthis.Info("New FuseDB entry: "+relativeFolderName, logthis.VERBOSESTEST)
 				} else {
-					logThis.Error(dbErr, VERBOSEST)
+					logthis.Error(dbErr, logthis.VERBOSEST)
 					return dbErr
 				}
 			} else {
@@ -167,30 +170,30 @@ func (fdb *FuseDB) Scan(rootPath string) error {
 				// TODO for existing entries, maybe only reload if the metadata has been modified?
 				// read information from metadata
 				if err := fuseEntry.Load(fdb.Root); err != nil {
-					logThis.Info("Error: could not load metadata for "+relativeFolderName, VERBOSEST)
+					logthis.Info("Error: could not load metadata for "+relativeFolderName, logthis.VERBOSEST)
 					return err
 				}
 				if err := tx.Update(&fuseEntry); err != nil {
-					logThis.Info("Error: could not save to db "+relativeFolderName, VERBOSEST)
+					logthis.Info("Error: could not save to db "+relativeFolderName, logthis.VERBOSEST)
 					return err
 				}
-				logThis.Info("Updated FuseDB entry: "+relativeFolderName, VERBOSESTEST)
+				logthis.Info("Updated FuseDB entry: "+relativeFolderName, logthis.VERBOSESTEST)
 			}
 			currentFolderNames = append(currentFolderNames, relativeFolderName)
 		}
 		return nil
 	})
 	if walkErr != nil {
-		logThis.Error(walkErr, NORMAL)
+		logthis.Error(walkErr, logthis.NORMAL)
 	}
 
 	// remove entries no longer associated with actual files
 	for _, p := range previous {
-		if !StringInSlice(p.FolderName, currentFolderNames) {
+		if !strslice.Contains(currentFolderNames, p.FolderName) {
 			if err := tx.DeleteStruct(&p); err != nil {
-				logThis.Error(err, VERBOSEST)
+				logthis.Error(err, logthis.VERBOSEST)
 			}
-			logThis.Info("Removed FuseDB entry: "+p.FolderName, VERBOSESTEST)
+			logthis.Info("Removed FuseDB entry: "+p.FolderName, logthis.VERBOSESTEST)
 		}
 	}
 
@@ -213,10 +216,10 @@ func (fdb *FuseDB) contains(category, value string, inSlice bool) bool {
 	var entry FuseEntry
 	if err := query.First(&entry); err != nil {
 		if err == storm.ErrNotFound {
-			logThis.Info("Unknown value for "+category+": "+value, VERBOSEST)
+			logthis.Info("Unknown value for "+category+": "+value, logthis.VERBOSEST)
 			return false
 		}
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return false
 	}
 	return true
@@ -227,7 +230,7 @@ func (fdb *FuseDB) uniqueEntries(matcher q.Matcher, field string) ([]string, err
 	var allEntries []FuseEntry
 	query := fdb.DB.Select(matcher)
 	if err := query.Find(&allEntries); err != nil {
-		logThis.Error(err, VERBOSEST)
+		logthis.Error(err, logthis.VERBOSEST)
 		return []string{}, err
 	}
 	// get all different values
@@ -250,5 +253,6 @@ func (fdb *FuseDB) uniqueEntries(matcher q.Matcher, field string) ([]string, err
 			allValues = append(allValues, e.FolderName)
 		}
 	}
-	return RemoveStringSliceDuplicates(allValues), nil
+	strslice.RemoveDuplicates(&allValues)
+	return allValues, nil
 }

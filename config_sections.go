@@ -9,7 +9,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gitlab.com/catastrophic/assistance/fs"
+	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/strslice"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -25,13 +29,13 @@ type ConfigGeneral struct {
 }
 
 func (cg *ConfigGeneral) check() error {
-	if cg.LogLevel < NORMAL || cg.LogLevel > VERBOSESTEST {
+	if cg.LogLevel < logthis.NORMAL || cg.LogLevel > logthis.VERBOSESTEST {
 		return errors.New("Invalid log level")
 	}
-	if cg.DownloadDir != "" && !DirectoryExists(cg.DownloadDir) {
+	if cg.DownloadDir != "" && !fs.DirExists(cg.DownloadDir) {
 		return errors.New("Downloads directory does not exist")
 	}
-	if cg.WatchDir != "" && !DirectoryExists(cg.WatchDir) {
+	if cg.WatchDir != "" && !fs.DirExists(cg.WatchDir) {
 		return errors.New("Watch directory does not exist")
 	}
 	if cg.AutomaticMetadataRetrieval && cg.DownloadDir == "" {
@@ -168,19 +172,19 @@ func (cl *ConfigLibrary) check() error {
 	cl.Aliases = make(map[string][]string)
 	cl.Categories = make(map[string][]string)
 	// checks
-	if cl.Directory == "" || !DirectoryExists(cl.Directory) {
+	if cl.Directory == "" || !fs.DirExists(cl.Directory) {
 		return errors.New("library directory does not exist")
 	}
-	if cl.PlaylistDirectory == "" || !DirectoryExists(cl.PlaylistDirectory) {
+	if cl.PlaylistDirectory == "" || !fs.DirExists(cl.PlaylistDirectory) {
 		return errors.New("playlist directory does not exist")
 	}
 	for _, s := range cl.AdditionalSources {
-		if !DirectoryExists(s) {
+		if !fs.DirExists(s) {
 			return errors.New("library directory does not exist")
 		}
 	}
 	if cl.AliasesFile != "" {
-		if !FileExists(cl.AliasesFile) {
+		if !fs.FileExists(cl.AliasesFile) {
 			return errors.New("aliases file does not exist")
 		}
 		// load the aliases
@@ -191,7 +195,7 @@ func (cl *ConfigLibrary) check() error {
 		cl.Aliases = *aliases
 	}
 	if cl.CategoriesFile != "" {
-		if !FileExists(cl.CategoriesFile) {
+		if !fs.FileExists(cl.CategoriesFile) {
 			return errors.New("categories file does not exist")
 		}
 		// load the categories
@@ -315,7 +319,7 @@ func (cw *ConfigWebServer) check() error {
 	if cw.Theme == "" {
 		cw.Theme = "dark_orange"
 	}
-	if !StringInSlice(cw.Theme, knownThemeNames) {
+	if !strslice.Contains(knownThemeNames, cw.Theme) {
 		return errors.New("Unknown theme name")
 	}
 	return nil
@@ -430,16 +434,15 @@ func (cg *ConfigGitlabPages) check() error {
 	}
 	if cg.GitHTTPS == "" {
 		return errors.New("Gitlab repository must be provided")
-	} else {
-		// check form
-		r := regexp.MustCompile(gitRepositoryPattern)
-		hits := r.FindAllStringSubmatch(cg.GitHTTPS, -1)
-		if len(hits) != 1 {
-			return errors.New("Gitlab Pages git repository must be in the form: https://gitlab.com/USER/REPO.git")
-		}
-		cg.Folder = hits[0][2]
-		cg.URL = fmt.Sprintf("https://%s.gitlab.io/%s", hits[0][1], hits[0][2])
 	}
+	// check form
+	r := regexp.MustCompile(gitRepositoryPattern)
+	hits := r.FindAllStringSubmatch(cg.GitHTTPS, -1)
+	if len(hits) != 1 {
+		return errors.New("Gitlab Pages git repository must be in the form: https://gitlab.com/USER/REPO.git")
+	}
+	cg.Folder = hits[0][2]
+	cg.URL = fmt.Sprintf("https://%s.gitlab.io/%s", hits[0][1], hits[0][2])
 	return nil
 }
 
@@ -469,15 +472,14 @@ func (cm *ConfigMPD) String() string {
 func (cm *ConfigMPD) check() error {
 	if cm.Server == "" {
 		return errors.New("Server name must be provided")
-	} else {
-		// check it's server:port
-		r := regexp.MustCompile(ircServerPattern)
-		hits := r.FindAllStringSubmatch(cm.Server, -1)
-		if len(hits) != 1 {
-			return errors.New("MPD server must be in the form: server.hostname:port")
-		}
 	}
-	if cm.Library == "" || !DirectoryExists(cm.Library) {
+	// check it's server:port
+	r := regexp.MustCompile(ircServerPattern)
+	hits := r.FindAllStringSubmatch(cm.Server, -1)
+	if len(hits) != 1 {
+		return errors.New("MPD server must be in the form: server.hostname:port")
+	}
+	if cm.Library == "" || !fs.DirExists(cm.Library) {
 		return errors.New("A valid MPD Library path must be provided")
 	}
 	return nil
@@ -519,7 +521,7 @@ func (cf *ConfigFilter) check() error {
 	if cf.Name == "" {
 		return errors.New("Missing filter name")
 	}
-	if (cf.HasCue || cf.HasLog || cf.LogScore != 0) && !StringInSlice(sourceCD, cf.Source) {
+	if (cf.HasCue || cf.HasLog || cf.LogScore != 0) && !strslice.Contains(cf.Source, sourceCD) {
 		return errors.New("Has Log/Cue only relevant if CD is an acceptable source")
 	}
 	if cf.MaxSizeMB < 0 || cf.MinSizeMB < 0 {
@@ -528,16 +530,16 @@ func (cf *ConfigFilter) check() error {
 	if cf.MaxSizeMB > 0 && cf.MinSizeMB >= cf.MaxSizeMB {
 		return errors.New("Minimun release size must be lower than maximum release size")
 	}
-	if cf.WatchDir != "" && !DirectoryExists(cf.WatchDir) {
+	if cf.WatchDir != "" && !fs.DirExists(cf.WatchDir) {
 		return errors.New("Specific filter watch directory does not exist")
 	}
-	if CommonInStringSlices(cf.ExcludedArtist, cf.Artist) != nil {
+	if strslice.Common(cf.ExcludedArtist, cf.Artist) != nil {
 		return errors.New("The same artist cannot be both included and excluded")
 	}
-	if CommonInStringSlices(cf.TagsExcluded, cf.TagsIncluded) != nil {
+	if strslice.Common(cf.TagsExcluded, cf.TagsIncluded) != nil {
 		return errors.New("The same tag cannot be both included and excluded")
 	}
-	if CommonInStringSlices(cf.TagsExcluded, cf.TagsRequired) != nil {
+	if strslice.Common(cf.TagsExcluded, cf.TagsRequired) != nil {
 		return errors.New("The same tag cannot be both required and excluded")
 	}
 	if len(cf.ExcludedReleaseType) != 0 && len(cf.ReleaseType) != 0 {
@@ -568,40 +570,40 @@ func (cf *ConfigFilter) check() error {
 	// checking against known gazelle values
 	if len(cf.ReleaseType) != 0 {
 		for _, r := range cf.ReleaseType {
-			if !StringInSlice(r, knownReleaseTypes) {
+			if !strslice.Contains(knownReleaseTypes, r) {
 				return errors.New("unknown release type " + r + ", acceptable values: " + strings.Join(knownReleaseTypes, ", "))
 			}
 		}
 	}
 	if len(cf.ExcludedReleaseType) != 0 {
 		for _, r := range cf.ExcludedReleaseType {
-			if !StringInSlice(r, knownReleaseTypes) {
+			if !strslice.Contains(knownReleaseTypes, r) {
 				return errors.New("unknown release type " + r + ", acceptable values: " + strings.Join(knownReleaseTypes, ", "))
 			}
 		}
 	}
 	if len(cf.Format) != 0 {
 		for _, r := range cf.Format {
-			if !StringInSlice(r, knownFormats) {
+			if !strslice.Contains(knownFormats, r) {
 				return errors.New("unknown format " + r + ", acceptable values: " + strings.Join(knownFormats, ", "))
 			}
 		}
 	}
 	if len(cf.Source) != 0 {
 		for _, r := range cf.Source {
-			if !StringInSlice(r, knownSources) {
+			if !strslice.Contains(knownSources, r) {
 				return errors.New("unknown source " + r + ", acceptable values: " + strings.Join(knownSources, ", "))
 			}
 		}
 	}
 	if len(cf.Quality) != 0 {
 		for _, r := range cf.Quality {
-			if !StringInSlice(r, knownQualities) {
+			if !strslice.Contains(knownQualities, r) {
 				return errors.New("unknown quality " + r + ", acceptable values: " + strings.Join(knownQualities, ", "))
 			}
 		}
 	}
-	if CommonInStringSlices(cf.Uploader, cf.BlacklistedUploader) != nil {
+	if strslice.Common(cf.Uploader, cf.BlacklistedUploader) != nil {
 		return errors.New("The same uploader cannot be both included and excluded")
 	}
 
@@ -613,7 +615,7 @@ func (cf *ConfigFilter) check() error {
 func (cf *ConfigFilter) String() string {
 	description := "Filter configuration for " + cf.Name + ":\n"
 	if len(cf.Year) != 0 {
-		description += "\tYear(s): " + strings.Join(IntSliceToStringSlice(cf.Year), ", ") + "\n"
+		description += "\tYear(s): " + strings.Join(intslice.ToStringSlice(cf.Year), ", ") + "\n"
 	}
 	if len(cf.Artist) != 0 {
 		description += "\tArtist(s): " + strings.Join(cf.Artist, ", ") + "\n"
@@ -678,7 +680,7 @@ func (cf *ConfigFilter) String() string {
 		description += "\tEdition contains: " + strings.Join(cf.Edition, ", ") + "\n"
 	}
 	if len(cf.EditionYear) != 0 {
-		description += "\tEdition Year(s): " + strings.Join(IntSliceToStringSlice(cf.EditionYear), ", ") + "\n"
+		description += "\tEdition Year(s): " + strings.Join(intslice.ToStringSlice(cf.EditionYear), ", ") + "\n"
 	}
 	description += "\tReject unknown releases: " + fmt.Sprintf("%v", cf.RejectUnknown) + "\n"
 	if len(cf.BlacklistedUploader) != 0 {
@@ -687,4 +689,21 @@ func (cf *ConfigFilter) String() string {
 		description += "\tNo blacklisted uploaders"
 	}
 	return description
+}
+
+type ConfigMetadata struct {
+	DiscogsToken string `yaml:"discogs_token"`
+}
+
+func (cm *ConfigMetadata) String() string {
+	txt := "Metadata configuration:\n"
+	txt += "\tDiscogs Token: " + cm.DiscogsToken + "\n"
+	return txt
+}
+
+func (cm *ConfigMetadata) check() error {
+	if cm.DiscogsToken == "" {
+		return errors.New("A valid Discogs Token must be provided (can be generated from Discogs user account)")
+	}
+	return nil
 }

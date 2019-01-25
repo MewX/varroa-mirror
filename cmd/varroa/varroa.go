@@ -9,19 +9,19 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/intslice"
+	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/ui"
 	"gitlab.com/passelecasque/varroa"
 )
 
-var logThis *varroa.LogThis
-
 func main() {
 	env := varroa.NewEnvironment()
-	logThis = varroa.NewLogThis(env)
 
 	// parsing CLI
 	cli := &varroaArguments{}
 	if err := cli.parseCLI(os.Args[1:]); err != nil {
-		logThis.Error(errors.Wrap(err, varroa.ErrorArguments), varroa.NORMAL)
+		logthis.Error(errors.Wrap(err, varroa.ErrorArguments), logthis.NORMAL)
 		return
 	}
 	if cli.builtin {
@@ -35,14 +35,14 @@ func main() {
 	if !cli.canUseDaemon {
 		if cli.backup {
 			if err := varroa.ArchiveUserFiles(); err == nil {
-				logThis.Info(varroa.InfoUserFilesArchived, varroa.NORMAL)
+				logthis.Info(varroa.InfoUserFilesArchived, logthis.NORMAL)
 			}
 			return
 		}
 		// loading configuration
 		config, err := varroa.NewConfig(varroa.DefaultConfigurationFile)
 		if err != nil {
-			logThis.Error(errors.Wrap(err, varroa.ErrorLoadingConfig), varroa.NORMAL)
+			logthis.Error(errors.Wrap(err, varroa.ErrorLoadingConfig), logthis.NORMAL)
 			return
 		}
 		env.SetConfig(config)
@@ -51,23 +51,23 @@ func main() {
 			// now dealing with encrypt/decrypt commands, which both require the passphrase from user
 			passphrase, err := varroa.GetPassphrase()
 			if err != nil {
-				logThis.Error(errors.Wrap(err, "Error getting passphrase"), varroa.NORMAL)
+				logthis.Error(errors.Wrap(err, "Error getting passphrase"), logthis.NORMAL)
 			}
 			passphraseBytes := make([]byte, 32)
 			copy(passphraseBytes[:], passphrase)
 			if cli.encrypt {
 				if err = config.Encrypt(varroa.DefaultConfigurationFile, passphraseBytes); err != nil {
-					logThis.Info(err.Error(), varroa.NORMAL)
+					logthis.Info(err.Error(), logthis.NORMAL)
 					return
 				}
-				logThis.Info(varroa.InfoEncrypted, varroa.NORMAL)
+				logthis.Info(varroa.InfoEncrypted, logthis.NORMAL)
 			}
 			if cli.decrypt {
 				if err = config.DecryptTo(varroa.DefaultConfigurationFile, passphraseBytes); err != nil {
-					logThis.Error(err, varroa.NORMAL)
+					logthis.Error(err, logthis.NORMAL)
 					return
 				}
-				logThis.Info(varroa.InfoDecrypted, varroa.NORMAL)
+				logthis.Info(varroa.InfoDecrypted, logthis.NORMAL)
 			}
 			return
 		}
@@ -76,9 +76,20 @@ func main() {
 			fmt.Println(config)
 			return
 		}
+		if cli.enhance {
+			enh, err := varroa.NewReleaseDir(cli.paths[0])
+			if err != nil {
+				logthis.Error(err, logthis.NORMAL)
+				return
+			}
+			if err := enh.Enhance(); err != nil {
+				logthis.Error(err, logthis.NORMAL)
+			}
+			return
+		}
 		if cli.downloadSearch || cli.downloadInfo || cli.downloadSort || cli.downloadSortID || cli.downloadList || cli.downloadClean {
 			if !config.DownloadFolderConfigured {
-				logThis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), varroa.NORMAL)
+				logthis.Error(errors.New("Cannot scan for downloads, downloads folder not configured"), logthis.NORMAL)
 				return
 			}
 			var additionalSources []string
@@ -87,7 +98,7 @@ func main() {
 			}
 			downloads, err := varroa.NewDownloadsDB(varroa.DefaultDownloadsDB, config.General.DownloadDir, additionalSources)
 			if err != nil {
-				logThis.Error(err, varroa.NORMAL)
+				logthis.Error(err, logthis.NORMAL)
 				return
 			}
 			defer downloads.Close()
@@ -95,7 +106,7 @@ func main() {
 			// simple operation, only requires access to download folder, since it will clean unindexed folders
 			if cli.downloadClean {
 				if err = downloads.Clean(); err != nil {
-					logThis.Error(err, varroa.NORMAL)
+					logthis.Error(err, logthis.NORMAL)
 				} else {
 					fmt.Println("Downloads directory cleaned of empty folders & folders containing only tracker metadata.")
 				}
@@ -104,65 +115,65 @@ func main() {
 			if cli.downloadSort || cli.downloadSortID {
 				// setting up to load history, etc.
 				if err = env.SetUp(false); err != nil {
-					logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
+					logthis.Error(errors.Wrap(err, varroa.ErrorSettingUp), logthis.NORMAL)
 					return
 				}
 				if !config.LibraryConfigured {
-					logThis.Error(errors.New("Cannot sort downloads, library is not configured"), varroa.NORMAL)
+					logthis.Error(errors.New("Cannot sort downloads, library is not configured"), logthis.NORMAL)
 					return
 				}
 				// if no argument, sort everything
 				if (cli.downloadSortID && len(cli.torrentIDs) == 0) || (cli.downloadSort && len(cli.paths) == 0) {
 					// scanning
-					fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
+					fmt.Println(ui.Green("Scanning downloads for new releases and updated metadata."))
 					if err = downloads.Scan(); err != nil {
-						logThis.Error(err, varroa.NORMAL)
+						logthis.Error(err, logthis.NORMAL)
 						return
 					}
 					defer downloads.Close()
 					fmt.Println("Considering new or unsorted downloads.")
 					if err = downloads.Sort(env); err != nil {
-						logThis.Error(errors.Wrap(err, "Error sorting downloads"), varroa.NORMAL)
+						logthis.Error(errors.Wrap(err, "Error sorting downloads"), logthis.NORMAL)
 						return
 					}
 					return
 				}
 				if cli.downloadSort {
 					// scanning
-					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
+					fmt.Println(ui.Green("Scanning downloads for updated metadata."))
 					for _, p := range cli.paths {
 						if err = downloads.RescanPath(p); err != nil {
-							logThis.Error(err, varroa.NORMAL)
+							logthis.Error(err, logthis.NORMAL)
 							return
 						}
 						dl, err := downloads.FindByFolderName(p)
 						if err != nil {
-							logThis.Error(errors.Wrap(err, "error looking for "), varroa.NORMAL)
+							logthis.Error(errors.Wrap(err, "error looking for "), logthis.NORMAL)
 							return
 						}
 						cli.torrentIDs = append(cli.torrentIDs, dl.ID)
 					}
 				} else {
 					// scanning
-					fmt.Println(varroa.Green("Scanning downloads for updated metadata."))
+					fmt.Println(ui.Green("Scanning downloads for updated metadata."))
 					if err = downloads.RescanIDs(cli.torrentIDs); err != nil {
-						logThis.Error(err, varroa.NORMAL)
+						logthis.Error(err, logthis.NORMAL)
 						return
 					}
 				}
 				fmt.Println("Sorting specific download folders.")
 				for _, id := range cli.torrentIDs {
 					if err = downloads.SortThisID(env, id); err != nil {
-						logThis.Error(err, varroa.NORMAL)
+						logthis.Error(err, logthis.NORMAL)
 					}
 				}
 				return
 			}
 
 			// all subsequent commands require scanning
-			fmt.Println(varroa.Green("Scanning downloads for new releases and updated metadata."))
+			fmt.Println(ui.Green("Scanning downloads for new releases and updated metadata."))
 			if err = downloads.Scan(); err != nil {
-				logThis.Error(err, varroa.NORMAL)
+				logthis.Error(err, logthis.NORMAL)
 				return
 			}
 			defer downloads.Close()
@@ -196,7 +207,7 @@ func main() {
 			if cli.downloadInfo {
 				dl, err := downloads.FindByID(cli.torrentIDs[0])
 				if err != nil {
-					logThis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), varroa.NORMAL)
+					logthis.Error(errors.Wrap(err, "Error finding such an ID in the downloads database"), logthis.NORMAL)
 					return
 				}
 				fmt.Println(dl.Description(config.General.DownloadDir))
@@ -205,43 +216,43 @@ func main() {
 		}
 		if cli.libraryReorg {
 			if !config.LibraryConfigured {
-				logThis.Info("Library is not configured, missing relevant configuration section.", varroa.NORMAL)
+				logthis.Info("Library is not configured, missing relevant configuration section.", logthis.NORMAL)
 				return
 			}
-			logThis.Info("Reorganizing releases in the library directory. ", varroa.NORMAL)
+			logthis.Info("Reorganizing releases in the library directory. ", logthis.NORMAL)
 			if cli.libraryReorgSimulate {
-				fmt.Println(varroa.Green("This will simulate the library reorganization, applying the library folder template to all releases, using known tracker metadata. Nothing will actually be renamed or moved."))
+				fmt.Println(ui.Green("This will simulate the library reorganization, applying the library folder template to all releases, using known tracker metadata. Nothing will actually be renamed or moved."))
 			} else {
-				fmt.Println(varroa.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
+				fmt.Println(ui.Green("This will apply the library folder template to all releases, using known tracker metadata. It will overwrite any specific name that may have been set manually."))
 			}
-			if varroa.Accept("Confirm") {
+			if ui.Accept("Confirm") {
 				if err = varroa.ReorganizeLibrary(cli.libraryReorgSimulate, cli.libraryReorgInteractive); err != nil {
-					logThis.Error(err, varroa.NORMAL)
+					logthis.Error(err, logthis.NORMAL)
 				}
 			}
 			return
 		}
 		// using stormDB
 		if cli.downloadFuse {
-			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
+			logthis.Info("Mounting FUSE filesystem in "+cli.mountPoint, logthis.NORMAL)
 			if err = varroa.FuseMount(config.General.DownloadDir, cli.mountPoint, varroa.DefaultDownloadsDB); err != nil {
-				logThis.Error(err, varroa.NORMAL)
+				logthis.Error(err, logthis.NORMAL)
 				return
 			}
-			logThis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", varroa.VERBOSE)
+			logthis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", logthis.VERBOSE)
 			return
 		}
 		if cli.libraryFuse {
 			if !config.LibraryConfigured {
-				logThis.Info("Cannot mount FUSE filesystem for the library, missing relevant configuration section.", varroa.NORMAL)
+				logthis.Info("Cannot mount FUSE filesystem for the library, missing relevant configuration section.", logthis.NORMAL)
 				return
 			}
-			logThis.Info("Mounting FUSE filesystem in "+cli.mountPoint, varroa.NORMAL)
+			logthis.Info("Mounting FUSE filesystem in "+cli.mountPoint, logthis.NORMAL)
 			if err = varroa.FuseMount(config.Library.Directory, cli.mountPoint, varroa.DefaultLibraryDB); err != nil {
-				logThis.Error(err, varroa.NORMAL)
+				logthis.Error(err, logthis.NORMAL)
 				return
 			}
-			logThis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", varroa.VERBOSE)
+			logthis.Info("Unmounting FUSE filesystem, fusermount -u has presumably been called.", logthis.VERBOSE)
 			return
 		}
 	}
@@ -258,7 +269,7 @@ func main() {
 		if !cli.noDaemon {
 			// daemonizing process
 			if err := d.Start(os.Args); err != nil {
-				logThis.Error(errors.Wrap(err, varroa.ErrorGettingDaemonContext), varroa.NORMAL)
+				logthis.Error(errors.Wrap(err, varroa.ErrorGettingDaemonContext), logthis.NORMAL)
 				return
 			}
 			// if not in daemon, job is over; exiting.
@@ -269,7 +280,7 @@ func main() {
 		}
 		// setting up for the daemon or main process
 		if err := env.SetUp(true); err != nil {
-			logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
+			logthis.Error(errors.Wrap(err, varroa.ErrorSettingUp), logthis.NORMAL)
 			return
 		}
 		// launch goroutines
@@ -280,14 +291,17 @@ func main() {
 			d.WaitForStop()
 		} else {
 			// wait for ^C to quit.
-			fmt.Println(varroa.Red("Running in no-daemon mode. Ctrl+C to quit."))
+			fmt.Println(ui.Red("Running in no-daemon mode. Ctrl+C to quit."))
 			c := make(chan os.Signal)
 			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 			// waiting...
 			<-c
-			fmt.Println(varroa.Red("Terminating."))
+			fmt.Println(ui.Red("Terminating."))
 		}
-		varroa.Notify("Stopping varroa!", varroa.FullName, "info", env)
+
+		if err := varroa.Notify("Stopping varroa!", varroa.FullName, "info", env); err != nil {
+			logthis.Error(err, logthis.NORMAL)
+		}
 		return
 	}
 
@@ -297,19 +311,19 @@ func main() {
 	if err != nil {
 		// no daemon found, running commands directly.
 		if cli.requiresDaemon {
-			logThis.Error(errors.Wrap(err, varroa.ErrorFindingDaemon), varroa.NORMAL)
+			logthis.Error(errors.Wrap(err, varroa.ErrorFindingDaemon), logthis.NORMAL)
 			fmt.Println(varroa.InfoUsage)
 			return
 		}
 		// setting up since the daemon isn't running
 		if err := env.SetUp(false); err != nil {
-			logThis.Error(errors.Wrap(err, varroa.ErrorSettingUp), varroa.NORMAL)
+			logthis.Error(errors.Wrap(err, varroa.ErrorSettingUp), logthis.NORMAL)
 			return
 		}
 		// general commands
 		if cli.stats {
 			if err := varroa.GenerateStats(env); err != nil {
-				logThis.Error(errors.Wrap(err, varroa.ErrorGeneratingGraphs), varroa.NORMAL)
+				logthis.Error(errors.Wrap(err, varroa.ErrorGeneratingGraphs), logthis.NORMAL)
 			}
 			return
 		}
@@ -317,11 +331,11 @@ func main() {
 			for _, r := range cli.toRefresh {
 				tracker, err := env.Tracker(r.tracker)
 				if err != nil {
-					logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), varroa.NORMAL)
+					logthis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), logthis.NORMAL)
 					return
 				}
 				if err = varroa.RefreshLibraryMetadata(r.path, tracker, strconv.Itoa(r.id)); err != nil {
-					logThis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), varroa.NORMAL)
+					logthis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), logthis.NORMAL)
 				}
 			}
 			return
@@ -330,38 +344,38 @@ func main() {
 		// commands that require tracker label
 		tracker, err := env.Tracker(cli.trackerLabel)
 		if err != nil {
-			logThis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), varroa.NORMAL)
+			logthis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), logthis.NORMAL)
 			return
 		}
 		if cli.refreshMetadataByID {
-			if err := varroa.RefreshMetadata(env, tracker, varroa.IntSliceToStringSlice(cli.torrentIDs)); err != nil {
-				logThis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), varroa.NORMAL)
+			if err := varroa.RefreshMetadata(env, tracker, intslice.ToStringSlice(cli.torrentIDs)); err != nil {
+				logthis.Error(errors.Wrap(err, varroa.ErrorRefreshingMetadata), logthis.NORMAL)
 			}
 		}
 		if cli.snatch {
-			if err := varroa.SnatchTorrents(env, tracker, varroa.IntSliceToStringSlice(cli.torrentIDs), cli.useFLToken); err != nil {
-				logThis.Error(errors.Wrap(err, varroa.ErrorSnatchingTorrent), varroa.NORMAL)
+			if err := varroa.SnatchTorrents(env, tracker, intslice.ToStringSlice(cli.torrentIDs), cli.useFLToken); err != nil {
+				logthis.Error(errors.Wrap(err, varroa.ErrorSnatchingTorrent), logthis.NORMAL)
 			}
 		}
 		if cli.info {
-			if err := varroa.ShowTorrentInfo(env, tracker, varroa.IntSliceToStringSlice(cli.torrentIDs)); err != nil {
-				logThis.Error(errors.Wrap(err, varroa.ErrorShowingTorrentInfo), varroa.NORMAL)
+			if err := varroa.ShowTorrentInfo(env, tracker, intslice.ToStringSlice(cli.torrentIDs)); err != nil {
+				logthis.Error(errors.Wrap(err, varroa.ErrorShowingTorrentInfo), logthis.NORMAL)
 			}
 		}
 		if cli.checkLog {
 			if err := varroa.CheckLog(tracker, []string{cli.logFile}); err != nil {
-				logThis.Error(errors.Wrap(err, varroa.ErrorCheckingLog), varroa.NORMAL)
+				logthis.Error(errors.Wrap(err, varroa.ErrorCheckingLog), logthis.NORMAL)
 			}
 		}
 		if cli.reseed {
 			if err := varroa.Reseed(tracker, cli.paths); err != nil {
-				logThis.Error(errors.Wrap(err, varroa.ErrorReseed), varroa.NORMAL)
+				logthis.Error(errors.Wrap(err, varroa.ErrorReseed), logthis.NORMAL)
 			}
 		}
 	} else {
 		// daemon is up, sending commands to the daemon through the unix socket
 		if err := varroa.SendOrders(cli.commandToDaemon()); err != nil {
-			logThis.Error(errors.Wrap(err, varroa.ErrorSendingCommandToDaemon), varroa.NORMAL)
+			logthis.Error(errors.Wrap(err, varroa.ErrorSendingCommandToDaemon), logthis.NORMAL)
 			return
 		}
 		// at last, sending signals for shutdown
@@ -376,7 +390,7 @@ func closeDB() {
 	// closing statsDB properly
 	if stats, err := varroa.NewDatabase(filepath.Join(varroa.StatsDir, varroa.DefaultHistoryDB)); err == nil {
 		if closingErr := stats.Close(); closingErr != nil {
-			logThis.Error(closingErr, varroa.NORMAL)
+			logthis.Error(closingErr, logthis.NORMAL)
 		}
 	}
 }
