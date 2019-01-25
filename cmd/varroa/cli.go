@@ -115,8 +115,6 @@ Commands:
 	reseed:
 		reseed a downloaded release using tracker metadata. Does not check
 		the torrent files actually match the contents in the given PATH.
-	enhance:
-		gather more metadata and generally enhance a downloaded release.	
 	
 Configuration Commands:
 
@@ -148,7 +146,6 @@ Usage:
 	varroa (downloads|dl) (search <ARTIST>|metadata <ID>|sort [<PATH>...]|sort-id [<ID>...]|list [<STATE>]|clean|fuse <MOUNT_POINT>)
 	varroa library (fuse <MOUNT_POINT>|reorganize [--simulate|--interactive])
 	varroa reseed <TRACKER> <PATH>
-	varroa enhance <PATH>
 	varroa (encrypt|decrypt)
 	varroa --version
 
