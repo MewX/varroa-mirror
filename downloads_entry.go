@@ -361,7 +361,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 		fmt.Println(ui.Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sortings."))
 		// if exported, write playlists
 		if config.playlistDirectoryConfigured && ui.Accept("Add release to daily/monthly playlists") {
-			if err = AddReleaseToCurrentPlaylists(config.Library.PlaylistDirectory, config.Library.Directory, newName); err != nil {
+			if err = addReleaseToCurrentPlaylists(config.Library.PlaylistDirectory, config.Library.Directory, newName); err != nil {
 				return err
 			}
 			fmt.Println(ui.Green("Playlists generated or updated."))

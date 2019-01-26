@@ -227,7 +227,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	b.status = args["status"].(bool)
 	b.stats = args["stats"].(bool)
 	b.reseed = args["reseed"].(bool)
-	b.enhance = args["enhance"].(bool)
+	//b.enhance = args["enhance"].(bool)
 	b.refreshMetadataByID = args["refresh-metadata-by-id"].(bool)
 	b.refreshMetadata = args["refresh-metadata"].(bool)
 	b.checkLog = args["check-log"].(bool)

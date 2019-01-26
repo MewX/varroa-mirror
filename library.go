@@ -11,6 +11,7 @@ import (
 	daemon "github.com/sevlyar/go-daemon"
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/m3u"
 )
 
 // ReorganizeLibrary using tracker metadata and the user-defined template
@@ -42,7 +43,7 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 		template = c.Library.Template
 	}
 
-	var playlists []Playlist
+	var playlists []m3u.Playlist
 	if c.playlistDirectoryConfigured {
 		// load all playlists
 		e = filepath.Walk(c.Library.PlaylistDirectory, func(path string, fileInfo os.FileInfo, walkError error) error {
@@ -51,11 +52,11 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 			}
 			// load all found playlists
 			if filepath.Ext(path) == m3uExt {
-				p := Playlist{}
-				if err := p.Load(path); err != nil {
+				p, err := m3u.New(path)
+				if err != nil {
 					logthis.Error(err, logthis.VERBOSE)
 				} else {
-					playlists = append(playlists, p)
+					playlists = append(playlists, *p)
 				}
 			}
 			return nil

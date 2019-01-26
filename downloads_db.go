@@ -18,6 +18,7 @@ import (
 	"github.com/sevlyar/go-daemon"
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/music"
 	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/catastrophic/assistance/ui"
 )
@@ -126,7 +127,7 @@ func (d *DownloadsDB) Scan() error {
 	for _, entry := range entries {
 		if entry.IsDir() {
 			// detect if sound files are present, leave otherwise
-			if !DirectoryContainsMusic(filepath.Join(d.root, entry.Name())) {
+			if !music.ContainsMusic(filepath.Join(d.root, entry.Name())) {
 				logthis.Info("Error: no music found in "+entry.Name(), logthis.VERBOSEST)
 				continue
 			}

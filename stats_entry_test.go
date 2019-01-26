@@ -14,16 +14,17 @@ func TestStats(t *testing.T) {
 	verify := assert.New(t)
 
 	// force config with dummy file
-	_, err := NewConfig("test/test_statsnoautosnatch.yaml")
+	_, err := NewConfig("test/test_complete.yaml")
 	verify.Nil(err)
 
 	// test data
-	s1 := &StatsEntry{Tracker: "blue"}
-	s2 := &StatsEntry{Tracker: "blue", Up: 1000 * 1024 * 1024, Down: 1000 * 1024 * 1024, Ratio: float64(1.0)}
-	s3 := &StatsEntry{Tracker: "blue", Up: 1050 * 1024 * 1024, Down: 2000 * 1024 * 1024, Ratio: float64(0.95)}
-	s4 := &StatsEntry{Tracker: "blue", Up: 90 * 1024 * 1024, Down: 100 * 1024 * 1024, Ratio: 0.90}
-	s5 := &StatsEntry{Tracker: "blue", Up: 90 * 1024 * 1024, Down: 145 * 1024 * 1024, Ratio: 0.62}
-	s6 := &StatsEntry{Tracker: "blue", Up: 90 * 1024 * 1024, Down: 180 * 1024 * 1024, Ratio: 0.50}
+	s1 := &StatsEntry{Tracker: "purple"}
+	s2 := &StatsEntry{Tracker: "purple", Up: 1000 * 1024 * 1024, Down: 1000 * 1024 * 1024, Ratio: float64(1.0)}
+	s3 := &StatsEntry{Tracker: "purple", Up: 1050 * 1024 * 1024, Down: 2000 * 1024 * 1024, Ratio: float64(0.95)}
+	s4 := &StatsEntry{Tracker: "purple", Up: 90 * 1024 * 1024, Down: 100 * 1024 * 1024, Ratio: 0.90}
+	s5 := &StatsEntry{Tracker: "purple", Up: 90 * 1024 * 1024, Down: 145 * 1024 * 1024, Ratio: 0.62}
+	s6 := &StatsEntry{Tracker: "purple", Up: 90 * 1024 * 1024, Down: 180 * 1024 * 1024, Ratio: 0.50}
+	s7 := &StatsEntry{Tracker: "blue", Up: 1000 * 1024 * 1024, Down: 1000 * 1024 * 1024, Ratio: float64(1.0)}
 
 	// check buffers
 	buf2, wbuf2 := s2.getBufferValues()
@@ -32,6 +33,9 @@ func TestStats(t *testing.T) {
 	buf3, wbuf3 := s3.getBufferValues()
 	verify.Equal(int64(-950*1024*1024), buf3)
 	verify.Equal(int64(-262144000), wbuf3)
+	buf7, wbuf7 := s7.getBufferValues()
+	verify.Equal(int64(250*1024*1024), buf7) // min ratio 0.8 in config
+	verify.Equal(int64(699050666), wbuf7)
 
 	// check first diff
 	dup, ddown, dbuf, dwbuf, dratio := s2.Diff(s1)

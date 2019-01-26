@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
-	"gitlab.com/passelecasque/go-ircevent"
+	irc "gitlab.com/catastrophic/go-ircevent"
 )
 
 const (

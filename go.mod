@@ -42,8 +42,8 @@ require (
 	github.com/vmihailenco/msgpack v4.0.1+incompatible // indirect
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	gitlab.com/catastrophic/assistance v0.10.2
-	gitlab.com/passelecasque/go-ircevent v0.0.0-20180204145445-d9588561fc12
+	gitlab.com/catastrophic/assistance v0.12.0
+	gitlab.com/catastrophic/go-ircevent v0.1.0
 	go.etcd.io/bbolt v1.3.0 // indirect
 	golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9 // indirect
 	golang.org/x/image v0.0.0-20181116024801-cd38e8056d9b // indirect

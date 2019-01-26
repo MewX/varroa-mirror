@@ -107,12 +107,12 @@ github.com/wcharczuk/go-chart v2.0.1+incompatible h1:0pz39ZAycJFF7ju/1mepnk26RLV
 github.com/wcharczuk/go-chart v2.0.1+incompatible/go.mod h1:PF5tmL4EIx/7Wf+hEkpCqYi5He4u90sw+0+6FhrryuE=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
-gitlab.com/catastrophic/assistance v0.10.2 h1:hl4b1Bl0zWHJ1pXlHI9xnEUMVlLGRE9rcz1329h3En4=
-gitlab.com/catastrophic/assistance v0.10.2/go.mod h1:rqWYRgVPHA70GvOwITOGuQ6F/2EXTqTxipvTttpJbB8=
+gitlab.com/catastrophic/assistance v0.12.0 h1:o0X9Pqj8ZHu6DTQm0dGCrs+N13iQwGPMVqR1lWPBrvM=
+gitlab.com/catastrophic/assistance v0.12.0/go.mod h1:rqWYRgVPHA70GvOwITOGuQ6F/2EXTqTxipvTttpJbB8=
+gitlab.com/catastrophic/go-ircevent v0.1.0 h1:EDhKUme2azLuqCizqidV1A8RP28ZQxhdBE/QXFRXhJw=
+gitlab.com/catastrophic/go-ircevent v0.1.0/go.mod h1:2AAsdhGai9b39JJgFhNPNetp4JBc8aI1siZt3AAej9I=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190121234422-d50ccdfc6a16 h1:46uKDlAQrzj4BKHi+xijaG87NPaNdtAibR8y9JFd1/4=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190121234422-d50ccdfc6a16/go.mod h1:poSJSlChz9NabfWFYQ1Dl+TBXn/q/wvs3OpQNaDIreU=
-gitlab.com/passelecasque/go-ircevent v0.0.0-20180204145445-d9588561fc12 h1:/HGWJ4qKQ1OhIlrI5feIeFiLmdQgntVjyoyd46HUEjc=
-gitlab.com/passelecasque/go-ircevent v0.0.0-20180204145445-d9588561fc12/go.mod h1:Ov0pyRiSVVA2OqHs9TxBrKam9lJX6ZmMd+vN1kq/rlc=
 go.etcd.io/bbolt v1.3.0 h1:oY10fI923Q5pVCVt1GBTZMn8LHo5M+RCInFpeMnV4QI=
 go.etcd.io/bbolt v1.3.0/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9 h1:mKdxBk7AujPs8kU4m80U72y/zjbZ3UcXC7dClwKbUI0=
