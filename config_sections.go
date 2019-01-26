@@ -125,6 +125,9 @@ func (ca *ConfigAutosnatch) check() error {
 	if ca.Announcer == "" {
 		return errors.New("Missing announcer bot")
 	}
+	if ca.BotName == ca.Announcer {
+		return errors.New("Bot name and announcer must be different")
+	}
 	if ca.AnnounceChannel == "" {
 		return errors.New("Missing announce channel")
 	}
