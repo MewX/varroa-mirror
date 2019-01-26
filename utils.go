@@ -1,9 +1,7 @@
 package varroa
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -11,7 +9,7 @@ import (
 
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/logthis"
-	"gitlab.com/catastrophic/assistance/strslice"
+	"gitlab.com/catastrophic/assistance/music"
 )
 
 // MatchAllInSlice checks if all strings in slice a are in slice b
@@ -87,23 +85,9 @@ func MatchInSlice(a string, b []string) bool {
 
 // -----------------------------------------------------------------------------
 
-// DirectoryContainsMusic returns true if it contains mp3 or flac files.
-func DirectoryContainsMusic(directoryPath string) bool {
-	if err := filepath.Walk(directoryPath, func(path string, f os.FileInfo, err error) error {
-		if strslice.ContainsCaseInsensitive([]string{mp3Ext, flacExt}, filepath.Ext(path)) {
-			// stop walking the directory as soon as a track is found
-			return errors.New(foundMusic)
-		}
-		return nil
-	}); err == nil || err.Error() != foundMusic {
-		return false
-	}
-	return true
-}
-
 // DirectoryContainsMusicAndMetadata returns true if it contains mp3 or flac files, and JSONs in a TrackerMetadata folder.
 func DirectoryContainsMusicAndMetadata(directoryPath string) bool {
-	if !DirectoryContainsMusic(directoryPath) {
+	if !music.ContainsMusic(directoryPath) {
 		return false
 	}
 	if !fs.DirExists(filepath.Join(directoryPath, MetadataDir)) {
@@ -113,41 +97,6 @@ func DirectoryContainsMusicAndMetadata(directoryPath string) bool {
 		return false
 	}
 	return true
-}
-
-// GetFirstFLACFound returns the first FLAC file found in a directory
-func GetFirstFLACFound(directoryPath string) string {
-	var firstPath string
-	err := filepath.Walk(directoryPath, func(path string, f os.FileInfo, err error) error {
-		if strings.ToLower(filepath.Ext(path)) == flacExt {
-			// stop walking the directory as soon as a track is found
-			firstPath = path
-			return errors.New(foundMusic)
-		}
-		return nil
-	})
-	if err != nil && err.Error() == foundMusic {
-		return firstPath
-	}
-	return ""
-}
-
-// GetAllFLACs returns all FLAC files found in a directory
-func GetAllFLACs(directoryPath string) []string {
-	files, err := fs.GetFilesByExt(directoryPath, flacExt)
-	if err != nil {
-		logthis.Error(err, logthis.NORMAL)
-	}
-	return files
-}
-
-// GetAllPlaylists returns all m3u files found in a directory
-func GetAllPlaylists(directoryPath string) []string {
-	files, err := fs.GetFilesByExt(directoryPath, m3uExt)
-	if err != nil {
-		logthis.Error(err, logthis.NORMAL)
-	}
-	return files
 }
 
 // TimeTrack helps track the time taken by a function.

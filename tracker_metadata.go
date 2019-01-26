@@ -24,6 +24,7 @@ import (
 	"github.com/russross/blackfriday"
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/music"
 )
 
 const (
@@ -681,7 +682,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 	if quality == "FLAC" || quality == "FLAC24" {
 		// get one music file then find sample rate
 		//firstTrackFilename := filepath.Join(releaseFolder, tm.Tracks[0].Title)
-		firstTrackFilename := GetFirstFLACFound(releaseFolder)
+		firstTrackFilename := music.GetFirstFLACFound(releaseFolder)
 		fullFormat, err := getFullAudioFormat(firstTrackFilename)
 		if err != nil {
 			logthis.Error(err, logthis.VERBOSEST)

@@ -12,6 +12,7 @@ import (
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/m3u"
+	"gitlab.com/catastrophic/assistance/music"
 	"gitlab.com/catastrophic/assistance/ui"
 )
 
@@ -83,7 +84,7 @@ func (rd *ReleaseDir) Enhance() error {
 
 func (rd *ReleaseDir) analyzeTracks() error {
 	// list all tracks
-	flacs := GetAllFLACs(rd.Path)
+	flacs := music.GetAllFLACs(rd.Path)
 	// for each, create a ReleaseTrack
 	for _, t := range flacs {
 		var track Track
@@ -226,7 +227,7 @@ func (rd *ReleaseDir) generateSpectrals() error {
 
 func (rd *ReleaseDir) generatePlaylist() error {
 	// if playlists exist, remove them
-	playlists := GetAllPlaylists(rd.Path)
+	playlists := music.GetAllPlaylists(rd.Path)
 	for _, pl := range playlists {
 		if err := os.RemoveAll(pl); err != nil {
 			return err
