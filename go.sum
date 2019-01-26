@@ -107,8 +107,8 @@ github.com/wcharczuk/go-chart v2.0.1+incompatible h1:0pz39ZAycJFF7ju/1mepnk26RLV
 github.com/wcharczuk/go-chart v2.0.1+incompatible/go.mod h1:PF5tmL4EIx/7Wf+hEkpCqYi5He4u90sw+0+6FhrryuE=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
-gitlab.com/catastrophic/assistance v0.10.2 h1:hl4b1Bl0zWHJ1pXlHI9xnEUMVlLGRE9rcz1329h3En4=
-gitlab.com/catastrophic/assistance v0.10.2/go.mod h1:rqWYRgVPHA70GvOwITOGuQ6F/2EXTqTxipvTttpJbB8=
+gitlab.com/catastrophic/assistance v0.11.0 h1:zL1eP3HZJhQptkCbLdd/Pt8QflB/2fWks7+ycjuSIls=
+gitlab.com/catastrophic/assistance v0.11.0/go.mod h1:rqWYRgVPHA70GvOwITOGuQ6F/2EXTqTxipvTttpJbB8=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190121234422-d50ccdfc6a16 h1:46uKDlAQrzj4BKHi+xijaG87NPaNdtAibR8y9JFd1/4=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190121234422-d50ccdfc6a16/go.mod h1:poSJSlChz9NabfWFYQ1Dl+TBXn/q/wvs3OpQNaDIreU=
 gitlab.com/passelecasque/go-ircevent v0.0.0-20180204145445-d9588561fc12 h1:/HGWJ4qKQ1OhIlrI5feIeFiLmdQgntVjyoyd46HUEjc=

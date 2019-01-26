@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/logthis"
+	"gitlab.com/catastrophic/assistance/m3u"
 	"gitlab.com/catastrophic/assistance/ui"
 )
 
@@ -233,7 +234,7 @@ func (rd *ReleaseDir) generatePlaylist() error {
 	}
 
 	// generate new playlist
-	p := Playlist{Filename: filepath.Join(rd.Path, releasePlaylistFile)}
+	p := m3u.Playlist{Filename: filepath.Join(rd.Path, releasePlaylistFile)}
 	if err := p.AddRelease(filepath.Dir(rd.Path), rd.Path); err != nil {
 		return err
 	}
