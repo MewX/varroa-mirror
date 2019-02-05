@@ -45,7 +45,7 @@ require (
 	gitlab.com/catastrophic/assistance v0.12.0
 	gitlab.com/catastrophic/go-ircevent v0.1.0
 	go.etcd.io/bbolt v1.3.0 // indirect
-	golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9 // indirect
+	golang.org/x/crypto v0.0.0-20190123085648-057139ce5d2b // indirect
 	golang.org/x/image v0.0.0-20181116024801-cd38e8056d9b // indirect
 	golang.org/x/net v0.0.0-20190110200230-915654e7eabc
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect
