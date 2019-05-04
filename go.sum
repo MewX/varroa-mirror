@@ -88,7 +88,6 @@ github.com/sevlyar/go-daemon v0.1.4/go.mod h1:6dJpPatBT9eUwM5VCw9Bt6CdX9Tk6UWvhW
 github.com/shurcooL/sanitized_anchor_name v1.0.0 h1:PdmoCO6wvbs+7yrJyMORt4/BmY5IYyJwS/kOiWx8mHo=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
-github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/tdewolff/minify v2.3.6+incompatible h1:2hw5/9ZvxhWLvBUnHE06gElGYz+Jv9R4Eys0XUzItYo=
@@ -107,12 +106,12 @@ github.com/wcharczuk/go-chart v2.0.1+incompatible h1:0pz39ZAycJFF7ju/1mepnk26RLV
 github.com/wcharczuk/go-chart v2.0.1+incompatible/go.mod h1:PF5tmL4EIx/7Wf+hEkpCqYi5He4u90sw+0+6FhrryuE=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
-gitlab.com/catastrophic/assistance v0.12.0 h1:o0X9Pqj8ZHu6DTQm0dGCrs+N13iQwGPMVqR1lWPBrvM=
-gitlab.com/catastrophic/assistance v0.12.0/go.mod h1:rqWYRgVPHA70GvOwITOGuQ6F/2EXTqTxipvTttpJbB8=
+gitlab.com/catastrophic/assistance v0.15.0 h1:OXF4DqHi5gOo2fjvUOHsgS0ke8Ho8+ScyR90Rzt6iZY=
+gitlab.com/catastrophic/assistance v0.15.0/go.mod h1:MIoOhGYRZBC+JDBGVCpYRsI36+QxOBRUzhhY+AAeh+c=
 gitlab.com/catastrophic/go-ircevent v0.1.0 h1:EDhKUme2azLuqCizqidV1A8RP28ZQxhdBE/QXFRXhJw=
 gitlab.com/catastrophic/go-ircevent v0.1.0/go.mod h1:2AAsdhGai9b39JJgFhNPNetp4JBc8aI1siZt3AAej9I=
-gitlab.com/catastrophic/gotabulate v0.0.0-20190121234422-d50ccdfc6a16 h1:46uKDlAQrzj4BKHi+xijaG87NPaNdtAibR8y9JFd1/4=
-gitlab.com/catastrophic/gotabulate v0.0.0-20190121234422-d50ccdfc6a16/go.mod h1:poSJSlChz9NabfWFYQ1Dl+TBXn/q/wvs3OpQNaDIreU=
+gitlab.com/catastrophic/gotabulate v0.0.0-20190228104527-d3d77fbbb3a1 h1:nKQdLjYLARydXRsNOfHxTB0TaOZdKpp3a/P6dc3ySCE=
+gitlab.com/catastrophic/gotabulate v0.0.0-20190228104527-d3d77fbbb3a1/go.mod h1:poSJSlChz9NabfWFYQ1Dl+TBXn/q/wvs3OpQNaDIreU=
 go.etcd.io/bbolt v1.3.0 h1:oY10fI923Q5pVCVt1GBTZMn8LHo5M+RCInFpeMnV4QI=
 go.etcd.io/bbolt v1.3.0/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 golang.org/x/crypto v0.0.0-20190123085648-057139ce5d2b h1:Elez2XeF2p9uyVj0yEUDqQ56NFcDtcBNkYP7yv8YbUE=
