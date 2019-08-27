@@ -151,6 +151,8 @@ func (e *Environment) Tracker(label string) (*GazelleTracker, error) {
 			return tracker, errors.Wrap(err, "Error logging in tracker "+label)
 		}
 		logthis.Info(fmt.Sprintf("Logged in tracker %s.", label), logthis.NORMAL)
+		// start rate limiter
+		go tracker.apiCallRateLimiter()
 	}
 	return tracker, nil
 }
