@@ -36,7 +36,7 @@ Description:
 	- be remotely controlled from your browser with a GreaseMonkey script.
 	- send notifications to your Android device or to a given IRC user 
 	  about stats and snatches.
-	- check local logs agains logchecker.php
+	- check local logs against logchecker.php
 	- sort downloads, export them to your library, automatically rename
 	  folders using tracker metadata
 	- mount a read-only FUSE filesystem exposing your downloads or library
