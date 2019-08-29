@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/passelecasque/obstruction/tracker"
 )
 
 func TestConfig(t *testing.T) {
@@ -142,7 +143,7 @@ func TestConfig(t *testing.T) {
 	f := c.Filters[0]
 	check.Equal("perfect", f.Name)
 	check.Nil(f.Year)
-	check.Equal(knownSources, f.Source)
+	check.Equal(tracker.KnownSources, f.Source)
 	check.Equal([]string{"FLAC"}, f.Format)
 	check.Equal([]string{"24bit Lossless", "Lossless"}, f.Quality)
 	check.True(f.HasCue)

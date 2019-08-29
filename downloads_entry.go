@@ -11,6 +11,7 @@ import (
 	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 	"gitlab.com/catastrophic/assistance/ui"
+	"gitlab.com/passelecasque/obstruction/tracker"
 )
 
 const (
@@ -295,7 +296,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				mainArtistCandidates := []string{strings.Join(artists, ", ")}
 				mainArtistCandidates = append(mainArtistCandidates, artists...)
 				if len(artists) >= 3 {
-					mainArtistCandidates = append(mainArtistCandidates, variousArtists)
+					mainArtistCandidates = append(mainArtistCandidates, tracker.VariousArtists)
 				}
 
 				mainArtist, err = ui.SelectValue("Defining main artist", "If several artists are listed, this will help organize your files.", mainArtistCandidates)

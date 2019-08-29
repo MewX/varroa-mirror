@@ -209,3 +209,7 @@ const (
 	// generic constants
 	scanningFiles = "Scanning"
 )
+
+func userAgent() string {
+	return FullNameAlt + "/" + Version[1:]
+}
