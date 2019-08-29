@@ -113,32 +113,16 @@ func (e *Environment) SetUp(autologin bool) error {
 			return errors.Wrap(err, errorCreatingStatsDir)
 		}
 	}
-
 	// log in all trackers, assuming labels are unique (configuration was checked)
 	for _, label := range e.config.TrackerLabels() {
-		trackerConfig, err := e.config.GetTracker(label)
-		if err != nil {
-			return errors.Wrap(err, "Error getting tracker information")
-		}
-		t, err := tracker.NewGazelle(trackerConfig.Name, trackerConfig.URL, trackerConfig.User, trackerConfig.Password, "", "", userAgent())
-		if err != nil {
+		if _, err := e.setUpTracker(label, autologin); err != nil {
 			return errors.Wrap(err, "Error setting up tracker "+label)
 		}
-		if autologin {
-			if err = t.Login(); err != nil {
-				return errors.Wrap(err, "Error logging in tracker "+label)
-			}
-			logthis.Info(fmt.Sprintf("Logged in tracker %s.", label), logthis.NORMAL)
-			// launching rate limiter
-			go t.RateLimiter()
-		}
-		e.Trackers[label] = t
 	}
 	return nil
 }
 
-func (e *Environment) Tracker(label string) (*tracker.Gazelle, error) {
-	// find in already loaded trackers
+func (e *Environment) setUpTracker(label string, autologin bool) (*tracker.Gazelle, error) {
 	t, ok := e.Trackers[label]
 	if !ok {
 		// not found:
@@ -153,7 +137,7 @@ func (e *Environment) Tracker(label string) (*tracker.Gazelle, error) {
 		// saving
 		e.Trackers[label] = t
 	}
-	if t.Client == nil {
+	if t.Client == nil && autologin {
 		if err := t.Login(); err != nil {
 			return nil, errors.Wrap(err, "Error logging in tracker "+label)
 		}
@@ -162,6 +146,10 @@ func (e *Environment) Tracker(label string) (*tracker.Gazelle, error) {
 		go t.RateLimiter()
 	}
 	return t, nil
+}
+
+func (e *Environment) Tracker(label string) (*tracker.Gazelle, error) {
+	return e.setUpTracker(label, true)
 }
 
 func (e *Environment) GenerateIndex() error {
