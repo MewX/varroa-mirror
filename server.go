@@ -280,8 +280,10 @@ func webServer(e *Environment) {
 						// TODO differentiate info / error
 						if err := c.WriteJSON(OutgoingJSON{Status: responseInfo, Message: messageToLog.(string), Target: notificationArea}); err != nil {
 							if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-								logthis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), logthis.VERBOSEST)
+								logthis.Error(errors.Wrap(err, errorOutgoingWebSocketJSON), logthis.VERBOSEST)
 							}
+							endThisConnection <- struct{}{}
+							break
 						}
 						mutex.Unlock()
 					case <-endThisConnection:
@@ -343,8 +345,10 @@ func webServer(e *Environment) {
 				mutex.Lock()
 				if err := c.WriteJSON(answer); err != nil {
 					if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-						logthis.Error(errors.Wrap(err, errorIncomingWebSocketJSON), logthis.VERBOSEST)
+						logthis.Error(errors.Wrap(err, errorOutgoingWebSocketJSON+" (answer)"), logthis.VERBOSEST)
 					}
+					endThisConnection <- struct{}{}
+					break
 				}
 				mutex.Unlock()
 			}

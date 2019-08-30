@@ -134,6 +134,7 @@ const (
 	errorNoStatsFilename         = "Error retrieving stats filename "
 	errorUnknownCommand          = "Error: unknown websocket command: "
 	errorIncomingWebSocketJSON   = "Error parsing websocket input"
+	errorOutgoingWebSocketJSON   = "Error writing to websocket"
 	errorIncorrectWebServerToken = "Error validating token for web server, ignoring."
 	errorCreatingWebSocket       = "Error creating websocket"
 	// certificates errors
