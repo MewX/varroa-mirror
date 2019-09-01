@@ -573,7 +573,7 @@ func automatedTasks(e *Environment) {
 	s.Every(1).Day().At("00:00").Do(ArchiveUserFiles)
 	// 2. a little later, also compress the git repository if gitlab pages are configured
 	if e.config.gitlabPagesConfigured {
-		s.Every(1).Day().At("00:05").Do(e.git.Compress)
+		s.Every(7).Day().At("00:15").Do(e.git.Compress)
 	}
 	// 3. check quota is available
 	_, err := exec.LookPath("quota")
@@ -597,7 +597,7 @@ func automatedTasks(e *Environment) {
 		s.Every(1).Hour().Do(checkFreeDiskSpace)
 	}
 	// 5. update database stats
-	s.Every(1).Day().At("00:10").Do(GenerateStats, e)
+	s.Every(1).Day().At("00:05").Do(GenerateStats, e)
 	// launch scheduler
 	<-s.Start()
 }
