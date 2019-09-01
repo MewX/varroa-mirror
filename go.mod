@@ -44,7 +44,7 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	gitlab.com/catastrophic/assistance v0.15.0
 	gitlab.com/catastrophic/go-ircevent v0.1.0
-	gitlab.com/passelecasque/obstruction v0.3.0
+	gitlab.com/passelecasque/obstruction v0.4.0
 	go.etcd.io/bbolt v1.3.0 // indirect
 	golang.org/x/image v0.0.0-20181116024801-cd38e8056d9b // indirect
 	golang.org/x/net v0.0.0-20190313220215-9f648a60d977

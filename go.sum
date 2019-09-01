@@ -118,8 +118,8 @@ gitlab.com/catastrophic/go-ircevent v0.1.0 h1:EDhKUme2azLuqCizqidV1A8RP28ZQxhdBE
 gitlab.com/catastrophic/go-ircevent v0.1.0/go.mod h1:2AAsdhGai9b39JJgFhNPNetp4JBc8aI1siZt3AAej9I=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190228104527-d3d77fbbb3a1 h1:nKQdLjYLARydXRsNOfHxTB0TaOZdKpp3a/P6dc3ySCE=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190228104527-d3d77fbbb3a1/go.mod h1:poSJSlChz9NabfWFYQ1Dl+TBXn/q/wvs3OpQNaDIreU=
-gitlab.com/passelecasque/obstruction v0.3.0 h1:odkVhKSHyZv6kCZpdQIpMmrWcb74DKYMBg2Zu267/vk=
-gitlab.com/passelecasque/obstruction v0.3.0/go.mod h1:Ym/V6lblfsFCCCgFJmcGFVlrGxOF4LnsHUjTYMq73zA=
+gitlab.com/passelecasque/obstruction v0.4.0 h1:aveu4r9o6qrUnDgQoJyDs/HIOVeXRZwCz3ATbX3le14=
+gitlab.com/passelecasque/obstruction v0.4.0/go.mod h1:Ym/V6lblfsFCCCgFJmcGFVlrGxOF4LnsHUjTYMq73zA=
 go.etcd.io/bbolt v1.3.0 h1:oY10fI923Q5pVCVt1GBTZMn8LHo5M+RCInFpeMnV4QI=
 go.etcd.io/bbolt v1.3.0/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=
