@@ -10,8 +10,7 @@ trackers:
     password: secretpassword
     url:  https://blue.ch
   - name: purple
-    user: username
-    password: secretpassword
+    cookie: cookievalue
     url:  https://purple.cd
 
 stats:

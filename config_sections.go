@@ -59,6 +59,7 @@ type ConfigTracker struct {
 	Name     string
 	User     string
 	Password string
+	Cookie   string
 	URL      string
 }
 
@@ -66,11 +67,16 @@ func (ct *ConfigTracker) check() error {
 	if ct.Name == "" {
 		return errors.New("Missing tracker name")
 	}
-	if ct.User == "" {
-		return errors.New("Missing tracker username")
-	}
-	if ct.Password == "" {
-		return errors.New("Missing tracker password")
+	if ct.Cookie == "" {
+		if ct.User == "" && ct.Password == "" {
+			return errors.New("Missing login information (username+password or cookie)")
+		}
+		if ct.User == "" {
+			return errors.New("Missing tracker username")
+		}
+		if ct.Password == "" {
+			return errors.New("Missing tracker password")
+		}
 	}
 	if ct.URL == "" {
 		return errors.New("Missing tracker URL")
@@ -82,6 +88,7 @@ func (ct *ConfigTracker) String() string {
 	txt := "Tracker configuration for " + ct.Name + "\n"
 	txt += "\tUser: " + ct.User + "\n"
 	txt += "\tPassword: " + ct.Password + "\n"
+	txt += "\tCookie value: " + ct.Cookie + "\n"
 	txt += "\tURL: " + ct.URL + "\n"
 	return txt
 }
