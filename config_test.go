@@ -38,7 +38,7 @@ func TestConfig(t *testing.T) {
 	check.Equal("https://blue.ch", tr.URL)
 	tr = c.Trackers[1]
 	check.Equal("purple", tr.Name)
-	check.Equal("", tr.User)
+	check.Equal("another_username", tr.User)
 	check.Equal("", tr.Password)
 	check.Equal("cookievalue", tr.Cookie)
 	check.Equal("https://purple.cd", tr.URL)

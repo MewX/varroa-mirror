@@ -67,19 +67,14 @@ func (ct *ConfigTracker) check() error {
 	if ct.Name == "" {
 		return errors.New("Missing tracker name")
 	}
-	if ct.Cookie == "" {
-		if ct.User == "" && ct.Password == "" {
-			return errors.New("Missing login information (username+password or cookie)")
-		}
-		if ct.User == "" {
-			return errors.New("Missing tracker username")
-		}
-		if ct.Password == "" {
-			return errors.New("Missing tracker password")
-		}
+	if ct.User == "" {
+		return errors.New("Missing tracker username for " + ct.Name)
+	}
+	if ct.Cookie == "" && ct.Password == "" {
+		return errors.New("Missing log in information (password or session cookie) for " + ct.Name)
 	}
 	if ct.URL == "" {
-		return errors.New("Missing tracker URL")
+		return errors.New("Missing tracker URL for " + ct.Name)
 	}
 	return nil
 }
