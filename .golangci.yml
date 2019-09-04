@@ -20,3 +20,5 @@ linters:
     - golint
     - goimports
     - prealloc
+    - depguard
+    - typecheck
