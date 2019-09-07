@@ -573,7 +573,7 @@ func automatedTasks(e *Environment) {
 	s.Every(1).Day().At("00:00").Do(ArchiveUserFiles)
 	// 2. a little later, also compress the git repository if gitlab pages are configured
 	if e.config.gitlabPagesConfigured {
-		s.Every(7).Day().At("00:15").Do(e.git.Compress)
+		s.Every(7).Days().At("00:15").Do(e.git.Compress)
 	}
 	// 3. check quota is available
 	_, err := exec.LookPath("quota")
