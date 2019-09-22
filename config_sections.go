@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
@@ -20,6 +21,7 @@ import (
 const (
 	ircServerPattern     = `^(.*):(\d*)$`
 	gitRepositoryPattern = `^https://gitlab.com/(.*)/(.*).git$`
+	yearRangePattern     = `(\d{4})-(\d{4}|\*)`
 )
 
 type ConfigGeneral struct {
@@ -496,7 +498,9 @@ type ConfigFilter struct {
 	Artist              []string `yaml:"artist"`
 	ExcludedArtist      []string `yaml:"excluded_artist"`
 	Year                []int    `yaml:"year"`
+	YearRange           []string `yaml:"year_range"`
 	EditionYear         []int    `yaml:"edition_year"`
+	EditionYearRange    []string `yaml:"edition_year_range"`
 	RecordLabel         []string `yaml:"record_label"`
 	TagsIncluded        []string `yaml:"included_tags"`
 	TagsExcluded        []string `yaml:"excluded_tags"`
@@ -523,7 +527,70 @@ type ConfigFilter struct {
 	BlacklistedUploader []string `yaml:"blacklisted_uploaders"`
 }
 
+func getRange(r string) (int, int, error) {
+	var lowerBound, higherBound int
+	rx := regexp.MustCompile(yearRangePattern)
+	// parse
+	hits := rx.FindAllStringSubmatch(r, 1)
+	if len(hits) != 1 {
+		return lowerBound, higherBound, errors.New("invalid year range: " + r)
+	}
+	// make list of years
+	lowerBound, err := strconv.Atoi(hits[0][1])
+	if err != nil {
+		return lowerBound, higherBound, errors.New("invalid lower bound  for year range: " + r)
+	}
+	// if higher bound is '*', it means we want up to current year and the next
+	if hits[0][2] == "*" {
+		// get current year
+		currentYear := time.Now().Year()
+		higherBound = currentYear + 1
+	} else {
+		higherBound, err = strconv.Atoi(hits[0][2])
+		if err != nil {
+			return lowerBound, higherBound, errors.New("invalid higher bound  for year range: " + r)
+		}
+	}
+	return lowerBound, higherBound, nil
+}
+
+func (cf *ConfigFilter) prepare() error {
+	// parsing year/edition year ranges
+	if len(cf.YearRange) != 0 {
+		for _, r := range cf.YearRange {
+			lowerBound, higherBound, err := getRange(r)
+			if err != nil {
+				return err
+			}
+			// add to cf.Year
+			for i := lowerBound; i <= higherBound; i++ {
+				if !intslice.Contains(cf.Year, i) {
+					cf.Year = append(cf.Year, i)
+				}
+			}
+		}
+	}
+	if len(cf.EditionYearRange) != 0 {
+		for _, r := range cf.EditionYearRange {
+			lowerBound, higherBound, err := getRange(r)
+			if err != nil {
+				return err
+			}
+			// add to cf.EditionYear
+			for i := lowerBound; i <= higherBound; i++ {
+				if !intslice.Contains(cf.EditionYear, i) {
+					cf.EditionYear = append(cf.EditionYear, i)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (cf *ConfigFilter) check() error {
+	if err := cf.prepare(); err != nil {
+		return err
+	}
 	if cf.Name == "" {
 		return errors.New("Missing filter name")
 	}

@@ -3,7 +3,7 @@ package varroa
 const (
 	FullName      = "varroa musica"
 	FullNameAlt   = "VarroaMusica"
-	Version       = "v27dev"
+	Version       = "v28dev"
 	FullVersion   = "%s -- %s."
 	pidFile       = "varroa_pid"
 	envPassphrase = "_VARROA_PASSPHRASE"
