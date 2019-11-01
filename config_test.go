@@ -181,7 +181,7 @@ func TestConfig(t *testing.T) {
 		}
 	}
 	check.Equal(editionYearSlice, f.EditionYear)
-	check.Equal([]string{"ThisOtherGuy"}, f.BlacklistedUploader)
+	check.Equal([]string{"ThisOtherGuy"}, f.BlacklistedUploaders)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]
 	check.Equal("test", f.Name)

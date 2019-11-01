@@ -75,7 +75,6 @@ func NewRelease(trackerName string, parts []string, alternative bool) (*Release,
 	if alternative {
 		tags = strings.Split(parts[16], ",")
 		torrentURL = parts[18]
-
 	} else {
 		tags = strings.Split(parts[18], ",")
 		torrentURL = parts[17]
@@ -265,7 +264,7 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			return false
 		}
 	}
-	if strslice.Contains(blacklistedUploaders, info.Uploader) || strslice.Contains(filter.BlacklistedUploader, info.Uploader) {
+	if strslice.Contains(blacklistedUploaders, info.Uploader) || strslice.Contains(filter.BlacklistedUploaders, info.Uploader) {
 		logthis.Info(filter.Name+": Uploader "+info.Uploader+" is blacklisted.", logthis.VERBOSE)
 		return false
 	}
