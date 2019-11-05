@@ -196,7 +196,6 @@ type varroaArguments struct {
 	libraryReorgInteractive bool
 	libraryReorgSimulate    bool
 	reseed                  bool
-	enhance                 bool
 	useFLToken              bool
 	ignoreSorted            bool
 	torrentIDs              []int
@@ -260,7 +259,7 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 		b.libraryReorgSimulate = args["--simulate"].(bool)
 		b.libraryReorgInteractive = args["--interactive"].(bool)
 	}
-	if b.reseed || b.downloadSort || b.enhance {
+	if b.reseed || b.downloadSort {
 		b.paths = args["<PATH>"].([]string)
 		for i, p := range b.paths {
 			if !fs.DirExists(p) {
@@ -360,11 +359,11 @@ func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// sorting which commands can use the daemon if it's there but should manage if it is not
 	b.requiresDaemon = true
 	b.canUseDaemon = true
-	if b.refreshMetadataByID || b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.reseed || b.enhance {
+	if b.refreshMetadataByID || b.refreshMetadata || b.snatch || b.checkLog || b.backup || b.stats || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.info || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.reseed {
 		b.requiresDaemon = false
 	}
 	// sorting which commands should not interact with the daemon in any case
-	if b.refreshMetadata || b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg || b.enhance {
+	if b.refreshMetadata || b.backup || b.showConfig || b.decrypt || b.encrypt || b.downloadSearch || b.downloadInfo || b.downloadSort || b.downloadSortID || b.downloadList || b.downloadClean || b.downloadFuse || b.libraryFuse || b.libraryReorg {
 		b.canUseDaemon = false
 	}
 	return nil

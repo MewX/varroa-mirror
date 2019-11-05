@@ -46,5 +46,4 @@ func TestSliceHelpers(t *testing.T) {
 		result := MatchInSlice(data.candidate, data.patterns)
 		check.Equal(data.expected, result)
 	}
-
 }

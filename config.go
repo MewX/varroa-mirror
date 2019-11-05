@@ -246,7 +246,7 @@ func (c *Config) check() error {
 
 	// config-wide checks
 	configuredTrackers := c.TrackerLabels()
-	if len(c.Autosnatch) != 0 {
+	if c.autosnatchConfigured {
 		if c.General.WatchDir == "" {
 			return errors.New("Autosnatch enabled, existing watch directory must be provided")
 		}
@@ -262,6 +262,7 @@ func (c *Config) check() error {
 		// check all filter trackers are defined
 		if len(c.Filters) != 0 {
 			for _, f := range c.Filters {
+				// checking applicable trackers in filters
 				for _, t := range f.Tracker {
 					if !strslice.Contains(configuredTrackers, t) {
 						return fmt.Errorf("filter %s refers to undefined tracker %s", f.Name, t)
@@ -321,7 +322,6 @@ func (c *Config) check() error {
 		}
 	}
 
-	// TODO check filter uploaders not blacklisted
 	// TODO check no duplicates (2 Stats/autosnatch for same tracker, 2 trackers with same name)
 	// TODO warning if autosnatch but no automatic disabling if buffer drops
 

@@ -237,7 +237,6 @@ func combineAllPNGs(combined string, graphs ...string) error {
 			draw.Draw(rgba, image.Rectangle{sp, sp.Add(img.Bounds().Size())}, img, image.Point{X: 0, Y: 0}, draw.Src)
 			currentX = img.Bounds().Dx()
 			currentRowHeight = img.Bounds().Dy()
-
 		} else {
 			// second column
 			sp := image.Point{X: currentX, Y: currentY}

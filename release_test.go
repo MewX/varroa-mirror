@@ -438,5 +438,4 @@ func TestRelease(t *testing.T) {
 	check.False(r1.HasCompatibleTrackerInfo(f33, []string{"that_guy"}, i1))
 	check.False(r1.HasCompatibleTrackerInfo(f33, []string{"another_one"}, i1))
 	check.True(r1.HasCompatibleTrackerInfo(f33, []string{}, i2))
-
 }

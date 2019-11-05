@@ -284,5 +284,4 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
 	check.False(c.LibraryConfigured)
-
 }

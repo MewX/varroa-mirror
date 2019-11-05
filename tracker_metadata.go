@@ -583,7 +583,6 @@ func (tm *TrackerMetadata) SaveCover(releaseFolder string) error {
 }
 
 func (tm *TrackerMetadata) HTMLDescription() string {
-
 	// TODO use HTML template directly!!
 
 	if tm.Title == "" {
