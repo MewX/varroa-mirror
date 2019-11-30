@@ -318,7 +318,7 @@
 		if (tokens === null) {
 			return false;
 		}
-		return parseInt(tokens.getElementsByClassName('stat')[0].getElementsByTagName('a')[0].innerHTML, 10) > 0;
+		return tokens.getElementsByClassName('stat')[0].getElementsByTagName('a')[0].innerHTML != '';
 	}
 
     // -- Status Info -------------------------------------------------------------------
