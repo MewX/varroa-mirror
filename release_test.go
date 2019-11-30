@@ -171,7 +171,7 @@ func TestRelease(t *testing.T) {
 	f30 := &ConfigFilter{Name: "f30", RejectUnknown: true}
 	f31 := &ConfigFilter{Name: "f31", EditionYear: []int{2004}, AllowScene: true}
 	f32 := &ConfigFilter{Name: "f32", PerfectFlac: true, Edition: []string{"r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}}
-	f33 := &ConfigFilter{Name: "f33", BlacklistedUploader: []string{"that_guy"}}
+	f33 := &ConfigFilter{Name: "f33", BlacklistedUploaders: []string{"that_guy", "this_other_guy", "another_random_person"}}
 	f34 := &ConfigFilter{Name: "f34", PerfectFlac: true, Edition: []string{"xr/[cC][lL][eE][aA][nN]"}}
 	f35 := &ConfigFilter{Name: "f35", AllowScene: true, TagsRequired: []string{"nope"}}
 	f36 := &ConfigFilter{Name: "f36", AllowScene: true, TagsRequired: []string{"tag1"}}
@@ -394,6 +394,8 @@ func TestRelease(t *testing.T) {
 
 	// blacklisted users
 	check.False(r1.HasCompatibleTrackerInfo(f17, []string{"that_guy", "another_one"}, i1))
+	check.False(r1.HasCompatibleTrackerInfo(f17, []string{"another_test", "that_guy", "another_one"}, i1))
+	check.True(r1.HasCompatibleTrackerInfo(f17, []string{"another_test", "another_one"}, i1))
 
 	// whitelisted users
 	check.False(r1.HasCompatibleTrackerInfo(f29, []string{"that_guy", "another_one"}, i1))
@@ -436,5 +438,4 @@ func TestRelease(t *testing.T) {
 	check.False(r1.HasCompatibleTrackerInfo(f33, []string{"that_guy"}, i1))
 	check.False(r1.HasCompatibleTrackerInfo(f33, []string{"another_one"}, i1))
 	check.True(r1.HasCompatibleTrackerInfo(f33, []string{}, i2))
-
 }

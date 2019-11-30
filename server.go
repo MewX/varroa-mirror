@@ -243,7 +243,6 @@ func webServer(e *Environment) {
 				}
 				response = list
 			} else {
-
 				info, err := e.serverData.DownloadsInfo(e, downloads, id)
 				if err != nil {
 					logthis.Error(errors.Wrap(err, "Error loading downloads info"), logthis.NORMAL)
@@ -361,8 +360,8 @@ func webServer(e *Environment) {
 		rtr.HandleFunc("/getStats/{name:[\\w]+.png}", getStats).Methods("GET")
 		rtr.HandleFunc("/dl.pywa", getTorrent).Methods("GET")
 		rtr.HandleFunc("/ws", socket)
-
 	}
+
 	if e.config.WebServer.ServeStats {
 		getLocalStats := func(w http.ResponseWriter, r *http.Request) {
 			// get filename

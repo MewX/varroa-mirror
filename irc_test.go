@@ -191,5 +191,4 @@ func TestRegexp(t *testing.T) {
 			verify.Zero(len(hits))
 		}
 	}
-
 }

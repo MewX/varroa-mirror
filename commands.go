@@ -236,7 +236,6 @@ func RefreshMetadata(e *Environment, t *tracker.Gazelle, IDStrings []string) err
 					} else {
 						logthis.Info(fmt.Sprintf(errorCannotFindID, id), logthis.NORMAL)
 					}
-
 				} else {
 					logthis.Info(fmt.Sprintf(errorCannotFindID, id), logthis.NORMAL)
 					continue
@@ -268,7 +267,6 @@ func RefreshMetadata(e *Environment, t *tracker.Gazelle, IDStrings []string) err
 		if info.Reported {
 			logthis.Info(ui.Red("This torrent has been reported. For more information, see: "+info.ReleaseURL), logthis.NORMAL)
 		}
-
 	}
 	return nil
 }

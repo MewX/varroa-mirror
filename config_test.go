@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/catastrophic/assistance/intslice"
 	"gitlab.com/passelecasque/obstruction/tracker"
 )
 
@@ -169,12 +171,28 @@ func TestConfig(t *testing.T) {
 	check.Equal([]string{"best_uploader_ever", "this other guy"}, f.Uploader)
 	check.True(f.RejectUnknown)
 	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}, f.Edition)
-	check.Equal([]int{2014, 2015}, f.EditionYear)
-	check.Equal([]string{"ThisOtherGuy"}, f.BlacklistedUploader)
+	// test must be valid next year...
+	editionYearSlice := []int{2014, 2015}
+	currentYear := time.Now().Year()
+	higherBound := currentYear + 1
+	for i := 2016; i <= higherBound; i++ {
+		if !intslice.Contains(editionYearSlice, i) {
+			editionYearSlice = append(editionYearSlice, i)
+		}
+	}
+	check.Equal(editionYearSlice, f.EditionYear)
+	check.Equal([]string{"ThisOtherGuy"}, f.BlacklistedUploaders)
 	fmt.Println("Checking filter 'test'")
 	f = c.Filters[1]
 	check.Equal("test", f.Name)
-	check.Equal([]int{2016, 2017}, f.Year)
+	// test must be valid next year...
+	yearSlice := []int{2016, 2017, 1962, 1963, 1964, 1965}
+	for i := 2018; i <= higherBound; i++ {
+		if !intslice.Contains(yearSlice, i) {
+			yearSlice = append(yearSlice, i)
+		}
+	}
+	check.Equal(yearSlice, f.Year)
 	check.Equal([]string{"CD", "WEB"}, f.Source)
 	check.Equal([]string{"FLAC", "MP3"}, f.Format)
 	check.Equal([]string{"Lossless", "24bit Lossless", "320", "V0 (VBR)"}, f.Quality)
@@ -266,5 +284,4 @@ func TestConfig(t *testing.T) {
 	check.True(c.webserverHTTP)
 	check.True(c.webserverHTTPS)
 	check.False(c.LibraryConfigured)
-
 }

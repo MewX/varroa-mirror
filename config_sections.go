@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/fs"
@@ -20,6 +21,7 @@ import (
 const (
 	ircServerPattern     = `^(.*):(\d*)$`
 	gitRepositoryPattern = `^https://gitlab.com/(.*)/(.*).git$`
+	yearRangePattern     = `(\d{4})-(\d{4}|\*)`
 )
 
 type ConfigGeneral struct {
@@ -492,38 +494,103 @@ func (cm *ConfigMPD) check() error {
 }
 
 type ConfigFilter struct {
-	Name                string   `yaml:"name"`
-	Artist              []string `yaml:"artist"`
-	ExcludedArtist      []string `yaml:"excluded_artist"`
-	Year                []int    `yaml:"year"`
-	EditionYear         []int    `yaml:"edition_year"`
-	RecordLabel         []string `yaml:"record_label"`
-	TagsIncluded        []string `yaml:"included_tags"`
-	TagsExcluded        []string `yaml:"excluded_tags"`
-	TagsRequired        []string `yaml:"required_tags"`
-	ReleaseType         []string `yaml:"type"`
-	ExcludedReleaseType []string `yaml:"excluded_type"`
-	Edition             []string `yaml:"edition"`
-	Format              []string `yaml:"format"`
-	Source              []string `yaml:"source"`
-	Quality             []string `yaml:"quality"`
-	HasCue              bool     `yaml:"has_cue"`
-	HasLog              bool     `yaml:"has_log"`
-	LogScore            int      `yaml:"log_score"`
-	PerfectFlac         bool     `yaml:"perfect_flac"`
-	AllowDuplicates     bool     `yaml:"allow_duplicates"`
-	AllowScene          bool     `yaml:"allow_scene"`
-	MinSizeMB           int      `yaml:"min_size_mb"`
-	MaxSizeMB           int      `yaml:"max_size_mb"`
-	WatchDir            string   `yaml:"watch_directory"`
-	UniqueInGroup       bool     `yaml:"unique_in_group"`
-	Tracker             []string `yaml:"tracker"`
-	Uploader            []string `yaml:"uploader"`
-	RejectUnknown       bool     `yaml:"reject_unknown_releases"`
-	BlacklistedUploader []string `yaml:"blacklisted_uploaders"`
+	Name                 string   `yaml:"name"`
+	Artist               []string `yaml:"artist"`
+	ExcludedArtist       []string `yaml:"excluded_artist"`
+	Year                 []int    `yaml:"year"`
+	YearRange            []string `yaml:"year_range"`
+	EditionYear          []int    `yaml:"edition_year"`
+	EditionYearRange     []string `yaml:"edition_year_range"`
+	RecordLabel          []string `yaml:"record_label"`
+	TagsIncluded         []string `yaml:"included_tags"`
+	TagsExcluded         []string `yaml:"excluded_tags"`
+	TagsRequired         []string `yaml:"required_tags"`
+	ReleaseType          []string `yaml:"type"`
+	ExcludedReleaseType  []string `yaml:"excluded_type"`
+	Edition              []string `yaml:"edition"`
+	Format               []string `yaml:"format"`
+	Source               []string `yaml:"source"`
+	Quality              []string `yaml:"quality"`
+	HasCue               bool     `yaml:"has_cue"`
+	HasLog               bool     `yaml:"has_log"`
+	LogScore             int      `yaml:"log_score"`
+	PerfectFlac          bool     `yaml:"perfect_flac"`
+	AllowDuplicates      bool     `yaml:"allow_duplicates"`
+	AllowScene           bool     `yaml:"allow_scene"`
+	MinSizeMB            int      `yaml:"min_size_mb"`
+	MaxSizeMB            int      `yaml:"max_size_mb"`
+	WatchDir             string   `yaml:"watch_directory"`
+	UniqueInGroup        bool     `yaml:"unique_in_group"`
+	Tracker              []string `yaml:"tracker"`
+	Uploader             []string `yaml:"uploader"`
+	RejectUnknown        bool     `yaml:"reject_unknown_releases"`
+	BlacklistedUploaders []string `yaml:"blacklisted_uploaders"`
+}
+
+func getRange(r string) (int, int, error) {
+	var lowerBound, higherBound int
+	rx := regexp.MustCompile(yearRangePattern)
+	// parse
+	hits := rx.FindAllStringSubmatch(r, 1)
+	if len(hits) != 1 {
+		return lowerBound, higherBound, errors.New("invalid year range: " + r)
+	}
+	// make list of years
+	lowerBound, err := strconv.Atoi(hits[0][1])
+	if err != nil {
+		return lowerBound, higherBound, errors.New("invalid lower bound  for year range: " + r)
+	}
+	// if higher bound is '*', it means we want up to current year and the next
+	if hits[0][2] == "*" {
+		// get current year
+		currentYear := time.Now().Year()
+		higherBound = currentYear + 1
+	} else {
+		higherBound, err = strconv.Atoi(hits[0][2])
+		if err != nil {
+			return lowerBound, higherBound, errors.New("invalid higher bound  for year range: " + r)
+		}
+	}
+	return lowerBound, higherBound, nil
+}
+
+func (cf *ConfigFilter) prepare() error {
+	// parsing year/edition year ranges
+	if len(cf.YearRange) != 0 {
+		for _, r := range cf.YearRange {
+			lowerBound, higherBound, err := getRange(r)
+			if err != nil {
+				return err
+			}
+			// add to cf.Year
+			for i := lowerBound; i <= higherBound; i++ {
+				if !intslice.Contains(cf.Year, i) {
+					cf.Year = append(cf.Year, i)
+				}
+			}
+		}
+	}
+	if len(cf.EditionYearRange) != 0 {
+		for _, r := range cf.EditionYearRange {
+			lowerBound, higherBound, err := getRange(r)
+			if err != nil {
+				return err
+			}
+			// add to cf.EditionYear
+			for i := lowerBound; i <= higherBound; i++ {
+				if !intslice.Contains(cf.EditionYear, i) {
+					cf.EditionYear = append(cf.EditionYear, i)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (cf *ConfigFilter) check() error {
+	if err := cf.prepare(); err != nil {
+		return err
+	}
 	if cf.Name == "" {
 		return errors.New("Missing filter name")
 	}
@@ -556,7 +623,7 @@ func (cf *ConfigFilter) check() error {
 	}
 	if cf.PerfectFlac {
 		if cf.Format != nil || cf.Quality != nil || cf.Source != nil || cf.HasLog || cf.HasCue || cf.LogScore != 0 {
-			return errors.New("The perfect_flag option replaces all options about quality, source, format, and cue/log/log score")
+			return errors.New("The perfect_flac option replaces all options about quality, source, format, and cue/log/log score")
 		}
 		// setting the relevant options
 		cf.Format = []string{tracker.FormatFLAC}
@@ -609,7 +676,7 @@ func (cf *ConfigFilter) check() error {
 			}
 		}
 	}
-	if strslice.Common(cf.Uploader, cf.BlacklistedUploader) != nil {
+	if strslice.Common(cf.Uploader, cf.BlacklistedUploaders) != nil {
 		return errors.New("The same uploader cannot be both included and excluded")
 	}
 
@@ -689,8 +756,8 @@ func (cf *ConfigFilter) String() string {
 		description += "\tEdition Year(s): " + strings.Join(intslice.ToStringSlice(cf.EditionYear), ", ") + "\n"
 	}
 	description += "\tReject unknown releases: " + fmt.Sprintf("%v", cf.RejectUnknown) + "\n"
-	if len(cf.BlacklistedUploader) != 0 {
-		description += "\tBlacklisted uploaders: " + strings.Join(cf.BlacklistedUploader, ",") + "\n"
+	if len(cf.BlacklistedUploaders) != 0 {
+		description += "\tBlacklisted uploaders: " + strings.Join(cf.BlacklistedUploaders, ",") + "\n"
 	} else {
 		description += "\tNo blacklisted uploaders"
 	}

@@ -117,6 +117,8 @@ filters:
     edition_year:
     - 2014
     - 2015
+    edition_year_range:
+    - 2016-*
     blacklisted_uploaders:
     - ThisOtherGuy
 
@@ -124,6 +126,9 @@ filters:
     year:
     - 2016
     - 2017
+    year_range:
+    - 1962-1965
+    - 2018-*
     source:
     - CD
     - WEB

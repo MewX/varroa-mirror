@@ -22,3 +22,8 @@ linters:
     - prealloc
     - depguard
     - typecheck
+    - wsl
+    - godox
+    - funlen
+    - dogsled
+    - gocognit
