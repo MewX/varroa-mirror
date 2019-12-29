@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -43,6 +44,7 @@ func Notify(msg, tracker, msgType string, e *Environment) error {
 				atLeastOneError = true
 			}
 		}
+
 		// webhooks
 		if conf.webhooksConfigured && strslice.Contains(conf.Notifications.WebHooks.Trackers, tracker) {
 			// create json, POST it
@@ -52,8 +54,35 @@ func Notify(msg, tracker, msgType string, e *Environment) error {
 				atLeastOneError = true
 			}
 		}
+
 		// IRC notifications
 		if conf.ircNotifsConfigured && e.ircClient != nil {
+			r := regexp.MustCompile(regexpProgress)
+			if r.MatchString(msg) {
+				// colorize stats
+				parts := r.FindStringSubmatch(msg)
+				for i := range parts {
+					if i == 0 || i == 1 {
+						continue
+					}
+					switch i % 3 {
+					case 0:
+						// value
+						parts[i] = "\x0311" + parts[i] + "\x0F "
+					case 1:
+						// delta, green if positive, red otherwise
+						if strings.HasPrefix(parts[i], "-") {
+							parts[i] = "(\x02\x0304" + parts[i] + "\x0F) |"
+						} else {
+							parts[i] = "(\x0309" + parts[i] + "\x0F) |"
+						}
+					case 2:
+						// label
+						parts[i] = "\x02\x0307" + parts[i] + ":\x0F "
+					}
+				}
+				msg = strings.Join(parts[2:], " ")
+			}
 			e.ircClient.Privmsg(conf.Notifications.Irc.User, msg)
 		}
 
