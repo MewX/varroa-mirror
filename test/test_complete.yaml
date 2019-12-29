@@ -3,6 +3,7 @@ general:
   download_directory: ../varroa/test
   automatic_metadata_retrieval: true
   log_level: 2
+  timestamped_logs: true
 
 trackers:
   - name: blue

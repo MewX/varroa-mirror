@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.com/catastrophic/assistance/daemon"
+	"gitlab.com/catastrophic/assistance/fs"
 	"gitlab.com/catastrophic/assistance/intslice"
 	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/ui"
@@ -32,6 +33,14 @@ func main() {
 	// prepare cleanup
 	defer closeDB()
 
+	// loading configuration
+	config, err := varroa.NewConfig(varroa.DefaultConfigurationFile)
+	if err != nil {
+		logthis.Error(errors.Wrap(err, varroa.ErrorLoadingConfig), logthis.NORMAL)
+		return
+	}
+	env.SetConfig(config)
+
 	// here commands that have no use for the daemon
 	if !cli.canUseDaemon {
 		if cli.backup {
@@ -40,13 +49,6 @@ func main() {
 			}
 			return
 		}
-		// loading configuration
-		config, err := varroa.NewConfig(varroa.DefaultConfigurationFile)
-		if err != nil {
-			logthis.Error(errors.Wrap(err, varroa.ErrorLoadingConfig), logthis.NORMAL)
-			return
-		}
-		env.SetConfig(config)
 
 		if cli.encrypt || cli.decrypt {
 			// now dealing with encrypt/decrypt commands, which both require the passphrase from user
@@ -253,7 +255,17 @@ func main() {
 		return
 	}
 
-	d := daemon.NewDaemon(varroa.DefaultPIDFile, "log")
+	// generating log filename
+	logFile := varroa.DefaultLogFile
+	if config.General.TimestampedLogs {
+		filename, err := fs.GetUniqueTimestampedFilename(".", "varroa log", "")
+		if err == nil {
+			logFile = filename
+		}
+	}
+
+	// dealing with daemon
+	d := daemon.New(varroa.DefaultPIDFile, logFile)
 	if cli.start {
 		// launching daemon
 		if !cli.noDaemon {

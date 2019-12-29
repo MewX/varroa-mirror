@@ -6,6 +6,7 @@ const (
 	Version        = "v28dev"
 	FullVersion    = "%s -- %s."
 	DefaultPIDFile = "varroa_pid"
+	DefaultLogFile = "log"
 	envPassphrase  = "_VARROA_PASSPHRASE"
 
 	// directories & files
