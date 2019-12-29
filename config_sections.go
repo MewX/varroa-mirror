@@ -185,7 +185,7 @@ func (cl *ConfigLibrary) check() error {
 	if cl.Directory == "" || !fs.DirExists(cl.Directory) {
 		return errors.New("library directory does not exist")
 	}
-	if cl.PlaylistDirectory == "" || !fs.DirExists(cl.PlaylistDirectory) {
+	if cl.PlaylistDirectory != "" && !fs.DirExists(cl.PlaylistDirectory) {
 		return errors.New("playlist directory does not exist")
 	}
 	for _, s := range cl.AdditionalSources {
