@@ -68,22 +68,32 @@ func manualSnatchFromID(e *Environment, t *tracker.Gazelle, id string, useFLToke
 		logthis.Info("Error parsing Torrent Info", logthis.NORMAL)
 		release = &Release{Tracker: t.Name, TorrentID: id}
 	}
-	logthis.Info("Downloading torrent "+release.ShortString(), logthis.NORMAL)
+	// quick test if music release: it should have at least an artist
+	isMusicRelease := len(release.Artists) != 0
+
+	if !isMusicRelease {
+		logthis.Info("Torrent does not seem to be a music release.", logthis.NORMAL)
+	} else {
+		logthis.Info("Downloading torrent "+release.ShortString(), logthis.NORMAL)
+	}
 	if err := t.DownloadTorrentFromID(id, e.config.General.WatchDir, useFLToken); err != nil {
 		logthis.Error(errors.Wrap(err, errorDownloadingTorrent+id), logthis.NORMAL)
 		return release, err
 	}
-	// add to history
-	release.Filter = manualSnatchFilterName
-	if err := stats.AddSnatch(*release); err != nil {
-		logthis.Info(errorAddingToHistory, logthis.NORMAL)
-	}
-	// save metadata
-	if e.config.General.AutomaticMetadataRetrieval {
-		if daemon.WasReborn() {
-			go info.SaveFromTracker(filepath.Join(e.config.General.DownloadDir, info.FolderName), t)
-		} else {
-			info.SaveFromTracker(filepath.Join(e.config.General.DownloadDir, info.FolderName), t)
+
+	if isMusicRelease {
+		// add to history
+		release.Filter = manualSnatchFilterName
+		if err := stats.AddSnatch(*release); err != nil {
+			logthis.Info(errorAddingToHistory, logthis.NORMAL)
+		}
+		// save metadata
+		if e.config.General.AutomaticMetadataRetrieval {
+			if daemon.WasReborn() {
+				go info.SaveFromTracker(filepath.Join(e.config.General.DownloadDir, info.FolderName), t)
+			} else {
+				info.SaveFromTracker(filepath.Join(e.config.General.DownloadDir, info.FolderName), t)
+			}
 		}
 	}
 	return release, nil
