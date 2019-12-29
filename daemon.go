@@ -36,7 +36,7 @@ func NewDaemon() *Daemon {
 
 // Start the daemon and return true if in child process.
 func (d *Daemon) Start(args []string) error {
-	d.context.Args = os.Args
+	d.context.Args = args
 	child, err := d.context.Reborn()
 	if err != nil {
 		return err
