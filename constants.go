@@ -57,9 +57,6 @@ const (
 	svgExt       = ".svg"
 	msgpackExt   = ".db"
 	jsonExt      = ".json"
-	torrentExt   = ".torrent"
-	mp3Ext       = ".mp3"
-	flacExt      = ".flac"
 	m3uExt       = ".m3u"
 
 	// filters
@@ -180,20 +177,8 @@ const (
 	ErrorGeneratingGraphs  = "Error generating graphs (may require more data, 24h worth for daily graphs)"
 	errorBufferDrop        = "Buffer drop too important, stopping autosnatching. Restart to start again."
 	errorBelowWarningRatio = "Ratio below warning level, stopping autosnatching."
-	// tracker errors
-	errorUnknownTorrentURL        = "Unknown torrent URL"
-	errorLogIn                    = "Error logging in"
-	errorNotLoggedIn              = "Not logged in"
-	errorJSONAPI                  = "Error calling JSON API"
-	errorGET                      = "Error calling GET on URL, got HTTP status: "
-	errorUnmarshallingJSON        = "Error reading JSON"
-	errorInvalidResponse          = "Invalid response. Maybe log in again?"
-	errorAPIResponseStatus        = "Got JSON API status: "
-	errorCouldNotCreateForm       = "Could not create form for log"
-	errorCouldNotReadLog          = "Could not read log"
-	errorGazelleRateLimitExceeded = "rate limit exceeded"
+
 	// downloads db errors
-	foundMusic             = "Found music"
 	errorCleaningDownloads = "Error cleaning up download: "
 	// disk space usage
 	currentUsage     = "Current disk usage: %.2f%% used, remaining: %s"
