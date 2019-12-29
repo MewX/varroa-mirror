@@ -141,6 +141,7 @@ func ircHandler(e *Environment, t *tracker.Gazelle) {
 		}
 		if strings.HasPrefix(ev.Message(), announcerBadCredentials) {
 			logthis.Info("error connecting to IRC: IRC key rejected by "+autosnatchConfig.Announcer+"; disconnecting.", logthis.NORMAL)
+			IRCClient.Quit()
 			return
 		}
 		// e.Arguments's first element is the message's recipient, the second is the actual message
