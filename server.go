@@ -68,10 +68,8 @@ func manualSnatchFromID(e *Environment, t *tracker.Gazelle, id string, useFLToke
 		logthis.Info("Error parsing Torrent Info", logthis.NORMAL)
 		release = &Release{Tracker: t.Name, TorrentID: id}
 	}
-	// quick test if music release: it should have at least an artist
-	isMusicRelease := len(release.Artists) != 0
 
-	if !isMusicRelease {
+	if !release.IsMusicRelease() {
 		logthis.Info("Torrent does not seem to be a music release.", logthis.NORMAL)
 	} else {
 		logthis.Info("Downloading torrent "+release.ShortString(), logthis.NORMAL)
@@ -81,7 +79,7 @@ func manualSnatchFromID(e *Environment, t *tracker.Gazelle, id string, useFLToke
 		return release, err
 	}
 
-	if isMusicRelease {
+	if release.IsMusicRelease() {
 		// add to history
 		release.Filter = manualSnatchFilterName
 		if err := stats.AddSnatch(*release); err != nil {
