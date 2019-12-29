@@ -11,6 +11,7 @@ import (
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/daemon"
 	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/strslice"
 )
@@ -61,7 +62,7 @@ func Notify(msg, tracker, msgType string, e *Environment) error {
 		}
 		return nil
 	}
-	return RunOrGo(notify)
+	return daemon.RunOrGo(notify)
 }
 
 type Notification struct {

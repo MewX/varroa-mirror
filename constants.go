@@ -1,12 +1,12 @@
 package varroa
 
 const (
-	FullName      = "varroa musica"
-	FullNameAlt   = "VarroaMusica"
-	Version       = "v28dev"
-	FullVersion   = "%s -- %s."
-	pidFile       = "varroa_pid"
-	envPassphrase = "_VARROA_PASSPHRASE"
+	FullName       = "varroa musica"
+	FullNameAlt    = "VarroaMusica"
+	Version        = "v28dev"
+	FullVersion    = "%s -- %s."
+	DefaultPIDFile = "varroa_pid"
+	envPassphrase  = "_VARROA_PASSPHRASE"
 
 	// directories & files
 	DefaultConfigurationFile  = "config.yaml"
@@ -14,16 +14,12 @@ const (
 	StatsDir                  = "stats"
 	MetadataDir               = "TrackerMetadata"
 	AdditionalMetadataDir     = "Metadata"
-	spectralsMetadataSubdir   = "Spectrals"
 	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
 	OriginJSONFile            = "origin.json"
 	trackerMetadataFile       = "release.json"
 	trackerTGroupMetadataFile = "release_group.json"
-	discogsMetadataFile       = "discogs.json"
-	tracksMetadataFile        = "tracks.json"
 	trackerCoverFile          = "cover"
-	releasePlaylistFile       = "playlist.m3u"
 	perDay                    = "per_day_"
 	uploadStatsFile           = "up"
 	downloadStatsFile         = "down"
@@ -95,13 +91,9 @@ const (
 	ErrorArguments        = "Error parsing command line arguments"
 	ErrorInfoBadArguments = "Bad arguments"
 	// daemon errors
-	errorServingSignals         = "Error serving signals"
 	ErrorFindingDaemon          = "Error finding daemon"
-	errorReleasingDaemon        = "Error releasing daemon"
-	errorSendingSignal          = "Error sending signal to the daemon"
 	ErrorGettingDaemonContext   = "Error launching daemon (it probably is running already)"
 	ErrorSendingCommandToDaemon = "Error sending command to daemon"
-	errorRemovingPID            = "Error removing pid file"
 	// command check-log errors
 	ErrorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"

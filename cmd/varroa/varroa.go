@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
+	"gitlab.com/catastrophic/assistance/daemon"
 	"gitlab.com/catastrophic/assistance/intslice"
 	"gitlab.com/catastrophic/assistance/logthis"
 	"gitlab.com/catastrophic/assistance/ui"
@@ -252,11 +253,12 @@ func main() {
 		return
 	}
 
-	d := varroa.NewDaemon()
+	d := daemon.NewDaemon(varroa.DefaultPIDFile, "log")
 	if cli.start {
 		// launching daemon
 		if !cli.noDaemon {
 			// daemonizing process
+			logthis.Info("Starting daemon...", logthis.NORMAL)
 			if err := d.Start(os.Args); err != nil {
 				logthis.Error(errors.Wrap(err, varroa.ErrorGettingDaemonContext), logthis.NORMAL)
 				return
@@ -266,6 +268,7 @@ func main() {
 			if !d.IsRunning() {
 				return
 			}
+			logthis.Info("+ varroa musica daemon started ("+varroa.Version+")", logthis.NORMAL)
 		}
 		// setting up for the daemon or main process
 		if err := env.SetUp(true); err != nil {
@@ -278,6 +281,7 @@ func main() {
 		if !cli.noDaemon {
 			// wait until daemon is stopped.
 			d.WaitForStop()
+			logthis.Info("+ varroa musica stopped", logthis.NORMAL)
 		} else {
 			// wait for ^C to quit.
 			fmt.Println(ui.Red("Running in no-daemon mode. Ctrl+C to quit."))
