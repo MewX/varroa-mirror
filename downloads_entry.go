@@ -273,7 +273,7 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 
 func (d *DownloadEntry) export(root string, config *Config) error {
 	// getting candidates for new folder name
-	var candidates []string
+	var newName string
 	if d.HasTrackerMetadata {
 		for _, t := range d.Tracker {
 			info, err := d.getMetadata(root, t)
@@ -339,17 +339,9 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				logthis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), logthis.NORMAL)
 				return err
 			}
-			// generating new possible paths
-			candidates = append(candidates, info.GeneratePath(config.Library.Template, filepath.Join(root, d.FolderName)))
-			candidates = append(candidates, info.GeneratePath(defaultFolderTemplate, filepath.Join(root, d.FolderName)))
+			// generating new folder name using template from config
+			newName = info.GeneratePath(config.Library.Template, filepath.Join(root, d.FolderName))
 		}
-	}
-	// adding current folder name last
-	candidates = append(candidates, d.FolderName)
-	// select or input a new name
-	newName, err := ui.SelectValue("Generating new folder name from metadata", "Folder must not already exist.", candidates)
-	if err != nil {
-		return err
 	}
 	if fs.DirExists(filepath.Join(config.Library.Directory, newName)) {
 		return errors.New("destination already exists")
@@ -358,7 +350,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 	ui.Title("Exporting release")
 	if ui.Accept("Export as " + newName) {
 		fmt.Println("Exporting files to the library...")
-		if err = fs.CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
+		if err := fs.CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
 			return errors.Wrap(err, "Error exporting download "+d.FolderName)
 		}
 		fmt.Println(ui.Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sorts."))
@@ -366,7 +358,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 		if config.playlistDirectoryConfigured {
 			ui.Title("Updating playlists")
 			if ui.Accept("Add release to daily/monthly playlists") {
-				if err = addReleaseToCurrentPlaylists(config.Library.PlaylistDirectory, config.Library.Directory, newName); err != nil {
+				if err := addReleaseToCurrentPlaylists(config.Library.PlaylistDirectory, config.Library.Directory, newName); err != nil {
 					return err
 				}
 				fmt.Println(ui.Green("Playlists generated or updated.\n"))
