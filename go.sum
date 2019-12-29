@@ -95,8 +95,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/russross/blackfriday v2.0.0+incompatible h1:cBXrhZNUf9C+La9/YpS+UHpUT8YD6Td9ZMSU9APFcsk=
 github.com/russross/blackfriday v2.0.0+incompatible/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
-github.com/sevlyar/go-daemon v0.1.4 h1:Ayxp/9SNHwPBjV+kKbnHl2ch6rhxTu08jfkGkoxgULQ=
-github.com/sevlyar/go-daemon v0.1.4/go.mod h1:6dJpPatBT9eUwM5VCw9Bt6CdX9Tk6UWvhW3MebLDRKE=
+github.com/sevlyar/go-daemon v0.1.5 h1:Zy/6jLbM8CfqJ4x4RPr7MJlSKt90f00kNM1D401C+Qk=
+github.com/sevlyar/go-daemon v0.1.5/go.mod h1:6dJpPatBT9eUwM5VCw9Bt6CdX9Tk6UWvhW3MebLDRKE=
 github.com/shurcooL/sanitized_anchor_name v1.0.0 h1:PdmoCO6wvbs+7yrJyMORt4/BmY5IYyJwS/kOiWx8mHo=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
@@ -120,8 +120,8 @@ github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofm
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
 gitlab.com/catastrophic/assistance v0.15.0 h1:OXF4DqHi5gOo2fjvUOHsgS0ke8Ho8+ScyR90Rzt6iZY=
 gitlab.com/catastrophic/assistance v0.15.0/go.mod h1:MIoOhGYRZBC+JDBGVCpYRsI36+QxOBRUzhhY+AAeh+c=
-gitlab.com/catastrophic/assistance v0.23.2 h1:4mVAvfy0DQzxDyi17t2XPm0wsm0JSqm7D9jJLrjQZMs=
-gitlab.com/catastrophic/assistance v0.23.2/go.mod h1:ehBF9BycdkF0/jPCPPhqluHS8UBojCbRyQXilMmu3OI=
+gitlab.com/catastrophic/assistance v0.24.0 h1:Z7YYqEdZzSA6trgeXS8vv1D5dn51ozKUZgAK1OFISLE=
+gitlab.com/catastrophic/assistance v0.24.0/go.mod h1:a8EalwiULerO29cJ/t1HZYcfGlnFAe6jvZmiSHIwY1Q=
 gitlab.com/catastrophic/go-ircevent v0.1.0 h1:EDhKUme2azLuqCizqidV1A8RP28ZQxhdBE/QXFRXhJw=
 gitlab.com/catastrophic/go-ircevent v0.1.0/go.mod h1:2AAsdhGai9b39JJgFhNPNetp4JBc8aI1siZt3AAej9I=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190228104527-d3d77fbbb3a1 h1:nKQdLjYLARydXRsNOfHxTB0TaOZdKpp3a/P6dc3ySCE=
