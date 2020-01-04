@@ -1,9 +1,12 @@
 package varroa
 
+var (
+	Version = "dev"
+)
+
 const (
 	FullName       = "varroa musica"
 	FullNameAlt    = "VarroaMusica"
-	Version        = "v29dev"
 	FullVersion    = "%s -- %s."
 	DefaultPIDFile = "varroa_pid"
 	DefaultLogFile = "log"

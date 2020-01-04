@@ -21,7 +21,7 @@ const (
 	varroaUsage = `
 	_  _ ____ ____ ____ ____ ____    _  _ _  _ ____ _ ____ ____
 	|  | |__| |__/ |__/ |  | |__|    |\/| |  | [__  | |    |__|
-	 \/  |  | |  \ |  \ |__| |  |    |  | |__| ___] | |___ |  |
+	 \/  |  | |  \ |  \ |__| |  |    |  | |__| ___] | |___ |  | (%s)
 
 
 Description:
@@ -211,7 +211,7 @@ type varroaArguments struct {
 
 func (b *varroaArguments) parseCLI(osArgs []string) error {
 	// parse arguments and options
-	args, err := docopt.Parse(varroaUsage, osArgs, true, fmt.Sprintf(varroa.FullVersion, varroa.FullName, varroa.Version), false, false)
+	args, err := docopt.Parse(fmt.Sprintf(varroaUsage, varroa.Version), osArgs, true, fmt.Sprintf(varroa.FullVersion, varroa.FullName, varroa.Version), false, false)
 	if err != nil {
 		return errors.Wrap(err, varroa.ErrorInfoBadArguments)
 	}
