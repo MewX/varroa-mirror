@@ -1,6 +1,7 @@
 package varroa
 
 var (
+	// Version will be updated by the Makefile at build time.
 	Version = "dev"
 )
 
@@ -17,7 +18,6 @@ const (
 	daemonSocket              = "varroa.sock"
 	StatsDir                  = "stats"
 	MetadataDir               = "TrackerMetadata"
-	AdditionalMetadataDir     = "Metadata"
 	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
 	OriginJSONFile            = "origin.json"
@@ -48,10 +48,9 @@ const (
 	statsNotificationPrefix   = "stats: "
 
 	// Notable ratios & constants
-	defaultTargetRatio     = 1.0
-	warningRatio           = 0.6
-	minimumSeeders         = 5
-	maxEmbeddedPictureSize = 1024 * 1024
+	defaultTargetRatio = 1.0
+	warningRatio       = 0.6
+	minimumSeeders     = 5
 
 	// file extensions
 	yamlExt      = ".yaml"
@@ -156,9 +155,7 @@ const (
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"
 	errorConnectingToIRC        = "Error connecting to IRC"
 	errorCouldNotGetTorrentInfo = "Error retrieving torrent info from tracker"
-	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder"
 	errorDownloadingTorrent     = "Error downloading torrent"
-	errorRemovingTempFile       = "Error removing temporary file %s"
 	errorAddingToHistory        = "Error adding release to history"
 	announcerBadCredentials     = "Bad credentials."
 	// notifications errors
