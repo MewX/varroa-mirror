@@ -40,7 +40,7 @@ build-bin:
 	cp script/send-to-varroa.js send-to-varroa.js
 
 install:
-	${GO} install -v ./...
+	${GO} install -ldflags "-X main.Version=${VERSION}" -v ./...
 
 
 
