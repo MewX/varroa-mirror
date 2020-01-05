@@ -5,12 +5,16 @@
 // @include        http*://*redacted.ch/*
 // @include        http*://*notwhat.cd/*
 // @include        http*://*apollo.rip/*
-// @version        29
+// @version        29.1
 // @date           2020-01
 // @grant          GM.getValue
 // @grant          GM.setValue
 // @grant          GM.notification
 // @require        https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
+// @require        https://redacted.ch/static/functions/noty/noty.js
+// @require        https://redacted.ch/static/functions/noty/layouts/bottomRight.js
+// @require        https://redacted.ch/static/functions/noty/themes/default.js
+// @require        https://redacted.ch/static/functions/user_notifications.js
 // ==/UserScript==
 
 (async function () {
