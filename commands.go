@@ -295,7 +295,11 @@ func SnatchTorrents(e *Environment, t *tracker.Gazelle, IDStrings []string, useF
 		if err != nil {
 			return errors.New("Error snatching torrent with ID #" + id)
 		}
-		logthis.Info("Successfully snatched torrent "+release.ShortString(), logthis.NORMAL)
+		if release.IsMusicRelease() {
+			logthis.Info("Successfully snatched torrent "+release.ShortString(), logthis.NORMAL)
+		} else {
+			logthis.Info("Successfully snatched non-music torrent", logthis.NORMAL)
+		}
 	}
 	return nil
 }

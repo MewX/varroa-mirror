@@ -134,6 +134,11 @@ func NewRelease(trackerName string, parts []string, alternative bool) (*Release,
 	return r, nil
 }
 
+// IsMusicRelease returns false if the release has no artists
+func (r *Release) IsMusicRelease() bool {
+	return len(r.Artists) != 0
+}
+
 func (r *Release) String() string {
 	return fmt.Sprintf(ReleaseString, strings.Join(r.Artists, ","), r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.HasLog, r.LogScore, r.HasCue, r.IsScene, r.Source, r.Tags, r.torrentURL, r.TorrentID)
 }

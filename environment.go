@@ -116,7 +116,7 @@ func (e *Environment) SetUp(autologin bool) error {
 	// log in all trackers, assuming labels are unique (configuration was checked)
 	for _, label := range e.config.TrackerLabels() {
 		if _, err := e.setUpTracker(label, autologin); err != nil {
-			return errors.Wrap(err, "Error setting up tracker "+label)
+			return err
 		}
 	}
 	return nil

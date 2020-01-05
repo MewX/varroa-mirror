@@ -5,50 +5,43 @@
 // @include        http*://*redacted.ch/*
 // @include        http*://*notwhat.cd/*
 // @include        http*://*apollo.rip/*
-// @version        21
-// @date           2018-03
-// @grant          GM_getValue
-// @grant          GM_setValue
-// @grant          GM_notification
-// @grant          GM_addStyle
+// @version        29
+// @date           2020-01
 // @grant          GM.getValue
 // @grant          GM.setValue
 // @grant          GM.notification
-// @grant          GM.addStyle
 // @require        https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // ==/UserScript==
-
-// with some help from `xo --fix send_to_varroa.js`
-/* global window document MutationObserver GM WebSocket */
-/* eslint new-cap: "off" */
 
 (async function () {
 	const linkregex = /torrents\.php\?action=download.*?id=(\d+).*?authkey=.*?torrent_pass=(?=([a-z0-9]+))\2(?!&)/i;
 	const divider = ' | ';
 
-// Get userid
+	// Get userid
 	const userinfoElement = document.getElementsByClassName('username')[0];
 	const userid = userinfoElement.href.match(/user\.php\?id=(\d+)/)[1];
-// Get current hostname
+	// Get current hostname
 	const siteHostname = window.location.host;
-// Get domain-specific settings prefix to make this script multi-site
+	// Get domain-specific settings prefix to make this script multi-site
 	const settingsNamePrefix = siteHostname + '_' + userid + '_';
-// Settings
+	// Settings
 	const settings = await getSettings();
-// Checks for current page
+	// Checks for current page
 	const settingsPage = window.location.href.match('user.php\\?action=edit&userid=');
-	const userPage = window.location.href.match('user.php\\?id=' + userid);
+	const userPage = window.location.href.match('user.php\\?id=' + userid + '$');
 	const torrentPage = window.location.href.match('torrents.php$');
 	const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
-// Check if tokens are available
+	// Check if tokens are available
 	const FLTokensAvailable = await areFLTokensAvailable();
-// Misc strings
-	const vmUnknown = 'Pinging VM...';
-	const vmOK = 'VM is up.';
-	const vmKO = 'VM is offline (click to check again).';
+	// Notifications strings
+	const vmUnknown = 'Reconnecting to VM...';
+	const vmOK = 'Connected to VM.';
+	const vmKO = 'No connection to VM.';
 	const vmGet = 'VM: sent torrent with ID #';
-	const vmCannotGet = 'VM is offline, cannot get torrent (click to check again).';
+	const vmCannotGet = 'VM is offline, cannot get torrent (ping to reconnect).';
 	const vmLinkInfo = 'Send to varroa musica';
+	const notificationBoxButton1Label = 'Refresh';
+	const notificationBoxButton2Label = 'Hide';
 
 	const notification = 0;
 	const statsInfo = 1;
@@ -63,6 +56,7 @@
 	let hello;
 	let getInfo;
 	let alreadyAddedLinks = false;
+	let notificationBox = null;
 
 	if (settings) {
 		if (settings.https === true) {
@@ -76,13 +70,13 @@
 				Token: settings.token,
 				Site: settings.site
 			};
-		// Open the websocket to varroa
+			// Open the websocket to varroa
 			newSocket();
 		} else {
 			// Add http links
 			addLinks();
 		}
-	// Add stats if on user page
+		// Add stats if on user page
 		addStatsToUserPage();
 	}
 	if (settingsPage) {
@@ -123,7 +117,7 @@
 			}
 		}
 
-		MutationObserver = window.MutationObserver || window.WebKitMutationObserver; // eslint-disable-line no-global-assign
+		MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
 		const obs = new MutationObserver(mutations => {
 			mutations.forEach(mutation => {
 				mutation.addedNodes.forEach(node => {
@@ -139,12 +133,12 @@
 		});
 
 		if (torrentPage) {
-			obsElem = document.querySelector('#torrent_table > tbody'); // eslint-disable-line no-unused-vars
+			obsElem = document.querySelector('#torrent_table > tbody');
 		} else if (torrentUserPage) {
-			obsElem = document.querySelector('.torrent_table > tbody'); // eslint-disable-line no-unused-vars
+			obsElem = document.querySelector('.torrent_table > tbody');
 		}
-		if (obsElem) { // eslint-disable-line no-undef
-			obs.observe(obsElem, { // eslint-disable-line no-undef
+		if (obsElem) {
+			obs.observe(obsElem, {
 				childList: true
 			});
 		}
@@ -226,7 +220,7 @@
 			setVMStatus(vmKO);
 		};
 		sock.onmessage = function (evt) {
-			console.log(evt.data);
+			// console.log(evt.data);
 			const msg = JSON.parse(evt.data);
 			if (msg.Status === 0) {
 				if (msg.Target === notification || msg.Target === undefined) {
@@ -235,8 +229,11 @@
 						// Safe to add links
 						addLinks();
 					} else {
-						// TODO change back after a while
 						setVMStatus('VM: ' + msg.Message);
+						// change back after a while
+						setTimeout(() => {
+							setVMStatus(vmOK);
+						}, 5000);
 					}
 				} else if (msg.Target === statsInfo && userPage) {
 					setVMStatusInfo(msg.Message);
@@ -249,7 +246,7 @@
 			setVMStatus(vmKO);
 			setTimeout(() => {
 				newSocket();
-			}, 5000);
+			}, 500);
 		};
 	}
 
@@ -321,7 +318,37 @@
 		return tokens.getElementsByClassName('stat')[0].getElementsByTagName('a')[0].innerHTML != '';
 	}
 
-    // -- Status Info -------------------------------------------------------------------
+	// -- Status Info -------------------------------------------------------------------
+	function setVMStatus(param) {
+		if (notificationBox == null) {
+			notificationBox = noty({
+				id: 'ha',
+				text: 'Varroa Musica',
+				type: 'notification',
+				layout: 'bottomRight',
+				closeWith: ['click'],
+				animation: {
+					open: {height: 'toggle'},
+					close: {height: 'toggle'},
+					easing: 'swing',
+					speed: 0
+				},
+				buttonElement: 'a',
+				buttons: [{
+					addClass: 'brackets noty_button_view',
+					text: notificationBoxButton1Label,
+					onClick: ($noty) => newSocket()
+				},
+					{
+						addClass: 'brackets noty_button_close ',
+						text: notificationBoxButton2Label,
+						onClick: ($noty) => $noty.close()
+					}]
+			});
+		} else {
+			notificationBox.setText(param);
+		}
+	}
 
 	function setVMStatusInfo(label) {
 		const a = document.createElement('a');
@@ -338,40 +365,6 @@
 			vmStatusInfoDiv.replaceChild(a, vmStatusInfoDiv.lastChild);
 		}
 	}
-
-	// -- Status Info -------------------------------------------------------------------
-
-	function setVMStatus(label) {
-		const a = document.createElement('a');
-		a.innerHTML = label.replace(/\n/g, '<br />');
-		if (settings.https === true) {
-			a.addEventListener('click', newSocket, false);
-		}
-		if (vmStatusDiv === null) {
-			vmStatusDiv = document.createElement('div');
-			vmStatusDiv.id = 'varroa';
-			const vmStatusP = document.createElement('p');
-			vmStatusP.innerHTML = 'varroa musica';
-			vmStatusDiv.appendChild(vmStatusP);
-
-			vmStatusDiv.appendChild(a);
-			document.body.appendChild(vmStatusDiv);
-		} else {
-			vmStatusDiv.replaceChild(a, vmStatusDiv.lastChild);
-		}
-	}
-
-	(function () {
-		'use strict';
-		const css = '#varroa {bottom: 20px; left: 20px; position: fixed; width: 310px; height: auto; margin: 0px; list-style-type: none; z-index: 10000000;background-color: #FFFFFF;color: #000000; border: 2px solid #6D6D6D; padding: 5px; border-radius: 5px; } ';
-		const css2 = '#varroa a {bottom: 0; left: 0px; position: relative; width: auto; height: auto; margin: 0px; background-color: #FFFFFF ;color: #000000; cursor: pointer }';
-		const css3 = '#varroa p {bottom: 0; left: 0px; position: relative; width: auto; height: auto; margin: 0px; background-color: #FFFFFF ;color: #000000;text-decoration: underline; }';
-		const css4 = '.varroa_link:hover  {cursor:pointer;}';
-		GM.addStyle(css);
-		GM.addStyle(css2);
-		GM.addStyle(css3);
-		GM.addStyle(css4);
-	})();
 
 // -- Settings -----------------------------------------------------------------
 
@@ -436,4 +429,5 @@
 			GM.setValue(setting, elem.checked);
 		}
 	}
+
 })();

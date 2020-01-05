@@ -1,4 +1,5 @@
 GO = GO111MODULE=on go
+VERSION=`git describe --tags`
 
 all: fmt check test-coverage build
 
@@ -25,12 +26,16 @@ test-coverage:
 
 clean:
 	rm -f coverage.txt
+	rm -f varroa
+	rm -f varroa-fuse
+	rm -f varroa_bash_completion
+	rm -f send-to-varroa.js
 
 build:
 	${GO} build -v ./...
 build-bin:
-	cd cmd/varroa;${GO} build -o ../../varroa;cd ../..
-	cd cmd/varroa-fuse;${GO} build -o ../../varroa-fuse;cd ../..
+	cd cmd/varroa;${GO} build -ldflags "-X gitlab.com/passelecasque/varroa.Version=${VERSION}" -o ../../varroa;cd ../..
+	cd cmd/varroa-fuse;${GO} build -ldflags "-X gitlab.com/passelecasque/varroa.Version=${VERSION}" -o ../../varroa-fuse;cd ../..
 	cp cmd/varroa/bash_completion varroa_bash_completion
 	cp script/send-to-varroa.js send-to-varroa.js
 

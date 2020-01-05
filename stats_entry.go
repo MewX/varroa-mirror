@@ -12,8 +12,10 @@ import (
 )
 
 const (
-	progress      = "Buffer: %s (%s) | Ratio:  %.3f (%.3f) | Up: %s (%s) | Down: %s (%s) | Warning Buffer: %s (%s)"
+	progress      = "Buffer: %s (%s) | Ratio: %.3f (%.3f) | Up: %s (%s) | Down: %s (%s) | Warning Buffer: %s (%s)"
 	firstProgress = "Buffer: %s | Ratio: %.3f | Up: %s | Down: %s | Warning Buffer: %s"
+
+	regexpProgress = `(.*): (.*): (.*) \((.*)\) \| (.*): (.*) \((.*)\) \| (.*): (.*) \((.*)\) \| (.*): (.*) \((.*)\) \| (.*): (.*) \((.*)\)`
 
 	currentStatsDBSchemaVersion = 1
 )

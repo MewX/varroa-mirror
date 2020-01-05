@@ -1,9 +1,6 @@
 {
   "name": "varroa",
-  "version": "9",
+  "version": "29",
   "main": "send-to-varroa.js",
-  "author": "passelecasque",
-  "dependencies": {
-    "xo": "^0.18.1"
-  }
+  "author": "passelecasque"
 }

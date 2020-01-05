@@ -29,6 +29,7 @@ type ConfigGeneral struct {
 	WatchDir                   string `yaml:"watch_directory"`
 	DownloadDir                string `yaml:"download_directory"`
 	AutomaticMetadataRetrieval bool   `yaml:"automatic_metadata_retrieval"`
+	TimestampedLogs            bool   `yaml:"timestamped_logs"`
 }
 
 func (cg *ConfigGeneral) check() error {
@@ -51,6 +52,7 @@ func (cg *ConfigGeneral) check() error {
 func (cg *ConfigGeneral) String() string {
 	txt := "General configuration:\n"
 	txt += "\tLog level: " + strconv.Itoa(cg.LogLevel) + "\n"
+	txt += "\tTimestamped Logs: " + fmt.Sprintf("%v", cg.TimestampedLogs) + "\n"
 	txt += "\tWatch directory: " + cg.WatchDir + "\n"
 	txt += "\tDownload directory: " + cg.DownloadDir + "\n"
 	txt += "\tDownload metadata automatically: " + fmt.Sprintf("%v", cg.AutomaticMetadataRetrieval) + "\n"
@@ -183,7 +185,7 @@ func (cl *ConfigLibrary) check() error {
 	if cl.Directory == "" || !fs.DirExists(cl.Directory) {
 		return errors.New("library directory does not exist")
 	}
-	if cl.PlaylistDirectory == "" || !fs.DirExists(cl.PlaylistDirectory) {
+	if cl.PlaylistDirectory != "" && !fs.DirExists(cl.PlaylistDirectory) {
 		return errors.New("playlist directory does not exist")
 	}
 	for _, s := range cl.AdditionalSources {

@@ -1,29 +1,29 @@
 package varroa
 
+var (
+	// Version will be updated by the Makefile at build time.
+	Version = "dev"
+)
+
 const (
-	FullName      = "varroa musica"
-	FullNameAlt   = "VarroaMusica"
-	Version       = "v28dev"
-	FullVersion   = "%s -- %s."
-	pidFile       = "varroa_pid"
-	envPassphrase = "_VARROA_PASSPHRASE"
+	FullName       = "varroa musica"
+	FullNameAlt    = "VarroaMusica"
+	FullVersion    = "%s -- %s."
+	DefaultPIDFile = "varroa_pid"
+	DefaultLogFile = "log"
+	envPassphrase  = "_VARROA_PASSPHRASE"
 
 	// directories & files
 	DefaultConfigurationFile  = "config.yaml"
 	daemonSocket              = "varroa.sock"
 	StatsDir                  = "stats"
 	MetadataDir               = "TrackerMetadata"
-	AdditionalMetadataDir     = "Metadata"
-	spectralsMetadataSubdir   = "Spectrals"
 	downloadsCleanDir         = "VarroaClean"
 	userMetadataJSONFile      = "user_metadata.json"
 	OriginJSONFile            = "origin.json"
 	trackerMetadataFile       = "release.json"
 	trackerTGroupMetadataFile = "release_group.json"
-	discogsMetadataFile       = "discogs.json"
-	tracksMetadataFile        = "tracks.json"
 	trackerCoverFile          = "cover"
-	releasePlaylistFile       = "playlist.m3u"
 	perDay                    = "per_day_"
 	uploadStatsFile           = "up"
 	downloadStatsFile         = "down"
@@ -48,10 +48,9 @@ const (
 	statsNotificationPrefix   = "stats: "
 
 	// Notable ratios & constants
-	defaultTargetRatio     = 1.0
-	warningRatio           = 0.6
-	minimumSeeders         = 5
-	maxEmbeddedPictureSize = 1024 * 1024
+	defaultTargetRatio = 1.0
+	warningRatio       = 0.6
+	minimumSeeders     = 5
 
 	// file extensions
 	yamlExt      = ".yaml"
@@ -60,9 +59,6 @@ const (
 	svgExt       = ".svg"
 	msgpackExt   = ".db"
 	jsonExt      = ".json"
-	torrentExt   = ".torrent"
-	mp3Ext       = ".mp3"
-	flacExt      = ".flac"
 	m3uExt       = ".m3u"
 
 	// filters
@@ -95,13 +91,9 @@ const (
 	ErrorArguments        = "Error parsing command line arguments"
 	ErrorInfoBadArguments = "Bad arguments"
 	// daemon errors
-	errorServingSignals         = "Error serving signals"
 	ErrorFindingDaemon          = "Error finding daemon"
-	errorReleasingDaemon        = "Error releasing daemon"
-	errorSendingSignal          = "Error sending signal to the daemon"
 	ErrorGettingDaemonContext   = "Error launching daemon (it probably is running already)"
 	ErrorSendingCommandToDaemon = "Error sending command to daemon"
-	errorRemovingPID            = "Error removing pid file"
 	// command check-log errors
 	ErrorCheckingLog     = "Error checking log"
 	errorGettingLogScore = "Error getting log score"
@@ -163,9 +155,7 @@ const (
 	errorDealingWithAnnounce    = "Error dealing with announced torrent"
 	errorConnectingToIRC        = "Error connecting to IRC"
 	errorCouldNotGetTorrentInfo = "Error retrieving torrent info from tracker"
-	errorCouldNotMoveTorrent    = "Error moving torrent to destination folder"
 	errorDownloadingTorrent     = "Error downloading torrent"
-	errorRemovingTempFile       = "Error removing temporary file %s"
 	errorAddingToHistory        = "Error adding release to history"
 	announcerBadCredentials     = "Bad credentials."
 	// notifications errors
@@ -187,20 +177,8 @@ const (
 	ErrorGeneratingGraphs  = "Error generating graphs (may require more data, 24h worth for daily graphs)"
 	errorBufferDrop        = "Buffer drop too important, stopping autosnatching. Restart to start again."
 	errorBelowWarningRatio = "Ratio below warning level, stopping autosnatching."
-	// tracker errors
-	errorUnknownTorrentURL        = "Unknown torrent URL"
-	errorLogIn                    = "Error logging in"
-	errorNotLoggedIn              = "Not logged in"
-	errorJSONAPI                  = "Error calling JSON API"
-	errorGET                      = "Error calling GET on URL, got HTTP status: "
-	errorUnmarshallingJSON        = "Error reading JSON"
-	errorInvalidResponse          = "Invalid response. Maybe log in again?"
-	errorAPIResponseStatus        = "Got JSON API status: "
-	errorCouldNotCreateForm       = "Could not create form for log"
-	errorCouldNotReadLog          = "Could not read log"
-	errorGazelleRateLimitExceeded = "rate limit exceeded"
+
 	// downloads db errors
-	foundMusic             = "Found music"
 	errorCleaningDownloads = "Error cleaning up download: "
 	// disk space usage
 	currentUsage     = "Current disk usage: %.2f%% used, remaining: %s"
