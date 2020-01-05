@@ -28,7 +28,7 @@
 	const settings = await getSettings();
 	// Checks for current page
 	const settingsPage = window.location.href.match('user.php\\?action=edit&userid=');
-	const userPage = window.location.href.match('user.php\\?id=' + userid);
+	const userPage = window.location.href.match('user.php\\?id=' + userid + '$');
 	const torrentPage = window.location.href.match('torrents.php$');
 	const torrentUserPage = window.location.href.match('torrents.php?(.*)&userid');
 	// Check if tokens are available
