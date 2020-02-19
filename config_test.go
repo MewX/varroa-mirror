@@ -116,6 +116,8 @@ func TestConfig(t *testing.T) {
 	fmt.Println("Checking library")
 	check.Equal("test", c.Library.Directory)
 	check.True(c.Library.UseHardLinks)
+	check.False(c.Library.MoveSorted)
+	check.True(c.Library.AutomaticMode)
 	check.Equal("$a/$a ($y) $t [$f $q] [$s] [$l $n $e]", c.Library.Template)
 	check.Equal([]string{"../varroa/test", "../varroa/cmd"}, c.Library.AdditionalSources)
 	check.Equal("test/aliases.yaml", c.Library.AliasesFile)
