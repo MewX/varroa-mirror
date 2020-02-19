@@ -24,7 +24,6 @@ require (
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 	github.com/jasonlvhit/gocron v0.0.0-20180312192515-54194c9749d4
 	github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3
-	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1 // indirect
 	github.com/mewkiz/flac v1.0.5
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 	github.com/mholt/archiver v3.1.1+incompatible
@@ -42,7 +41,7 @@ require (
 	github.com/vmihailenco/msgpack v4.0.1+incompatible // indirect
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	gitlab.com/catastrophic/assistance v0.24.0
+	gitlab.com/catastrophic/assistance v0.30.0
 	gitlab.com/catastrophic/go-ircevent v0.1.0
 	gitlab.com/passelecasque/obstruction v0.4.0
 	go.etcd.io/bbolt v1.3.0 // indirect
@@ -53,3 +52,5 @@ require (
 )
 
 go 1.13
+
+//replace gitlab.com/catastrophic/assistance => ../../catastrophic/assistance
