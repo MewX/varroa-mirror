@@ -15,6 +15,8 @@ github.com/asdine/storm v2.1.2+incompatible h1:dczuIkyqwY2LrtXPz8ixMrU/OFgZp71kb
 github.com/asdine/storm v2.1.2+incompatible/go.mod h1:RarYDc9hq1UPLImuiXK3BIWPJLdIygvV3PsInK0FbVQ=
 github.com/blend/go-sdk v1.1.0 h1:ouvcspEy856k4ziA6J7ADN4RwMgON+BmBHcdHtSsoqc=
 github.com/blend/go-sdk v1.1.0/go.mod h1:IP1XHXFveOXHRnojRJO7XvqWGqyzevtXND9AdSztAe8=
+github.com/bogem/id3v2 v1.1.1 h1:FnjS2vytMeEb39tOMG09uz852MaEccA2A3asRM3XxbE=
+github.com/bogem/id3v2 v1.1.1/go.mod h1:D1rDm80qF/ocBU+Ik8U4RKnwMq/oNkkB8vGcnrlMJmM=
 github.com/boltdb/bolt v1.3.1 h1:JQmyP4ZBrce+ZQu0dY660FMfatumYDLun9hBCUVIkF4=
 github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx27Ps=
 github.com/briandowns/spinner v0.0.0-20181029155426-195c31b675a7 h1:IvbBe4mOtBLz3X8n95FV5FzQqGWkrkCrfKdQxj7DkUg=
@@ -58,8 +60,8 @@ github.com/jasonlvhit/gocron v0.0.0-20180312192515-54194c9749d4 h1:pxDHjTXOh3pcC
 github.com/jasonlvhit/gocron v0.0.0-20180312192515-54194c9749d4/go.mod h1:rwi/esz/h+4oWLhbWWK7f6dtmgLzxeZhnwGr7MCsTNk=
 github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3 h1:xvj06l8iSwiWpYgm8MbPp+naBg+pwfqmdXabzqPCn/8=
 github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3/go.mod h1:oHTiXerJ20+SfYcrdlBO7rzZRJWGwSTQ0iUY2jI6Gfc=
-github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1 h1:PJPDf8OUfOK1bb/NeTKd4f1QXZItOX389VN3B6qC8ro=
-github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1/go.mod h1:1NbS8ALrpOvjt0rHPNLyCIeMtbizbir8U//inJ+zuB8=
+github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 h1:iQTw/8FWTuc7uiaSepXwyf3o52HaUYcV+Tu66S3F5GA=
+github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0/go.mod h1:1NbS8ALrpOvjt0rHPNLyCIeMtbizbir8U//inJ+zuB8=
 github.com/kennygrant/sanitize v1.2.4/go.mod h1:LGsjYYtgxbetdg5owWB2mpgUL6e2nfw2eObZ0u0qvak=
 github.com/lib/pq v1.0.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/mattn/go-colorable v0.0.9 h1:UVL0vNpWh04HeJXV0KLcaT7r06gOH2l4OW6ddYRUIY4=
@@ -79,6 +81,7 @@ github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyex
 github.com/mholt/archiver v3.1.1+incompatible h1:1dCVxuqs0dJseYEhi5pl7MYPH9zDa1wBi7mF09cbNkU=
 github.com/mholt/archiver v3.1.1+incompatible/go.mod h1:Dh2dOXnSdiLxRiPoVfIr/fI1TwETms9B8CTWfeh7ROU=
 github.com/moraes/isbn v0.0.0-20151007102746-e6388fb1bfd5/go.mod h1:YbfTskKL/cUU5Uq1OlRksOn5uT1Mt9CB27kllRDirQY=
+github.com/nsf/termbox-go v0.0.0-20190104133558-0938b5187e61 h1:pEzZYac/uQ4cgaN1Q/UYZg+ZtCSWz2HQ3rvl8MeN9MA=
 github.com/nsf/termbox-go v0.0.0-20190104133558-0938b5187e61/go.mod h1:IuKpRQcYE1Tfu+oAQqaLisqDeXgjyyltCfsaoYN18NQ=
 github.com/nsf/termbox-go v0.0.0-20190121233118-02980233997d h1:x3S6kxmy49zXVVyhcnrFqxvNVCBPb2KZ9hV2RBdS840=
 github.com/nsf/termbox-go v0.0.0-20190121233118-02980233997d/go.mod h1:IuKpRQcYE1Tfu+oAQqaLisqDeXgjyyltCfsaoYN18NQ=
@@ -120,8 +123,8 @@ github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofm
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
 gitlab.com/catastrophic/assistance v0.15.0 h1:OXF4DqHi5gOo2fjvUOHsgS0ke8Ho8+ScyR90Rzt6iZY=
 gitlab.com/catastrophic/assistance v0.15.0/go.mod h1:MIoOhGYRZBC+JDBGVCpYRsI36+QxOBRUzhhY+AAeh+c=
-gitlab.com/catastrophic/assistance v0.24.0 h1:Z7YYqEdZzSA6trgeXS8vv1D5dn51ozKUZgAK1OFISLE=
-gitlab.com/catastrophic/assistance v0.24.0/go.mod h1:a8EalwiULerO29cJ/t1HZYcfGlnFAe6jvZmiSHIwY1Q=
+gitlab.com/catastrophic/assistance v0.30.0 h1:ri14SC/X1tkt7VOIL5mxY2f96i1wsW0PyIlhxchWEtE=
+gitlab.com/catastrophic/assistance v0.30.0/go.mod h1:fZ8UYI/pF9zJRCkO/cxPbUJUyLXwHSgAeiV/LUHrec4=
 gitlab.com/catastrophic/go-ircevent v0.1.0 h1:EDhKUme2azLuqCizqidV1A8RP28ZQxhdBE/QXFRXhJw=
 gitlab.com/catastrophic/go-ircevent v0.1.0/go.mod h1:2AAsdhGai9b39JJgFhNPNetp4JBc8aI1siZt3AAej9I=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190228104527-d3d77fbbb3a1 h1:nKQdLjYLARydXRsNOfHxTB0TaOZdKpp3a/P6dc3ySCE=
