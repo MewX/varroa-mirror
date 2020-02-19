@@ -222,6 +222,10 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 					logthis.Error(errors.Wrap(err, "Error getting configuration for tracker "+t), logthis.NORMAL)
 					continue
 				}
+				if d.TrackerID[i] == 0 {
+					logthis.Info("error refreshing metadata for tracker "+t+", ID is 0", logthis.NORMAL)
+					continue
+				}
 				if err := RefreshMetadata(e, tracker, []string{strconv.Itoa(d.TrackerID[i])}); err != nil {
 					logthis.Error(errors.Wrap(err, "Error refreshing metadata for tracker "+t), logthis.NORMAL)
 					continue
@@ -360,7 +364,7 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 				info.Category = category
 			}
 			// write to original user_metadata.json
-			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, MetadataDir), info.MainArtist, info.MainArtistAlias, info.Category); err != nil {
+			if err = info.UpdateUserJSON(filepath.Join(root, d.FolderName, MetadataDir), info.MainArtist, info.MainArtistAlias, info.Category); err != nil {
 				logthis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), logthis.NORMAL)
 				return err
 			}
