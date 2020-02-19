@@ -877,7 +877,7 @@ func (tm *TrackerMetadata) LoadUserJSON(parentFolder string) error {
 	}
 	var userInfo *TrackerMetadata
 	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
-		logthis.Info("error parsing torrent info JSON", logthis.NORMAL)
+		logthis.Error(errors.Wrap(unmarshalErr, "error parsing torrent info JSON: "+userJSON), logthis.NORMAL)
 		return nil
 	}
 	//  overwrite tracker values if non-zero value found
