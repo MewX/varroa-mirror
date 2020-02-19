@@ -359,14 +359,14 @@ func (d *DownloadsDB) Sort(e *Environment) error {
 	}
 	for _, dl := range downloadEntries {
 		if dl.State == stateUnsorted {
-			if !ui.Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.ID, dl.FolderName)) {
-				return nil
+			if e.config.Library.AutomaticMode || ui.Accept(fmt.Sprintf("Sorting download #%d (%s), continue ", dl.ID, dl.FolderName)) {
+				if err := dl.Sort(e, d.root); err != nil {
+					return errors.Wrap(err, "Error sorting download "+strconv.Itoa(dl.ID))
+				}
 			}
-			if err := dl.Sort(e, d.root); err != nil {
-				return errors.Wrap(err, "Error sorting download "+strconv.Itoa(dl.ID))
-			}
-		} else if dl.State == stateAccepted {
-			if ui.Accept(fmt.Sprintf("Do you want to export already accepted release #%d (%s) ", dl.ID, dl.FolderName)) {
+		}
+		if dl.State == stateAccepted {
+			if e.config.Library.AutomaticMode || ui.Accept(fmt.Sprintf("Do you want to export already accepted release #%d (%s) ", dl.ID, dl.FolderName)) {
 				if err := dl.export(d.root, e.config); err != nil {
 					return errors.Wrap(err, "Error exporting download "+strconv.Itoa(dl.ID))
 				}
@@ -386,11 +386,11 @@ func (d *DownloadsDB) SortThisID(e *Environment, id int, ignoreSorted bool) erro
 	if err != nil {
 		return errors.Wrap(err, "Error finding such an ID in the downloads database")
 	}
-	if dl.State != stateUnsorted && (ignoreSorted || !ui.Accept(fmt.Sprintf("Download #%d (%s) has already been accepted or rejected. Do you want to sort it again ", dl.ID, dl.FolderName))) {
+	if dl.State != stateUnsorted && (ignoreSorted || e.config.Library.AutomaticMode || !ui.Accept(fmt.Sprintf("Download #%d (%s) has already been accepted or rejected. Do you want to sort it again ", dl.ID, dl.FolderName))) {
 		return nil
 	}
 	if err := dl.Sort(e, d.root); err != nil {
-		return errors.Wrap(err, "Error sorting selected download")
+		return errors.Wrap(err, "Error sortng selected download")
 	}
 	if err := d.db.DB.Update(&dl); err != nil {
 		return errors.Wrap(err, "Error saving new state for download "+dl.FolderName)

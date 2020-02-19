@@ -2,6 +2,7 @@ package varroa
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -214,7 +215,7 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 			fmt.Println(ui.Green(origin.lastUpdatedString()))
 		}
 
-		if ui.Accept("Try to refresh metadata from tracker") {
+		if e.config.Library.AutomaticMode || ui.Accept("Try to refresh metadata from tracker") {
 			for i, t := range d.Tracker {
 				tracker, err := e.Tracker(t)
 				if err != nil {
@@ -231,40 +232,45 @@ func (d *DownloadEntry) Sort(e *Environment, root string) error {
 
 	// display metadata
 	fmt.Println(d.Description(root))
-	ui.Title("Sorting release")
-	ui.Usage("This decision will not have any consequence for the files in your download folder, or their seeding status.")
-	validChoice := false
-	errs := 0
-	for !validChoice {
-		ui.UserChoice("[A]ccept, [R]eject, or [D]efer decision")
-		choice, scanErr := ui.GetInput(nil)
-		if scanErr != nil {
-			return scanErr
-		}
 
-		switch {
-		case strings.ToUpper(choice) == "R":
-			fmt.Println(ui.RedBold("This release will be considered REJECTED. It will not be removed, but will be ignored in later sorting."))
-			fmt.Println(ui.RedBold("This can be reverted by sorting its specific download ID (" + strconv.Itoa(d.ID) + ")."))
-			d.State = stateRejected
-			validChoice = true
-		case strings.ToUpper(choice) == "D":
-			fmt.Println(ui.Green("Decision about this download is POSTPONED."))
-			d.State = stateUnsorted
-			validChoice = true
-		case strings.ToUpper(choice) == "A":
-			if err := d.export(root, e.config); err != nil {
-				return err
+	if e.config.Library.AutomaticMode {
+		d.State = stateAccepted
+	} else {
+		ui.Title("Sorting release")
+		ui.Usage("This decision will not have any consequence for the files in your download folder, or their seeding status.")
+		validChoice := false
+		errs := 0
+		for !validChoice {
+			ui.UserChoice("[A]ccept, [R]eject, or [D]efer decision")
+			choice, scanErr := ui.GetInput(nil)
+			if scanErr != nil {
+				return scanErr
 			}
-			d.State = stateAccepted
-			validChoice = true
-		}
 
-		if !validChoice {
-			fmt.Println(ui.Red("Invalid choice."))
-			errs++
-			if errs > 10 {
-				return errors.New("Error sorting download, too many incorrect choices")
+			switch {
+			case strings.ToUpper(choice) == "R":
+				fmt.Println(ui.RedBold("This release will be considered REJECTED. It will not be removed, but will be ignored in later sorting."))
+				fmt.Println(ui.RedBold("This can be reverted by sorting its specific download ID (" + strconv.Itoa(d.ID) + ")."))
+				d.State = stateRejected
+				validChoice = true
+			case strings.ToUpper(choice) == "D":
+				fmt.Println(ui.Green("Decision about this download is POSTPONED."))
+				d.State = stateUnsorted
+				validChoice = true
+			case strings.ToUpper(choice) == "A":
+				if err := d.export(root, e.config); err != nil {
+					return err
+				}
+				d.State = stateAccepted
+				validChoice = true
+			}
+
+			if !validChoice {
+				fmt.Println(ui.Red("Invalid choice."))
+				errs++
+				if errs > 10 {
+					return errors.New("Error sorting download, too many incorrect choices")
+				}
 			}
 		}
 	}
@@ -290,52 +296,71 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 					artists = append(artists, a.Name)
 				}
 			}
+
 			// if only one artist, select them by default
 			mainArtist := artists[0]
 			if len(artists) > 1 {
 				mainArtistCandidates := []string{strings.Join(artists, ", ")}
 				mainArtistCandidates = append(mainArtistCandidates, artists...)
-				if len(artists) >= 3 {
-					mainArtistCandidates = append(mainArtistCandidates, tracker.VariousArtists)
+				if len(artists) > 3 {
+					mainArtistCandidates = append([]string{tracker.VariousArtists}, mainArtistCandidates...)
 				}
 
-				mainArtist, err = ui.SelectValue("Defining main artist", "If several artists are listed, this will help organize your files.", mainArtistCandidates)
-				if err != nil {
-					return err
+				//  selecting first main artist if in automatic mode
+				if config.Library.AutomaticMode {
+					mainArtist = mainArtistCandidates[0]
+				} else {
+					mainArtist, err = ui.SelectValue("Defining main artist", "If several artists are listed, this will help organize your files.", mainArtistCandidates)
+					if err != nil {
+						return err
+					}
 				}
 			}
-			// retrieving main artist alias from the configuration
 			info.MainArtist = mainArtist
+
+			// retrieving main artist alias from the configuration
 			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, MetadataDir)); err != nil {
 				return err
 			}
 			// main artist alias
 			aliasCandidates := []string{info.MainArtistAlias}
 			if info.MainArtistAlias != info.MainArtist {
-				aliasCandidates = append(aliasCandidates, info.MainArtist)
+				aliasCandidates = append([]string{info.MainArtist}, aliasCandidates...)
 			}
-			mainArtistAlias, err := ui.SelectValue("Defining main artist alias", "Change this value to regroup releases from different artist aliases in the library.", aliasCandidates)
-			if err != nil {
-				return err
+			// selecting first main artist alias if in automatic mode
+			if config.Library.AutomaticMode {
+				info.MainArtistAlias = aliasCandidates[0]
+			} else {
+				mainArtistAlias, err2 := ui.SelectValue("Defining main artist alias", "Change this value to regroup releases from different artist aliases in the library.", aliasCandidates)
+				if err2 != nil {
+					return err2
+				}
+				// retrieving category from the configuration
+				info.MainArtistAlias = mainArtistAlias
 			}
-			// retrieving category from the configuration
-			info.MainArtistAlias = mainArtistAlias
+
+			// category
 			if err = info.checkAliasAndCategory(filepath.Join(root, d.FolderName, MetadataDir)); err != nil {
 				return err
 			}
-			// category
 			categoryCandidates := info.Tags
 			if !strslice.Contains(info.Tags, info.Category) {
 				categoryCandidates = append([]string{info.Category}, info.Tags...)
 			}
-			category, err := ui.SelectValue("Defining user category", "Allows custom library organization.", categoryCandidates)
-			if err != nil {
-				return err
+
+			// selecting first tag if in automatic mode
+			if config.Library.AutomaticMode {
+				info.Category = categoryCandidates[0]
+			} else {
+				category, err2 := ui.SelectValue("Defining user category", "Allows custom library organization.", categoryCandidates)
+				if err2 != nil {
+					return err2
+				}
+				// saving value
+				info.Category = category
 			}
-			// saving value
-			info.Category = category
 			// write to original user_metadata.json
-			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, MetadataDir), mainArtist, mainArtistAlias, category); err != nil {
+			if err = info.UpdateUserJSON(filepath.Join(root, info.FolderName, MetadataDir), info.MainArtist, info.MainArtistAlias, info.Category); err != nil {
 				logthis.Error(errors.Wrap(err, "could not update user metadata with main artist, main artists alias, or category"), logthis.NORMAL)
 				return err
 			}
@@ -348,16 +373,23 @@ func (d *DownloadEntry) export(root string, config *Config) error {
 	}
 	// export
 	ui.Title("Exporting release")
-	if ui.Accept("Export as " + newName) {
+	if config.Library.AutomaticMode || ui.Accept("Export as "+newName) {
 		fmt.Println("Exporting files to the library...")
 		if err := fs.CopyDir(filepath.Join(root, d.FolderName), filepath.Join(config.Library.Directory, newName), config.Library.UseHardLinks); err != nil {
 			return errors.Wrap(err, "Error exporting download "+d.FolderName)
 		}
-		fmt.Println(ui.Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sorts."))
+		// if moving downloads, removing source
+		if config.Library.MoveSorted {
+			if err := os.RemoveAll(filepath.Join(root, d.FolderName)); err != nil {
+				return errors.Wrap(err, "Error moving download "+d.FolderName)
+			}
+		} else {
+			fmt.Println(ui.Green("This release has been exported to your library. The original files have not been removed, but will be ignored in later sorts."))
+		}
 		// if exported, write playlists
 		if config.playlistDirectoryConfigured {
 			ui.Title("Updating playlists")
-			if ui.Accept("Add release to daily/monthly playlists") {
+			if config.Library.AutomaticMode || ui.Accept("Add release to daily/monthly playlists") {
 				if err := addReleaseToCurrentPlaylists(config.Library.PlaylistDirectory, config.Library.Directory, newName); err != nil {
 					return err
 				}
