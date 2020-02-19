@@ -132,11 +132,11 @@ func ReorganizeLibrary(doNothing, interactive bool) error {
 		s.Stop()
 	}
 	logthis.Info(fmt.Sprintf("Moved %d release(s).", movedAlbums), logthis.NORMAL)
-	return DeleteEmptyLibraryFolders()
+	return deleteEmptyLibraryFolders()
 }
 
 // DeleteEmptyLibraryFolders deletes empty folders that may appear after sorting albums.
-func DeleteEmptyLibraryFolders() error {
+func deleteEmptyLibraryFolders() error {
 	c, err := NewConfig(DefaultConfigurationFile)
 	if err != nil {
 		return err
@@ -144,5 +144,6 @@ func DeleteEmptyLibraryFolders() error {
 	if !c.LibraryConfigured {
 		return errors.New("library section of the configuration file not found")
 	}
-	return fs.DeleteEmptyDirs(c.Library.Directory)
+	// preserving .stfolder for syncthing compatibility
+	return fs.DeleteEmptyDirs(c.Library.Directory, []string{filepath.Join(c.Library.Directory, ".stfolder")})
 }
