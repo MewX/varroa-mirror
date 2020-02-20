@@ -67,6 +67,8 @@ library:
   aliases_file: test/aliases.yaml
   categories_file: test/categories.yaml
   playlist_directory: test
+  move_sorted: false
+  automatic_mode: true
 
 metadata:
   discogs_token: THISISASECRETTOKENGENERATEDFROMDISCOGSACCOUNT

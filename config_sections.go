@@ -168,6 +168,8 @@ func (ca *ConfigAutosnatch) String() string {
 type ConfigLibrary struct {
 	Directory         string              `yaml:"directory"`
 	UseHardLinks      bool                `yaml:"use_hard_links"`
+	MoveSorted        bool                `yaml:"move_sorted"`
+	AutomaticMode     bool                `yaml:"automatic_mode"`
 	Template          string              `yaml:"folder_template"`
 	AdditionalSources []string            `yaml:"additional_source_directories"`
 	AliasesFile       string              `yaml:"aliases_file"`
@@ -215,6 +217,9 @@ func (cl *ConfigLibrary) check() error {
 		}
 		cl.Categories = *categories
 	}
+	if cl.UseHardLinks && cl.MoveSorted {
+		return errors.New("using hard links and moving sorted downloads are incompatible options")
+	}
 	return nil
 }
 
@@ -236,6 +241,8 @@ func (cl *ConfigLibrary) String() string {
 	txt := "Library configuration:\n"
 	txt += "\tDirectory: " + cl.Directory + "\n"
 	txt += "\tUse hard links: " + fmt.Sprintf("%v", cl.UseHardLinks) + "\n"
+	txt += "\tMove sorted downloads: " + fmt.Sprintf("%v", cl.MoveSorted) + "\n"
+	txt += "\tAutomatic (non-interactive) mode: " + fmt.Sprintf("%v", cl.AutomaticMode) + "\n"
 	txt += "\tTemplate: " + cl.Template + "\n"
 	if len(cl.AdditionalSources) != 0 {
 		txt += "\tAdditional sources: " + strings.Join(cl.AdditionalSources, ",") + "\n"

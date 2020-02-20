@@ -674,9 +674,15 @@ func getAudioInfo(f string) (string, string, error) {
 	}
 	defer stream.Close()
 
-	format := "FLAC"
-	if stream.Info.BitsPerSample == 24 {
-		format += "24"
+	var format string
+	switch stream.Info.BitsPerSample {
+	case 16:
+		format = "FLAC"
+	case 24:
+		format = "FLAC24"
+	default:
+		logthis.Info("Found bit depth:"+strconv.Itoa(int(stream.Info.BitsPerSample)), logthis.NORMAL)
+		format = "FLACXX"
 	}
 
 	var sampleRate string
@@ -871,7 +877,7 @@ func (tm *TrackerMetadata) LoadUserJSON(parentFolder string) error {
 	}
 	var userInfo *TrackerMetadata
 	if unmarshalErr := json.Unmarshal(userJSONBytes, &userInfo); unmarshalErr != nil {
-		logthis.Info("error parsing torrent info JSON", logthis.NORMAL)
+		logthis.Error(errors.Wrap(unmarshalErr, "error parsing torrent info JSON: "+userJSON), logthis.NORMAL)
 		return nil
 	}
 	//  overwrite tracker values if non-zero value found
