@@ -354,7 +354,7 @@ func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 	}
 	tm.CatalogNumber = info.Response.Group.CatalogueNumber
 	if info.Response.Torrent.Remastered && info.Response.Torrent.RemasterCatalogueNumber != "" {
-		tm.CatalogNumber = info.Response.Torrent.RemasterCatalogueNumber
+		tm.CatalogNumber = html.UnescapeString(info.Response.Torrent.RemasterCatalogueNumber)
 	}
 	tm.OriginalYear = info.Response.Group.Year
 	tm.EditionName = html.UnescapeString(info.Response.Torrent.RemasterTitle)
