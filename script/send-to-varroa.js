@@ -264,6 +264,12 @@
 		let a = '';
 		a = document.createElement('a');
 		a.className = 'varroa_link';
+		a.onmouseover = function(){
+      		this.style.cursor = "pointer"; 
+   		}
+    	a.onmouseout = function(){
+    		this.style.cursor = "default";
+    	}
 		link.appendChild(a);
 		if (useFLToken) {
 			link.firstChild.appendChild(document.createTextNode(linkLabelFL));
