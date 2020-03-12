@@ -11,6 +11,7 @@
 // @grant          GM.setValue
 // @grant          GM.notification
 // @require        https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
+// @require        https://redacted.ch/static/functions/jquery.js
 // @require        https://redacted.ch/static/functions/noty/noty.js
 // @require        https://redacted.ch/static/functions/noty/layouts/bottomRight.js
 // @require        https://redacted.ch/static/functions/noty/themes/default.js
