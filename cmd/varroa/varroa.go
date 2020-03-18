@@ -349,7 +349,7 @@ func main() {
 		// commands that require tracker label
 		tracker, err := env.Tracker(cli.trackerLabel)
 		if err != nil {
-			logthis.Info(fmt.Sprintf("Tracker %s not defined in configuration file", cli.trackerLabel), logthis.NORMAL)
+			logthis.Info(fmt.Sprintf("Tracker %s not defined in configuration file, or could not log in.", cli.trackerLabel), logthis.NORMAL)
 			return
 		}
 		if cli.refreshMetadataByID {
