@@ -287,6 +287,17 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			return false
 		}
 	}
+	if len(filter.Title) != 0 {
+		found := false
+		if MatchInSlice(info.Title, filter.Title) {
+			found = true
+		}
+		if !found {
+			logthis.Info(filter.Name+": Title does not match any criteria.", logthis.VERBOSE)
+			return false
+		}
+	}
+
 	if filter.RejectUnknown && info.CatalogNumber == "" && info.RecordLabel == "" {
 		logthis.Info(filter.Name+": Release has neither a record label or catalog number, rejected.", logthis.VERBOSE)
 		return false

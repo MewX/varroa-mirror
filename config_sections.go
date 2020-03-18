@@ -516,6 +516,7 @@ type ConfigFilter struct {
 	TagsRequired         []string `yaml:"required_tags"`
 	ReleaseType          []string `yaml:"type"`
 	ExcludedReleaseType  []string `yaml:"excluded_type"`
+	Title                []string `yaml:"title"`
 	Edition              []string `yaml:"edition"`
 	Format               []string `yaml:"format"`
 	Source               []string `yaml:"source"`
