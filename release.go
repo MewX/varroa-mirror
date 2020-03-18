@@ -33,7 +33,7 @@ const (
 	Torrent URL: %s
 	Torrent ID: %s`
 	TorrentPath         = `%s - %s (%d) [%s %s %s %s] - %s.torrent`
-	TorrentNotification = `%s - %s (%d) [%s/%s/%s/%s]`
+	TorrentNotification = `%s - %s (%d) [%s/%s/%s/%s] [%s]`
 
 	logScoreNotInAnnounce = -9999
 )
@@ -144,7 +144,7 @@ func (r *Release) String() string {
 }
 
 func (r *Release) ShortString() string {
-	short := fmt.Sprintf(TorrentNotification, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source)
+	short := fmt.Sprintf(TorrentNotification, r.Artists[0], r.Title, r.Year, r.ReleaseType, r.Format, r.Quality, r.Source, strings.Join(r.Tags, ", "))
 	if r.Size != 0 {
 		return short + fmt.Sprintf(" [%s]", humanize.IBytes(r.Size))
 	}
@@ -287,6 +287,17 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			return false
 		}
 	}
+	if len(filter.Title) != 0 {
+		found := false
+		if MatchInSlice(info.Title, filter.Title) {
+			found = true
+		}
+		if !found {
+			logthis.Info(filter.Name+": Title does not match any criteria.", logthis.VERBOSE)
+			return false
+		}
+	}
+
 	if filter.RejectUnknown && info.CatalogNumber == "" && info.RecordLabel == "" {
 		logthis.Info(filter.Name+": Release has neither a record label or catalog number, rejected.", logthis.VERBOSE)
 		return false

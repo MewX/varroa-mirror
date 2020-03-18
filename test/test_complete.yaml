@@ -112,6 +112,10 @@ filters:
     excluded_type:
     - Concert Recording
     reject_unknown_releases: true
+    title:
+    - This Very Specific Release
+    - r/[dD]eluxe
+    - xr/Ibiza
     edition:
     - Bonus
     - Anniversary
