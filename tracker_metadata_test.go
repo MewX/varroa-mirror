@@ -21,8 +21,8 @@ func TestGeneratePath(t *testing.T) {
 
 	// test API JSON responses
 	gt := tracker.GazelleTorrent{}
-	gt.Response.Group.CatalogueNumber = "CATNUM Group"
-	gt.Response.Group.MusicInfo.Artists = []struct {
+	gt.Group.CatalogueNumber = "CATNUM Group"
+	gt.Group.MusicInfo.Artists = []struct {
 		ID   int    `json:"id"`
 		Name string `json:"name"`
 	}{
@@ -33,57 +33,57 @@ func TestGeneratePath(t *testing.T) {
 			"Artist B",
 		},
 	}
-	gt.Response.Group.Name = "RELEASE 1"
-	gt.Response.Group.Year = 1987
-	gt.Response.Group.RecordLabel = "LABEL 1 Group"
-	gt.Response.Group.ReleaseType = 5 // EP
-	gt.Response.Group.Tags = []string{"tag1", "tag2"}
-	gt.Response.Group.WikiImage = "http://cover.jpg"
-	gt.Response.Torrent.ID = 123
-	gt.Response.Torrent.FilePath = "original_path"
-	gt.Response.Torrent.Format = "FLAC"
-	gt.Response.Torrent.Encoding = "Lossless"
-	gt.Response.Torrent.Media = "WEB"
-	gt.Response.Torrent.Remastered = true
-	gt.Response.Torrent.RemasterCatalogueNumber = "CATNUM"
-	gt.Response.Torrent.RemasterRecordLabel = "LABEL 1"
-	gt.Response.Torrent.RemasterTitle = "Deluxe"
-	gt.Response.Torrent.RemasterYear = 2017
-	gt.Response.Torrent.HasLog = true
-	gt.Response.Torrent.HasCue = true
-	gt.Response.Torrent.LogScore = 100
-	gt.Response.Torrent.FileList = "01 - First.flac{{{26538426}}}|||02 - Second.flac{{{32109249}}}"
+	gt.Group.Name = "RELEASE 1"
+	gt.Group.Year = 1987
+	gt.Group.RecordLabel = "LABEL 1 Group"
+	gt.Group.ReleaseType = 5 // EP
+	gt.Group.Tags = []string{"tag1", "tag2"}
+	gt.Group.WikiImage = "http://cover.jpg"
+	gt.Torrent.ID = 123
+	gt.Torrent.FilePath = "original_path"
+	gt.Torrent.Format = "FLAC"
+	gt.Torrent.Encoding = "Lossless"
+	gt.Torrent.Media = "WEB"
+	gt.Torrent.Remastered = true
+	gt.Torrent.RemasterCatalogueNumber = "CATNUM"
+	gt.Torrent.RemasterRecordLabel = "LABEL 1"
+	gt.Torrent.RemasterTitle = "Deluxe"
+	gt.Torrent.RemasterYear = 2017
+	gt.Torrent.HasLog = true
+	gt.Torrent.HasCue = true
+	gt.Torrent.LogScore = 100
+	gt.Torrent.FileList = "01 - First.flac{{{26538426}}}|||02 - Second.flac{{{32109249}}}"
 
 	gt2 := gt
-	gt2.Response.Torrent.Media = "CD"
+	gt2.Torrent.Media = "CD"
 
 	gt3 := gt2
-	gt3.Response.Torrent.Format = "MP3"
-	gt3.Response.Torrent.Encoding = "V0 (VBR)"
-	gt3.Response.Torrent.RemasterTitle = "Bonus Tracks"
+	gt3.Torrent.Format = "MP3"
+	gt3.Torrent.Encoding = "V0 (VBR)"
+	gt3.Torrent.RemasterTitle = "Bonus Tracks"
 
 	gt4 := gt3
-	gt4.Response.Torrent.Format = "FLAC"
-	gt4.Response.Torrent.Encoding = "24bit Lossless"
-	gt4.Response.Torrent.RemasterTitle = "Remaster"
-	gt4.Response.Torrent.Media = "Vinyl"
+	gt4.Torrent.Format = "FLAC"
+	gt4.Torrent.Encoding = "24bit Lossless"
+	gt4.Torrent.RemasterTitle = "Remaster"
+	gt4.Torrent.Media = "Vinyl"
 
 	gt5 := gt4
-	gt5.Response.Torrent.Grade = "Gold"
-	gt5.Response.Torrent.Media = "CD"
-	gt5.Response.Torrent.Encoding = "Lossless"
+	gt5.Torrent.Grade = "Gold"
+	gt5.Torrent.Media = "CD"
+	gt5.Torrent.Encoding = "Lossless"
 
 	gt6 := gt5
-	gt6.Response.Torrent.Grade = "Silver"
-	gt6.Response.Torrent.RemasterYear = 1987
-	gt6.Response.Torrent.RemasterTitle = "Promo"
-	gt6.Response.Group.ReleaseType = 1
+	gt6.Torrent.Grade = "Silver"
+	gt6.Torrent.RemasterYear = 1987
+	gt6.Torrent.RemasterTitle = "Promo"
+	gt6.Group.ReleaseType = 1
 
 	gt7 := gt6
-	gt7.Response.Group.Name = "RELEASE 1 / RELEASE 2!!&éçà©§Ð‘®¢"
+	gt7.Group.Name = "RELEASE 1 / RELEASE 2!!&éçà©§Ð‘®¢"
 
 	gt8 := gt7
-	gt8.Response.Group.Name = "\"Thing\""
+	gt8.Group.Name = "\"Thing\""
 
 	// tracker
 	gzTracker, err := tracker.NewGazelle("BLUE", "http://blue", "user", "password", "", "", userAgent())

@@ -115,16 +115,16 @@ type TrackerMetadataTorrentGroup struct {
 
 func (tmg *TrackerMetadataTorrentGroup) Load(info *tracker.GazelleTorrentGroup) error {
 	// json for metadata, anonymized
-	for i := range info.Response.Torrents {
-		info.Response.Torrents[i].UserID = 0
-		info.Response.Torrents[i].Username = ""
+	for i := range info.Torrents {
+		info.Torrents[i].UserID = 0
+		info.Torrents[i].Username = ""
 	}
-	metadataJSON, err := json.MarshalIndent(info.Response, "", "    ")
+	metadataJSON, err := json.MarshalIndent(info, "", "    ")
 	if err != nil {
 		return err
 	}
-	tmg.id = info.Response.Group.ID
-	tmg.name = info.Response.Group.Name
+	tmg.id = info.Group.ID
+	tmg.name = info.Group.Name
 	tmg.fullJSON = metadataJSON
 	return nil
 }
@@ -150,12 +150,12 @@ type TrackerMetadataArtist struct {
 
 func (tma *TrackerMetadataArtist) Load(info *tracker.GazelleArtist) error {
 	// json for metadata
-	metadataJSON, err := json.MarshalIndent(info.Response, "", "    ")
+	metadataJSON, err := json.MarshalIndent(info, "", "    ")
 	if err != nil {
 		return err
 	}
-	tma.ID = info.Response.ID
-	tma.Name = info.Response.Name
+	tma.ID = info.ID
+	tma.Name = info.Name
 	tma.JSON = metadataJSON
 	return nil
 }
@@ -297,9 +297,13 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 	var gt tracker.GazelleTorrent
 	var unmarshalErr error
 	if responseOnly {
-		unmarshalErr = json.Unmarshal(tm.ReleaseJSON, &gt.Response)
-	} else {
 		unmarshalErr = json.Unmarshal(tm.ReleaseJSON, &gt)
+	} else {
+		var gtr tracker.GazelleTorrentResponse
+		unmarshalErr = json.Unmarshal(tm.ReleaseJSON, &gtr)
+		if unmarshalErr == nil {
+			gt = gtr.Response
+		}
 	}
 	if unmarshalErr != nil {
 		logthis.Error(errors.Wrap(unmarshalErr, "Error parsing torrent info JSON"), logthis.NORMAL)
@@ -322,57 +326,57 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 
 func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 	// tracker related metadata
-	tm.ID = info.Response.Torrent.ID
-	tm.ReleaseURL = tm.TrackerURL + fmt.Sprintf("/torrents.php?torrentid=%d", info.Response.Torrent.ID)
-	tm.GroupID = info.Response.Group.ID
-	tm.Size = uint64(info.Response.Torrent.Size)
+	tm.ID = info.Torrent.ID
+	tm.ReleaseURL = tm.TrackerURL + fmt.Sprintf("/torrents.php?torrentid=%d", info.Torrent.ID)
+	tm.GroupID = info.Group.ID
+	tm.Size = uint64(info.Torrent.Size)
 	// keeping a copy of uploader before anonymizing
-	tm.Uploader = info.Response.Torrent.Username
-	tm.FolderName = html.UnescapeString(info.Response.Torrent.FilePath)
-	tm.CoverURL = info.Response.Group.WikiImage
-	tm.CurrentSeeders = info.Response.Torrent.Seeders
-	tm.Reported = info.Response.Torrent.Reported
+	tm.Uploader = info.Torrent.Username
+	tm.FolderName = html.UnescapeString(info.Torrent.FilePath)
+	tm.CoverURL = info.Group.WikiImage
+	tm.CurrentSeeders = info.Torrent.Seeders
+	tm.Reported = info.Torrent.Reported
 
 	// release related metadata
 	// for now, using artists, composers, "with" categories
 	// also available: .Conductor, .Dj, .Producer, .RemixedBy
-	for _, el := range info.Response.Group.MusicInfo.Artists {
+	for _, el := range info.Group.MusicInfo.Artists {
 		tm.Artists = append(tm.Artists, TrackerMetadataArtist{ID: el.ID, Name: html.UnescapeString(el.Name), Role: "Main"})
 	}
-	for _, el := range info.Response.Group.MusicInfo.With {
+	for _, el := range info.Group.MusicInfo.With {
 		tm.Artists = append(tm.Artists, TrackerMetadataArtist{ID: el.ID, Name: html.UnescapeString(el.Name), Role: "Featuring"})
 	}
-	for _, el := range info.Response.Group.MusicInfo.Composers {
+	for _, el := range info.Group.MusicInfo.Composers {
 		tm.Artists = append(tm.Artists, TrackerMetadataArtist{ID: el.ID, Name: html.UnescapeString(el.Name), Role: "Composer"})
 	}
-	tm.Title = html.UnescapeString(info.Response.Group.Name)
-	tm.Tags = info.Response.Group.Tags
-	tm.ReleaseType = tracker.GazelleReleaseType(info.Response.Group.ReleaseType)
-	tm.RecordLabel = html.UnescapeString(info.Response.Group.RecordLabel)
-	if info.Response.Torrent.Remastered && info.Response.Torrent.RemasterRecordLabel != "" {
-		tm.RecordLabel = html.UnescapeString(info.Response.Torrent.RemasterRecordLabel)
+	tm.Title = html.UnescapeString(info.Group.Name)
+	tm.Tags = info.Group.Tags
+	tm.ReleaseType = tracker.GazelleReleaseType(info.Group.ReleaseType)
+	tm.RecordLabel = html.UnescapeString(info.Group.RecordLabel)
+	if info.Torrent.Remastered && info.Torrent.RemasterRecordLabel != "" {
+		tm.RecordLabel = html.UnescapeString(info.Torrent.RemasterRecordLabel)
 	}
-	tm.CatalogNumber = info.Response.Group.CatalogueNumber
-	if info.Response.Torrent.Remastered && info.Response.Torrent.RemasterCatalogueNumber != "" {
-		tm.CatalogNumber = html.UnescapeString(info.Response.Torrent.RemasterCatalogueNumber)
+	tm.CatalogNumber = info.Group.CatalogueNumber
+	if info.Torrent.Remastered && info.Torrent.RemasterCatalogueNumber != "" {
+		tm.CatalogNumber = html.UnescapeString(info.Torrent.RemasterCatalogueNumber)
 	}
-	tm.OriginalYear = info.Response.Group.Year
-	tm.EditionName = html.UnescapeString(info.Response.Torrent.RemasterTitle)
-	tm.EditionYear = info.Response.Torrent.RemasterYear
-	tm.Source = html.UnescapeString(info.Response.Torrent.Media)
-	tm.Format = info.Response.Torrent.Format
-	tm.Quality = info.Response.Torrent.Encoding
-	tm.LogScore = info.Response.Torrent.LogScore
-	tm.HasLog = info.Response.Torrent.HasLog
-	tm.HasCue = info.Response.Torrent.HasCue
-	tm.IsScene = info.Response.Torrent.Scene
+	tm.OriginalYear = info.Group.Year
+	tm.EditionName = html.UnescapeString(info.Torrent.RemasterTitle)
+	tm.EditionYear = info.Torrent.RemasterYear
+	tm.Source = html.UnescapeString(info.Torrent.Media)
+	tm.Format = info.Torrent.Format
+	tm.Quality = info.Torrent.Encoding
+	tm.LogScore = info.Torrent.LogScore
+	tm.HasLog = info.Torrent.HasLog
+	tm.HasCue = info.Torrent.HasCue
+	tm.IsScene = info.Torrent.Scene
 
 	tm.SourceFull = tm.Source
 	if tm.SourceFull == tracker.SourceCD && tm.Quality == tracker.QualityLossless {
-		if tm.HasLog && tm.HasCue && (tm.LogScore == 100 || info.Response.Torrent.Grade == "Silver") {
+		if tm.HasLog && tm.HasCue && (tm.LogScore == 100 || info.Torrent.Grade == "Silver") {
 			tm.SourceFull += "+"
 		}
-		if info.Response.Torrent.Grade == "Gold" {
+		if info.Torrent.Grade == "Gold" {
 			tm.SourceFull += "+"
 		}
 	}
@@ -403,7 +407,7 @@ func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 
 	// parsing track list
 	r := regexp.MustCompile(tracker.TrackPattern)
-	files := strings.Split(info.Response.Torrent.FileList, "|||")
+	files := strings.Split(info.Torrent.FileList, "|||")
 	for _, f := range files {
 		track := TrackerMetadataTrack{}
 		hits := r.FindAllStringSubmatch(f, -1)
@@ -423,19 +427,19 @@ func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 	// TODO tm.TotalTime
 
 	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
-	if info.Response.Torrent.Description != "" {
-		tm.Lineage = append(tm.Lineage, TrackerMetadataLineage{Source: "TorrentDescription", LinkOrDescription: html.UnescapeString(info.Response.Torrent.Description)})
+	if info.Torrent.Description != "" {
+		tm.Lineage = append(tm.Lineage, TrackerMetadataLineage{Source: "TorrentDescription", LinkOrDescription: html.UnescapeString(info.Torrent.Description)})
 	}
 	// TODO add info.Response.Torrent.Lineage if not empty?
 
 	// TODO de-wikify
-	tm.Description = html.UnescapeString(info.Response.Group.WikiBody)
+	tm.Description = html.UnescapeString(info.Group.WikiBody)
 
 	// json for metadata, anonymized
-	info.Response.Torrent.Username = ""
-	info.Response.Torrent.UserID = 0
+	info.Torrent.Username = ""
+	info.Torrent.UserID = 0
 	// keeping a copy of the full JSON
-	metadataJSON, err := json.MarshalIndent(info.Response, "", "    ")
+	metadataJSON, err := json.MarshalIndent(info, "", "    ")
 	if err != nil {
 		metadataJSON = tm.ReleaseJSON // falling back to complete json
 	}
