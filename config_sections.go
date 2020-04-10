@@ -74,8 +74,8 @@ func (ct *ConfigTracker) check() error {
 	if ct.Name == "" {
 		return errors.New("Missing tracker name")
 	}
-	if ct.User == "" {
-		return errors.New("Missing tracker username for " + ct.Name)
+	if ct.Password != "" && ct.User == "" {
+		return errors.New("password logins also require the username for tracker " + ct.Name)
 	}
 	if ct.Cookie == "" && ct.Password == "" && ct.APIKey == "" {
 		return errors.New("Missing log in information (password, session cookie or API key) for " + ct.Name)
