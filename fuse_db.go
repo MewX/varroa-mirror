@@ -64,30 +64,28 @@ func (fe *FuseEntry) Load(root string) error {
 			fe.Tracker = append(fe.Tracker, trackerName)
 
 			// getting release info from json
-			infoJSON := filepath.Join(root, fe.FolderName, MetadataDir, trackerName+"_"+trackerMetadataFile)
-			if !fs.FileExists(infoJSON) {
-				// if not present, try the old format
-				infoJSON = filepath.Join(root, fe.FolderName, MetadataDir, "Release.json")
+			infoJSON, err := getReleaseJSONFile(filepath.Join(root, fe.FolderName, MetadataDir), trackerName)
+			if err != nil {
+				logthis.Info("Metadata not found for tracker: "+trackerName, logthis.NORMAL)
+				continue
 			}
-			if fs.FileExists(infoJSON) {
-				// load JSON, get info
-				md := TrackerMetadata{}
-				if err := md.LoadFromJSON(trackerName, originFile, infoJSON); err != nil {
-					return errors.Wrap(err, "Error loading JSON file "+infoJSON)
-				}
-				// extract relevant information!
-				// for now, using artists, composers, "with" categories
-				// extract relevant information!
-				for _, a := range md.Artists {
-					fe.Artists = append(fe.Artists, a.Name)
-				}
-				fe.RecordLabel = fs.SanitizePath(md.RecordLabel)
-				fe.Year = md.OriginalYear // only show original year
-				fe.Title = md.Title
-				fe.Tags = md.Tags
-				fe.Source = md.SourceFull
-				fe.Format = tracker.ShortEncoding(md.Quality)
+			// load JSON, get info
+			md := TrackerMetadata{}
+			if err := md.LoadFromJSON(trackerName, originFile, infoJSON); err != nil {
+				return errors.Wrap(err, "Error loading JSON file "+infoJSON)
 			}
+			// extract relevant information!
+			// for now, using artists, composers, "with" categories
+			// extract relevant information!
+			for _, a := range md.Artists {
+				fe.Artists = append(fe.Artists, a.Name)
+			}
+			fe.RecordLabel = fs.SanitizePath(md.RecordLabel)
+			fe.Year = md.OriginalYear // only show original year
+			fe.Title = md.Title
+			fe.Tags = md.Tags
+			fe.Source = md.SourceFull
+			fe.Format = tracker.ShortEncoding(md.Quality)
 		}
 	} else {
 		return errors.New("Error, no metadata found")

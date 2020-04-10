@@ -134,6 +134,8 @@ func (e *Environment) setUpTracker(label string, autologin bool) (*tracker.Gazel
 		if err != nil {
 			return nil, errors.Wrap(err, "Error setting up tracker "+trackerConfig.Name)
 		}
+		// start rate limiter
+		t.StartRateLimiter()
 		// saving
 		e.Trackers[label] = t
 	}
@@ -142,8 +144,6 @@ func (e *Environment) setUpTracker(label string, autologin bool) (*tracker.Gazel
 			return nil, errors.Wrap(err, "Error logging in tracker "+label)
 		}
 		logthis.Info(fmt.Sprintf("Logged in tracker %s.", label), logthis.NORMAL)
-		// start rate limiter
-		go t.RateLimiter()
 	}
 	return t, nil
 }
