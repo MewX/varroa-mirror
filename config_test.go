@@ -33,19 +33,28 @@ func TestConfig(t *testing.T) {
 
 	// trackers
 	fmt.Println("Checking trackers")
-	check.Equal(2, len(c.Trackers))
+	check.Equal(3, len(c.Trackers))
 	tr := c.Trackers[0]
 	check.Equal("blue", tr.Name)
 	check.Equal("username", tr.User)
 	check.Equal("secretpassword", tr.Password)
 	check.Equal("", tr.Cookie)
+	check.Equal("", tr.APIKey)
 	check.Equal("https://blue.ch", tr.URL)
 	tr = c.Trackers[1]
 	check.Equal("purple", tr.Name)
 	check.Equal("another_username", tr.User)
 	check.Equal("", tr.Password)
 	check.Equal("cookievalue", tr.Cookie)
+	check.Equal("", tr.APIKey)
 	check.Equal("https://purple.cd", tr.URL)
+	tr = c.Trackers[2]
+	check.Equal("magenta", tr.Name)
+	check.Equal("yet_another_username", tr.User)
+	check.Equal("", tr.Password)
+	check.Equal("", tr.Cookie)
+	check.Equal("thisisanAPIkey", tr.APIKey)
+	check.Equal("https://mangen.ta", tr.URL)
 	// autosnatch
 	fmt.Println("Checking autosnatch")
 	check.Equal(2, len(c.Autosnatch))

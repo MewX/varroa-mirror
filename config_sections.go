@@ -66,6 +66,7 @@ type ConfigTracker struct {
 	User     string
 	Password string
 	Cookie   string
+	APIKey   string `yaml:"api_key"`
 	URL      string
 }
 
@@ -76,8 +77,8 @@ func (ct *ConfigTracker) check() error {
 	if ct.User == "" {
 		return errors.New("Missing tracker username for " + ct.Name)
 	}
-	if ct.Cookie == "" && ct.Password == "" {
-		return errors.New("Missing log in information (password or session cookie) for " + ct.Name)
+	if ct.Cookie == "" && ct.Password == "" && ct.APIKey == "" {
+		return errors.New("Missing log in information (password, session cookie or API key) for " + ct.Name)
 	}
 	if ct.URL == "" {
 		return errors.New("Missing tracker URL for " + ct.Name)
@@ -89,7 +90,8 @@ func (ct *ConfigTracker) String() string {
 	txt := "Tracker configuration for " + ct.Name + "\n"
 	txt += "\tUser: " + ct.User + "\n"
 	txt += "\tPassword: " + ct.Password + "\n"
-	txt += "\tCookie value: " + ct.Cookie + "\n"
+	txt += "\tSession cookie value: " + ct.Cookie + "\n"
+	txt += "\tAPI Key: " + ct.APIKey + "\n"
 	txt += "\tURL: " + ct.URL + "\n"
 	return txt
 }

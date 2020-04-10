@@ -15,6 +15,10 @@ trackers:
     user: another_username
     cookie: cookievalue
     url:  https://purple.cd
+  - name: magenta
+    user: yet_another_username
+    api_key: thisisanAPIkey
+    url: https://mangen.ta
 
 stats:
   - tracker: blue
