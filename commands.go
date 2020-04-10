@@ -263,6 +263,10 @@ func RefreshMetadata(e *Environment, t *tracker.Gazelle, IDStrings []string) err
 		if !info.IsWellSeeded() {
 			logthis.Info(ui.Red("This torrent has less than "+strconv.Itoa(minimumSeeders)+" seeders; if that is not already the case, consider reseeding it."), logthis.NORMAL)
 		}
+		// if trumpable, warn
+		if info.Trumpable {
+			logthis.Info(ui.Red("This torrent is marked as trumpable. For more information, see: "+info.ReleaseURL), logthis.NORMAL)
+		}
 		// if release is reported, warn and offer link.
 		if info.Reported {
 			logthis.Info(ui.Red("This torrent has been reported. For more information, see: "+info.ReleaseURL), logthis.NORMAL)

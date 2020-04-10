@@ -179,6 +179,7 @@ type TrackerMetadata struct {
 	// current tracker state
 	CurrentSeeders int  `json:"-"`
 	Reported       bool `json:"-"`
+	Trumpable      bool `json:"-"`
 }
 
 func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON string) error {
@@ -302,6 +303,7 @@ func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 	tm.CoverURL = info.Group.WikiImage
 	tm.CurrentSeeders = info.Torrent.Seeders
 	tm.Reported = info.Torrent.Reported
+	tm.Trumpable = info.Torrent.Trumpable
 
 	// release related metadata
 	// for now, using artists, composers, "with" categories
