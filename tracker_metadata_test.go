@@ -22,14 +22,7 @@ func TestGeneratePath(t *testing.T) {
 	// test API JSON responses
 	gt := tracker.GazelleTorrent{}
 	gt.Group.CatalogueNumber = "CATNUM Group"
-	gt.Group.MusicInfo.Artists = []tracker.Artist{
-		{1,
-			"Artist A",
-		},
-		{2,
-			"Artist B",
-		},
-	}
+	gt.Group.MusicInfo.Artists = []tracker.Artist{{ID: 1, Name: "Artist A"}, {ID: 2, Name: "Artist B"}}
 	gt.Group.Name = "RELEASE 1"
 	gt.Group.Year = 1987
 	gt.Group.RecordLabel = "LABEL 1 Group"
