@@ -29,6 +29,7 @@ type ConfigGeneral struct {
 	WatchDir                   string `yaml:"watch_directory"`
 	DownloadDir                string `yaml:"download_directory"`
 	AutomaticMetadataRetrieval bool   `yaml:"automatic_metadata_retrieval"`
+	FullMetadataRetrieval      bool   `yaml:"full_metadata_retrieval"`
 	TimestampedLogs            bool   `yaml:"timestamped_logs"`
 }
 
@@ -42,8 +43,8 @@ func (cg *ConfigGeneral) check() error {
 	if cg.WatchDir != "" && !fs.DirExists(cg.WatchDir) {
 		return errors.New("Watch directory does not exist")
 	}
-	if cg.AutomaticMetadataRetrieval && cg.DownloadDir == "" {
-		return errors.New("Downloads directory must be defined to allow metadata retrieval")
+	if (cg.AutomaticMetadataRetrieval || cg.FullMetadataRetrieval) && cg.DownloadDir == "" {
+		return errors.New("downloads directory must be defined to allow metadata retrieval")
 	}
 	return nil
 }
@@ -56,6 +57,7 @@ func (cg *ConfigGeneral) String() string {
 	txt += "\tWatch directory: " + cg.WatchDir + "\n"
 	txt += "\tDownload directory: " + cg.DownloadDir + "\n"
 	txt += "\tDownload metadata automatically: " + fmt.Sprintf("%v", cg.AutomaticMetadataRetrieval) + "\n"
+	txt += "\tDownload all related metadata: " + fmt.Sprintf("%v", cg.FullMetadataRetrieval) + "\n"
 	return txt
 }
 

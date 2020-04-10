@@ -28,6 +28,7 @@ func TestConfig(t *testing.T) {
 	check.Equal("../varroa/test", c.General.DownloadDir)
 	check.Equal(2, c.General.LogLevel)
 	check.True(c.General.AutomaticMetadataRetrieval)
+	check.True(c.General.FullMetadataRetrieval)
 	check.True(c.General.TimestampedLogs)
 
 	// trackers
