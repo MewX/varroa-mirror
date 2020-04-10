@@ -183,6 +183,7 @@ func TestConfig(t *testing.T) {
 	check.Equal([]string{"blue"}, f.Tracker)
 	check.Equal([]string{"best_uploader_ever", "this other guy"}, f.Uploader)
 	check.True(f.RejectUnknown)
+	check.True(f.RejectTrumpable)
 	check.Equal([]string{"This Very Specific Release", "r/[dD]eluxe", "xr/Ibiza"}, f.Title)
 	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}, f.Edition)
 	// test must be valid next year...
@@ -230,6 +231,7 @@ func TestConfig(t *testing.T) {
 	check.Nil(f.Tracker)
 	check.Nil(f.Uploader)
 	check.False(f.RejectUnknown)
+	check.False(f.RejectTrumpable)
 	check.Nil(f.Edition)
 	check.Nil(f.EditionYear)
 

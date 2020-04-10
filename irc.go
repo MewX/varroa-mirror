@@ -55,7 +55,7 @@ func analyzeAnnounce(announced string, e *Environment, t *tracker.Gazelle, autos
 			}
 			// checking if a filter is triggered
 			if release.Satisfies(filter) {
-				// get torrent info!
+				// getting torrent info
 				if !downloadedInfo {
 					if err := info.LoadFromID(t, release.TorrentID); err != nil {
 						return errors.New(errorCouldNotGetTorrentInfo)

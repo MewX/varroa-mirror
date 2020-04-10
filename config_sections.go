@@ -538,6 +538,7 @@ type ConfigFilter struct {
 	Tracker              []string `yaml:"tracker"`
 	Uploader             []string `yaml:"uploader"`
 	RejectUnknown        bool     `yaml:"reject_unknown_releases"`
+	RejectTrumpable      bool     `yaml:"reject_trumpable_releases"`
 	BlacklistedUploaders []string `yaml:"blacklisted_uploaders"`
 }
 
@@ -770,6 +771,7 @@ func (cf *ConfigFilter) String() string {
 		description += "\tEdition Year(s): " + strings.Join(intslice.ToStringSlice(cf.EditionYear), ", ") + "\n"
 	}
 	description += "\tReject unknown releases: " + fmt.Sprintf("%v", cf.RejectUnknown) + "\n"
+	description += "\tReject trumpable releases: " + fmt.Sprintf("%v", cf.RejectTrumpable) + "\n"
 	if len(cf.BlacklistedUploaders) != 0 {
 		description += "\tBlacklisted uploaders: " + strings.Join(cf.BlacklistedUploaders, ",") + "\n"
 	} else {
