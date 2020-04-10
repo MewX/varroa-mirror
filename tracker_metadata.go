@@ -511,12 +511,9 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 			allCollages = append(allCollages, gzTorrentGroup.Group.Collages...)
 			allCollages = append(allCollages, gzTorrentGroup.Group.PersonalCollages...)
 			for _, c := range allCollages {
-				// TODO remove
-				id, _ := strconv.Atoi(c.ID)
-
-				gzCollage, err := t.GetCollage(id)
+				gzCollage, err := t.GetCollage(c.ID)
 				if err != nil {
-					logthis.Info(fmt.Sprintf(errorRetrievingCollageInfo, id), logthis.NORMAL)
+					logthis.Info(fmt.Sprintf(errorRetrievingCollageInfo, c.ID), logthis.NORMAL)
 					continue
 				}
 				gzCollage.Anonymize()
@@ -526,10 +523,10 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 					logthis.Error(errors.Wrap(collageErr, errorWritingJSONMetadata), logthis.NORMAL)
 				} else {
 					// writing collage metadata to target folder
-					if e := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+" - "+fmt.Sprintf(trackerCollageMetadataFile, gzCollage.CollageCategoryName, id)), collageData, 0666); e != nil {
+					if e := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+" - "+fmt.Sprintf(trackerCollageMetadataFile, gzCollage.CollageCategoryName, c.ID)), collageData, 0666); e != nil {
 						logthis.Error(errors.Wrap(e, errorWritingJSONMetadata), logthis.NORMAL)
 					} else {
-						logthis.Info(fmt.Sprintf(infoCollageMetadataSaved, id), logthis.VERBOSE)
+						logthis.Info(fmt.Sprintf(infoCollageMetadataSaved, c.ID), logthis.VERBOSE)
 					}
 				}
 			}
