@@ -493,7 +493,7 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 		// anonymizing data
 		gzTorrentGroup.Anonymize()
 		// saving to file
-		data, marshallErr := gzTorrentGroup.Marshall()
+		data, marshallErr := tracker.MarshallResponse(gzTorrentGroup)
 		if marshallErr != nil {
 			logthis.Error(errors.Wrap(marshallErr, errorWritingJSONMetadata), logthis.NORMAL)
 		} else {
@@ -521,7 +521,7 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 				}
 				gzCollage.Anonymize()
 				// saving to file
-				collageData, collageErr := gzCollage.Marshall()
+				collageData, collageErr := tracker.MarshallResponse(gzCollage)
 				if collageErr != nil {
 					logthis.Error(errors.Wrap(collageErr, errorWritingJSONMetadata), logthis.NORMAL)
 				} else {
@@ -544,7 +544,7 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 				logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
 				continue
 			}
-			artistsJSON, err := gzArtist.Marshall()
+			artistsJSON, err := tracker.MarshallResponse(gzArtist)
 			if err != nil {
 				logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
 				continue
