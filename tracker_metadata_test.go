@@ -83,7 +83,7 @@ func TestGeneratePath(t *testing.T) {
 	gt8.Group.Name = "\"Thing\""
 
 	// tracker
-	gzTracker, err := tracker.NewGazelle("BLUE", "http://blue", "user", "password", "", "", userAgent())
+	gzTracker, err := tracker.NewGazelle("BLUE", "http://blue", "user", "password", "", "", "", userAgent())
 	check.Nil(err)
 
 	// torrent infos
@@ -103,6 +103,9 @@ func TestGeneratePath(t *testing.T) {
 	check.Nil(infod8.Load(gzTracker, &gt7))
 	infod9 := &TrackerMetadata{}
 	check.Nil(infod9.Load(gzTracker, &gt8))
+
+	// checking tracks parsing
+	check.Equal(2, len(infod2.Tracks))
 
 	// checking GeneratePath
 	check.Equal("original_path", infod2.GeneratePath("", ""))

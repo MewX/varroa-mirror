@@ -28,9 +28,9 @@ func TestTrackerOriginJSON(t *testing.T) {
 	tr2 := &ConfigTracker{Name: "tracker2", URL: "http://qwerty.com"}
 	c.Trackers = append(c.Trackers, tr, tr2)
 	env.config = c
-	tracker1, err := tracker.NewGazelle("tracker1", "http://azerty.com", "user", "password", "", "", userAgent())
+	tracker1, err := tracker.NewGazelle("tracker1", "http://azerty.com", "user", "password", "", "", "", userAgent())
 	check.Nil(err)
-	tracker2, err := tracker.NewGazelle("tracker2", "http://qwerty.com", "user", "password", "", "", userAgent())
+	tracker2, err := tracker.NewGazelle("tracker2", "http://qwerty.com", "user", "password", "", "", "", userAgent())
 	check.Nil(err)
 	info1 := TrackerMetadata{ID: 1234, GroupID: 11, Tracker: tracker1.Name, TrackerURL: tracker1.DomainURL, LastUpdated: 1531651670, IsAlive: true}
 	info2 := TrackerMetadata{ID: 1234, GroupID: 12, Tracker: tracker2.Name, TrackerURL: tracker2.DomainURL, LastUpdated: 1543701948}

@@ -390,9 +390,9 @@ func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 			tm.Tracks = append(tm.Tracks, track)
 			// TODO Duration  + Disc + number
 		}
-		if len(tm.Tracks) == 0 {
-			logthis.Info("Could not parse filelist, no music tracks found.", logthis.VERBOSEST)
-		}
+	}
+	if len(tm.Tracks) == 0 {
+		logthis.Info("Could not parse filelist, no music tracks found.", logthis.VERBOSEST)
 	}
 	// TODO tm.TotalTime
 
