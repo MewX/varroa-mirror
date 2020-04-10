@@ -267,6 +267,10 @@ func RefreshMetadata(e *Environment, t *tracker.Gazelle, IDStrings []string) err
 		if info.Trumpable {
 			logthis.Info(ui.Red("This torrent is marked as trumpable. For more information, see: "+info.ReleaseURL), logthis.NORMAL)
 		}
+		// if approved lossy release, warn
+		if info.ApprovedLossy {
+			logthis.Info(ui.Red("This torrent was approved as lossy web or master."), logthis.NORMAL)
+		}
 		// if release is reported, warn and offer link.
 		if info.Reported {
 			logthis.Info(ui.Red("This torrent has been reported. For more information, see: "+info.ReleaseURL), logthis.NORMAL)
