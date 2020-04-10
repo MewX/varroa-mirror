@@ -47,6 +47,7 @@ func analyzeAnnounce(announced string, e *Environment, t *tracker.Gazelle, autos
 		var downloadedInfo bool
 		var downloadedTorrent bool
 		info := &TrackerMetadata{}
+		var torrentGroupInfo *tracker.GazelleTorrentGroup
 		for _, filter := range e.config.Filters {
 			// checking if filter is specifically set for this tracker (if nothing is indicated, all trackers match)
 			if len(filter.Tracker) != 0 && !strslice.Contains(filter.Tracker, t.Name) {
@@ -73,9 +74,24 @@ func analyzeAnnounce(announced string, e *Environment, t *tracker.Gazelle, autos
 						continue
 					}
 					// checking if a torrent from the same group has already been downloaded
-					if filter.UniqueInGroup && stats.AlreadySnatchedFromGroup(release) {
-						logthis.Info(filter.Name+": "+infoNotSnatchingUniqueInGroup, logthis.VERBOSE)
-						continue
+					if filter.UniqueInGroup {
+						// if varroa knows about the group, rejecting
+						if stats.AlreadySnatchedFromGroup(release) {
+							logthis.Info(filter.Name+": "+infoNotSnatchingUniqueInGroup, logthis.VERBOSE)
+							continue
+						}
+						// else, getting the torrentgroup to check if the site itself know about past snatches
+						if torrentGroupInfo == nil {
+							torrentGroupInfo, err = t.GetTorrentGroup(info.GroupID)
+							if err != nil {
+								logthis.Error(errors.Wrap(err, "error retrieving torrent group info"), logthis.NORMAL)
+							} else {
+								if torrentGroupInfo.AlreadySnatched() {
+									logthis.Info(filter.Name+": "+infoNotSnatchingUniqueInGroup, logthis.VERBOSE)
+									continue
+								}
+							}
+						}
 					}
 					logthis.Info(" -> "+release.ShortString()+" triggered filter "+filter.Name+", snatching.", logthis.NORMAL)
 					// move to relevant watch directory
