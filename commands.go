@@ -438,11 +438,11 @@ func Reseed(t *tracker.Gazelle, path []string) error {
 // CheckLog on a tracker's logchecker
 func CheckLog(t *tracker.Gazelle, logPaths []string) error {
 	for _, log := range logPaths {
-		score, err := t.GetLogScore(log)
+		logchecker, err := t.GetLogScore(log)
 		if err != nil {
 			return errors.Wrap(err, errorGettingLogScore)
 		}
-		logthis.Info(fmt.Sprintf("Logchecker results: %s.", score), logthis.NORMAL)
+		logthis.Info(fmt.Sprintf("Logchecker results: %s", logchecker.String()), logthis.NORMAL)
 	}
 	return nil
 }
