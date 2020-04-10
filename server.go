@@ -74,7 +74,7 @@ func manualSnatchFromID(e *Environment, t *tracker.Gazelle, id string, useFLToke
 	} else {
 		logthis.Info("Downloading torrent "+release.ShortString(), logthis.NORMAL)
 	}
-	if err := t.DownloadTorrentFromID(id, e.config.General.WatchDir, useFLToken); err != nil {
+	if err := t.Download(info.ID, useFLToken, e.config.General.WatchDir, ""); err != nil {
 		logthis.Error(errors.Wrap(err, errorDownloadingTorrent+id), logthis.NORMAL)
 		return release, err
 	}

@@ -428,7 +428,7 @@ func Reseed(t *tracker.Gazelle, path []string) error {
 
 	// TODO TO A TEMP DIR, then compare torrent description with path contents; if OK only copy .torrent to conf.General.WatchDir
 	// downloading torrent
-	if err := t.DownloadTorrentFromID(strconv.Itoa(oj.ID), conf.General.WatchDir, false); err != nil {
+	if err := t.Download(oj.ID, false, conf.General.WatchDir, ""); err != nil {
 		return errors.Wrap(err, "error downloading torrent file")
 	}
 	logthis.Info("Torrent downloaded, your bittorrent client should be able to reseed the release.", logthis.NORMAL)
