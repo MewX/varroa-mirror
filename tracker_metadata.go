@@ -126,18 +126,6 @@ type TrackerMetadataArtist struct {
 	JSON []byte `json:"-"`
 }
 
-func (tma *TrackerMetadataArtist) Load(info *tracker.GazelleArtist) error {
-	// json for metadata
-	metadataJSON, err := json.MarshalIndent(info, "", "    ")
-	if err != nil {
-		return err
-	}
-	tma.ID = info.ID
-	tma.Name = info.Name
-	tma.JSON = metadataJSON
-	return nil
-}
-
 type TrackerMetadataLineage struct {
 	Source            string
 	LinkOrDescription string
@@ -552,14 +540,14 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 				logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
 				continue
 			}
-			artistInfo := &TrackerMetadataArtist{}
-			if e := artistInfo.Load(gzArtist); e != nil {
+			artistsJSON, err := gzArtist.Marshall()
+			if err != nil {
 				logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
 				continue
 			}
 			// write tracker artist metadata to target folder
 			// making sure the artistInfo.name+jsonExt is a valid filename
-			if e := ioutil.WriteFile(filepath.Join(destination, t.Name+" - Artist ("+a.Role+") "+a.Name+jsonExt), artistInfo.JSON, 0666); e != nil {
+			if e := ioutil.WriteFile(filepath.Join(destination, t.Name+" - Artist ("+a.Role+") "+a.Name+jsonExt), artistsJSON, 0666); e != nil {
 				logthis.Error(errors.Wrap(e, errorWritingJSONMetadata), logthis.NORMAL)
 			} else {
 				logthis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Role, a.Name), logthis.VERBOSE)
