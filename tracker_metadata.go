@@ -350,6 +350,9 @@ func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 			tm.SourceFull += "+"
 		}
 	}
+	if tm.ApprovedLossy {
+		tm.SourceFull += "*"
+	}
 
 	// parsing info that needs to be worked on before use
 
@@ -740,14 +743,15 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 		idElements = append(idElements, tm.RecordLabel)
 	} // TODO when we have neither catnum nor label
 
+	id := strings.Join(idElements, ", ")
+	if id == "" {
+		id = "Unknown"
+	}
+
 	var releaseTypeExceptAlbum string
 	if tm.ReleaseType != tracker.ReleaseAlbum {
 		// adding release type if not album
 		releaseTypeExceptAlbum = tm.ReleaseType
-	}
-	id := strings.Join(idElements, ", ")
-	if id == "" {
-		id = "Unknown"
 	}
 
 	quality := tracker.ShortEncoding(tm.Quality)
@@ -791,7 +795,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 		fs.SanitizePath(tm.Title),
 		quality,
 		tm.Source,
-		tm.SourceFull, // source with indicator if 100%/log/cue or Silver/gold
+		tm.SourceFull, // source with indicator if 100%/log/cue or Silver/gold & lossy web/master
 		fs.SanitizePath(tm.RecordLabel),
 		tm.CatalogNumber,
 		fs.SanitizePath(editionName), // edition
