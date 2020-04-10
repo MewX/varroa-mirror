@@ -130,7 +130,7 @@ func (e *Environment) setUpTracker(label string, autologin bool) (*tracker.Gazel
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting tracker information")
 		}
-		t, err = tracker.NewGazelle(trackerConfig.Name, trackerConfig.URL, trackerConfig.User, trackerConfig.Password, "session", trackerConfig.Cookie, userAgent())
+		t, err = tracker.NewGazelle(trackerConfig.Name, trackerConfig.URL, trackerConfig.User, trackerConfig.Password, "session", trackerConfig.Cookie, trackerConfig.APIKey, userAgent())
 		if err != nil {
 			return nil, errors.Wrap(err, "Error setting up tracker "+trackerConfig.Name)
 		}
