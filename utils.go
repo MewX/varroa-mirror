@@ -1,6 +1,7 @@
 package varroa
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -105,4 +106,21 @@ func TimeTrack(start time.Time, name string) {
 	if elapsed > time.Millisecond {
 		logthis.Info(fmt.Sprintf("-- %s in %s", name, elapsed), logthis.VERBOSESTEST)
 	}
+}
+
+func releaseMetadataFile(tracker string) string {
+	return tracker + " - " + trackerMetadataFile
+}
+
+func getFirstExistingFile(files ...string) (string, error) {
+	for _, f := range files {
+		if fs.FileExists(f) {
+			return f, nil
+		}
+	}
+	return "", errors.New("none of the files found")
+}
+
+func getReleaseJSONFile(root, tracker string) (string, error) {
+	return getFirstExistingFile(filepath.Join(root, releaseMetadataFile(tracker)), filepath.Join(root, tracker+"_release.json"), filepath.Join(root, "Release.json"))
 }

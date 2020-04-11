@@ -6,7 +6,6 @@ require (
 	github.com/Sereal/Sereal v0.0.0-20181211220259-509a78ddbda3 // indirect
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/blend/go-sdk v1.1.0 // indirect
-	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/briandowns/spinner v0.0.0-20181029155426-195c31b675a7
 	github.com/djherbis/times v1.1.0
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
@@ -14,10 +13,10 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/fhs/gompd v2.0.0+incompatible
+	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
-	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
-	github.com/gorilla/context v1.1.1 // indirect
+	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/gorilla/websocket v1.4.0
 	github.com/gregdel/pushover v0.0.0-20180208231006-1e03358b8e7e
@@ -28,12 +27,12 @@ require (
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/nwaples/rardecode v1.0.0 // indirect
-	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
+	github.com/pierrec/lz4 v2.5.0+incompatible // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/russross/blackfriday v2.0.0+incompatible
 	github.com/sevlyar/go-daemon v0.1.5
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.4.0
 	github.com/tdewolff/minify v2.3.6+incompatible
 	github.com/tdewolff/parse v2.3.4+incompatible // indirect
 	github.com/tdewolff/test v1.0.0 // indirect
@@ -41,16 +40,16 @@ require (
 	github.com/vmihailenco/msgpack v4.0.1+incompatible // indirect
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	gitlab.com/catastrophic/assistance v0.30.0
+	gitlab.com/catastrophic/assistance v0.32.1
 	gitlab.com/catastrophic/go-ircevent v0.1.0
-	gitlab.com/passelecasque/obstruction v0.4.0
-	go.etcd.io/bbolt v1.3.0 // indirect
-	golang.org/x/net v0.0.0-20190313220215-9f648a60d977
-	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect
-	google.golang.org/appengine v1.4.0 // indirect
+	gitlab.com/passelecasque/obstruction v0.8.0
+	go.etcd.io/bbolt v1.3.4 // indirect
+	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
+	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
 
 go 1.13
 
 //replace gitlab.com/catastrophic/assistance => ../../catastrophic/assistance
+//replace gitlab.com/passelecasque/obstruction => ../../passelecasque/obstruction

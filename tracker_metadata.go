@@ -107,28 +107,6 @@ Direct link: %s
 	vaReleasePrexif = "VA|"
 )
 
-type TrackerMetadataTorrentGroup struct {
-	id       int
-	name     string
-	fullJSON []byte
-}
-
-func (tmg *TrackerMetadataTorrentGroup) Load(info *tracker.GazelleTorrentGroup) error {
-	// json for metadata, anonymized
-	for i := range info.Response.Torrents {
-		info.Response.Torrents[i].UserID = 0
-		info.Response.Torrents[i].Username = ""
-	}
-	metadataJSON, err := json.MarshalIndent(info.Response, "", "    ")
-	if err != nil {
-		return err
-	}
-	tmg.id = info.Response.Group.ID
-	tmg.name = info.Response.Group.Name
-	tmg.fullJSON = metadataJSON
-	return nil
-}
-
 type TrackerMetadataTrack struct {
 	Disc     string
 	Number   string
@@ -146,18 +124,6 @@ type TrackerMetadataArtist struct {
 	Name string
 	Role string
 	JSON []byte `json:"-"`
-}
-
-func (tma *TrackerMetadataArtist) Load(info *tracker.GazelleArtist) error {
-	// json for metadata
-	metadataJSON, err := json.MarshalIndent(info.Response, "", "    ")
-	if err != nil {
-		return err
-	}
-	tma.ID = info.Response.ID
-	tma.Name = info.Response.Name
-	tma.JSON = metadataJSON
-	return nil
 }
 
 type TrackerMetadataLineage struct {
@@ -213,6 +179,8 @@ type TrackerMetadata struct {
 	// current tracker state
 	CurrentSeeders int  `json:"-"`
 	Reported       bool `json:"-"`
+	Trumpable      bool `json:"-"`
+	ApprovedLossy  bool `json:"-"`
 }
 
 func (tm *TrackerMetadata) LoadFromJSON(tracker string, originJSON, releaseJSON string) error {
@@ -297,9 +265,13 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 	var gt tracker.GazelleTorrent
 	var unmarshalErr error
 	if responseOnly {
-		unmarshalErr = json.Unmarshal(tm.ReleaseJSON, &gt.Response)
-	} else {
 		unmarshalErr = json.Unmarshal(tm.ReleaseJSON, &gt)
+	} else {
+		var gtr tracker.GazelleTorrentResponse
+		unmarshalErr = json.Unmarshal(tm.ReleaseJSON, &gtr)
+		if unmarshalErr == nil {
+			gt = gtr.Response
+		}
 	}
 	if unmarshalErr != nil {
 		logthis.Error(errors.Wrap(unmarshalErr, "Error parsing torrent info JSON"), logthis.NORMAL)
@@ -322,59 +294,64 @@ func (tm *TrackerMetadata) loadReleaseJSONFromBytes(parentFolder string, respons
 
 func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 	// tracker related metadata
-	tm.ID = info.Response.Torrent.ID
-	tm.ReleaseURL = tm.TrackerURL + fmt.Sprintf("/torrents.php?torrentid=%d", info.Response.Torrent.ID)
-	tm.GroupID = info.Response.Group.ID
-	tm.Size = uint64(info.Response.Torrent.Size)
+	tm.ID = info.Torrent.ID
+	tm.ReleaseURL = tm.TrackerURL + fmt.Sprintf("/torrents.php?torrentid=%d", info.Torrent.ID)
+	tm.GroupID = info.Group.ID
+	tm.Size = uint64(info.Torrent.Size)
 	// keeping a copy of uploader before anonymizing
-	tm.Uploader = info.Response.Torrent.Username
-	tm.FolderName = html.UnescapeString(info.Response.Torrent.FilePath)
-	tm.CoverURL = info.Response.Group.WikiImage
-	tm.CurrentSeeders = info.Response.Torrent.Seeders
-	tm.Reported = info.Response.Torrent.Reported
+	tm.Uploader = info.Torrent.Username
+	tm.FolderName = html.UnescapeString(info.Torrent.FilePath)
+	tm.CoverURL = info.Group.WikiImage
+	tm.CurrentSeeders = info.Torrent.Seeders
+	tm.Reported = info.Torrent.Reported
+	tm.Trumpable = info.Torrent.Trumpable
+	tm.ApprovedLossy = info.Torrent.LossyMasterApproved || info.Torrent.LossyWebApproved
 
 	// release related metadata
 	// for now, using artists, composers, "with" categories
 	// also available: .Conductor, .Dj, .Producer, .RemixedBy
-	for _, el := range info.Response.Group.MusicInfo.Artists {
+	for _, el := range info.Group.MusicInfo.Artists {
 		tm.Artists = append(tm.Artists, TrackerMetadataArtist{ID: el.ID, Name: html.UnescapeString(el.Name), Role: "Main"})
 	}
-	for _, el := range info.Response.Group.MusicInfo.With {
+	for _, el := range info.Group.MusicInfo.With {
 		tm.Artists = append(tm.Artists, TrackerMetadataArtist{ID: el.ID, Name: html.UnescapeString(el.Name), Role: "Featuring"})
 	}
-	for _, el := range info.Response.Group.MusicInfo.Composers {
+	for _, el := range info.Group.MusicInfo.Composers {
 		tm.Artists = append(tm.Artists, TrackerMetadataArtist{ID: el.ID, Name: html.UnescapeString(el.Name), Role: "Composer"})
 	}
-	tm.Title = html.UnescapeString(info.Response.Group.Name)
-	tm.Tags = info.Response.Group.Tags
-	tm.ReleaseType = tracker.GazelleReleaseType(info.Response.Group.ReleaseType)
-	tm.RecordLabel = html.UnescapeString(info.Response.Group.RecordLabel)
-	if info.Response.Torrent.Remastered && info.Response.Torrent.RemasterRecordLabel != "" {
-		tm.RecordLabel = html.UnescapeString(info.Response.Torrent.RemasterRecordLabel)
+	tm.Title = html.UnescapeString(info.Group.Name)
+	tm.Tags = info.Group.Tags
+	tm.ReleaseType = tracker.GazelleReleaseType(info.Group.ReleaseType)
+	tm.RecordLabel = html.UnescapeString(info.Group.RecordLabel)
+	if info.Torrent.Remastered && info.Torrent.RemasterRecordLabel != "" {
+		tm.RecordLabel = html.UnescapeString(info.Torrent.RemasterRecordLabel)
 	}
-	tm.CatalogNumber = info.Response.Group.CatalogueNumber
-	if info.Response.Torrent.Remastered && info.Response.Torrent.RemasterCatalogueNumber != "" {
-		tm.CatalogNumber = html.UnescapeString(info.Response.Torrent.RemasterCatalogueNumber)
+	tm.CatalogNumber = info.Group.CatalogueNumber
+	if info.Torrent.Remastered && info.Torrent.RemasterCatalogueNumber != "" {
+		tm.CatalogNumber = html.UnescapeString(info.Torrent.RemasterCatalogueNumber)
 	}
-	tm.OriginalYear = info.Response.Group.Year
-	tm.EditionName = html.UnescapeString(info.Response.Torrent.RemasterTitle)
-	tm.EditionYear = info.Response.Torrent.RemasterYear
-	tm.Source = html.UnescapeString(info.Response.Torrent.Media)
-	tm.Format = info.Response.Torrent.Format
-	tm.Quality = info.Response.Torrent.Encoding
-	tm.LogScore = info.Response.Torrent.LogScore
-	tm.HasLog = info.Response.Torrent.HasLog
-	tm.HasCue = info.Response.Torrent.HasCue
-	tm.IsScene = info.Response.Torrent.Scene
+	tm.OriginalYear = info.Group.Year
+	tm.EditionName = html.UnescapeString(info.Torrent.RemasterTitle)
+	tm.EditionYear = info.Torrent.RemasterYear
+	tm.Source = html.UnescapeString(info.Torrent.Media)
+	tm.Format = info.Torrent.Format
+	tm.Quality = info.Torrent.Encoding
+	tm.LogScore = info.Torrent.LogScore
+	tm.HasLog = info.Torrent.HasLog
+	tm.HasCue = info.Torrent.HasCue
+	tm.IsScene = info.Torrent.Scene
 
 	tm.SourceFull = tm.Source
 	if tm.SourceFull == tracker.SourceCD && tm.Quality == tracker.QualityLossless {
-		if tm.HasLog && tm.HasCue && (tm.LogScore == 100 || info.Response.Torrent.Grade == "Silver") {
+		if tm.HasLog && tm.HasCue && (tm.LogScore == 100 || info.Torrent.Grade == "Silver") {
 			tm.SourceFull += "+"
 		}
-		if info.Response.Torrent.Grade == "Gold" {
+		if info.Torrent.Grade == "Gold" {
 			tm.SourceFull += "+"
 		}
+	}
+	if tm.ApprovedLossy {
+		tm.SourceFull += "*"
 	}
 
 	// parsing info that needs to be worked on before use
@@ -403,7 +380,7 @@ func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 
 	// parsing track list
 	r := regexp.MustCompile(tracker.TrackPattern)
-	files := strings.Split(info.Response.Torrent.FileList, "|||")
+	files := strings.Split(info.Torrent.FileList, "|||")
 	for _, f := range files {
 		track := TrackerMetadataTrack{}
 		hits := r.FindAllStringSubmatch(f, -1)
@@ -416,26 +393,26 @@ func (tm *TrackerMetadata) loadFromGazelle(info *tracker.GazelleTorrent) error {
 			tm.Tracks = append(tm.Tracks, track)
 			// TODO Duration  + Disc + number
 		}
-		if len(tm.Tracks) == 0 {
-			logthis.Info("Could not parse filelist, no music tracks found.", logthis.VERBOSEST)
-		}
+	}
+	if len(tm.Tracks) == 0 {
+		logthis.Info("Could not parse filelist, no music tracks found.", logthis.VERBOSEST)
 	}
 	// TODO tm.TotalTime
 
 	// TODO find other info, parse for discogs/musicbrainz/itunes links in both descriptions
-	if info.Response.Torrent.Description != "" {
-		tm.Lineage = append(tm.Lineage, TrackerMetadataLineage{Source: "TorrentDescription", LinkOrDescription: html.UnescapeString(info.Response.Torrent.Description)})
+	if info.Torrent.Description != "" {
+		tm.Lineage = append(tm.Lineage, TrackerMetadataLineage{Source: "TorrentDescription", LinkOrDescription: html.UnescapeString(info.Torrent.Description)})
 	}
 	// TODO add info.Response.Torrent.Lineage if not empty?
 
 	// TODO de-wikify
-	tm.Description = html.UnescapeString(info.Response.Group.WikiBody)
+	tm.Description = html.UnescapeString(info.Group.WikiBody)
 
 	// json for metadata, anonymized
-	info.Response.Torrent.Username = ""
-	info.Response.Torrent.UserID = 0
+	info.Torrent.Username = ""
+	info.Torrent.UserID = 0
 	// keeping a copy of the full JSON
-	metadataJSON, err := json.MarshalIndent(info.Response, "", "    ")
+	metadataJSON, err := json.MarshalIndent(info, "", "    ")
 	if err != nil {
 		metadataJSON = tm.ReleaseJSON // falling back to complete json
 	}
@@ -486,12 +463,16 @@ func artistInSlice(artist, title string, list []string) bool {
 
 // SaveFromTracker all of the relevant metadata.
 func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazelle) error {
+	c, err := NewConfig(DefaultConfigurationFile)
+	if err != nil {
+		return err
+	}
+
 	destination := filepath.Join(parentFolder, MetadataDir)
 	// create metadata dir if necessary
 	if err := os.MkdirAll(destination, 0775); err != nil {
 		return errors.Wrap(err, errorCreatingMetadataDir)
 	}
-
 	// creating or updating origin.json
 	if err := tm.saveOriginJSON(destination); err != nil {
 		return errors.Wrap(err, errorWithOriginJSON)
@@ -499,11 +480,12 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 
 	// NOTE: errors are not returned (for now) in case the next JSONs can be retrieved
 
+	logthis.Info(fmt.Sprintf(infoAllMetadataSaving, filepath.Base(parentFolder)), logthis.VERBOSE)
 	// write tracker metadata to target folder
-	if err := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+"_"+trackerMetadataFile), tm.ReleaseJSON, 0666); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(destination, releaseMetadataFile(tm.Tracker)), tm.ReleaseJSON, 0666); err != nil {
 		logthis.Error(errors.Wrap(err, errorWritingJSONMetadata), logthis.NORMAL)
 	} else {
-		logthis.Info(infoMetadataSaved+filepath.Base(parentFolder), logthis.VERBOSE)
+		logthis.Info(infoMetadataSaved, logthis.VERBOSE)
 	}
 
 	// get torrent group info
@@ -511,36 +493,69 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 	if err != nil {
 		logthis.Info(fmt.Sprintf(errorRetrievingTorrentGroupInfo, tm.GroupID), logthis.NORMAL)
 	} else {
-		torrentGroupInfo := &TrackerMetadataTorrentGroup{}
-		if e := torrentGroupInfo.Load(gzTorrentGroup); e != nil {
-			logthis.Info(fmt.Sprintf(errorRetrievingTorrentGroupInfo, tm.GroupID), logthis.NORMAL)
-		}
-		// write tracker artist metadata to target folder
-		if e := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+"_"+trackerTGroupMetadataFile), torrentGroupInfo.fullJSON, 0666); e != nil {
-			logthis.Error(errors.Wrap(e, errorWritingJSONMetadata), logthis.NORMAL)
+		// anonymizing data
+		gzTorrentGroup.Anonymize()
+		// saving to file
+		data, marshallErr := tracker.MarshallResponse(gzTorrentGroup)
+		if marshallErr != nil {
+			logthis.Error(errors.Wrap(marshallErr, errorWritingJSONMetadata), logthis.NORMAL)
 		} else {
-			logthis.Info(fmt.Sprintf(infoTorrentGroupMetadataSaved, tm.Title, filepath.Base(parentFolder)), logthis.VERBOSE)
+			// writing torrent group metadata to target folder
+			if e := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+" - "+trackerTGroupMetadataFile), data, 0666); e != nil {
+				logthis.Error(errors.Wrap(e, errorWritingJSONMetadata), logthis.NORMAL)
+			} else {
+				logthis.Info(infoTorrentGroupMetadataSaved, logthis.VERBOSE)
+			}
+		}
+
+		if c.General.FullMetadataRetrieval {
+			// getting collages
+			var allCollages []tracker.CollageInfo
+			allCollages = append(allCollages, gzTorrentGroup.Group.Collages...)
+			allCollages = append(allCollages, gzTorrentGroup.Group.PersonalCollages...)
+			for _, c := range allCollages {
+				gzCollage, err := t.GetCollage(c.ID)
+				if err != nil {
+					logthis.Info(fmt.Sprintf(errorRetrievingCollageInfo, c.ID), logthis.NORMAL)
+					continue
+				}
+				gzCollage.Anonymize()
+				// saving to file
+				collageData, collageErr := tracker.MarshallResponse(gzCollage)
+				if collageErr != nil {
+					logthis.Error(errors.Wrap(collageErr, errorWritingJSONMetadata), logthis.NORMAL)
+				} else {
+					// writing collage metadata to target folder
+					if e := ioutil.WriteFile(filepath.Join(destination, tm.Tracker+" - "+fmt.Sprintf(trackerCollageMetadataFile, gzCollage.CollageCategoryName, c.ID)), collageData, 0666); e != nil {
+						logthis.Error(errors.Wrap(e, errorWritingJSONMetadata), logthis.NORMAL)
+					} else {
+						logthis.Info(fmt.Sprintf(infoCollageMetadataSaved, c.ID), logthis.VERBOSE)
+					}
+				}
+			}
 		}
 	}
 
 	// get artist info
 	for _, a := range tm.Artists {
-		gzArtist, err := t.GetArtist(a.ID)
-		if err != nil {
-			logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
-			continue
-		}
-		artistInfo := &TrackerMetadataArtist{}
-		if e := artistInfo.Load(gzArtist); e != nil {
-			logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
-			continue
-		}
-		// write tracker artist metadata to target folder
-		// making sure the artistInfo.name+jsonExt is a valid filename
-		if e := ioutil.WriteFile(filepath.Join(destination, t.Name+"_"+a.Name+jsonExt), artistInfo.JSON, 0666); e != nil {
-			logthis.Error(errors.Wrap(e, errorWritingJSONMetadata), logthis.NORMAL)
-		} else {
-			logthis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Name, filepath.Base(parentFolder)), logthis.VERBOSE)
+		if a.Role == "Main" || c.General.FullMetadataRetrieval {
+			gzArtist, err := t.GetArtist(a.ID)
+			if err != nil {
+				logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
+				continue
+			}
+			artistsJSON, err := tracker.MarshallResponse(gzArtist)
+			if err != nil {
+				logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
+				continue
+			}
+			// write tracker artist metadata to target folder
+			// making sure the artistInfo.name+jsonExt is a valid filename
+			if e := ioutil.WriteFile(filepath.Join(destination, t.Name+" - Artist ("+a.Role+") "+a.Name+jsonExt), artistsJSON, 0666); e != nil {
+				logthis.Error(errors.Wrap(e, errorWritingJSONMetadata), logthis.NORMAL)
+			} else {
+				logthis.Info(fmt.Sprintf(infoArtistMetadataSaved, a.Role, a.Name), logthis.VERBOSE)
+			}
 		}
 	}
 	// generate blank user metadata json
@@ -552,9 +567,9 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 	if err := tm.SaveCover(parentFolder); err != nil {
 		logthis.Error(errors.Wrap(err, errorDownloadingTrackerCover), logthis.NORMAL)
 	} else {
-		logthis.Info(infoCoverSaved+filepath.Base(parentFolder), logthis.VERBOSE)
+		logthis.Info(infoCoverSaved, logthis.VERBOSE)
 	}
-	logthis.Info(fmt.Sprintf(infoAllMetadataSaved, t.Name), logthis.VERBOSE)
+	logthis.Info(fmt.Sprintf(infoAllMetadataSaved, t.Name, filepath.Base(parentFolder)), logthis.VERBOSE)
 	return nil
 }
 
@@ -562,7 +577,7 @@ func (tm *TrackerMetadata) SaveCover(releaseFolder string) error {
 	if tm.CoverURL == "" {
 		return errors.New("unknown image url")
 	}
-	filename := filepath.Join(releaseFolder, MetadataDir, tm.Tracker+"_"+trackerCoverFile+filepath.Ext(tm.CoverURL))
+	filename := filepath.Join(releaseFolder, MetadataDir, tm.Tracker+" - "+trackerCoverFile+filepath.Ext(tm.CoverURL))
 
 	if fs.FileExists(filename) {
 		// already downloaded, or exists in folder already: do nothing
@@ -728,14 +743,15 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 		idElements = append(idElements, tm.RecordLabel)
 	} // TODO when we have neither catnum nor label
 
+	id := strings.Join(idElements, ", ")
+	if id == "" {
+		id = "Unknown"
+	}
+
 	var releaseTypeExceptAlbum string
 	if tm.ReleaseType != tracker.ReleaseAlbum {
 		// adding release type if not album
 		releaseTypeExceptAlbum = tm.ReleaseType
-	}
-	id := strings.Join(idElements, ", ")
-	if id == "" {
-		id = "Unknown"
 	}
 
 	quality := tracker.ShortEncoding(tm.Quality)
@@ -779,7 +795,7 @@ func (tm *TrackerMetadata) GeneratePath(folderTemplate, releaseFolder string) st
 		fs.SanitizePath(tm.Title),
 		quality,
 		tm.Source,
-		tm.SourceFull, // source with indicator if 100%/log/cue or Silver/gold
+		tm.SourceFull, // source with indicator if 100%/log/cue or Silver/gold & lossy web/master
 		fs.SanitizePath(tm.RecordLabel),
 		tm.CatalogNumber,
 		fs.SanitizePath(editionName), // edition

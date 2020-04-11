@@ -29,6 +29,7 @@ type ConfigGeneral struct {
 	WatchDir                   string `yaml:"watch_directory"`
 	DownloadDir                string `yaml:"download_directory"`
 	AutomaticMetadataRetrieval bool   `yaml:"automatic_metadata_retrieval"`
+	FullMetadataRetrieval      bool   `yaml:"full_metadata_retrieval"`
 	TimestampedLogs            bool   `yaml:"timestamped_logs"`
 }
 
@@ -42,8 +43,8 @@ func (cg *ConfigGeneral) check() error {
 	if cg.WatchDir != "" && !fs.DirExists(cg.WatchDir) {
 		return errors.New("Watch directory does not exist")
 	}
-	if cg.AutomaticMetadataRetrieval && cg.DownloadDir == "" {
-		return errors.New("Downloads directory must be defined to allow metadata retrieval")
+	if (cg.AutomaticMetadataRetrieval || cg.FullMetadataRetrieval) && cg.DownloadDir == "" {
+		return errors.New("downloads directory must be defined to allow metadata retrieval")
 	}
 	return nil
 }
@@ -56,6 +57,7 @@ func (cg *ConfigGeneral) String() string {
 	txt += "\tWatch directory: " + cg.WatchDir + "\n"
 	txt += "\tDownload directory: " + cg.DownloadDir + "\n"
 	txt += "\tDownload metadata automatically: " + fmt.Sprintf("%v", cg.AutomaticMetadataRetrieval) + "\n"
+	txt += "\tDownload all related metadata: " + fmt.Sprintf("%v", cg.FullMetadataRetrieval) + "\n"
 	return txt
 }
 
@@ -64,6 +66,7 @@ type ConfigTracker struct {
 	User     string
 	Password string
 	Cookie   string
+	APIKey   string `yaml:"api_key"`
 	URL      string
 }
 
@@ -71,11 +74,11 @@ func (ct *ConfigTracker) check() error {
 	if ct.Name == "" {
 		return errors.New("Missing tracker name")
 	}
-	if ct.User == "" {
-		return errors.New("Missing tracker username for " + ct.Name)
+	if ct.Password != "" && ct.User == "" {
+		return errors.New("password logins also require the username for tracker " + ct.Name)
 	}
-	if ct.Cookie == "" && ct.Password == "" {
-		return errors.New("Missing log in information (password or session cookie) for " + ct.Name)
+	if ct.Cookie == "" && ct.Password == "" && ct.APIKey == "" {
+		return errors.New("Missing log in information (password, session cookie or API key) for " + ct.Name)
 	}
 	if ct.URL == "" {
 		return errors.New("Missing tracker URL for " + ct.Name)
@@ -87,7 +90,8 @@ func (ct *ConfigTracker) String() string {
 	txt := "Tracker configuration for " + ct.Name + "\n"
 	txt += "\tUser: " + ct.User + "\n"
 	txt += "\tPassword: " + ct.Password + "\n"
-	txt += "\tCookie value: " + ct.Cookie + "\n"
+	txt += "\tSession cookie value: " + ct.Cookie + "\n"
+	txt += "\tAPI Key: " + ct.APIKey + "\n"
 	txt += "\tURL: " + ct.URL + "\n"
 	return txt
 }
@@ -534,6 +538,7 @@ type ConfigFilter struct {
 	Tracker              []string `yaml:"tracker"`
 	Uploader             []string `yaml:"uploader"`
 	RejectUnknown        bool     `yaml:"reject_unknown_releases"`
+	RejectTrumpable      bool     `yaml:"reject_trumpable_releases"`
 	BlacklistedUploaders []string `yaml:"blacklisted_uploaders"`
 }
 
@@ -766,6 +771,7 @@ func (cf *ConfigFilter) String() string {
 		description += "\tEdition Year(s): " + strings.Join(intslice.ToStringSlice(cf.EditionYear), ", ") + "\n"
 	}
 	description += "\tReject unknown releases: " + fmt.Sprintf("%v", cf.RejectUnknown) + "\n"
+	description += "\tReject trumpable releases: " + fmt.Sprintf("%v", cf.RejectTrumpable) + "\n"
 	if len(cf.BlacklistedUploaders) != 0 {
 		description += "\tBlacklisted uploaders: " + strings.Join(cf.BlacklistedUploaders, ",") + "\n"
 	} else {

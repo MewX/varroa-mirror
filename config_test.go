@@ -28,23 +28,33 @@ func TestConfig(t *testing.T) {
 	check.Equal("../varroa/test", c.General.DownloadDir)
 	check.Equal(2, c.General.LogLevel)
 	check.True(c.General.AutomaticMetadataRetrieval)
+	check.True(c.General.FullMetadataRetrieval)
 	check.True(c.General.TimestampedLogs)
 
 	// trackers
 	fmt.Println("Checking trackers")
-	check.Equal(2, len(c.Trackers))
+	check.Equal(3, len(c.Trackers))
 	tr := c.Trackers[0]
 	check.Equal("blue", tr.Name)
 	check.Equal("username", tr.User)
 	check.Equal("secretpassword", tr.Password)
 	check.Equal("", tr.Cookie)
+	check.Equal("", tr.APIKey)
 	check.Equal("https://blue.ch", tr.URL)
 	tr = c.Trackers[1]
 	check.Equal("purple", tr.Name)
 	check.Equal("another_username", tr.User)
 	check.Equal("", tr.Password)
 	check.Equal("cookievalue", tr.Cookie)
+	check.Equal("", tr.APIKey)
 	check.Equal("https://purple.cd", tr.URL)
+	tr = c.Trackers[2]
+	check.Equal("magenta", tr.Name)
+	check.Equal("yet_another_username", tr.User)
+	check.Equal("", tr.Password)
+	check.Equal("", tr.Cookie)
+	check.Equal("thisisanAPIkey", tr.APIKey)
+	check.Equal("https://mangen.ta", tr.URL)
 	// autosnatch
 	fmt.Println("Checking autosnatch")
 	check.Equal(2, len(c.Autosnatch))
@@ -173,6 +183,7 @@ func TestConfig(t *testing.T) {
 	check.Equal([]string{"blue"}, f.Tracker)
 	check.Equal([]string{"best_uploader_ever", "this other guy"}, f.Uploader)
 	check.True(f.RejectUnknown)
+	check.True(f.RejectTrumpable)
 	check.Equal([]string{"This Very Specific Release", "r/[dD]eluxe", "xr/Ibiza"}, f.Title)
 	check.Equal([]string{"Bonus", "Anniversary", "r/[dD]eluxe", "xr/[cC][lL][eE][aA][nN]"}, f.Edition)
 	// test must be valid next year...
@@ -220,6 +231,7 @@ func TestConfig(t *testing.T) {
 	check.Nil(f.Tracker)
 	check.Nil(f.Uploader)
 	check.False(f.RejectUnknown)
+	check.False(f.RejectTrumpable)
 	check.Nil(f.Edition)
 	check.Nil(f.EditionYear)
 

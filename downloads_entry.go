@@ -132,22 +132,19 @@ func (d *DownloadEntry) Load(root string) error {
 			d.TrackerID = append(d.TrackerID, info.ID)
 
 			// getting release info from json
-			infoJSON := filepath.Join(root, d.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
-			infoJSONOldFormat := filepath.Join(root, d.FolderName, MetadataDir, "Release.json")
-			if !fs.FileExists(infoJSON) {
-				infoJSON = infoJSONOldFormat
+			infoJSON, err := getReleaseJSONFile(filepath.Join(root, d.FolderName, MetadataDir), tracker)
+			if err != nil {
+				logthis.Info("Metadata not found for tracker: "+tracker, logthis.NORMAL)
+				continue
 			}
-			if fs.FileExists(infoJSON) {
-				d.HasTrackerMetadata = true
-
-				md := TrackerMetadata{}
-				if err := md.LoadFromJSON(tracker, originFile, infoJSON); err != nil {
-					return errors.Wrap(err, "Error loading JSON file "+infoJSON)
-				}
-				// extract relevant information!
-				for _, a := range md.Artists {
-					d.Artists = append(d.Artists, a.Name)
-				}
+			d.HasTrackerMetadata = true
+			md := TrackerMetadata{}
+			if err := md.LoadFromJSON(tracker, originFile, infoJSON); err != nil {
+				return errors.Wrap(err, "Error loading JSON file "+infoJSON)
+			}
+			// extract relevant information!
+			for _, a := range md.Artists {
+				d.Artists = append(d.Artists, a.Name)
 			}
 		}
 	} else {
@@ -173,15 +170,15 @@ func (d *DownloadEntry) getMetadata(root, tracker string) (TrackerMetadata, erro
 		return TrackerMetadata{}, errors.New("Error, does not have tracker metadata")
 	}
 
-	infoJSON := filepath.Join(root, d.FolderName, MetadataDir, tracker+"_"+trackerMetadataFile)
-	if !fs.FileExists(infoJSON) {
-		// if not present, try the old format
-		infoJSON = filepath.Join(root, d.FolderName, MetadataDir, "Release.json")
+	info := TrackerMetadata{}
+	infoJSON, err := getReleaseJSONFile(filepath.Join(root, d.FolderName, MetadataDir), tracker)
+	if err != nil {
+		logthis.Error(errors.Wrap(err, "Error, could not load release json"), logthis.NORMAL)
+		return info, err
 	}
 	originJSON := filepath.Join(root, d.FolderName, MetadataDir, OriginJSONFile)
 
-	info := TrackerMetadata{}
-	err := info.LoadFromJSON(tracker, originJSON, infoJSON)
+	err = info.LoadFromJSON(tracker, originJSON, infoJSON)
 	if err != nil {
 		logthis.Error(errors.Wrap(err, "Error, could not load release json"), logthis.NORMAL)
 	}

@@ -263,6 +263,14 @@ func RefreshMetadata(e *Environment, t *tracker.Gazelle, IDStrings []string) err
 		if !info.IsWellSeeded() {
 			logthis.Info(ui.Red("This torrent has less than "+strconv.Itoa(minimumSeeders)+" seeders; if that is not already the case, consider reseeding it."), logthis.NORMAL)
 		}
+		// if trumpable, warn
+		if info.Trumpable {
+			logthis.Info(ui.Red("This torrent is marked as trumpable. For more information, see: "+info.ReleaseURL), logthis.NORMAL)
+		}
+		// if approved lossy release, warn
+		if info.ApprovedLossy {
+			logthis.Info(ui.Red("This torrent was approved as lossy web or master."), logthis.NORMAL)
+		}
 		// if release is reported, warn and offer link.
 		if info.Reported {
 			logthis.Info(ui.Red("This torrent has been reported. For more information, see: "+info.ReleaseURL), logthis.NORMAL)
@@ -420,7 +428,7 @@ func Reseed(t *tracker.Gazelle, path []string) error {
 
 	// TODO TO A TEMP DIR, then compare torrent description with path contents; if OK only copy .torrent to conf.General.WatchDir
 	// downloading torrent
-	if err := t.DownloadTorrentFromID(strconv.Itoa(oj.ID), conf.General.WatchDir, false); err != nil {
+	if err := t.Download(oj.ID, false, conf.General.WatchDir, ""); err != nil {
 		return errors.Wrap(err, "error downloading torrent file")
 	}
 	logthis.Info("Torrent downloaded, your bittorrent client should be able to reseed the release.", logthis.NORMAL)
@@ -430,11 +438,11 @@ func Reseed(t *tracker.Gazelle, path []string) error {
 // CheckLog on a tracker's logchecker
 func CheckLog(t *tracker.Gazelle, logPaths []string) error {
 	for _, log := range logPaths {
-		score, err := t.GetLogScore(log)
+		logchecker, err := t.GetLogScore(log)
 		if err != nil {
 			return errors.Wrap(err, errorGettingLogScore)
 		}
-		logthis.Info(fmt.Sprintf("Logchecker results: %s.", score), logthis.NORMAL)
+		logthis.Info(fmt.Sprintf("Logchecker results: %s", logchecker.String()), logthis.NORMAL)
 	}
 	return nil
 }

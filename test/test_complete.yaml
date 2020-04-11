@@ -2,6 +2,7 @@ general:
   watch_directory: test
   download_directory: ../varroa/test
   automatic_metadata_retrieval: true
+  full_metadata_retrieval: true
   log_level: 2
   timestamped_logs: true
 
@@ -14,6 +15,10 @@ trackers:
     user: another_username
     cookie: cookievalue
     url:  https://purple.cd
+  - name: magenta
+    user: yet_another_username
+    api_key: thisisanAPIkey
+    url: https://mangen.ta
 
 stats:
   - tracker: blue
@@ -112,6 +117,7 @@ filters:
     excluded_type:
     - Concert Recording
     reject_unknown_releases: true
+    reject_trumpable_releases: true
     title:
     - This Very Specific Release
     - r/[dD]eluxe

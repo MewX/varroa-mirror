@@ -297,9 +297,12 @@ func (r *Release) HasCompatibleTrackerInfo(filter *ConfigFilter, blacklistedUplo
 			return false
 		}
 	}
-
 	if filter.RejectUnknown && info.CatalogNumber == "" && info.RecordLabel == "" {
 		logthis.Info(filter.Name+": Release has neither a record label or catalog number, rejected.", logthis.VERBOSE)
+		return false
+	}
+	if filter.RejectTrumpable && info.Trumpable {
+		logthis.Info(filter.Name+": Release is marked as trumpable, rejected.", logthis.VERBOSE)
 		return false
 	}
 	// taking the opportunity to retrieve and save some info
