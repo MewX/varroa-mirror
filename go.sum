@@ -281,8 +281,8 @@ gitlab.com/catastrophic/go-ircevent v0.1.0 h1:EDhKUme2azLuqCizqidV1A8RP28ZQxhdBE
 gitlab.com/catastrophic/go-ircevent v0.1.0/go.mod h1:2AAsdhGai9b39JJgFhNPNetp4JBc8aI1siZt3AAej9I=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190228104527-d3d77fbbb3a1 h1:nKQdLjYLARydXRsNOfHxTB0TaOZdKpp3a/P6dc3ySCE=
 gitlab.com/catastrophic/gotabulate v0.0.0-20190228104527-d3d77fbbb3a1/go.mod h1:poSJSlChz9NabfWFYQ1Dl+TBXn/q/wvs3OpQNaDIreU=
-gitlab.com/passelecasque/obstruction v0.8.0 h1:d5nmcv4k7ZHgpycYmLqwt8LDLK9MTwX6Ol7VemOzCqE=
-gitlab.com/passelecasque/obstruction v0.8.0/go.mod h1:HKclY5kNEb9c9+Ugs9NSOyUSI/6UOpClP/MWXjcegds=
+gitlab.com/passelecasque/obstruction v0.8.1 h1:14BE4/SQh53r3kygFJ29pnRibckuHU9zaCHUJ9kk1Q4=
+gitlab.com/passelecasque/obstruction v0.8.1/go.mod h1:HKclY5kNEb9c9+Ugs9NSOyUSI/6UOpClP/MWXjcegds=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.4 h1:hi1bXHMVrlQh6WwxAy+qZCV/SYIlqo+Ushwdpa4tAKg=
 go.etcd.io/bbolt v1.3.4/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
