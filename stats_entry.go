@@ -36,17 +36,12 @@ type StatsEntry struct {
 }
 
 func NewStatsEntry(gazelleTracker *tracker.Gazelle, gzStats *tracker.GazelleUserStats) (*StatsEntry, error) {
-	ratio, err := strconv.ParseFloat(gzStats.Stats.Ratio, 64)
-	if err != nil {
-		logthis.Info("Incorrect ratio: "+gzStats.Stats.Ratio, logthis.NORMAL)
-		ratio = 0.0
-	}
 	// return StatsEntry
 	stats := &StatsEntry{
 		Tracker:       gazelleTracker.Name,
 		Up:            gzStats.Stats.Uploaded,
 		Down:          gzStats.Stats.Downloaded,
-		Ratio:         ratio,
+		Ratio:         gzStats.Stats.Ratio,
 		Timestamp:     time.Now(),
 		TimestampUnix: time.Now().Unix(),
 		Collected:     true,
