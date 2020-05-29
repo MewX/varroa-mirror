@@ -259,8 +259,10 @@
 		let link = '';
 		if (useFLToken) {
 			link = document.createElement('varroa_fl_' + id);
+			link.classList.add("varroa_fl");
 		} else {
 			link = document.createElement('varroa_' + id);
+			link.classList.add("varroa_dl");
 		}
 		let a = '';
 		a = document.createElement('a');
