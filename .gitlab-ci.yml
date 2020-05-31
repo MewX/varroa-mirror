@@ -19,7 +19,7 @@ compiled_varroa_dev:
     - varroa
     - varroa_bash_completion
     - varroa-fuse
-    - send-to-varroa.js
+    - varroa.user.js
     name: "varroa-dev-${CI_COMMIT_REF_NAME}"
     expire_in: 4 weeks
   except:
@@ -37,7 +37,7 @@ compiled_varroa_released_version:
       - varroa
       - varroa_bash_completion
       - varroa-fuse
-      - send-to-varroa.js
+      - varroa.user.js
     name: "varroa-${CI_COMMIT_REF_NAME}"
   only:
     - tags
