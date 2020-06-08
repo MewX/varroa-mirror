@@ -29,7 +29,7 @@ clean:
 	rm -f varroa
 	rm -f varroa-fuse
 	rm -f varroa_bash_completion
-	rm -f send-to-varroa.js
+	rm -f varroa.user.js
 
 build:
 	${GO} build -v ./...
@@ -37,7 +37,7 @@ build-bin:
 	cd cmd/varroa;${GO} build -ldflags "-X gitlab.com/passelecasque/varroa.Version=${VERSION}" -o ../../varroa;cd ../..
 	cd cmd/varroa-fuse;${GO} build -ldflags "-X gitlab.com/passelecasque/varroa.Version=${VERSION}" -o ../../varroa-fuse;cd ../..
 	cp cmd/varroa/bash_completion varroa_bash_completion
-	cp script/send-to-varroa.js send-to-varroa.js
+	cp script/varroa.user.js varroa.user.js
 
 install:
 	${GO} install -ldflags "-X main.Version=${VERSION}" -v ./...
