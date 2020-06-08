@@ -583,7 +583,9 @@ func (tm *TrackerMetadata) SaveCover(releaseFolder string) error {
 		// already downloaded, or exists in folder already: do nothing
 		return nil
 	}
-	response, err := http.Get(tm.CoverURL)
+
+	client := http.Client{Timeout: time.Second * 5}
+	response, err := client.Get(tm.CoverURL)
 	if err != nil {
 		return err
 	}
