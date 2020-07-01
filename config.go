@@ -299,7 +299,7 @@ func (c *Config) check() error {
 	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.DownloadFolderConfigured {
 		return errors.New("Webserver configured to serve metadata, but download folder not configured")
 	}
-	if c.webhooksConfigured && c.WebServer.ServeMetadata && !c.General.AutomaticMetadataRetrieval {
+	if c.webhooksConfigured && c.webserverConfigured && c.WebServer.ServeMetadata && !c.General.AutomaticMetadataRetrieval {
 		return errors.New("Webserver configured to serve metadata, but metadata automatic download not configured")
 	}
 	if c.LibraryConfigured && !c.DownloadFolderConfigured {
