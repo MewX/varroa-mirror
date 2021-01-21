@@ -31,7 +31,6 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/russross/blackfriday v2.0.0+incompatible
 	github.com/sevlyar/go-daemon v0.1.5
-	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tdewolff/minify v2.3.6+incompatible
 	github.com/tdewolff/parse v2.3.4+incompatible // indirect
@@ -42,9 +41,9 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	gitlab.com/catastrophic/assistance v0.32.1
 	gitlab.com/catastrophic/go-ircevent v0.1.0
-	gitlab.com/passelecasque/obstruction v0.12.2
+	gitlab.com/passelecasque/obstruction v0.15.2
 	go.etcd.io/bbolt v1.3.4 // indirect
-	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
+	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
@@ -52,4 +51,4 @@ require (
 go 1.13
 
 //replace gitlab.com/catastrophic/assistance => ../../catastrophic/assistance
-//replace gitlab.com/passelecasque/obstruction => ../../passelecasque/obstruction
+// replace gitlab.com/passelecasque/obstruction => ../../passelecasque/obstruction
