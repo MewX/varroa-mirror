@@ -41,7 +41,7 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	gitlab.com/catastrophic/assistance v0.32.1
 	gitlab.com/catastrophic/go-ircevent v0.1.0
-	gitlab.com/passelecasque/obstruction v0.15.2
+	gitlab.com/passelecasque/obstruction v0.15.3
 	go.etcd.io/bbolt v1.3.4 // indirect
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	google.golang.org/appengine v1.6.5 // indirect
@@ -51,4 +51,4 @@ require (
 go 1.13
 
 //replace gitlab.com/catastrophic/assistance => ../../catastrophic/assistance
-// replace gitlab.com/passelecasque/obstruction => ../../passelecasque/obstruction
+//replace gitlab.com/passelecasque/obstruction => ../../passelecasque/obstruction

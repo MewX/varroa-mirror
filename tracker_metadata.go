@@ -541,7 +541,7 @@ func (tm *TrackerMetadata) SaveFromTracker(parentFolder string, t *tracker.Gazel
 		if a.Role == "Main" || c.General.FullMetadataRetrieval {
 			gzArtist, err := t.GetArtist(a.ID)
 			if err != nil {
-				logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo, a.ID), logthis.NORMAL)
+				logthis.Info(fmt.Sprintf(errorRetrievingArtistInfo+": %s", a.ID, err.Error()), logthis.NORMAL)
 				continue
 			}
 			artistsJSON, err := tracker.MarshallResponse(gzArtist)
