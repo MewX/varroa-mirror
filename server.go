@@ -278,6 +278,7 @@ func webServer(e *Environment) {
 			endThisConnection := make(chan struct{})
 
 			// this goroutine will send messages to the remote
+			websocketUp := true
 			go func() {
 				logOutput := logthis.Subscribe()
 				for {
@@ -289,13 +290,17 @@ func webServer(e *Environment) {
 							if !websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 								logthis.Error(errors.Wrap(err, errorOutgoingWebSocketJSON), logthis.VERBOSEST)
 							}
-							endThisConnection <- struct{}{}
-							break
+							mutex.Lock()
+							logthis.Unsubscribe(logOutput)
+							websocketUp = false
+							mutex.Unlock()
+							return
 						}
 						mutex.Unlock()
 					case <-endThisConnection:
 						mutex.Lock()
 						logthis.Unsubscribe(logOutput)
+						websocketUp = false
 						mutex.Unlock()
 						return
 					}
@@ -303,6 +308,9 @@ func webServer(e *Environment) {
 			}()
 
 			for {
+				if !websocketUp {
+					return
+				}
 				// TODO if server is shutting down, c.Close()
 				incoming := IncomingJSON{}
 				if err := c.ReadJSON(&incoming); err != nil {

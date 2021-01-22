@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gregdel/pushover"
 	"github.com/pkg/errors"
@@ -150,7 +151,7 @@ func (whj *WebHookJSON) Send(address string, token string) error {
 	req.Header.Set("X-Varroa-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: time.Second * 5}
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "Error sending webhook request")

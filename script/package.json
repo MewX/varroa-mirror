@@ -1,6 +1,6 @@
 {
   "name": "varroa",
-  "version": "29",
-  "main": "send-to-varroa.js",
+  "version": "34",
+  "main": "varroa.user.js",
   "author": "passelecasque"
 }
