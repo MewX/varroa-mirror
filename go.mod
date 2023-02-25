@@ -43,7 +43,7 @@ require (
 	gitlab.com/catastrophic/go-ircevent v0.1.0
 	gitlab.com/passelecasque/obstruction v0.15.3
 	go.etcd.io/bbolt v1.3.4 // indirect
-	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
+	golang.org/x/net v0.7.0
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
