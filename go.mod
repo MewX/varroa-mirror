@@ -18,7 +18,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/gorilla/mux v1.6.2
-	github.com/gorilla/websocket v1.4.0
+	github.com/gorilla/websocket v1.4.1
 	github.com/gregdel/pushover v0.0.0-20180208231006-1e03358b8e7e
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 	github.com/jasonlvhit/gocron v0.0.0-20180312192515-54194c9749d4
